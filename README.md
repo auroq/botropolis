@@ -10,7 +10,7 @@ See [DESIGN.md](DESIGN.md) for the design and the plan, and [docs/usage-profile.
 ## Status
 
 Milestone 0.
-Nothing runs yet.
+The three binaries build and answer `version`; nothing else runs yet.
 
 ## Tools
 
