@@ -30,10 +30,13 @@ const (
 	isoStorey      = "buildingTiles_048.png"
 	isoRoof        = "buildingTiles_057.png"
 	isoRoofNeeds   = "buildingTiles_060.png"
-	isoPlant       = "buildingTiles_040.png"
-	isoTower       = "buildingTiles_011.png"
-	isoLibrary     = "buildingTiles_021.png"
-	isoHall        = "buildingTiles_036.png"
+	isoPlant       = "buildingTiles_092.png"
+	isoPlantStorey = "buildingTiles_052.png"
+	isoRoofDome    = "buildingTiles_105.png"
+	isoRoofFlat    = "buildingTiles_120.png"
+	isoTower       = "buildingTiles_085.png"
+	isoLibrary     = "buildingTiles_123.png"
+	isoHall        = "buildingTiles_114.png"
 	isoPlinthLift  = 82.0 // ground tile bottom to first storey bottom
 	isoStoreyPitch = 40.0 // a storey's walls: each storey sits this much above the last
 	isoRoofSeat    = 50.0 // the roof's bottom edge sits this far below the top of the piece under it
@@ -340,8 +343,8 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	}
 	top, w := footprint(cam, b.Rect)
 	scale := w / assets.IsoTileWidth
-	sheet := g.sprites.iso.buildings
 	if b.BoardedUp {
+		sheet := g.sprites.iso.buildings
 		shed := sheet.sprite(isoShed)
 		tint := &ebiten.ColorScale{}
 		tint.SetR(0.55)
@@ -373,31 +376,12 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	case b.Lit:
 		floorName = isoFloorWork
 	}
-	floor := sheet.sprite(floorName)
-	storey := sheet.sprite(isoStorey)
-	roof := sheet.sprite(isoRoof)
+	roofName := isoRoof
 	if b.Pulse {
-		roof = sheet.sprite(isoRoofNeeds)
+		roofName = isoRoofNeeds
 	}
-	// The ground tile's bottom sits a skirt below the diamond's bottom corner.
-	bottom := top.Y + w/2 + 33*scale
-	floorH := float64(floor.Bounds().Dy()) * scale
-	g.drawSprite(screen, floor, city.Point{X: top.X - w/2, Y: bottom - floorH}, scale, tint)
-	storeys := isoStoreys(b.Fill)
-	storeyBottom := bottom - isoPlinthLift*scale
-	sw := float64(storey.Bounds().Dx()) * scale
-	sh := float64(storey.Bounds().Dy()) * scale
-	pieceTop := bottom - floorH
-	for i := 1; i < storeys; i++ {
-		g.drawSprite(screen, storey, city.Point{X: top.X - sw/2, Y: storeyBottom - sh}, scale, tint)
-		pieceTop = storeyBottom - sh
-		storeyBottom -= isoStoreyPitch * scale
-	}
-	rw := float64(roof.Bounds().Dx()) * scale
-	rh := float64(roof.Bounds().Dy()) * scale
-	roofBottom := pieceTop + isoRoofSeat*scale
-	g.drawSprite(screen, roof, city.Point{X: top.X - rw/2, Y: roofBottom - rh}, scale, tint)
-	roofTop := roofBottom - rh
+	roofTop := g.isoStack(screen, cam, b.Rect, floorName, isoStorey, roofName, isoStoreys(b.Fill), tint)
+	rw := 99 * scale
 	dot := 6 * scale
 	for i := 0; i < min(b.Cranes, 3); i++ {
 		vector.FillRect(screen, float32(top.X-rw/4+float64(i)*dot*1.6), float32(roofTop+dot), float32(dot), float32(dot), colorCrane, false)
@@ -419,21 +403,62 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	}
 }
 
-// isoLandmark draws a sprite sitting on a world rect, scaled to the rect's
-// projected width.
-func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, name string, tint *ebiten.ColorScale) {
+// isoStack draws a ground floor, some storeys and a roof on a footprint,
+// the pack's pieces meeting at the measured offsets. It returns the top
+// of the roof on screen.
+func (g *Game) isoStack(screen *ebiten.Image, cam *city.Camera, r city.Rect, ground, storey, roof string, storeys int, tint *ebiten.ColorScale) float64 {
+	sheet := g.sprites.iso.buildings
+	floor := sheet.sprite(ground)
+	if floor == nil {
+		return 0
+	}
+	top, w := footprint(cam, r)
+	scale := w / assets.IsoTileWidth
+	bottom := top.Y + w/2 + 33*scale
+	floorH := float64(floor.Bounds().Dy()) * scale
+	g.drawSprite(screen, floor, city.Point{X: top.X - w/2, Y: bottom - floorH}, scale, tint)
+	pieceTop := bottom - floorH
+	storeyBottom := bottom - isoPlinthLift*scale
+	if piece := sheet.sprite(storey); piece != nil {
+		sw := float64(piece.Bounds().Dx()) * scale
+		sh := float64(piece.Bounds().Dy()) * scale
+		for i := 1; i < storeys; i++ {
+			g.drawSprite(screen, piece, city.Point{X: top.X - sw/2, Y: storeyBottom - sh}, scale, tint)
+			pieceTop = storeyBottom - sh
+			storeyBottom -= isoStoreyPitch * scale
+		}
+	}
+	cap := sheet.sprite(roof)
+	if cap == nil {
+		return pieceTop
+	}
+	rw := float64(cap.Bounds().Dx()) * scale
+	rh := float64(cap.Bounds().Dy()) * scale
+	roofBottom := pieceTop + isoRoofSeat*scale
+	g.drawSprite(screen, cap, city.Point{X: top.X - rw/2, Y: roofBottom - rh}, scale, tint)
+	return roofBottom - rh
+}
+
+// stackRoofTop is where a stack's roof ends up on screen, from the same
+// offsets isoStack draws with, so labels can sit above the roof.
+func stackRoofTop(cam *city.Camera, r city.Rect, storeys int) float64 {
+	top, w := footprint(cam, r)
+	scale := w / assets.IsoTileWidth
+	bottom := top.Y + w/2 + 33*scale
+	pieceTop := bottom - 127*scale
+	if storeys >= 2 {
+		pieceTop = bottom - (167+40*float64(storeys-2))*scale
+	}
+	return pieceTop - 10*scale
+}
+
+// isoLandmark draws a stacked landmark on a world rect.
+func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, ground, storey, roof string, storeys int, tint *ebiten.ColorScale) {
 	if g.sprites == nil {
 		g.poly(screen, cam, r, colorPlant)
 		return
 	}
-	img := g.sprites.iso.buildings.sprite(name)
-	if img == nil {
-		return
-	}
-	top, w := footprint(cam, r)
-	scale := w / float64(img.Bounds().Dx())
-	bottom := top.Y + w/2 + 33*scale
-	g.drawSprite(screen, img, city.Point{X: top.X - w/2, Y: bottom - float64(img.Bounds().Dy())*scale}, scale, tint)
+	g.isoStack(screen, cam, r, ground, storey, roof, storeys, tint)
 }
 
 func (g *Game) isoTitle(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
@@ -472,30 +497,33 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	if c.Plant.Rect.Area() > 0 {
 		items = append(items, drawable{depth: c.Plant.Rect.Max.X + c.Plant.Rect.Max.Y, draw: func() {
-			g.isoLandmark(screen, cam, c.Plant.Rect, isoPlant, nil)
+			g.isoLandmark(screen, cam, c.Plant.Rect, isoPlant, isoPlantStorey, isoRoofDome, 3, nil)
 		}})
 	}
 	for _, t := range c.Towers {
 		t := t
 		items = append(items, drawable{depth: t.Rect.Max.X + t.Rect.Max.Y, draw: func() {
-			var tint *ebiten.ColorScale
+			tint := &ebiten.ColorScale{}
 			if t.Server.Calls == 0 {
-				tint = &ebiten.ColorScale{}
 				tint.SetR(0.6)
 				tint.SetG(0.6)
 				tint.SetB(0.65)
+			} else {
+				tint.SetR(0.7)
+				tint.SetG(1)
+				tint.SetB(0.95)
 			}
-			g.isoLandmark(screen, cam, t.Rect, isoTower, tint)
+			g.isoLandmark(screen, cam, t.Rect, isoTower, isoStorey, isoRoofFlat, 2, tint)
 		}})
 	}
 	if c.Library.Rect.Area() > 0 {
 		items = append(items, drawable{depth: c.Library.Rect.Max.X + c.Library.Rect.Max.Y, draw: func() {
-			g.isoLandmark(screen, cam, c.Library.Rect, isoLibrary, nil)
+			g.isoLandmark(screen, cam, c.Library.Rect, isoLibrary, isoStorey, isoRoofFlat, 2, nil)
 		}})
 	}
 	if c.Hall.Rect.Area() > 0 {
 		items = append(items, drawable{depth: c.Hall.Rect.Max.X + c.Hall.Rect.Max.Y, draw: func() {
-			g.isoLandmark(screen, cam, c.Hall.Rect, isoHall, nil)
+			g.isoLandmark(screen, cam, c.Hall.Rect, isoHall, isoStorey, isoRoofDome, 2, nil)
 		}})
 	}
 	sort.SliceStable(items, func(i, j int) bool { return items[i].depth < items[j].depth })
@@ -527,12 +555,12 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 }
 
 func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city.City, hover city.Hit) {
-	above := func(r city.Rect, s string) {
+	above := func(r city.Rect, s string, storeys int) {
 		top, _ := footprint(cam, r)
-		g.floorLabel(screen, city.Point{X: top.X - float64(len(s))*charWidth/2, Y: top.Y - lineHeight - 40*cam.Zoom}, s, colorDim)
+		g.floorLabel(screen, city.Point{X: top.X - float64(len(s))*charWidth/2, Y: stackRoofTop(cam, r, storeys) - lineHeight - 4}, s, colorDim)
 	}
 	if c.Plant.Rect.Area() > 0 {
-		above(c.Plant.Rect, "power plant")
+		above(c.Plant.Rect, "power plant", 3)
 	}
 	// Towers run down the diagonal, so their names hang off each one's
 	// left corner and stagger with it instead of piling up; below the
@@ -547,10 +575,10 @@ func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city
 		g.floorLabel(screen, city.Point{X: top.X - w/2 - float64(len(name))*charWidth - 8, Y: top.Y + w/4 - lineHeight/2}, name, colorDim)
 	}
 	if c.Library.Rect.Area() > 0 {
-		above(c.Library.Rect, "library")
+		above(c.Library.Rect, "library", 2)
 	}
 	if c.Hall.Rect.Area() > 0 {
-		above(c.Hall.Rect, "city hall")
+		above(c.Hall.Rect, "city hall", 2)
 	}
 }
 

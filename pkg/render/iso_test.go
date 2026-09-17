@@ -182,3 +182,18 @@ func TestFootprintAndBlock(t *testing.T) {
 		})
 	})
 }
+
+func TestStackRoofTop(t *testing.T) {
+	cam := city.NewCamera()
+	cam.Projection = city.Isometric
+	r := city.RectAt(0, 0, city.BuildingSize, city.BuildingSize)
+
+	t.Run("when a stack gains a storey", func(t *testing.T) {
+		one, two, three := stackRoofTop(cam, r, 1), stackRoofTop(cam, r, 2), stackRoofTop(cam, r, 3)
+
+		t.Run("it should rise by a storey's pitch each time", func(t *testing.T) {
+			assert.Less(t, two, one)
+			assert.InDelta(t, isoStoreyPitch, two-three, 1e-9)
+		})
+	})
+}
