@@ -25,32 +25,63 @@ const (
 )
 
 type Session struct {
-	ID                 string       `json:"id"`
-	Title              string       `json:"title"`
-	CWD                string       `json:"cwd"`
-	Branch             string       `json:"branch"`
-	Model              string       `json:"model"`
-	Kind               claude.Kind  `json:"kind"`
-	PID                int          `json:"pid"`
-	Alive              bool         `json:"alive"`
-	Attached           bool         `json:"attached"`
-	State              State        `json:"state"`
-	Turn               claude.Turn  `json:"turn"`
-	Tool               string       `json:"tool,omitempty"`
-	Note               string       `json:"note,omitempty"`
-	ContextTokens      int64        `json:"contextTokens"`
-	ContextWindow      int64        `json:"contextWindow"`
-	ContextPercent     float64      `json:"contextPercent"`
-	Usage              claude.Usage `json:"usage"`
-	TokensPerHour      float64      `json:"tokensPerHour"`
-	FreshTokensPerHour float64      `json:"freshTokensPerHour"`
-	CacheReadPerHour   float64      `json:"cacheReadPerHour"`
-	CostUSD            float64      `json:"costUSD"`
-	Subagents          int          `json:"subagents"`
-	SubagentsInFlight  int          `json:"subagentsInFlight"`
-	StartedAt          time.Time    `json:"startedAt"`
-	LastActivity       time.Time    `json:"lastActivity"`
+	ID                 string         `json:"id"`
+	Title              string         `json:"title"`
+	CWD                string         `json:"cwd"`
+	Branch             string         `json:"branch"`
+	Model              string         `json:"model"`
+	Kind               claude.Kind    `json:"kind"`
+	PID                int            `json:"pid"`
+	Alive              bool           `json:"alive"`
+	Attached           bool           `json:"attached"`
+	State              State          `json:"state"`
+	Turn               claude.Turn    `json:"turn"`
+	Tool               string         `json:"tool,omitempty"`
+	Note               string         `json:"note,omitempty"`
+	ContextTokens      int64          `json:"contextTokens"`
+	ContextWindow      int64          `json:"contextWindow"`
+	ContextPercent     float64        `json:"contextPercent"`
+	Usage              claude.Usage   `json:"usage"`
+	TokensPerHour      float64        `json:"tokensPerHour"`
+	FreshTokensPerHour float64        `json:"freshTokensPerHour"`
+	CacheReadPerHour   float64        `json:"cacheReadPerHour"`
+	CostUSD            float64        `json:"costUSD"`
+	Subagents          int            `json:"subagents"`
+	SubagentsInFlight  int            `json:"subagentsInFlight"`
+	MCPCalls           map[string]int `json:"mcpCalls,omitempty"`
+	Skills             map[string]int `json:"skills,omitempty"`
+	PRs                []claude.PR    `json:"prs,omitempty"`
+	APIErrors          int            `json:"apiErrors"`
+	LastErrorAt        time.Time      `json:"lastErrorAt"`
+	Compactions        int            `json:"compactions"`
+	LastCompactionAt   time.Time      `json:"lastCompactionAt"`
+	StartedAt          time.Time      `json:"startedAt"`
+	LastActivity       time.Time      `json:"lastActivity"`
 }
+
+type Server struct {
+	Name       string `json:"name"`
+	Type       string `json:"type,omitempty"`
+	Configured bool   `json:"configured"`
+	Calls      int    `json:"calls"`
+	Sessions   int    `json:"sessions"`
+}
+
+type Skill struct {
+	Name     string `json:"name"`
+	Calls    int    `json:"calls"`
+	Sessions int    `json:"sessions"`
+}
+
+type Power struct {
+	Since   time.Time               `json:"since"`
+	ByModel map[string]claude.Usage `json:"byModel"`
+	CostUSD float64                 `json:"costUSD"`
+	Fresh   int64                   `json:"fresh"`
+	Cached  int64                   `json:"cached"`
+}
+
+const PowerWindow = 24 * time.Hour
 
 type Sources struct {
 	Records     []claude.SessionRecord
@@ -58,6 +89,7 @@ type Sources struct {
 	Subagents   map[string][]claude.Subagent
 	Roster      map[string]claude.Worker
 	Parked      []claude.Transcript
+	MCP         claude.MCPConfig
 }
 
 type Probes struct {
@@ -123,6 +155,7 @@ func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript boo
 		if !t.LastAt.IsZero() {
 			s.LastActivity = t.LastAt
 		}
+		attribute(&s, t)
 	}
 	pending := map[string]bool{}
 	for _, id := range t.Tail.PendingToolIDs {
@@ -165,6 +198,7 @@ func parkedSession(t claude.Transcript) Session {
 	if s.Title == "" {
 		s.Title = t.SessionID
 	}
+	attribute(&s, t)
 	s.ContextTokens = t.ContextTokens
 	window, known := contextWindow(s.Model, t.Cost.Models)
 	s.ContextWindow = window
@@ -172,6 +206,89 @@ func parkedSession(t claude.Transcript) Session {
 		s.ContextPercent = 100 * float64(t.ContextTokens) / float64(window)
 	}
 	return s
+}
+
+func attribute(s *Session, t claude.Transcript) {
+	s.MCPCalls = t.MCPCalls
+	s.Skills = t.SkillCalls
+	s.PRs = t.PRs
+	s.APIErrors = t.APIErrors
+	s.LastErrorAt = t.LastErrorAt
+	s.Compactions = t.Compactions
+	s.LastCompactionAt = t.LastCompactionAt
+}
+
+func Servers(sessions []Session, mcp claude.MCPConfig) []Server {
+	byName := map[string]*Server{}
+	for _, cfg := range mcp.Global {
+		byName[cfg.Name] = &Server{Name: cfg.Name, Type: cfg.Type, Configured: true}
+	}
+	for _, servers := range mcp.Projects {
+		for _, cfg := range servers {
+			if _, ok := byName[cfg.Name]; !ok {
+				byName[cfg.Name] = &Server{Name: cfg.Name, Type: cfg.Type, Configured: true}
+			}
+		}
+	}
+	for _, s := range sessions {
+		for name, calls := range s.MCPCalls {
+			server, ok := byName[name]
+			if !ok {
+				server = &Server{Name: name}
+				byName[name] = server
+			}
+			server.Calls += calls
+			server.Sessions++
+		}
+	}
+	out := make([]Server, 0, len(byName))
+	for _, server := range byName {
+		out = append(out, *server)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+func Skills(sessions []Session) []Skill {
+	byName := map[string]*Skill{}
+	for _, s := range sessions {
+		for name, calls := range s.Skills {
+			skill, ok := byName[name]
+			if !ok {
+				skill = &Skill{Name: name}
+				byName[name] = skill
+			}
+			skill.Calls += calls
+			skill.Sessions++
+		}
+	}
+	out := make([]Skill, 0, len(byName))
+	for _, skill := range byName {
+		out = append(out, *skill)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Calls != out[j].Calls {
+			return out[i].Calls > out[j].Calls
+		}
+		return out[i].Name < out[j].Name
+	})
+	return out
+}
+
+func PowerSince(transcripts []claude.Transcript, since time.Time) Power {
+	power := Power{Since: since, ByModel: map[string]claude.Usage{}}
+	for _, t := range transcripts {
+		if t.LastAt.Before(since) {
+			continue
+		}
+		for model, cost := range t.Cost.Models {
+			power.ByModel[model] = power.ByModel[model].Add(cost.Usage)
+			power.CostUSD += cost.USD
+			power.Fresh += cost.Usage.Input + cost.Usage.Output + cost.Usage.CacheCreate
+			power.Cached += cost.Usage.CacheRead
+		}
+	}
+	return power
 }
 
 func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive, isAttached bool) State {

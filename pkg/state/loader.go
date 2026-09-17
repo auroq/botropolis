@@ -37,6 +37,8 @@ type Loader struct {
 	transcripts  map[string]cachedTranscript
 	subagents    map[string]cachedSubagent
 	parked       map[string]cachedTranscript
+	mcp          claude.MCPConfig
+	mcpKey       fileKey
 	dirs         []string
 	reads        int
 }
@@ -80,6 +82,9 @@ func (l *Loader) Load(now time.Time) (Snapshot, error) {
 
 	if src.Roster, err = claude.ReadRoster(filepath.Join(claudeDir, "daemon", "roster.json")); err != nil {
 		return snapshot, err
+	}
+	if src.MCP, err = l.mcpConfig(filepath.Join(l.home, ".claude.json")); err != nil {
+		snapshot.Skipped = append(snapshot.Skipped, claude.SkippedFile{Path: filepath.Join(l.home, ".claude.json"), Err: err})
 	}
 
 	transcripts := map[string]cachedTranscript{}
@@ -133,7 +138,29 @@ func (l *Loader) Load(now time.Time) (Snapshot, error) {
 	}
 
 	snapshot.Sessions = Build(src, l.probes, now)
+	snapshot.Servers = Servers(snapshot.Sessions, src.MCP)
+	snapshot.Skills = Skills(snapshot.Sessions)
+	snapshot.Power = PowerSince(append(append([]claude.Transcript{}, src.Transcripts...), src.Parked...), now.Add(-PowerWindow))
 	return snapshot, nil
+}
+
+func (l *Loader) mcpConfig(path string) (claude.MCPConfig, error) {
+	key, err := stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return claude.MCPConfig{}, nil
+		}
+		return claude.MCPConfig{}, err
+	}
+	if l.mcpKey == key {
+		return l.mcp, nil
+	}
+	mcp, err := claude.ReadMCPConfig(path)
+	if err != nil {
+		return claude.MCPConfig{}, err
+	}
+	l.mcp, l.mcpKey = mcp, key
+	return mcp, nil
 }
 
 func (l *Loader) catalogue(projectsDir string, live map[string]bool, now time.Time) ([]claude.Transcript, []claude.SkippedFile, error) {

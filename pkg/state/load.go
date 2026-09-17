@@ -19,6 +19,9 @@ const (
 
 type Snapshot struct {
 	Sessions []Session            `json:"sessions"`
+	Servers  []Server             `json:"servers"`
+	Skills   []Skill              `json:"skills"`
+	Power    Power                `json:"power"`
 	Skipped  []claude.SkippedFile `json:"skipped"`
 	At       time.Time            `json:"at"`
 }

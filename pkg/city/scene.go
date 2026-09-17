@@ -127,6 +127,12 @@ func (s *Scene) Click(screen Point) Action {
 
 func (s *Scene) Card() (Card, bool) {
 	switch {
+	case s.hover.Landmark == LandmarkPlant:
+		return s.city.Plant.Card(), true
+	case s.hover.Landmark == LandmarkTower && s.hover.Tower != nil:
+		return s.hover.Tower.Card(), true
+	case s.hover.Landmark == LandmarkLibrary:
+		return s.city.Library.Card(), true
 	case s.hover.Building != nil:
 		return s.hover.Building.Card(s.city.Time), true
 	case s.hover.District != nil:

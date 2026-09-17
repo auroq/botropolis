@@ -28,6 +28,8 @@ type Building struct {
 	Rect      Rect
 	Fill      float64
 	Cranes    int
+	Flags     int
+	Smoke     int
 	Lit       bool
 	Pulse     bool
 	BoardedUp bool
@@ -44,12 +46,18 @@ type District struct {
 
 type City struct {
 	Districts []*District
+	Plant     Plant
+	Towers    []*Tower
+	Library   Library
+	Night     bool
 	Time      time.Time
 }
 
 type Hit struct {
 	District *District
 	Building *Building
+	Landmark Landmark
+	Tower    *Tower
 }
 
 type Card struct {
@@ -87,6 +95,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 		city.Districts = append(city.Districts, buildDistrict(root, byRoot[root], layout))
 	}
 	layout.PlaceDistricts(city.Districts)
+	city.placeLandmarks(snapshot)
 	return city
 }
 
@@ -135,6 +144,8 @@ func newBuilding(s state.Session, slot, columns int) *Building {
 		Rect:      local,
 		Fill:      math.Min(1, s.ContextPercent/100),
 		Cranes:    s.SubagentsInFlight,
+		Flags:     len(s.PRs),
+		Smoke:     s.APIErrors,
 		Lit:       s.State == state.Working || s.State == state.NeedsYou || s.State == state.Unattended,
 		Pulse:     s.State == state.NeedsYou,
 		BoardedUp: s.State == state.Parked,
@@ -153,14 +164,31 @@ func (c *City) Bounds() Rect {
 	if len(c.Districts) == 0 {
 		return Rect{}
 	}
-	bounds := c.Districts[0].Rect
-	for _, d := range c.Districts[1:] {
-		bounds = bounds.Union(d.Rect)
+	bounds := c.DistrictBounds()
+	if c.Plant.Rect.Area() > 0 {
+		bounds = bounds.Union(c.Plant.Rect)
+	}
+	for _, t := range c.Towers {
+		bounds = bounds.Union(t.Rect)
+	}
+	if c.Library.Rect.Area() > 0 {
+		bounds = bounds.Union(c.Library.Rect)
 	}
 	return bounds
 }
 
 func (c *City) At(p Point) Hit {
+	if c.Plant.Rect.Area() > 0 && c.Plant.Rect.Contains(p) {
+		return Hit{Landmark: LandmarkPlant}
+	}
+	for _, t := range c.Towers {
+		if t.Rect.Contains(p) {
+			return Hit{Landmark: LandmarkTower, Tower: t}
+		}
+	}
+	if c.Library.Rect.Area() > 0 && c.Library.Rect.Contains(p) {
+		return Hit{Landmark: LandmarkLibrary}
+	}
 	for _, d := range c.Districts {
 		if !d.Rect.Contains(p) {
 			continue

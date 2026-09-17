@@ -322,3 +322,92 @@ func TestParkedSessions(t *testing.T) {
 		})
 	})
 }
+
+func TestAggregates(t *testing.T) {
+	withCalls := func(id string, mcp, skills map[string]int, prs []claude.PR, errs int) claude.Transcript {
+		tr := transcript(id, claude.TurnAwaitingUser)
+		tr.MCPCalls, tr.SkillCalls, tr.PRs, tr.APIErrors = mcp, skills, prs, errs
+		tr.LastAt = now.Add(-time.Hour)
+		return tr
+	}
+	a := withCalls(sidA, map[string]int{"atlassian": 3, "langfuse": 1}, map[string]int{"amberPylon:umberEstuary": 2}, []claude.PR{{Number: 7, URL: "u7"}}, 2)
+	b := withCalls(sidB, map[string]int{"atlassian": 5}, map[string]int{"amberPylon:umberEstuary": 1, "git-worktrees": 4}, nil, 0)
+	mcp := claude.MCPConfig{Global: []claude.MCPServer{{Name: "datadog-mcp", Type: "http"}},
+		Projects: map[string][]claude.MCPServer{"/p": {{Name: "langfuse", Type: "stdio"}}}}
+	sessions := state.Build(state.Sources{Parked: []claude.Transcript{a, b}, MCP: mcp}, alive, now)
+
+	t.Run("when sessions attribute MCP calls and the config names servers", func(t *testing.T) {
+		servers := state.Servers(sessions, mcp)
+
+		t.Run("it should list configured and used servers together, sorted by name", func(t *testing.T) {
+			names := []string{}
+			for _, s := range servers {
+				names = append(names, s.Name)
+			}
+			assert.Equal(t, []string{"atlassian", "datadog-mcp", "langfuse"}, names)
+		})
+
+		t.Run("it should total calls and count sessions for a used server", func(t *testing.T) {
+			assert.Equal(t, state.Server{Name: "atlassian", Calls: 8, Sessions: 2}, servers[0])
+		})
+
+		t.Run("it should mark a configured but unused server", func(t *testing.T) {
+			assert.Equal(t, state.Server{Name: "datadog-mcp", Type: "http", Configured: true}, servers[1])
+		})
+
+		t.Run("it should mark a project server that was also used", func(t *testing.T) {
+			assert.Equal(t, state.Server{Name: "langfuse", Type: "stdio", Configured: true, Calls: 1, Sessions: 1}, servers[2])
+		})
+	})
+
+	t.Run("when sessions attribute skills", func(t *testing.T) {
+		skills := state.Skills(sessions)
+
+		t.Run("it should rank them by calls", func(t *testing.T) {
+			assert.Equal(t, []state.Skill{{Name: "git-worktrees", Calls: 4, Sessions: 1}, {Name: "amberPylon:umberEstuary", Calls: 3, Sessions: 2}}, skills)
+		})
+	})
+
+	t.Run("when a session carries attribution", func(t *testing.T) {
+		var got state.Session
+		for _, s := range sessions {
+			if s.ID == sidA {
+				got = s
+			}
+		}
+
+		t.Run("it should expose its PRs", func(t *testing.T) {
+			assert.Equal(t, []claude.PR{{Number: 7, URL: "u7"}}, got.PRs)
+		})
+
+		t.Run("it should expose its API errors", func(t *testing.T) {
+			assert.Equal(t, 2, got.APIErrors)
+		})
+	})
+
+	t.Run("when power is summed over the last day", func(t *testing.T) {
+		old := transcript("old", claude.TurnAwaitingUser)
+		old.LastAt = now.Add(-48 * time.Hour)
+		old.Cost.Models = map[string]claude.ModelCost{"claude-opus-5[1m]": {USD: 100, Usage: claude.Usage{Output: 1000}}}
+		recent := transcript("recent", claude.TurnAwaitingUser)
+		recent.LastAt = now.Add(-time.Hour)
+		recent.Cost.Models = map[string]claude.ModelCost{
+			"claude-opus-5[1m]":         {USD: 8.65, Usage: claude.Usage{Input: 10, Output: 600, CacheRead: 5000, CacheCreate: 40}},
+			"claude-haiku-4-5-20251001": {USD: 0.01, Usage: claude.Usage{Input: 5, Output: 5}},
+		}
+		power := state.PowerSince([]claude.Transcript{old, recent}, now.Add(-state.PowerWindow))
+
+		t.Run("it should leave out sessions older than the window", func(t *testing.T) {
+			assert.InDelta(t, 8.66, power.CostUSD, 1e-9)
+		})
+
+		t.Run("it should total tokens by model", func(t *testing.T) {
+			assert.Equal(t, int64(600), power.ByModel["claude-opus-5[1m]"].Output)
+		})
+
+		t.Run("it should split fresh from cached", func(t *testing.T) {
+			assert.Equal(t, int64(10+600+40+5+5), power.Fresh)
+			assert.Equal(t, int64(5000), power.Cached)
+		})
+	})
+}

@@ -25,6 +25,20 @@ const (
 
 var (
 	colorBackground = color.NRGBA{0x10, 0x12, 0x18, 0xff}
+	colorNight      = color.NRGBA{0x07, 0x08, 0x10, 0xff}
+	colorPlant      = color.NRGBA{0x4a, 0x3b, 0x2a, 0xff}
+	colorPlantCore  = color.NRGBA{0xf0, 0xb4, 0x4c, 0xff}
+	colorTower      = color.NRGBA{0x2f, 0x3a, 0x48, 0xff}
+	colorTowerUsed  = color.NRGBA{0x5c, 0xc8, 0xb0, 0xff}
+	colorLibrary    = color.NRGBA{0x3a, 0x33, 0x50, 0xff}
+	colorLineFresh  = color.NRGBA{0xf0, 0xb4, 0x4c, 0xb0}
+	colorLineCached = color.NRGBA{0x6c, 0xa8, 0xd8, 0x50}
+	colorBeam       = color.NRGBA{0x5c, 0xc8, 0xb0, 0x70}
+	colorWindow     = color.NRGBA{0xf2, 0xe6, 0xa8, 0xd0}
+	colorWindowDark = color.NRGBA{0x1a, 0x1e, 0x28, 0xff}
+	colorFlag       = color.NRGBA{0xe0, 0x50, 0x50, 0xff}
+	colorPole       = color.NRGBA{0xc0, 0xc0, 0xc0, 0xff}
+	colorSmoke      = color.NRGBA{0x9a, 0x9a, 0x9a, 0x70}
 	colorDistrict   = color.NRGBA{0x1b, 0x20, 0x2b, 0xff}
 	colorDistrictHi = color.NRGBA{0x28, 0x30, 0x40, 0xff}
 	colorBuilding   = color.NRGBA{0x2c, 0x33, 0x44, 0xff}
@@ -121,12 +135,25 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	screen.Fill(colorBackground)
+	c := g.scene.City()
+	if c.Night {
+		screen.Fill(colorNight)
+	} else {
+		screen.Fill(colorBackground)
+	}
 	cam := g.scene.Camera()
 	hover := g.scene.Hover()
 	selected := g.scene.Selected()
 
-	for _, d := range g.scene.City().Districts {
+	for _, line := range c.PowerLines() {
+		g.line(screen, cam, line.From, line.To, lineWidth(line.Cached, 1, 3), colorLineCached)
+		g.line(screen, cam, line.From, line.To, lineWidth(line.Fresh, 1, 5), colorLineFresh)
+	}
+	for _, beam := range c.Beams() {
+		g.line(screen, cam, beam.From, beam.To, lineWidth(float64(beam.Calls)*20_000, 1, 3), colorBeam)
+	}
+
+	for _, d := range c.Districts {
 		fill := colorDistrict
 		if hover.District == d {
 			fill = colorDistrictHi
@@ -137,6 +164,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			g.building(screen, cam, b, b == selected)
 		}
 	}
+	g.landmarks(screen, cam, hover)
 
 	bounds := screen.Bounds()
 	if card, ok := g.scene.Card(); ok {
@@ -158,6 +186,7 @@ func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building
 		body = colorLit
 	}
 	g.rect(screen, cam, b.Rect, body)
+	g.windows(screen, cam, b)
 
 	if b.Fill > 0 {
 		height := b.Rect.Height() * b.Fill
@@ -171,9 +200,84 @@ func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building
 		crane := city.RectAt(b.Rect.Min.X+4+float64(i)*8, b.Rect.Min.Y-6, 5, 10)
 		g.rect(screen, cam, crane, colorCrane)
 	}
+	if b.Flags > 0 {
+		pole := city.RectAt(b.Rect.Max.X-6, b.Rect.Min.Y-14, 1.5, 14)
+		flag := city.RectAt(b.Rect.Max.X-6, b.Rect.Min.Y-14, 8, 5)
+		g.rect(screen, cam, pole, colorPole)
+		g.rect(screen, cam, flag, colorFlag)
+	}
+	if b.Smoke > 0 {
+		t := time.Since(g.started).Seconds()
+		for i := 0; i < min(b.Smoke, 3); i++ {
+			phase := math.Mod(t*0.4+float64(i)*0.33, 1)
+			centre := city.Point{X: b.Rect.Min.X + 12 + float64(i)*10 + 4*math.Sin(phase*6), Y: b.Rect.Min.Y - 4 - phase*18}
+			g.circle(screen, cam, centre, 3+phase*3, colorSmoke)
+		}
+	}
 	if selected {
 		g.outline(screen, cam, b.Rect, colorSelected)
 	}
+}
+
+func (g *Game) windows(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
+	lit := colorWindowDark
+	if b.Lit {
+		lit = colorWindow
+	}
+	for row := 0; row < 3; row++ {
+		for col := 0; col < 3; col++ {
+			w := city.RectAt(b.Rect.Min.X+8+float64(col)*15, b.Rect.Min.Y+8+float64(row)*13, 7, 6)
+			g.rect(screen, cam, w, lit)
+		}
+	}
+}
+
+func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, hover city.Hit) {
+	c := g.scene.City()
+	if c.Plant.Rect.Area() > 0 {
+		g.rect(screen, cam, c.Plant.Rect, colorPlant)
+		core := c.Plant.Rect.Inset(16)
+		g.rect(screen, cam, core, pulse(colorPlantCore, time.Since(g.started).Seconds()*0.5))
+		g.label(screen, cam.WorldToScreen(c.Plant.Rect.Min).Add(city.Point{X: 4, Y: -14}), "power plant", colorDim)
+	}
+	for _, t := range c.Towers {
+		fill := colorTower
+		if t.Server.Calls > 0 {
+			fill = colorTowerUsed
+		}
+		mast := city.RectAt(t.Rect.Center().X-2, t.Rect.Min.Y-18, 4, 18)
+		g.rect(screen, cam, mast, fill)
+		g.rect(screen, cam, t.Rect, fill)
+		g.label(screen, cam.WorldToScreen(city.Point{X: t.Rect.Min.X, Y: t.Rect.Max.Y}).Add(city.Point{X: -4, Y: 2}), t.Server.Name, colorDim)
+	}
+	if c.Library.Rect.Area() > 0 {
+		g.rect(screen, cam, c.Library.Rect, colorLibrary)
+		for i := 0; i < 4; i++ {
+			shelf := city.RectAt(c.Library.Rect.Min.X+8, c.Library.Rect.Min.Y+12+float64(i)*20, c.Library.Rect.Width()-16, 3)
+			g.rect(screen, cam, shelf, colorDim)
+		}
+		g.label(screen, cam.WorldToScreen(c.Library.Rect.Min).Add(city.Point{X: 0, Y: -14}), "library", colorDim)
+	}
+	_ = hover
+}
+
+func (g *Game) line(screen *ebiten.Image, cam *city.Camera, from, to city.Point, width float32, c color.NRGBA) {
+	a := cam.WorldToScreen(from)
+	b := cam.WorldToScreen(to)
+	vector.StrokeLine(screen, float32(a.X), float32(a.Y), float32(b.X), float32(b.Y), width*float32(cam.Zoom), c, true)
+}
+
+func (g *Game) circle(screen *ebiten.Image, cam *city.Camera, centre city.Point, radius float64, c color.NRGBA) {
+	p := cam.WorldToScreen(centre)
+	vector.FillCircle(screen, float32(p.X), float32(p.Y), float32(radius*cam.Zoom), c, true)
+}
+
+func lineWidth(perHour, min, max float64) float32 {
+	if perHour <= 0 {
+		return float32(min)
+	}
+	w := min + math.Log10(perHour/1000+1)
+	return float32(math.Min(max, math.Max(min, w)))
 }
 
 func (g *Game) rect(screen *ebiten.Image, cam *city.Camera, r city.Rect, c color.NRGBA) {
