@@ -465,6 +465,31 @@ func TestRoads(t *testing.T) {
 		})
 	})
 
+	t.Run("when a session sits in a directory that holds other sessions' projects", func(t *testing.T) {
+		home := state.Session{ID: "h", CWD: "/home/avesta"}
+		project := state.Session{ID: "p", CWD: "/home/avesta/workspaces/github/auroq/botropolis", Touches: map[string]int{
+			"/home/avesta/workspaces/aur/botropolis-git/PKGBUILD": 3,
+		}}
+		roads := state.Roads([]state.Session{home, project}, nil)
+
+		t.Run("it should not draw a road to that hub", func(t *testing.T) {
+			assert.Empty(t, roads)
+		})
+	})
+
+	t.Run("when the only session inside a project is in its worktree", func(t *testing.T) {
+		project := state.Session{ID: "p", CWD: "/home/avesta/workspaces/github/auroq/botropolis"}
+		worktree := state.Session{ID: "w", CWD: "/home/avesta/workspaces/github/auroq/botropolis/.claude/worktrees/x"}
+		editor := state.Session{ID: "e", CWD: "/home/avesta/workspaces/github/mCedar/mullet", Touches: map[string]int{
+			"/home/avesta/workspaces/github/auroq/botropolis/README.md": 1,
+		}}
+		roads := state.Roads([]state.Session{project, worktree, editor}, nil)
+
+		t.Run("it should still draw the road to the project", func(t *testing.T) {
+			assert.Equal(t, []state.Road{{From: editor.CWD, To: project.CWD, Files: 1, Sessions: 1}}, roads)
+		})
+	})
+
 	t.Run("when a session both messages and edits another project", func(t *testing.T) {
 		worker := sender("w", "/home/avesta/workspaces/github/mCedar/mullet", map[string]int{"team-lead": 4})
 		worker.Team = "session-37d10079"

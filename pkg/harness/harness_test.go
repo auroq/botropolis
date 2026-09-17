@@ -30,6 +30,7 @@ func TestMulti(t *testing.T) {
 		Sessions: []state.Session{{ID: "1", State: state.Working}},
 		Servers:  []state.Server{{Name: "atlassian"}},
 		Power:    state.Power{CostUSD: 1.5, Fresh: 10, Cached: 100, ByModel: map[string]claude.Usage{"opus": {Output: 5}}},
+		Stats:    &claude.Stats{TotalSessions: 513},
 	}}
 	b := fake{name: "codex", dirs: []string{"/b"}, snapshot: state.Snapshot{
 		Sessions: []state.Session{{ID: "2", State: state.Parked, Harness: "codex"}},
@@ -54,6 +55,11 @@ func TestMulti(t *testing.T) {
 
 		t.Run("it should keep the servers", func(t *testing.T) {
 			assert.Len(t, snapshot.Servers, 1)
+		})
+
+		t.Run("it should keep the stats rollup", func(t *testing.T) {
+			require.NotNil(t, snapshot.Stats)
+			assert.Equal(t, 513, snapshot.Stats.TotalSessions)
 		})
 
 		t.Run("it should stamp the snapshot with now", func(t *testing.T) {

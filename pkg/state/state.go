@@ -316,13 +316,32 @@ const (
 	teamNamePrefix = "session-"
 )
 
+const worktreesDir = "/.claude/worktrees/"
+
+// projectRoots is every session directory that is a project of its own:
+// a directory that merely contains other sessions' projects (a home or a
+// workspaces folder) is a hub, not a road destination.  A project's own
+// worktrees do not make it a hub.
 func projectRoots(sessions []Session) []string {
 	seen := map[string]bool{}
-	var roots []string
+	var all []string
 	for _, s := range sessions {
 		if s.CWD != "" && !seen[s.CWD] {
 			seen[s.CWD] = true
-			roots = append(roots, s.CWD)
+			all = append(all, s.CWD)
+		}
+	}
+	var roots []string
+	for _, root := range all {
+		hub := false
+		for _, other := range all {
+			if strings.HasPrefix(other, root+"/") && !strings.HasPrefix(other, root+worktreesDir) {
+				hub = true
+				break
+			}
+		}
+		if !hub {
+			roots = append(roots, root)
 		}
 	}
 	sort.Slice(roots, func(i, j int) bool { return len(roots[i]) > len(roots[j]) })

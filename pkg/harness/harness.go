@@ -42,6 +42,9 @@ func (m *Multi) Load(now time.Time) (state.Snapshot, error) {
 		merged.Skills = append(merged.Skills, snapshot.Skills...)
 		merged.Roads = append(merged.Roads, snapshot.Roads...)
 		merged.Skipped = append(merged.Skipped, snapshot.Skipped...)
+		if merged.Stats == nil {
+			merged.Stats = snapshot.Stats
+		}
 		for model, usage := range snapshot.Power.ByModel {
 			merged.Power.ByModel[model] = merged.Power.ByModel[model].Add(usage)
 		}
