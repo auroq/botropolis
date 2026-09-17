@@ -293,7 +293,7 @@ func TestParkedSessions(t *testing.T) {
 		return sessions[0]
 	}
 
-	t.Run("when a parked transcript was read in full", func(t *testing.T) {
+	t.Run("when a parked transcript was read in full for a known family", func(t *testing.T) {
 		s := parked(false, "", nil)
 
 		t.Run("it should be parked and not alive", func(t *testing.T) {
@@ -301,8 +301,8 @@ func TestParkedSessions(t *testing.T) {
 			assert.False(t, s.Alive)
 		})
 
-		t.Run("it should measure context against the default window", func(t *testing.T) {
-			assert.InDelta(t, 200, s.ContextPercent, 1e-9)
+		t.Run("it should measure context against the large window because 400k cannot fit in 200k", func(t *testing.T) {
+			assert.InDelta(t, 40, s.ContextPercent, 1e-9)
 		})
 	})
 
@@ -314,11 +314,15 @@ func TestParkedSessions(t *testing.T) {
 		})
 	})
 
-	t.Run("when a parked transcript is a partial read with nothing to size the window", func(t *testing.T) {
-		s := parked(true, "", nil)
+	t.Run("when a parked transcript is on an unknown model and never proved a window", func(t *testing.T) {
+		tr := transcript(sidA, claude.TurnAwaitingUser)
+		tr.Partial, tr.Model, tr.ModelID, tr.Cost.Models = true, "claude-fable-5-1", "claude-fable-5-1", nil
+		tr.ContextTokens = 150_000
+		sessions := state.Build(state.Sources{Parked: []claude.Transcript{tr}}, alive, now)
+		require.Len(t, sessions, 1)
 
 		t.Run("it should not guess a percentage", func(t *testing.T) {
-			assert.Zero(t, s.ContextPercent)
+			assert.Zero(t, sessions[0].ContextPercent)
 		})
 	})
 }
@@ -469,6 +473,53 @@ func TestRoads(t *testing.T) {
 
 		t.Run("it should draw nothing", func(t *testing.T) {
 			assert.Empty(t, roads)
+		})
+	})
+}
+
+func TestContextWindowInference(t *testing.T) {
+	live := func(model string, contextTokens, maxContext int64) state.Session {
+		tr := transcript(sidA, claude.TurnAwaitingUser)
+		tr.Model, tr.ModelID, tr.Cost.Models = model, model, nil
+		tr.ContextTokens, tr.MaxContext = contextTokens, maxContext
+		sessions := state.Build(state.Sources{
+			Records:     []claude.SessionRecord{record(sidA, claude.KindInteractive, claude.StatusIdle)},
+			Transcripts: []claude.Transcript{tr},
+		}, alive, now)
+		require.Len(t, sessions, 1)
+		return sessions[0]
+	}
+
+	t.Run("when a session on an unknown model has held more than 200k of context", func(t *testing.T) {
+		s := live("claude-fable-5-1", 925_000, 929_000)
+
+		t.Run("it should measure against 1M because context cannot exceed the window", func(t *testing.T) {
+			assert.Equal(t, int64(1_000_000), s.ContextWindow)
+			assert.InDelta(t, 92.5, s.ContextPercent, 1e-9)
+		})
+	})
+
+	t.Run("when a session on an unknown model has stayed small", func(t *testing.T) {
+		s := live("claude-fable-5-1", 150_000, 150_000)
+
+		t.Run("it should not guess a percentage", func(t *testing.T) {
+			assert.Zero(t, s.ContextPercent)
+		})
+	})
+
+	t.Run("when a session on a known family has stayed small", func(t *testing.T) {
+		s := live("claude-opus-5", 150_000, 150_000)
+
+		t.Run("it should measure against the default window", func(t *testing.T) {
+			assert.InDelta(t, 75, s.ContextPercent, 1e-9)
+		})
+	})
+
+	t.Run("when a session on a known family once exceeded the default window", func(t *testing.T) {
+		s := live("claude-sonnet-5", 100_000, 300_000)
+
+		t.Run("it should measure against 1M from then on", func(t *testing.T) {
+			assert.InDelta(t, 10, s.ContextPercent, 1e-9)
 		})
 	})
 }

@@ -159,6 +159,11 @@ Each milestone ends with tests green, `make lint` and `make format` clean, and a
 - `botropolis status` now reads from the socket and falls back to a direct scan when the daemon is down.
 - systemd user unit and a PKGBUILD under `~/workspaces/aur/botropolis-git`.
 - **Done when** a `PreToolUse` hook shows up in `botropolis status` in under 100 ms and the daemon idles under 20 MB.
+  Met on 2026-09-17 (r38): 6 ms hook-to-status; 20.1 MB RSS (9.9 MB anonymous, 8.3 MB file-backed, from `/proc/<pid>/smaps_rollup`)
+  with the parked catalogue loaded for 184 transcripts.
+  Getting there needed the daemon wiring split into `pkg/appd` so `botropolisd` no longer links Ebitengine and bubbletea through `pkg/app`,
+  and a 16 MiB Go heap cap (`GOMEMLIMIT` overrides it).
+  The catalogue had pushed an unsplit r35 daemon to 36 MB.
 
 ### 3 — Control
 
@@ -192,6 +197,10 @@ Each milestone ends with tests green, `make lint` and `make format` clean, and a
   Settled 2026-09-17: the CLI writes `cost-state` records into the transcript with `totalCostUSD`
   and a per-model token and cost breakdown,
   so the read model takes the last one as-is and never prices tokens itself.
+  The context window is inferred, not looked up: a `[1m]` model id or cost-state key means 1M;
+  a context that was ever larger than 200k proves 1M (context cannot exceed the window);
+  otherwise 200k is trusted only for the opus/sonnet/haiku families and anything else shows no percentage rather than a guess
+  (a session that switched to `claude-fable-5-1` mid-way was reading 463% before this rule).
   Note that one API message is written as several `assistant` records (one per content block, `apiBlockIndex`)
   that repeat the same `usage`, so token totals must be deduplicated by `message.id`.
 - How much of `teams/` and `tasks/` is worth drawing in the first pass?

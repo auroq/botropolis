@@ -79,6 +79,10 @@ func TestReadTranscriptUsage(t *testing.T) {
 		t.Run("it should report the context size of the last message", func(t *testing.T) {
 			assert.Equal(t, int64(5+66000+900), transcript.ContextTokens)
 		})
+
+		t.Run("it should remember the largest context seen", func(t *testing.T) {
+			assert.Equal(t, int64(5+66000+900), transcript.MaxContext)
+		})
 	})
 
 	t.Run("when the last assistant message is a sidechain", func(t *testing.T) {

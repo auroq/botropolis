@@ -65,6 +65,7 @@ type Transcript struct {
 	Effort           string
 	Usage            Usage
 	ContextTokens    int64
+	MaxContext       int64
 	Cost             Cost
 	Tail             Tail
 	TeamName         string
@@ -288,6 +289,9 @@ func (s *transcriptScan) applyAssistant(rec transcriptLineJSON, mainLine bool) {
 	}
 	if rec.Message.Usage != nil && mainLine {
 		t.ContextTokens = rec.Message.Usage.usage().Context()
+		if t.ContextTokens > t.MaxContext {
+			t.MaxContext = t.ContextTokens
+		}
 	}
 	if id := rec.Message.ID; id != "" {
 		if s.seenMessages[id] {

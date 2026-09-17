@@ -160,8 +160,11 @@ func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript boo
 		}
 		s.Turn = t.Tail.Turn
 		s.ContextTokens = t.ContextTokens
-		s.ContextWindow = ContextWindow(s.Model, t.Cost.Models)
-		s.ContextPercent = 100 * float64(t.ContextTokens) / float64(s.ContextWindow)
+		window, known := contextWindow(s.Model, t.Cost.Models, max(t.MaxContext, t.ContextTokens))
+		s.ContextWindow = window
+		if known {
+			s.ContextPercent = 100 * float64(t.ContextTokens) / float64(window)
+		}
 		s.Usage = t.Usage
 		s.CostUSD = t.Cost.TotalUSD
 		if !t.LastAt.IsZero() {
@@ -212,9 +215,9 @@ func parkedSession(t claude.Transcript) Session {
 	}
 	attribute(&s, t)
 	s.ContextTokens = t.ContextTokens
-	window, known := contextWindow(s.Model, t.Cost.Models)
+	window, known := contextWindow(s.Model, t.Cost.Models, max(t.MaxContext, t.ContextTokens))
 	s.ContextWindow = window
-	if known || !t.Partial {
+	if known {
 		s.ContextPercent = 100 * float64(t.ContextTokens) / float64(window)
 	}
 	return s
@@ -391,19 +394,35 @@ func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive, is
 }
 
 func ContextWindow(model string, costModels map[string]claude.ModelCost) int64 {
-	window, _ := contextWindow(model, costModels)
+	window, _ := contextWindow(model, costModels, 0)
 	return window
 }
 
-func contextWindow(model string, costModels map[string]claude.ModelCost) (int64, bool) {
+// contextWindow decides the window a session's context is measured against.
+// A [1m] suffix or a [1m] cost-state entry names it outright; a context that
+// was ever larger than the default window proves the large one (context
+// cannot exceed the window); otherwise the default is only trusted for model
+// families known to ship with it, and anything else stays unknown rather
+// than guessed.
+func contextWindow(model string, costModels map[string]claude.ModelCost, maxObserved int64) (int64, bool) {
 	if strings.HasSuffix(model, largeContextSuffix) {
 		return contextWindowLarge, true
 	}
 	if _, ok := costModels[model+largeContextSuffix]; ok {
 		return contextWindowLarge, true
 	}
-	return contextWindowDefault, len(costModels) > 0
+	if maxObserved > contextWindowDefault {
+		return contextWindowLarge, true
+	}
+	for _, family := range defaultWindowFamilies {
+		if strings.Contains(model, family) {
+			return contextWindowDefault, true
+		}
+	}
+	return contextWindowDefault, false
 }
+
+var defaultWindowFamilies = []string{"opus", "sonnet", "haiku"}
 
 func rateSpan(first, last time.Time) time.Duration {
 	span := last.Sub(first)

@@ -11,6 +11,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 
+	"github.com/auroq/botropolis/pkg/appd"
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/cli"
 	"github.com/auroq/botropolis/pkg/commands"
@@ -37,7 +38,7 @@ var Module = fx.Module("botropolis",
 	fx.Provide(
 		config.NewViper,
 		newLoader,
-		newProbes,
+		appd.NewProbes,
 		fx.Annotate(newServices, fx.As(new(cli.Services)), fx.As(new(cli.CityServices)), fx.As(new(cli.BarServices)), fx.As(new(cli.NotifyServices)), fx.As(new(cli.TUIServices))),
 		fx.Annotate(cli.NewStatusCLI, fx.ResultTags(`name:"status"`)),
 		fx.Annotate(cli.NewInstallHooksCLI, fx.ResultTags(`name:"installHooks"`)),
@@ -76,10 +77,6 @@ func newLoader(v *viper.Viper) cli.Loader {
 	return func() (*config.Config, error) { return config.New(v) }
 }
 
-func newProbes() state.Probes {
-	return state.Probes{Alive: state.ProcessAlive, Attached: state.UnixSocketConnected}
-}
-
 type services struct {
 	probes state.Probes
 }
@@ -102,8 +99,8 @@ func (s *services) Sessions(cfg *config.Config) cli.SessionsRunner {
 
 func (s *services) source(cfg *config.Config) commands.DaemonOrDirect {
 	return commands.DaemonOrDirect{
-		Home: cfg.Home, Socket: cfg.Socket, Probes: s.probes, ParkedMaxAge: parkedMaxAge(cfg),
-		Direct: Harnesses(cfg, s.probes).Load, Now: time.Now, Notice: os.Stderr,
+		Home: cfg.Home, Socket: cfg.Socket, Probes: s.probes, ParkedMaxAge: appd.ParkedMaxAge(cfg),
+		Direct: appd.Harnesses(cfg, s.probes).Load, Now: time.Now, Notice: os.Stderr,
 	}
 }
 

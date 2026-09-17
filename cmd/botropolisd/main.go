@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/auroq/botropolis/pkg/app"
+	"github.com/auroq/botropolis/pkg/appd"
 	"github.com/auroq/botropolis/pkg/config"
 	"github.com/auroq/botropolis/pkg/version"
 )
@@ -35,7 +35,7 @@ func run(ctx context.Context, args []string, out io.Writer) int {
 			if err != nil {
 				return err
 			}
-			return app.RunDaemon(cmd.Context(), cfg, cmd.OutOrStdout())
+			return appd.RunDaemon(cmd.Context(), cfg, cmd.OutOrStdout())
 		},
 	}
 	root.SetVersionTemplate("{{.Name}} {{.Version}}\n")

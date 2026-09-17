@@ -1,4 +1,4 @@
-package app
+package appd
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"time"
 
 	"go.uber.org/fx"
@@ -26,12 +27,19 @@ func DaemonModule(cfg *config.Config, out io.Writer) fx.Option {
 	return fx.Module("botropolisd",
 		fx.Supply(cfg),
 		fx.Supply(fx.Annotate(out, fx.As(new(io.Writer)))),
-		fx.Provide(newProbes, newDaemon, newListener),
+		fx.Provide(NewProbes, newDaemon, newListener),
 		fx.Invoke(runDaemon),
 	)
 }
 
+// DefaultMemoryLimit caps the Go heap so the idle daemon stays near the
+// 20 MB target DESIGN.md sets; GOMEMLIMIT in the environment overrides it.
+const DefaultMemoryLimit = 16 << 20
+
 func RunDaemon(ctx context.Context, cfg *config.Config, out io.Writer) error {
+	if os.Getenv("GOMEMLIMIT") == "" {
+		debug.SetMemoryLimit(DefaultMemoryLimit)
+	}
 	app := fx.New(
 		DaemonModule(cfg, out),
 		fx.WithLogger(func() fxevent.Logger { return fxevent.NopLogger }),
@@ -60,21 +68,25 @@ func RunDaemon(ctx context.Context, cfg *config.Config, out io.Writer) error {
 	return exit
 }
 
+func NewProbes() state.Probes {
+	return state.Probes{Alive: state.ProcessAlive, Attached: state.UnixSocketConnected}
+}
+
+func ParkedMaxAge(cfg *config.Config) time.Duration {
+	return time.Duration(cfg.ParkedDays) * 24 * time.Hour
+}
+
 func newDaemon(cfg *config.Config, probes state.Probes) *daemon.Daemon {
 	return daemon.NewWith(Harnesses(cfg, probes), time.Now)
 }
 
 func Harnesses(cfg *config.Config, probes state.Probes) *harness.Multi {
-	claudeLoader := harness.NewClaude(state.NewLoader(cfg.Home, probes).WithParkedMaxAge(parkedMaxAge(cfg)))
+	claudeLoader := harness.NewClaude(state.NewLoader(cfg.Home, probes).WithParkedMaxAge(ParkedMaxAge(cfg)))
 	harnesses := []harness.Snapshotter{claudeLoader}
 	if info, err := os.Stat(filepath.Join(cfg.CodexHome, "sessions")); err == nil && info.IsDir() {
-		harnesses = append(harnesses, codex.NewLoader(cfg.CodexHome, parkedMaxAge(cfg)))
+		harnesses = append(harnesses, codex.NewLoader(cfg.CodexHome, ParkedMaxAge(cfg)))
 	}
 	return harness.NewMulti(harnesses...)
-}
-
-func parkedMaxAge(cfg *config.Config) time.Duration {
-	return time.Duration(cfg.ParkedDays) * 24 * time.Hour
 }
 
 func newListener(cfg *config.Config) (net.Listener, error) {
