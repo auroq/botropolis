@@ -1,5 +1,7 @@
 package city
 
+import "math"
+
 type Point struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
@@ -63,4 +65,19 @@ func (r Rect) Union(other Rect) Rect {
 		Min: Point{X: min(r.Min.X, other.Min.X), Y: min(r.Min.Y, other.Min.Y)},
 		Max: Point{X: max(r.Max.X, other.Max.X), Y: max(r.Max.Y, other.Max.Y)},
 	}
+}
+
+// DistanceToSegment is the shortest distance from p to the segment ab.
+func (p Point) DistanceToSegment(a, b Point) float64 {
+	ab := b.Sub(a)
+	length2 := ab.X*ab.X + ab.Y*ab.Y
+	t := 0.0
+	if length2 > 0 {
+		ap := p.Sub(a)
+		t = (ap.X*ab.X + ap.Y*ab.Y) / length2
+		t = math.Max(0, math.Min(1, t))
+	}
+	nearest := a.Add(ab.Scale(t))
+	d := p.Sub(nearest)
+	return math.Hypot(d.X, d.Y)
 }

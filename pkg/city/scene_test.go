@@ -91,6 +91,65 @@ func TestScene(t *testing.T) {
 		})
 	})
 
+	t.Run("when the pointer rests on a road", func(t *testing.T) {
+		snap := snapshot(session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		snap.Roads = []state.Road{{From: cinders, To: botropolis, Messages: 3, Files: 2, Sessions: 1,
+			Paths: []string{botropolis + "/pkg/city/city.go", botropolis + "/README.md"}}}
+		s := city.NewScene(city.NewLayout())
+		s.Resize(800, 600)
+		s.SetSnapshot(snap)
+		require.Len(t, s.City().Roads, 1)
+		road := s.City().Roads[0]
+		s.PointerMove(s.Camera().WorldToScreen(city.Point{X: (road.A.X + road.B.X) / 2, Y: (road.A.Y + road.B.Y) / 2}))
+
+		t.Run("it should hover the road", func(t *testing.T) {
+			require.NotNil(t, s.Hover().Road)
+			assert.Equal(t, 3, s.Hover().Road.Messages)
+		})
+
+		t.Run("it should offer the road's card with its files relative to the far district", func(t *testing.T) {
+			card, ok := s.Card()
+			require.True(t, ok)
+			assert.Equal(t, "cinders → botropolis", card.Title)
+			assert.Contains(t, card.Lines, "traffic  3 msgs, 2 files")
+			assert.Contains(t, card.Lines, "files    pkg/city/city.go, README.md")
+		})
+	})
+
+	t.Run("when the pointer rests on a beam", func(t *testing.T) {
+		a := session("a", cinders, state.Working)
+		a.MCPCalls = map[string]int{"atlassian": 3}
+		snap := snapshot(a)
+		snap.Servers = []state.Server{{Name: "atlassian", Calls: 3, Sessions: 1}}
+		s := city.NewScene(city.NewLayout())
+		s.Resize(800, 600)
+		s.SetSnapshot(snap)
+		beams := s.City().Beams()
+		require.Len(t, beams, 1)
+		s.PointerMove(s.Camera().WorldToScreen(city.Point{X: (beams[0].From.X + beams[0].To.X) / 2, Y: (beams[0].From.Y + beams[0].To.Y) / 2}))
+
+		t.Run("it should offer the beam's card", func(t *testing.T) {
+			card, ok := s.Card()
+			require.True(t, ok)
+			assert.Equal(t, "atlassian → Fix the CI queue", card.Title)
+			assert.Contains(t, card.Lines, "calls    3 this session")
+		})
+	})
+
+	t.Run("when the pointer rests on a power line", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		lines := s.City().PowerLines()
+		require.Len(t, lines, 1)
+		s.PointerMove(s.Camera().WorldToScreen(city.Point{X: (lines[0].From.X + lines[0].To.X) / 2, Y: (lines[0].From.Y + lines[0].To.Y) / 2}))
+
+		t.Run("it should offer the line's card in tokens per minute", func(t *testing.T) {
+			card, ok := s.Card()
+			require.True(t, ok)
+			assert.Equal(t, "power → Fix the CI queue", card.Title)
+			assert.Contains(t, card.Lines, "cached   148k/min")
+		})
+	})
+
 	t.Run("when the pointer is dragged", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))
 		before := s.Camera().Offset

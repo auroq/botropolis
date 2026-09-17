@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -461,7 +462,15 @@ func TestRoads(t *testing.T) {
 		roads := state.Roads([]state.Session{editor, other}, nil)
 
 		t.Run("it should draw a road carrying the file touches", func(t *testing.T) {
-			assert.Equal(t, []state.Road{{From: editor.CWD, To: other.CWD, Files: 3, Sessions: 1}}, roads)
+			require.Len(t, roads, 1)
+			assert.Equal(t, state.Road{From: editor.CWD, To: other.CWD, Files: 3, Sessions: 1, Paths: roads[0].Paths}, roads[0])
+		})
+
+		t.Run("it should name the busiest files first", func(t *testing.T) {
+			assert.Equal(t, []string{
+				"/home/avesta/workspaces/github/auroq/botropolis/pkg/city/city.go",
+				"/home/avesta/workspaces/github/auroq/botropolis/README.md",
+			}, roads[0].Paths)
 		})
 	})
 
@@ -486,7 +495,8 @@ func TestRoads(t *testing.T) {
 		roads := state.Roads([]state.Session{project, worktree, editor}, nil)
 
 		t.Run("it should still draw the road to the project", func(t *testing.T) {
-			assert.Equal(t, []state.Road{{From: editor.CWD, To: project.CWD, Files: 1, Sessions: 1}}, roads)
+			assert.Equal(t, []state.Road{{From: editor.CWD, To: project.CWD, Files: 1, Sessions: 1,
+				Paths: []string{"/home/avesta/workspaces/github/auroq/botropolis/README.md"}}}, roads)
 		})
 	})
 
@@ -498,7 +508,8 @@ func TestRoads(t *testing.T) {
 		roads := state.Roads([]state.Session{lead, worker}, nil)
 
 		t.Run("it should count the session once", func(t *testing.T) {
-			assert.Equal(t, []state.Road{{From: worker.CWD, To: lead.CWD, Messages: 4, Files: 1, Sessions: 1}}, roads)
+			assert.Equal(t, []state.Road{{From: worker.CWD, To: lead.CWD, Messages: 4, Files: 1, Sessions: 1,
+				Paths: []string{"/home/avesta/workspaces/github/auroq/x.go"}}}, roads)
 		})
 	})
 
@@ -575,6 +586,21 @@ func TestContextWindowInference(t *testing.T) {
 
 		t.Run("it should measure against 1M from then on", func(t *testing.T) {
 			assert.InDelta(t, 10, s.ContextPercent, 1e-9)
+		})
+	})
+}
+
+func TestRoadPaths(t *testing.T) {
+	t.Run("when a session touches more files than a road can list", func(t *testing.T) {
+		editor := state.Session{ID: "e", CWD: "/p/a", Touches: map[string]int{}}
+		for i := 0; i < state.MaxRoadPaths+3; i++ {
+			editor.Touches[fmt.Sprintf("/p/b/f%02d.go", i)] = i + 1
+		}
+		roads := state.Roads([]state.Session{editor, {ID: "o", CWD: "/p/b"}}, nil)
+
+		t.Run("it should keep only the busiest", func(t *testing.T) {
+			require.Len(t, roads, 1)
+			assert.Equal(t, []string{"/p/b/f07.go", "/p/b/f06.go", "/p/b/f05.go", "/p/b/f04.go", "/p/b/f03.go"}, roads[0].Paths)
 		})
 	})
 }

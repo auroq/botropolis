@@ -458,3 +458,25 @@ func TestDistrictShape(t *testing.T) {
 		})
 	})
 }
+
+func TestDistanceToSegment(t *testing.T) {
+	a, b := city.Point{X: 0, Y: 0}, city.Point{X: 10, Y: 0}
+
+	t.Run("when the point is beside the segment", func(t *testing.T) {
+		t.Run("it should measure the perpendicular", func(t *testing.T) {
+			assert.InDelta(t, 3, city.Point{X: 5, Y: 3}.DistanceToSegment(a, b), 1e-9)
+		})
+	})
+
+	t.Run("when the point is past an end", func(t *testing.T) {
+		t.Run("it should measure to that end", func(t *testing.T) {
+			assert.InDelta(t, 5, city.Point{X: 13, Y: 4}.DistanceToSegment(a, b), 1e-9)
+		})
+	})
+
+	t.Run("when the segment has no length", func(t *testing.T) {
+		t.Run("it should measure to the point", func(t *testing.T) {
+			assert.InDelta(t, 5, city.Point{X: 3, Y: 4}.DistanceToSegment(a, a), 1e-9)
+		})
+	})
+}

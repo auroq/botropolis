@@ -125,8 +125,16 @@ func (s *Scene) reselect() *Building {
 	return nil
 }
 
+// LineHoverPixels is how close, on screen, the pointer must be to a road,
+// beam or power line to hover it.
+const LineHoverPixels = 6.0
+
 func (s *Scene) PointerMove(screen Point) {
-	s.hover = s.city.At(s.camera.ScreenToWorld(screen))
+	world := s.camera.ScreenToWorld(screen)
+	s.hover = s.city.At(world)
+	if s.hover == (Hit{}) {
+		s.hover = s.city.Near(world, LineHoverPixels/s.camera.Zoom)
+	}
 }
 
 func (s *Scene) Pan(delta Point) {
@@ -182,6 +190,12 @@ func (s *Scene) Card() (Card, bool) {
 		return s.hover.Building.Card(s.city.Time), true
 	case s.hover.District != nil:
 		return s.hover.District.Card(), true
+	case s.hover.Road != nil:
+		return s.hover.Road.Card(), true
+	case s.hover.Beam != nil:
+		return s.hover.Beam.Card(), true
+	case s.hover.Line != nil:
+		return s.hover.Line.Card(), true
 	}
 	return Card{}, false
 }

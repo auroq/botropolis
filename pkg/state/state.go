@@ -116,7 +116,11 @@ type Road struct {
 	Messages int    `json:"messages"`
 	Files    int    `json:"files"`
 	Sessions int    `json:"sessions"`
+	// Paths are the most-touched files on the road, at most MaxRoadPaths.
+	Paths []string `json:"paths,omitempty"`
 }
+
+const MaxRoadPaths = 5
 
 type Probes struct {
 	Alive    func(pid int) bool
@@ -264,7 +268,8 @@ func Roads(sessions []Session, teams []claude.Team) []Road {
 	type key struct{ from, to string }
 	counts := map[key]*Road{}
 	travellers := map[key]map[string]bool{}
-	add := func(s Session, to string, messages, files int) {
+	touched := map[key]map[string]int{}
+	add := func(s Session, to, path string, messages, files int) {
 		if to == "" || to == s.CWD {
 			return
 		}
@@ -274,9 +279,13 @@ func Roads(sessions []Session, teams []claude.Team) []Road {
 			road = &Road{From: s.CWD, To: to}
 			counts[k] = road
 			travellers[k] = map[string]bool{}
+			touched[k] = map[string]int{}
 		}
 		road.Messages += messages
 		road.Files += files
+		if path != "" {
+			touched[k][path] += files
+		}
 		if !travellers[k][s.ID] {
 			travellers[k][s.ID] = true
 			road.Sessions++
@@ -288,7 +297,7 @@ func Roads(sessions []Session, teams []claude.Team) []Road {
 			continue
 		}
 		for path, n := range s.Touches {
-			add(s, projectOf(roots, path), 0, n)
+			add(s, projectOf(roots, path), path, 0, n)
 		}
 		if s.Team == "" {
 			continue
@@ -305,11 +314,12 @@ func Roads(sessions []Session, teams []claude.Team) []Road {
 			if !ok {
 				continue
 			}
-			add(s, member.CWD, n, 0)
+			add(s, member.CWD, "", n, 0)
 		}
 	}
 	out := make([]Road, 0, len(counts))
-	for _, road := range counts {
+	for k, road := range counts {
+		road.Paths = topPaths(touched[k], MaxRoadPaths)
 		out = append(out, *road)
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -332,6 +342,26 @@ const worktreesDir = "/.claude/worktrees/"
 // a directory that merely contains other sessions' projects (a home or a
 // workspaces folder) is a hub, not a road destination.  A project's own
 // worktrees do not make it a hub.
+func topPaths(counts map[string]int, n int) []string {
+	if len(counts) == 0 {
+		return nil
+	}
+	paths := make([]string, 0, len(counts))
+	for path := range counts {
+		paths = append(paths, path)
+	}
+	sort.Slice(paths, func(i, j int) bool {
+		if counts[paths[i]] != counts[paths[j]] {
+			return counts[paths[i]] > counts[paths[j]]
+		}
+		return paths[i] < paths[j]
+	})
+	if len(paths) > n {
+		paths = paths[:n]
+	}
+	return paths
+}
+
 func projectRoots(sessions []Session) []string {
 	seen := map[string]bool{}
 	var all []string

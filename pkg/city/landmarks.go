@@ -89,6 +89,35 @@ type RoadLine struct {
 	Messages int
 	Files    int
 	Sessions int
+	Paths    []string
+}
+
+func (r RoadLine) Card() Card {
+	lines := []string{
+		"traffic  " + r.Label(),
+		"sessions " + fmt.Sprint(r.Sessions),
+	}
+	if len(r.Paths) > 0 {
+		short := make([]string, 0, len(r.Paths))
+		for _, path := range r.Paths {
+			short = append(short, strings.TrimPrefix(path, r.To.Root+"/"))
+		}
+		lines = append(lines, "files    "+strings.Join(short, ", "))
+	}
+	return Card{Title: r.From.Name + " → " + r.To.Name, Lines: lines}
+}
+
+func (b Beam) Card() Card {
+	return Card{Title: b.Tower.Server.Name + " → " + b.Building.Card(time.Time{}).Title, Lines: []string{
+		fmt.Sprintf("calls    %d this session", b.Calls),
+	}}
+}
+
+func (l PowerLine) Card() Card {
+	return Card{Title: "power → " + l.Building.Card(time.Time{}).Title, Lines: []string{
+		fmt.Sprintf("fresh    %s/min", format.Tokens(l.Fresh/60)),
+		fmt.Sprintf("cached   %s/min", format.Tokens(l.Cached/60)),
+	}}
 }
 
 func (c *City) placeRoads(roads []state.Road) {
@@ -106,7 +135,8 @@ func (c *City) placeRoads(roads []state.Road) {
 		if !ok || from == to {
 			continue
 		}
-		c.Roads = append(c.Roads, RoadLine{A: from.Rect.Center(), B: to.Rect.Center(), From: from, To: to, Messages: r.Messages, Files: r.Files, Sessions: r.Sessions})
+		c.Roads = append(c.Roads, RoadLine{A: from.Rect.Center(), B: to.Rect.Center(), From: from, To: to,
+			Messages: r.Messages, Files: r.Files, Sessions: r.Sessions, Paths: r.Paths})
 		from.roads = append(from.roads, roadNote{other: to.Name, messages: r.Messages, files: r.Files, out: true})
 		to.roads = append(to.roads, roadNote{other: from.Name, messages: r.Messages, files: r.Files, out: false})
 	}

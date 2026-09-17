@@ -68,6 +68,34 @@ type Hit struct {
 	Building *Building
 	Landmark Landmark
 	Tower    *Tower
+	Road     *RoadLine
+	Beam     *Beam
+	Line     *PowerLine
+}
+
+// Near is the road, beam or power line within tolerance of p, nearest
+// first, or nothing.
+func (c *City) Near(p Point, tolerance float64) Hit {
+	best := tolerance
+	var hit Hit
+	for i := range c.Roads {
+		if d := p.DistanceToSegment(c.Roads[i].A, c.Roads[i].B); d < best {
+			best, hit = d, Hit{Road: &c.Roads[i]}
+		}
+	}
+	beams := c.Beams()
+	for i := range beams {
+		if d := p.DistanceToSegment(beams[i].From, beams[i].To); d < best {
+			best, hit = d, Hit{Beam: &beams[i]}
+		}
+	}
+	lines := c.PowerLines()
+	for i := range lines {
+		if d := p.DistanceToSegment(lines[i].From, lines[i].To); d < best {
+			best, hit = d, Hit{Line: &lines[i]}
+		}
+	}
+	return hit
 }
 
 type Card struct {
