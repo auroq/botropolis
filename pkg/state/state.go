@@ -26,7 +26,7 @@ const (
 
 type Session struct {
 	ID                 string         `json:"id"`
-	Harness            string         `json:\"harness,omitempty\"`
+	Harness            string         `json:"harness,omitempty"`
 	Title              string         `json:"title"`
 	CWD                string         `json:"cwd"`
 	Branch             string         `json:"branch"`
