@@ -69,6 +69,7 @@ type City struct {
 	Roads       []RoadLine
 	Streets     []Street
 	StreetCells []StreetCell
+	RiverCells  []RiverCell
 	Night       bool
 	Time        time.Time
 }
@@ -145,6 +146,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	layout.PlaceDistricts(city.Districts)
 	city.placeLandmarks(snapshot)
 	city.placeRoads(snapshot.Roads)
+	city.placeRiver()
 	city.placeStreets()
 	return city
 }

@@ -29,3 +29,36 @@ func TestRoadTile(t *testing.T) {
 		})
 	}
 }
+
+func TestRiverAndBridgeTiles(t *testing.T) {
+	t.Run("when the river runs along world x", func(t *testing.T) {
+		t.Run("it should use the pack's NS river", func(t *testing.T) {
+			assert.Equal(t, "riverNS", riverTile(city.DirE|city.DirW))
+		})
+	})
+
+	t.Run("when the river bends", func(t *testing.T) {
+		t.Run("it should use the matching corner", func(t *testing.T) {
+			assert.Equal(t, "riverNE", riverTile(city.DirW|city.DirN))
+		})
+	})
+
+	t.Run("when the river starts at the map's edge with one join", func(t *testing.T) {
+		t.Run("it should run straight along that axis", func(t *testing.T) {
+			assert.Equal(t, "riverNS", riverTile(city.DirE))
+		})
+	})
+
+	t.Run("when a straight street crosses the river", func(t *testing.T) {
+		t.Run("it should be a bridge the same way", func(t *testing.T) {
+			assert.Equal(t, "bridgeNS", bridgeTile(city.DirE|city.DirW))
+			assert.Equal(t, "bridgeEW", bridgeTile(city.DirN|city.DirS))
+		})
+	})
+
+	t.Run("when a street bends on the river", func(t *testing.T) {
+		t.Run("it should get no bridge", func(t *testing.T) {
+			assert.Empty(t, bridgeTile(city.DirN|city.DirE))
+		})
+	})
+}

@@ -142,12 +142,23 @@ func (g *Game) isoGround(screen *ebiten.Image, cam *city.Camera, c *city.City, w
 	tint.SetG(tint.G() * 1.6)
 	tint.SetB(tint.B() * 1.6)
 	land := g.sprites.iso.landscape
+	river := map[city.Cell]int{}
+	for _, rc := range c.RiverCells {
+		river[rc.Cell] = rc.Mask
+	}
 	for row := row0; row < row1; row++ {
 		for col := col0; col < col1; col++ {
 			r := city.RectAt(float64(col)*cell, float64(row)*cell, cell, cell)
 			top, w := footprint(cam, r)
 			if top.X+w < 0 || top.X-w > width || top.Y > height || top.Y+w < 0 {
 				continue
+			}
+			if mask, ok := river[city.Cell{Col: col, Row: row}]; ok {
+				if img := g.sprites.iso.road(riverTile(mask)); img != nil {
+					over := (w + 1.5) / float64(img.Bounds().Dx())
+					g.drawSprite(screen, img, city.Point{X: top.X - w/2 - 0.75, Y: top.Y - 0.5}, over, tint)
+					continue
+				}
 			}
 			img := grass
 			switch pick := groundPick(tileHash(col, row)); pick {
@@ -548,6 +559,34 @@ func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city
 // top-left edge (world -x), E the top-right (world -y), S the bottom-right
 // (world +x) and W the bottom-left (world +y).
 func roadTile(mask int) string {
+	return packTile("road", "end", "crossroad", mask)
+}
+
+// riverTile names the river sprite for a river cell's joins; a source or
+// mouth with one join runs straight along its axis.
+func riverTile(mask int) string {
+	switch mask {
+	case city.DirN, city.DirS:
+		mask = city.DirN | city.DirS
+	case city.DirE, city.DirW:
+		mask = city.DirE | city.DirW
+	}
+	return packTile("river", "river", "river", mask)
+}
+
+// bridgeTile is the bridge for a straight street across the river, or ""
+// when the street is not straight there.
+func bridgeTile(mask int) string {
+	switch mask {
+	case city.DirN | city.DirS:
+		return "bridgeEW"
+	case city.DirE | city.DirW:
+		return "bridgeNS"
+	}
+	return ""
+}
+
+func packTile(two, one, many string, mask int) string {
 	letters := ""
 	for _, side := range []struct {
 		dir    int
@@ -559,13 +598,13 @@ func roadTile(mask int) string {
 	}
 	switch len(letters) {
 	case 1:
-		return "end" + letters
+		return one + letters
 	case 2:
-		return "road" + letters
+		return two + letters
 	case 3:
-		return "crossroad" + letters
+		return many + letters
 	case 4:
-		return "crossroad"
+		return many
 	}
 	return ""
 }
@@ -578,7 +617,13 @@ func (g *Game) streets(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		return
 	}
 	for _, sc := range c.StreetCells {
-		img := g.sprites.iso.road(roadTile(sc.Mask))
+		name := roadTile(sc.Mask)
+		if _, onRiver := c.River(sc.Cell); onRiver {
+			if bridge := bridgeTile(sc.Mask); bridge != "" {
+				name = bridge
+			}
+		}
+		img := g.sprites.iso.road(name)
 		if img == nil {
 			continue
 		}

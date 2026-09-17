@@ -110,19 +110,21 @@ the socket under `$XDG_RUNTIME_DIR/botropolis`.
 | District | a project (cwd root, worktrees folded in) | active hours, sessions, tokens, PRs |
 | Building | a session | title, branch, model, state, age |
 | Lit / dark / boarded-up | working / parked / gone-soon | — |
-| Building fill level | context window used (of 1M) | tokens in context, last compaction |
+| Building fill level (storeys in the isometric view) | context window used (of 1M) | tokens in context, last compaction |
 | Worker at the bench | the main thread | current tool and file |
 | Cranes on the roof | subagents and workflows in flight | count, names, tokens |
 | Power plant at the centre | the API | tokens today by model, cache hit ratio |
-| Power lines to a building | token flow | tokens/min; cache-read vs. fresh drawn differently |
+| Power lines to a building (poles, sagging wires, sparks) | token flow | tokens/min; cache-read vs. fresh drawn differently |
 | Radio towers at the edge | MCP servers | sessions attached, calls today |
 | Beam tower → building | a session using that server | calls this session |
-| Roads between districts | cross-repo file touches, `SendMessage` between sessions | which files, which sessions |
+| Streets between districts (autotiled, cars for traffic) | cross-repo file touches, `SendMessage` between sessions | which files, which sessions |
 | Library | skills | top skills invoked |
 | City hall | `stats-cache.json` rollups | daily activity, model mix |
 | Flag on a building | a PR | number, state |
 | Smoke | an API error | the error |
 | Night | loops and scheduled wakeups running unattended | — |
+| Resource strip along the top | city-wide tallies: sessions by state, tokens/h, ~cost and cache hit over 24 h, subagents, MCP calls, PRs, errors | — |
+| Ground: grass, dirt, trees | nothing — varied so the eye slides off it | — |
 
 Dropped from bot-crossing: the ship, arrival and departure walks, idle pottering,
 size-by-transcript, and the desktop-app "unread" flag.
@@ -192,6 +194,15 @@ Each milestone ends with tests green, `make lint` and `make format` clean, and a
 
 - `--tui` client, waybar module, desktop notification on needs-you.
 - Second harness adapter (Codex) to prove the seam.
+
+## View
+
+The map is isometric by default (Kenney's isometric packs; `--projection top` keeps the 16 px top-down view).
+Isometric 2:1 is an affine projection, so `pkg/city` keeps rectangles and only the renderer sees diamonds.
+Below a detail zoom the map view draws flat state-coloured blocks, the way Factorio's chart replaces sprites with map colours;
+above it, buildings are stacked from the pack's ground floors, storeys and roofs.
+Parked sessions sit in a compact yard of sheds so the live sessions own the plot.
+Labels are fixed-size and sit on the floor or above the kerb, never over what they name.
 
 ## Open questions
 
