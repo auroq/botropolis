@@ -16,18 +16,21 @@ const (
 )
 
 var (
-	now     = time.Date(2026, time.September, 17, 8, 0, 0, 0, time.UTC)
-	started = now.Add(-2 * time.Hour)
-	alive   = func(int) bool { return true }
-	dead    = func(int) bool { return false }
+	now      = time.Date(2026, time.September, 17, 8, 0, 0, 0, time.UTC)
+	started  = now.Add(-2 * time.Hour)
+	alive    = state.Probes{Alive: func(int) bool { return true }, Attached: func(string) bool { return false }}
+	attached = state.Probes{Alive: func(int) bool { return true }, Attached: func(string) bool { return true }}
+	dead     = state.Probes{Alive: func(int) bool { return false }, Attached: func(string) bool { return false }}
 )
 
 func record(sid string, kind claude.Kind, status claude.Status) claude.SessionRecord {
 	return claude.SessionRecord{
 		PID: 4242, SessionID: sid, CWD: "/home/avesta/workspaces/github/mCedar/cinders",
-		Kind: kind, Status: status, Name: "record name", StartedAt: started,
+		Kind: kind, Status: status, Name: "record name", StartedAt: started, JobID: "0898d7e4",
 	}
 }
+
+var roster = map[string]claude.Worker{"0898d7e4": {JobID: "0898d7e4", PtySock: "/tmp/cc/pty/0898d7e4.sock"}}
 
 func transcript(sid string, turn claude.Turn) claude.Transcript {
 	return claude.Transcript{
@@ -42,9 +45,9 @@ func transcript(sid string, turn claude.Turn) claude.Transcript {
 }
 
 func build(t *testing.T, records []claude.SessionRecord, transcripts []claude.Transcript,
-	subagents map[string][]claude.Subagent, isAlive func(int) bool) []state.Session {
+	subagents map[string][]claude.Subagent, probes state.Probes) []state.Session {
 	t.Helper()
-	sessions := state.Build(records, transcripts, subagents, isAlive, now)
+	sessions := state.Build(state.Sources{Records: records, Transcripts: transcripts, Subagents: subagents, Roster: roster}, probes, now)
 	require.Len(t, sessions, len(records))
 	return sessions
 }
@@ -83,6 +86,14 @@ func TestBuild(t *testing.T) {
 			assert.InDelta(t, 3600.0, session.TokensPerHour, 1e-9)
 		})
 
+		t.Run("it should rate fresh tokens separately from cache reads", func(t *testing.T) {
+			assert.InDelta(t, 2600.0, session.FreshTokensPerHour, 1e-9)
+		})
+
+		t.Run("it should rate cache reads separately from fresh tokens", func(t *testing.T) {
+			assert.InDelta(t, 1000.0, session.CacheReadPerHour, 1e-9)
+		})
+
 		t.Run("it should be alive", func(t *testing.T) {
 			assert.True(t, session.Alive)
 		})
@@ -112,10 +123,38 @@ func TestBuild(t *testing.T) {
 		})
 	})
 
-	t.Run("when a background session is mid-turn", func(t *testing.T) {
+	t.Run("when a background session is mid-turn with no terminal attached", func(t *testing.T) {
 		session := build(t,
 			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusBusy)},
 			[]claude.Transcript{transcript(sidA, claude.TurnWorking)}, nil, alive)[0]
+
+		t.Run("it should be unattended", func(t *testing.T) {
+			assert.Equal(t, state.Unattended, session.State)
+		})
+
+		t.Run("it should not be attached", func(t *testing.T) {
+			assert.False(t, session.Attached)
+		})
+	})
+
+	t.Run("when a background session is mid-turn with a terminal attached", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusBusy)},
+			[]claude.Transcript{transcript(sidA, claude.TurnWorking)}, nil, attached)[0]
+
+		t.Run("it should be working", func(t *testing.T) {
+			assert.Equal(t, state.Working, session.State)
+		})
+
+		t.Run("it should be attached", func(t *testing.T) {
+			assert.True(t, session.Attached)
+		})
+	})
+
+	t.Run("when a background session has no roster entry", func(t *testing.T) {
+		r := record(sidA, claude.KindBackground, claude.StatusBusy)
+		r.JobID = "unknown"
+		session := build(t, []claude.SessionRecord{r}, []claude.Transcript{transcript(sidA, claude.TurnWorking)}, nil, attached)[0]
 
 		t.Run("it should be unattended", func(t *testing.T) {
 			assert.Equal(t, state.Unattended, session.State)

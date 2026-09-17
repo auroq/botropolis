@@ -25,38 +25,57 @@ const (
 )
 
 type Session struct {
-	ID                string
-	Title             string
-	CWD               string
-	Branch            string
-	Model             string
-	Kind              claude.Kind
-	PID               int
-	Alive             bool
-	State             State
-	Turn              claude.Turn
-	ContextTokens     int64
-	ContextWindow     int64
-	ContextPercent    float64
-	Usage             claude.Usage
-	TokensPerHour     float64
-	CostUSD           float64
-	Subagents         int
-	SubagentsInFlight int
-	StartedAt         time.Time
-	LastActivity      time.Time
+	ID                 string
+	Title              string
+	CWD                string
+	Branch             string
+	Model              string
+	Kind               claude.Kind
+	PID                int
+	Alive              bool
+	Attached           bool
+	State              State
+	Turn               claude.Turn
+	ContextTokens      int64
+	ContextWindow      int64
+	ContextPercent     float64
+	Usage              claude.Usage
+	TokensPerHour      float64
+	FreshTokensPerHour float64
+	CacheReadPerHour   float64
+	CostUSD            float64
+	Subagents          int
+	SubagentsInFlight  int
+	StartedAt          time.Time
+	LastActivity       time.Time
 }
 
-func Build(records []claude.SessionRecord, transcripts []claude.Transcript,
-	subagents map[string][]claude.Subagent, alive func(pid int) bool, now time.Time) []Session {
+type Sources struct {
+	Records     []claude.SessionRecord
+	Transcripts []claude.Transcript
+	Subagents   map[string][]claude.Subagent
+	Roster      map[string]claude.Worker
+}
+
+type Probes struct {
+	Alive    func(pid int) bool
+	Attached func(sock string) bool
+}
+
+func Build(src Sources, probes Probes, now time.Time) []Session {
 	byID := map[string]claude.Transcript{}
-	for _, t := range transcripts {
+	for _, t := range src.Transcripts {
 		byID[t.SessionID] = t
 	}
-	sessions := make([]Session, 0, len(records))
-	for _, r := range records {
+	sessions := make([]Session, 0, len(src.Records))
+	for _, r := range src.Records {
 		transcript, hasTranscript := byID[r.SessionID]
-		sessions = append(sessions, buildSession(r, transcript, hasTranscript, subagents[r.SessionID], alive(r.PID)))
+		isAlive := probes.Alive(r.PID)
+		isAttached := false
+		if worker, ok := src.Roster[r.JobID]; ok && r.JobID != "" && worker.PtySock != "" {
+			isAttached = probes.Attached(worker.PtySock)
+		}
+		sessions = append(sessions, buildSession(r, transcript, hasTranscript, src.Subagents[r.SessionID], isAlive, isAttached))
 	}
 	sort.SliceStable(sessions, func(i, j int) bool {
 		if sessions[i].CWD != sessions[j].CWD {
@@ -68,7 +87,7 @@ func Build(records []claude.SessionRecord, transcripts []claude.Transcript,
 }
 
 func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript bool,
-	subagents []claude.Subagent, isAlive bool) Session {
+	subagents []claude.Subagent, isAlive, isAttached bool) Session {
 	s := Session{
 		ID:           r.SessionID,
 		Title:        r.Name,
@@ -76,6 +95,7 @@ func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript boo
 		Kind:         r.Kind,
 		PID:          r.PID,
 		Alive:        isAlive,
+		Attached:     isAttached,
 		StartedAt:    r.StartedAt,
 		LastActivity: r.StartedAt,
 	}
@@ -110,13 +130,16 @@ func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript boo
 		}
 	}
 	if hasTranscript {
-		s.TokensPerHour = tokensPerHour(s.Usage, t.FirstAt, t.LastAt)
+		hours := rateSpan(t.FirstAt, t.LastAt).Hours()
+		s.FreshTokensPerHour = float64(s.Usage.Input+s.Usage.Output+s.Usage.CacheCreate) / hours
+		s.CacheReadPerHour = float64(s.Usage.CacheRead) / hours
+		s.TokensPerHour = s.FreshTokensPerHour + s.CacheReadPerHour
 	}
-	s.State = derive(r, s.Turn, hasTranscript, isAlive)
+	s.State = derive(r, s.Turn, hasTranscript, isAlive, isAttached)
 	return s
 }
 
-func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive bool) State {
+func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive, isAttached bool) State {
 	if !isAlive {
 		return Parked
 	}
@@ -130,7 +153,7 @@ func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive boo
 	case claude.TurnNeedsInput, claude.TurnAwaitingUser:
 		return NeedsYou
 	}
-	if r.Kind == claude.KindBackground {
+	if r.Kind == claude.KindBackground && !isAttached {
 		return Unattended
 	}
 	return Working
@@ -146,11 +169,10 @@ func ContextWindow(model string, costModels map[string]claude.ModelCost) int64 {
 	return contextWindowDefault
 }
 
-func tokensPerHour(u claude.Usage, first, last time.Time) float64 {
+func rateSpan(first, last time.Time) time.Duration {
 	span := last.Sub(first)
 	if span < minRateSpan {
 		span = minRateSpan
 	}
-	total := u.Input + u.Output + u.CacheRead + u.CacheCreate
-	return float64(total) / span.Hours()
+	return span
 }

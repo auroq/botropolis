@@ -11,19 +11,19 @@ See [DESIGN.md](DESIGN.md) for the design and the plan, and [docs/usage-profile.
 
 Milestone 1: the read model.
 `botropolis status` prints one row per live session straight from `~/.claude`:
-state, project, title, branch, model, context used, tokens per hour, subagents in flight, and age.
+state, project, title, branch, model, context used, fresh and cache-read tokens per hour, subagents in flight, and age.
 No daemon, no hook, no map yet.
 
 ```
 $ botropolis status
-STATE       PROJECT     TITLE                      BRANCH              MODEL              CTX  TOK/H  SUBS  AGE
-unattended  botropolis  scaffold milestone setup   main                claude-opus-5[1m]  25%  7.8M   0/0   4h49m
-needs-you   cinders     pr-reviews-cli-migration   feat/cli-pr-review  claude-opus-5[1m]  73%  24.8M  0/4   10h00m
+STATE      PROJECT     TITLE                     BRANCH              MODEL              CTX  FRESH/H  CACHED/H  SUBS  AGE
+working    botropolis  scaffold milestone setup  main                claude-opus-5[1m]  29%  152k     8.9M      0/0   4h54m
+needs-you  cinders     pr-reviews-cli-migration  feat/cli-pr-review  claude-opus-5[1m]  73%  316k     24.5M     0/4   10h05m
 ```
 
 `pkg/claude` reads session records, transcripts (metadata, deduplicated usage, cost, whose turn it is), subagents,
 `stats-cache.json`, and the MCP config.
-`pkg/state` joins them by session id, probes the pid, and derives the state.
+`pkg/state` joins them by session id, probes the pid and the background job's pty socket (so an attached `claude --bg` counts as working, not unattended), and derives the state.
 
 ## Tools
 

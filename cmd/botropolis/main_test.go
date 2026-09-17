@@ -89,6 +89,10 @@ func TestRun(t *testing.T) {
 		t.Run("it should show the project by its directory name", func(t *testing.T) {
 			assert.Contains(t, string(lines[1]), "cinders")
 		})
+
+		t.Run("it should split fresh tokens from cache reads in the header", func(t *testing.T) {
+			assert.Regexp(t, `FRESH/H\s+CACHED/H`, string(lines[0]))
+		})
 	})
 
 	t.Run("when invoked with status against an empty home", func(t *testing.T) {

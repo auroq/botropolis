@@ -53,7 +53,7 @@ func runStatus(args []string, out io.Writer) int {
 			return 1
 		}
 	}
-	snapshot, err := state.Load(*home, state.ProcessAlive, time.Now())
+	snapshot, err := state.Load(*home, state.Probes{Alive: state.ProcessAlive, Attached: state.UnixSocketConnected}, time.Now())
 	if err != nil {
 		fmt.Fprintf(out, "%s: %v\n", binary, err)
 		return 1
@@ -68,12 +68,12 @@ func printStatus(out io.Writer, snapshot state.Snapshot) {
 		return
 	}
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "STATE\tPROJECT\tTITLE\tBRANCH\tMODEL\tCTX\tTOK/H\tSUBS\tAGE")
+	fmt.Fprintln(w, "STATE\tPROJECT\tTITLE\tBRANCH\tMODEL\tCTX\tFRESH/H\tCACHED/H\tSUBS\tAGE")
 	for _, s := range snapshot.Sessions {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d/%d\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d/%d\t%s\n",
 			s.State, filepath.Base(s.CWD), s.Title, s.Branch, s.Model,
-			percent(s.ContextPercent), tokens(s.TokensPerHour), s.SubagentsInFlight, s.Subagents,
-			age(snapshot.At.Sub(s.StartedAt)))
+			percent(s.ContextPercent), tokens(s.FreshTokensPerHour), tokens(s.CacheReadPerHour),
+			s.SubagentsInFlight, s.Subagents, age(snapshot.At.Sub(s.StartedAt)))
 	}
 	_ = w.Flush()
 	for _, skipped := range snapshot.Skipped {

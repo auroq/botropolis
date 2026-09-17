@@ -2,9 +2,11 @@ package state_test
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/auroq/botropolis/pkg/state"
@@ -63,6 +65,30 @@ func TestLoad(t *testing.T) {
 		})
 	})
 
+	t.Run("when a background job's pty socket has a client connected", func(t *testing.T) {
+		home := writeHome(t, 4242)
+		sock := listenAndDial(t)
+		require.NoError(t, os.MkdirAll(filepath.Join(home, ".claude", "daemon"), 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(home, ".claude", "daemon", "roster.json"),
+			[]byte(`{"workers":{"0898d7e4":{"sessionId":"`+sidA+`","ptySock":"`+sock+`"}}}`), 0o600))
+		rewrite(t, filepath.Join(home, ".claude", "sessions", "4242.json"),
+			`"kind":"interactive"`, `"kind":"bg","jobId":"0898d7e4"`)
+		rewrite(t, filepath.Join(home, ".claude", "projects", "-home-avesta-workspaces-github-mCedar-cinders", sidA+".jsonl"),
+			`"stop_reason":"end_turn"`, `"stop_reason":"tool_use"`)
+
+		snapshot, err := state.Load(home, state.Probes{Alive: alive.Alive, Attached: state.UnixSocketConnected}, now)
+		require.NoError(t, err)
+		require.Len(t, snapshot.Sessions, 1)
+
+		t.Run("it should see the session as attached", func(t *testing.T) {
+			assert.True(t, snapshot.Sessions[0].Attached)
+		})
+
+		t.Run("it should be working rather than unattended", func(t *testing.T) {
+			assert.Equal(t, state.Working, snapshot.Sessions[0].State)
+		})
+	})
+
 	t.Run("when the home has no .claude directory", func(t *testing.T) {
 		snapshot, err := state.Load(t.TempDir(), alive, now)
 
@@ -74,6 +100,59 @@ func TestLoad(t *testing.T) {
 			assert.Empty(t, snapshot.Sessions)
 		})
 	})
+}
+
+func TestUnixSocketConnected(t *testing.T) {
+	t.Run("when a client is connected to the socket", func(t *testing.T) {
+		t.Run("it should be connected", func(t *testing.T) {
+			assert.True(t, state.UnixSocketConnected(listenAndDial(t)))
+		})
+	})
+
+	t.Run("when the socket is listening with no client", func(t *testing.T) {
+		sock := filepath.Join(shortTempDir(t), "pty.sock")
+		listener, err := net.Listen("unix", sock)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = listener.Close() })
+
+		t.Run("it should not be connected", func(t *testing.T) {
+			assert.False(t, state.UnixSocketConnected(sock))
+		})
+	})
+
+	t.Run("when the socket does not exist", func(t *testing.T) {
+		t.Run("it should not be connected", func(t *testing.T) {
+			assert.False(t, state.UnixSocketConnected(filepath.Join(t.TempDir(), "missing.sock")))
+		})
+	})
+}
+
+func shortTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "bt")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
+}
+
+func listenAndDial(t *testing.T) string {
+	t.Helper()
+	sock := filepath.Join(shortTempDir(t), "pty.sock")
+	listener, err := net.Listen("unix", sock)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = listener.Close() })
+	client, err := net.Dial("unix", sock)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = client.Close() })
+	return sock
+}
+
+func rewrite(t *testing.T, path, old, replacement string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Contains(t, string(data), old)
+	require.NoError(t, os.WriteFile(path, []byte(strings.Replace(string(data), old, replacement, 1)), 0o600))
 }
 
 func TestProcessAlive(t *testing.T) {
