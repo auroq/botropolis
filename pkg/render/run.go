@@ -41,7 +41,11 @@ func Run(ctx context.Context, opts Options) error {
 			_ = l.Save(opts.LayoutPath)
 		}
 	}
-	game := NewGame(scene, opts.Actor, face, save)
+	sprites, loadErr := loadSprites()
+	if loadErr != nil {
+		return loadErr
+	}
+	game := NewGame(scene, opts.Actor, face, save, sprites)
 
 	feedCtx, cancel := context.WithCancel(ctx)
 	defer cancel()

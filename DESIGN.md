@@ -200,6 +200,9 @@ Each milestone ends with tests green, `make lint` and `make format` clean, and a
   and is tested against a constructed fixture only, because there is no `~/.codex` on this machine.
   It proves the seam — `harness.Snapshotter`, merged by `harness.Multi` — not the format;
   the first real rollout should be turned into a fixture before trusting it.
+- Sprites: done on 2026-09-17 with three Kenney CC0 packs (Tiny Town, Tiny Factory, Roguelike Modern City),
+  embedded from `pkg/assets/kenney/` with their licence files and credited in the README.
+  The note below records why they were held back until then.
 - Sprites: the milestone 5 plan says Kenney CC0 city and isometric packs.
   Milestone 5 shipped procedural shapes instead (roofs, lit window grids, flags, smoke, towers, a pulsing plant)
   because vendoring tens of megabytes of third-party assets into the repo is Aria's call, not the agent's,

@@ -82,6 +82,12 @@ A waybar module, for example:
 "custom/botropolis": { "exec": "botropolis bar --watch", "return-type": "json", "on-click": "botropolis" }
 ```
 
+## Thanks
+
+The city is drawn with tiles by [Kenney](https://kenney.nl) — Tiny Town, Tiny Factory and Roguelike Modern City, all CC0.
+Thank you, Kenney; see [`pkg/assets/kenney/README.md`](pkg/assets/kenney/README.md) for the packs, versions and terms,
+and [support the studio](https://kenney.nl/donate) if the work helps you too.
+
 ## Tools
 
 `tools/analyze-history.py` summarises Claude Code usage from `~/.claude/projects`.
