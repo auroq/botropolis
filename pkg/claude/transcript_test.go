@@ -214,6 +214,18 @@ func TestReadTranscript(t *testing.T) {
 		})
 	})
 
+	t.Run("when a record is padded with NUL bytes by a torn write", func(t *testing.T) {
+		transcript := readTranscript(t, userLine, "\x00\x00\x00\x00"+assistantLine)
+
+		t.Run("it should still read the record", func(t *testing.T) {
+			assert.Equal(t, 1, transcript.Usage.Messages)
+		})
+
+		t.Run("it should count nothing malformed", func(t *testing.T) {
+			assert.Zero(t, transcript.Malformed)
+		})
+	})
+
 	t.Run("when the file does not exist", func(t *testing.T) {
 		_, err := claude.ReadTranscript(filepath.Join(t.TempDir(), "missing.jsonl"))
 

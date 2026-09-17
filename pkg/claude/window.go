@@ -68,7 +68,9 @@ func scanLines(scan *transcriptScan, r io.Reader) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(nil, maxTranscriptLine)
 	for scanner.Scan() {
-		line := scanner.Bytes()
+		// A torn write can leave a run of NUL bytes ahead of a record; the
+		// record behind them is still good.
+		line := bytes.TrimLeft(scanner.Bytes(), "\x00")
 		if len(line) == 0 {
 			continue
 		}

@@ -89,12 +89,16 @@ def scrub_jsonl(src, dst):
     dst.parent.mkdir(parents=True, exist_ok=True)
     with open(src, encoding="utf-8", errors="replace") as fin, open(dst, "w", encoding="utf-8") as fout:
         for line in fin:
-            line = line.rstrip("\n")
+            complete = line.endswith("\n")
+            line = line.rstrip("\n").lstrip("\x00")
             if not line:
                 continue
             try:
                 rec = json.loads(line)
             except json.JSONDecodeError:
+                if not complete:
+                    # A live transcript's last line is still being written.
+                    continue
                 fout.write(placeholder(line) + "\n")
                 continue
             fout.write(json.dumps(scrub(rec), separators=(",", ":"), ensure_ascii=False) + "\n")
