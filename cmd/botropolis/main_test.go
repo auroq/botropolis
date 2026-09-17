@@ -162,6 +162,60 @@ func TestRun(t *testing.T) {
 		})
 	})
 
+	t.Run("when invoked with install-hooks against a fresh home", func(t *testing.T) {
+		home := t.TempDir()
+		var out bytes.Buffer
+		code := run([]string{"install-hooks", "--home", home}, &out)
+
+		t.Run("it should exit zero", func(t *testing.T) {
+			assert.Equal(t, 0, code)
+		})
+
+		t.Run("it should write the settings file", func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+			require.NoError(t, err)
+			assert.Contains(t, string(data), `"botropolis-hook"`)
+		})
+
+		t.Run("it should say what it did", func(t *testing.T) {
+			assert.Contains(t, out.String(), "installed")
+		})
+
+		t.Run("and it is run again with --remove", func(t *testing.T) {
+			var out bytes.Buffer
+			code := run([]string{"install-hooks", "--home", home, "--remove"}, &out)
+
+			t.Run("it should exit zero", func(t *testing.T) {
+				assert.Equal(t, 0, code)
+			})
+
+			t.Run("it should take the hooks out again", func(t *testing.T) {
+				data, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+				require.NoError(t, err)
+				assert.NotContains(t, string(data), "botropolis-hook")
+			})
+		})
+	})
+
+	t.Run("when invoked with install-hooks --dry-run", func(t *testing.T) {
+		home := t.TempDir()
+		var out bytes.Buffer
+		code := run([]string{"install-hooks", "--home", home, "--dry-run"}, &out)
+
+		t.Run("it should exit zero", func(t *testing.T) {
+			assert.Equal(t, 0, code)
+		})
+
+		t.Run("it should print the block", func(t *testing.T) {
+			assert.Contains(t, out.String(), `"PreToolUse"`)
+		})
+
+		t.Run("it should write nothing", func(t *testing.T) {
+			_, err := os.Stat(filepath.Join(home, ".claude", "settings.json"))
+			assert.True(t, os.IsNotExist(err))
+		})
+	})
+
 	t.Run("when invoked with status against an empty home", func(t *testing.T) {
 		var out bytes.Buffer
 		code := run([]string{"status", "--home", t.TempDir()}, &out)
