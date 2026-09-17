@@ -1,6 +1,9 @@
 package claude_test
 
 import (
+	"bufio"
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -40,8 +43,50 @@ func TestReadTranscriptFromFixture(t *testing.T) {
 					t.Run("it should read a model", func(t *testing.T) {
 						assert.NotEmpty(t, transcript.Model)
 					})
+
+					t.Run("it should count at least one api message", func(t *testing.T) {
+						assert.Positive(t, transcript.Usage.Messages)
+					})
+
+					t.Run("it should count one message per distinct api message id", func(t *testing.T) {
+						assert.Equal(t, countDistinctMessageIDs(t, path), transcript.Usage.Messages)
+					})
+
+					t.Run("it should report a context size", func(t *testing.T) {
+						assert.Positive(t, transcript.ContextTokens)
+					})
+
+					t.Run("it should report a last timestamp no earlier than the first", func(t *testing.T) {
+						assert.False(t, transcript.LastAt.Before(transcript.FirstAt))
+					})
 				}
 			})
 		}
 	})
+}
+
+func countDistinctMessageIDs(t *testing.T, path string) int {
+	t.Helper()
+	f, err := os.Open(path)
+	require.NoError(t, err)
+	defer func() { _ = f.Close() }()
+
+	seen := map[string]bool{}
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(nil, 64<<20)
+	for scanner.Scan() {
+		var rec struct {
+			Type    string `json:"type"`
+			Message struct {
+				ID    string          `json:"id"`
+				Usage json.RawMessage `json:"usage"`
+			} `json:"message"`
+		}
+		if json.Unmarshal(scanner.Bytes(), &rec) != nil || rec.Type != "assistant" || len(rec.Message.Usage) == 0 {
+			continue
+		}
+		seen[rec.Message.ID] = true
+	}
+	require.NoError(t, scanner.Err())
+	return len(seen)
 }

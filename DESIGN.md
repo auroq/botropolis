@@ -181,5 +181,10 @@ Each milestone ends with tests green, `make lint` and `make format` clean, and a
 
 - Should a session that was started the old way (foreground `claude`) get a "convert to background" affordance,
   or is "parked when you quit, resumed in the background when you click" enough?
-- Where does cost live: derived from public per-model pricing, or left as tokens only?
+- ~~Where does cost live: derived from public per-model pricing, or left as tokens only?~~
+  Settled 2026-09-17: the CLI writes `cost-state` records into the transcript with `totalCostUSD`
+  and a per-model token and cost breakdown,
+  so the read model takes the last one as-is and never prices tokens itself.
+  Note that one API message is written as several `assistant` records (one per content block, `apiBlockIndex`)
+  that repeat the same `usage`, so token totals must be deduplicated by `message.id`.
 - How much of `teams/` and `tasks/` is worth drawing in the first pass?

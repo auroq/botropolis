@@ -4,38 +4,114 @@ import (
 	"bufio"
 	"encoding/json"
 	"os"
+	"time"
 )
 
 const maxTranscriptLine = 64 << 20
 
+type Usage struct {
+	Input       int64
+	Output      int64
+	CacheRead   int64
+	CacheCreate int64
+	Thinking    int64
+	Messages    int
+}
+
+func (u Usage) Add(other Usage) Usage {
+	return Usage{
+		Input:       u.Input + other.Input,
+		Output:      u.Output + other.Output,
+		CacheRead:   u.CacheRead + other.CacheRead,
+		CacheCreate: u.CacheCreate + other.CacheCreate,
+		Thinking:    u.Thinking + other.Thinking,
+		Messages:    u.Messages + other.Messages,
+	}
+}
+
+func (u Usage) Context() int64 {
+	return u.Input + u.CacheRead + u.CacheCreate
+}
+
+type ModelCost struct {
+	Usage Usage
+	USD   float64
+}
+
+type Cost struct {
+	TotalUSD float64
+	Models   map[string]ModelCost
+}
+
 type Transcript struct {
-	Path         string
-	Project      string
-	SessionID    string
-	CWD          string
-	Branch       string
-	Version      string
-	Entrypoint   string
-	Title        string
-	Model        string
-	Effort       string
-	IsBridgeStub bool
-	Malformed    int
+	Path          string
+	Project       string
+	SessionID     string
+	CWD           string
+	Branch        string
+	Version       string
+	Entrypoint    string
+	Title         string
+	Model         string
+	Effort        string
+	Usage         Usage
+	ContextTokens int64
+	Cost          Cost
+	FirstAt       time.Time
+	LastAt        time.Time
+	IsBridgeStub  bool
+	Malformed     int
+}
+
+type usageJSON struct {
+	Input       int64 `json:"input_tokens"`
+	Output      int64 `json:"output_tokens"`
+	CacheRead   int64 `json:"cache_read_input_tokens"`
+	CacheCreate int64 `json:"cache_creation_input_tokens"`
+	Details     struct {
+		Thinking int64 `json:"thinking_tokens"`
+	} `json:"output_tokens_details"`
+}
+
+func (u usageJSON) usage() Usage {
+	return Usage{
+		Input:       u.Input,
+		Output:      u.Output,
+		CacheRead:   u.CacheRead,
+		CacheCreate: u.CacheCreate,
+		Thinking:    u.Details.Thinking,
+		Messages:    1,
+	}
+}
+
+type modelUsageJSON struct {
+	Input       int64   `json:"inputTokens"`
+	Output      int64   `json:"outputTokens"`
+	Thinking    int64   `json:"thinkingTokens"`
+	CacheRead   int64   `json:"cacheReadInputTokens"`
+	CacheCreate int64   `json:"cacheCreationInputTokens"`
+	CostUSD     float64 `json:"costUSD"`
 }
 
 type transcriptLineJSON struct {
-	Type        string `json:"type"`
-	SessionID   string `json:"sessionId"`
-	CWD         string `json:"cwd"`
-	GitBranch   string `json:"gitBranch"`
-	Version     string `json:"version"`
-	Entrypoint  string `json:"entrypoint"`
-	Effort      string `json:"effort"`
-	AITitle     string `json:"aiTitle"`
-	CustomTitle string `json:"customTitle"`
-	Summary     string `json:"summary"`
-	Message     struct {
-		Model string `json:"model"`
+	Type         string                    `json:"type"`
+	SessionID    string                    `json:"sessionId"`
+	CWD          string                    `json:"cwd"`
+	GitBranch    string                    `json:"gitBranch"`
+	Version      string                    `json:"version"`
+	Entrypoint   string                    `json:"entrypoint"`
+	Effort       string                    `json:"effort"`
+	AITitle      string                    `json:"aiTitle"`
+	CustomTitle  string                    `json:"customTitle"`
+	Summary      string                    `json:"summary"`
+	Timestamp    string                    `json:"timestamp"`
+	IsSidechain  bool                      `json:"isSidechain"`
+	TotalCostUSD float64                   `json:"totalCostUSD"`
+	ModelUsage   map[string]modelUsageJSON `json:"modelUsage"`
+	Message      struct {
+		ID    string     `json:"id"`
+		Model string     `json:"model"`
+		Usage *usageJSON `json:"usage"`
 	} `json:"message"`
 }
 
@@ -48,6 +124,14 @@ const (
 	titleCustom
 )
 
+type transcriptScan struct {
+	transcript    Transcript
+	rank          titleRank
+	records       int
+	bridgeRecords int
+	seenMessages  map[string]bool
+}
+
 func ReadTranscript(path string) (Transcript, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -55,10 +139,7 @@ func ReadTranscript(path string) (Transcript, error) {
 	}
 	defer func() { _ = f.Close() }()
 
-	transcript := Transcript{Path: path}
-	rank := titleNone
-	records, bridgeRecords := 0, 0
-
+	scan := transcriptScan{transcript: Transcript{Path: path}, seenMessages: map[string]bool{}}
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(nil, maxTranscriptLine)
 	for scanner.Scan() {
@@ -68,46 +149,97 @@ func ReadTranscript(path string) (Transcript, error) {
 		}
 		var rec transcriptLineJSON
 		if err := json.Unmarshal(line, &rec); err != nil {
-			transcript.Malformed++
+			scan.transcript.Malformed++
 			continue
 		}
-		records++
-		if rec.Type == "bridge-session" {
-			bridgeRecords++
-		}
-		if transcript.SessionID == "" {
-			transcript.SessionID = rec.SessionID
-		}
-		if transcript.CWD == "" {
-			transcript.CWD = rec.CWD
-		}
-		if transcript.Entrypoint == "" {
-			transcript.Entrypoint = rec.Entrypoint
-		}
-		if rec.GitBranch != "" && rec.GitBranch != "HEAD" {
-			transcript.Branch = rec.GitBranch
-		}
-		if rec.Version != "" {
-			transcript.Version = rec.Version
-		}
-		if rec.Type == "assistant" {
-			if rec.Message.Model != "" {
-				transcript.Model = rec.Message.Model
-			}
-			if rec.Effort != "" {
-				transcript.Effort = rec.Effort
-			}
-		}
-		rank = applyTitle(&transcript, rank, rec)
+		scan.apply(rec)
 	}
 	if err := scanner.Err(); err != nil {
-		return transcript, err
+		return scan.transcript, err
 	}
-	transcript.IsBridgeStub = records > 0 && bridgeRecords == records
-	return transcript, nil
+	scan.transcript.IsBridgeStub = scan.records > 0 && scan.bridgeRecords == scan.records
+	return scan.transcript, nil
 }
 
-func applyTitle(transcript *Transcript, current titleRank, rec transcriptLineJSON) titleRank {
+func (s *transcriptScan) apply(rec transcriptLineJSON) {
+	t := &s.transcript
+	s.records++
+	if rec.Type == "bridge-session" {
+		s.bridgeRecords++
+	}
+	if t.SessionID == "" {
+		t.SessionID = rec.SessionID
+	}
+	if t.CWD == "" {
+		t.CWD = rec.CWD
+	}
+	if t.Entrypoint == "" {
+		t.Entrypoint = rec.Entrypoint
+	}
+	if rec.GitBranch != "" && rec.GitBranch != "HEAD" {
+		t.Branch = rec.GitBranch
+	}
+	if rec.Version != "" {
+		t.Version = rec.Version
+	}
+	if ts, err := time.Parse(time.RFC3339Nano, rec.Timestamp); err == nil {
+		if t.FirstAt.IsZero() {
+			t.FirstAt = ts
+		}
+		t.LastAt = ts
+	}
+	switch rec.Type {
+	case "assistant":
+		s.applyAssistant(rec)
+	case "cost-state":
+		s.applyCost(rec)
+	default:
+		s.applyTitle(rec)
+	}
+}
+
+func (s *transcriptScan) applyAssistant(rec transcriptLineJSON) {
+	t := &s.transcript
+	if rec.Message.Model != "" {
+		t.Model = rec.Message.Model
+	}
+	if rec.Effort != "" {
+		t.Effort = rec.Effort
+	}
+	if rec.Message.Usage == nil {
+		return
+	}
+	usage := rec.Message.Usage.usage()
+	if !rec.IsSidechain {
+		t.ContextTokens = usage.Context()
+	}
+	if id := rec.Message.ID; id != "" {
+		if s.seenMessages[id] {
+			return
+		}
+		s.seenMessages[id] = true
+	}
+	t.Usage = t.Usage.Add(usage)
+}
+
+func (s *transcriptScan) applyCost(rec transcriptLineJSON) {
+	cost := Cost{TotalUSD: rec.TotalCostUSD, Models: map[string]ModelCost{}}
+	for model, mu := range rec.ModelUsage {
+		cost.Models[model] = ModelCost{
+			USD: mu.CostUSD,
+			Usage: Usage{
+				Input:       mu.Input,
+				Output:      mu.Output,
+				CacheRead:   mu.CacheRead,
+				CacheCreate: mu.CacheCreate,
+				Thinking:    mu.Thinking,
+			},
+		}
+	}
+	s.transcript.Cost = cost
+}
+
+func (s *transcriptScan) applyTitle(rec transcriptLineJSON) {
 	var candidate titleRank
 	var title string
 	switch rec.Type {
@@ -118,11 +250,11 @@ func applyTitle(transcript *Transcript, current titleRank, rec transcriptLineJSO
 	case "summary":
 		candidate, title = titleSummary, rec.Summary
 	default:
-		return current
+		return
 	}
-	if title == "" || candidate < current {
-		return current
+	if title == "" || candidate < s.rank {
+		return
 	}
-	transcript.Title = title
-	return candidate
+	s.transcript.Title = title
+	s.rank = candidate
 }
