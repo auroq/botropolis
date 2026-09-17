@@ -195,6 +195,12 @@ Each milestone ends with tests green, `make lint` and `make format` clean, and a
   Note that one API message is written as several `assistant` records (one per content block, `apiBlockIndex`)
   that repeat the same `usage`, so token totals must be deduplicated by `message.id`.
 - How much of `teams/` and `tasks/` is worth drawing in the first pass?
+- Sprites: the milestone 5 plan says Kenney CC0 city and isometric packs.
+  Milestone 5 shipped procedural shapes instead (roofs, lit window grids, flags, smoke, towers, a pulsing plant)
+  because vendoring tens of megabytes of third-party assets into the repo is Aria's call, not the agent's,
+  and the license text should be checked and committed alongside them.
+  When that call is made, `pkg/render` is the only package that changes.
+- Parked sessions are catalogued now (milestone 5); the note below records how that was decided.
 - Where do parked sessions come from?
   The incremental loader (milestone 2) reads a transcript only when a live record points at it,
   so the daemon's snapshot holds live sessions only and the city has no boarded-up buildings yet.

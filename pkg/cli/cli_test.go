@@ -74,6 +74,21 @@ func (f *fakeSessions) Prune(_ context.Context, _ state.Snapshot, olderThan time
 	return []commands.Pruned{{ID: "11111111", Title: "old job"}}, nil
 }
 
+type fakeBar struct {
+	calls []string
+}
+
+func (f *fakeBar) Once(out io.Writer, format commands.BarFormat, direct bool) error {
+	f.calls = append(f.calls, fmt.Sprintf("once %s direct=%v", format, direct))
+	_, _ = io.WriteString(out, "LINE\n")
+	return nil
+}
+
+func (f *fakeBar) Watch(_ context.Context, out io.Writer, format commands.BarFormat) {
+	f.calls = append(f.calls, fmt.Sprintf("watch %s", format))
+	_, _ = io.WriteString(out, "LINE\nLINE\n")
+}
+
 type fakeCity struct{ runs int }
 
 func (f *fakeCity) Run(*cobra.Command) error { f.runs++; return nil }
@@ -83,6 +98,7 @@ type harness struct {
 	hooks    *fakeHooks
 	sessions *fakeSessions
 	city     *fakeCity
+	bar      *fakeBar
 	seen     *config.Config
 	out      bytes.Buffer
 	root     *cobra.Command
@@ -92,12 +108,13 @@ func (h *harness) Status(cfg *config.Config) cli.StatusRunner     { h.seen = cfg
 func (h *harness) Hooks(cfg *config.Config) cli.HooksRunner       { h.seen = cfg; return h.hooks }
 func (h *harness) Sessions(cfg *config.Config) cli.SessionsRunner { h.seen = cfg; return h.sessions }
 func (h *harness) City(cfg *config.Config) cli.CityRunner         { h.seen = cfg; return h.city }
+func (h *harness) Bar(cfg *config.Config) cli.BarRunner           { h.seen = cfg; return h.bar }
 
 func newHarness(cfg *config.Config) *harness {
-	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}}
+	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}, bar: &fakeBar{}}
 	load := func() (*config.Config, error) { return cfg, nil }
 	v := config.NewViper()
-	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h)},
+	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h), cli.NewBarCLI(load, h)},
 		cli.NewSessionCLIs(load, h)...)
 	h.root = cli.NewRootCLI(v, subs...)
 	h.root.SetOut(&h.out)
@@ -310,6 +327,44 @@ func TestSessionCLIs(t *testing.T) {
 
 		t.Run("it should return the error", func(t *testing.T) {
 			assert.ErrorContains(t, h.run("stop", "0898d7e4"), "boom")
+		})
+	})
+}
+
+func TestBarCLI(t *testing.T) {
+	t.Run("when run with defaults", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("bar"))
+
+		t.Run("it should print one waybar line via the daemon", func(t *testing.T) {
+			assert.Equal(t, []string{"once waybar direct=false"}, h.bar.calls)
+			assert.Equal(t, "LINE\n", h.out.String())
+		})
+	})
+
+	t.Run("when run with --format text --watch", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("bar", "--format", "text", "--watch"))
+
+		t.Run("it should stream text lines", func(t *testing.T) {
+			assert.Equal(t, []string{"watch text"}, h.bar.calls)
+		})
+	})
+
+	t.Run("when run with an unknown format", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+
+		t.Run("it should fail", func(t *testing.T) {
+			assert.Error(t, h.run("bar", "--format", "xml"))
+		})
+	})
+
+	t.Run("when home is set explicitly without a socket", func(t *testing.T) {
+		h := newHarness(&config.Config{HomeSet: true})
+		require.NoError(t, h.run("bar"))
+
+		t.Run("it should scan directly", func(t *testing.T) {
+			assert.Equal(t, []string{"once waybar direct=true"}, h.bar.calls)
 		})
 	})
 }

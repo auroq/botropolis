@@ -27,6 +27,7 @@ type cliParams struct {
 	Hooks    *cobra.Command   `name:"installHooks"`
 	Sessions []*cobra.Command `name:"sessions"`
 	City     *cobra.Command   `name:"city"`
+	Bar      *cobra.Command   `name:"bar"`
 }
 
 var Module = fx.Module("botropolis",
@@ -34,13 +35,14 @@ var Module = fx.Module("botropolis",
 		config.NewViper,
 		newLoader,
 		newProbes,
-		fx.Annotate(newServices, fx.As(new(cli.Services)), fx.As(new(cli.CityServices))),
+		fx.Annotate(newServices, fx.As(new(cli.Services)), fx.As(new(cli.CityServices)), fx.As(new(cli.BarServices))),
 		fx.Annotate(cli.NewStatusCLI, fx.ResultTags(`name:"status"`)),
 		fx.Annotate(cli.NewInstallHooksCLI, fx.ResultTags(`name:"installHooks"`)),
 		fx.Annotate(cli.NewSessionCLIs, fx.ResultTags(`name:"sessions"`)),
 		fx.Annotate(cli.NewCityCLI, fx.ResultTags(`name:"city"`)),
+		fx.Annotate(cli.NewBarCLI, fx.ResultTags(`name:"bar"`)),
 		func(p cliParams) *cobra.Command {
-			subs := append([]*cobra.Command{p.Status, p.Hooks, p.City}, p.Sessions...)
+			subs := append([]*cobra.Command{p.Status, p.Hooks, p.City, p.Bar}, p.Sessions...)
 			return cli.NewRootCLI(p.Viper, subs...)
 		},
 	),
@@ -93,6 +95,18 @@ func (s *services) Hooks(cfg *config.Config) cli.HooksRunner {
 
 func (s *services) Sessions(cfg *config.Config) cli.SessionsRunner {
 	return commands.NewSessions(cfg.Home, control.Default(cfg.Terminal))
+}
+
+func (s *services) source(cfg *config.Config) commands.DaemonOrDirect {
+	return commands.DaemonOrDirect{
+		Home: cfg.Home, Socket: cfg.Socket, Probes: s.probes, ParkedMaxAge: parkedMaxAge(cfg), Now: time.Now, Notice: os.Stderr,
+	}
+}
+
+func (s *services) Bar(cfg *config.Config) cli.BarRunner {
+	source := s.source(cfg)
+	feed := commands.Feed{Socket: cfg.Socket, Source: source, Poll: 2 * time.Second, Retry: 5 * time.Second}
+	return commands.NewBar(source, feed.Run)
 }
 
 func (s *services) City(cfg *config.Config) cli.CityRunner {
