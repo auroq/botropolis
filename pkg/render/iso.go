@@ -511,11 +511,11 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		}
 	}
 	if labels {
-		g.isoLandmarkLabels(screen, cam, c)
+		g.isoLandmarkLabels(screen, cam, c, hover)
 	}
 }
 
-func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city.City) {
+func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city.City, hover city.Hit) {
 	above := func(r city.Rect, s string) {
 		top, _ := footprint(cam, r)
 		g.floorLabel(screen, city.Point{X: top.X - float64(len(s))*charWidth/2, Y: top.Y - lineHeight - 40*cam.Zoom}, s, colorDim)
@@ -524,8 +524,13 @@ func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city
 		above(c.Plant.Rect, "power plant")
 	}
 	// Towers run down the diagonal, so their names hang off each one's
-	// left corner and stagger with it instead of piling up.
+	// left corner and stagger with it instead of piling up; below the
+	// detail zoom the stagger is shorter than a line, so only a hovered
+	// tower is named.
 	for _, t := range c.Towers {
+		if !g.scene.Detailed() && hover.Tower != t {
+			continue
+		}
 		top, w := footprint(cam, t.Rect)
 		name := t.Server.Name
 		g.floorLabel(screen, city.Point{X: top.X - w/2 - float64(len(name))*charWidth - 8, Y: top.Y + w/4 - lineHeight/2}, name, colorDim)
