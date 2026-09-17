@@ -12,13 +12,20 @@ import (
 	"time"
 )
 
+// World units are pixels at zoom 1; every size is a whole number of 16 px
+// tiles so sprites land on tile boundaries at integer zooms.
 const (
-	BuildingSize       = 56.0
-	BuildingGap        = 16.0
-	DistrictPadding    = 28.0
-	DistrictGap        = 48.0
+	Tile               = 16.0
+	BuildingSize       = 3 * Tile
+	BuildingGap        = Tile
+	ParkedSize         = 2 * Tile
+	ParkedGap          = Tile / 2
+	YardGap            = Tile
+	DistrictPadding    = 2 * Tile
+	DistrictGap        = 4 * Tile
 	districtColumns    = 3
 	minBuildingColumns = 3
+	minYardColumns     = 3
 	worktreeSegment    = ".claude/worktrees"
 )
 
@@ -40,6 +47,7 @@ type District struct {
 	Root      string
 	slot      int
 	columns   int
+	size      Point
 	Rect      Rect
 	Buildings []*Building
 	roads     []roadNote
@@ -146,21 +154,80 @@ func buildDistrict(root string, sessions []state.Session, layout *Layout) *Distr
 		}
 		return sessions[i].ID < sessions[j].ID
 	})
-	slots := layout.Slots(root, sessions)
-	highest := 0
+	var live, parked []state.Session
+	for _, s := range sessions {
+		if s.State == state.Parked {
+			parked = append(parked, s)
+		} else {
+			live = append(live, s)
+		}
+	}
+	slots := layout.Slots(root, live, parked)
+	yard := layout.YardSlots(root, parked, live)
+
+	liveWidth, liveHeight := 0.0, 0.0
+	if len(live) > 0 {
+		district.columns = buildingColumns(maxOf(slots) + 1)
+		used := min(maxOf(slots)+1, district.columns)
+		rows := math.Ceil(float64(maxOf(slots)+1) / float64(district.columns))
+		liveWidth = pitch(used, BuildingSize, BuildingGap)
+		liveHeight = pitch(int(rows), BuildingSize, BuildingGap)
+	}
+	yardColumns := yardColumnsFor(district.columns, maxOf(yard)+1)
+	yardWidth, yardHeight := 0.0, 0.0
+	yardTop := DistrictPadding + liveHeight
+	if len(parked) > 0 {
+		used := min(maxOf(yard)+1, yardColumns)
+		rows := math.Ceil(float64(maxOf(yard)+1) / float64(yardColumns))
+		yardWidth = pitch(used, ParkedSize, ParkedGap)
+		yardHeight = pitch(int(rows), ParkedSize, ParkedGap)
+		if liveHeight > 0 {
+			yardTop += YardGap
+		}
+	}
+	district.size = Point{
+		X: 2*DistrictPadding + math.Max(liveWidth, yardWidth),
+		Y: yardTop + yardHeight + DistrictPadding,
+	}
+	if liveHeight > 0 && yardHeight == 0 {
+		district.size.Y = 2*DistrictPadding + liveHeight
+	}
+	for _, s := range live {
+		column, row := slots[s.ID]%district.columns, slots[s.ID]/district.columns
+		at := Point{X: DistrictPadding + float64(column)*(BuildingSize+BuildingGap), Y: DistrictPadding + float64(row)*(BuildingSize+BuildingGap)}
+		district.Buildings = append(district.Buildings, newBuilding(s, slots[s.ID], at, BuildingSize))
+	}
+	for _, s := range parked {
+		column, row := yard[s.ID]%yardColumns, yard[s.ID]/yardColumns
+		at := Point{X: DistrictPadding + float64(column)*(ParkedSize+ParkedGap), Y: yardTop + float64(row)*(ParkedSize+ParkedGap)}
+		district.Buildings = append(district.Buildings, newBuilding(s, yard[s.ID], at, ParkedSize))
+	}
+	sort.Slice(district.Buildings, func(i, j int) bool {
+		a, b := district.Buildings[i], district.Buildings[j]
+		if a.BoardedUp != b.BoardedUp {
+			return !a.BoardedUp
+		}
+		return a.slot < b.slot
+	})
+	return district
+}
+
+// pitch is the span of n cells of the given size with gaps between them.
+func pitch(n int, size, gap float64) float64 {
+	if n <= 0 {
+		return 0
+	}
+	return float64(n)*size + float64(n-1)*gap
+}
+
+func maxOf(slots map[string]int) int {
+	highest := -1
 	for _, slot := range slots {
 		if slot > highest {
 			highest = slot
 		}
 	}
-	district.columns = buildingColumns(highest + 1)
-	for _, s := range sessions {
-		district.Buildings = append(district.Buildings, newBuilding(s, slots[s.ID], district.columns))
-	}
-	sort.Slice(district.Buildings, func(i, j int) bool {
-		return slots[district.Buildings[i].Session.ID] < slots[district.Buildings[j].Session.ID]
-	})
-	return district
+	return highest
 }
 
 func buildingColumns(slots int) int {
@@ -171,16 +238,24 @@ func buildingColumns(slots int) int {
 	return columns
 }
 
-func newBuilding(s state.Session, slot, columns int) *Building {
-	column, row := slot%columns, slot/columns
-	local := RectAt(
-		DistrictPadding+float64(column)*(BuildingSize+BuildingGap),
-		DistrictPadding+float64(row)*(BuildingSize+BuildingGap),
-		BuildingSize, BuildingSize)
+// yardColumnsFor packs parked lots under the live grid: as many as fit in
+// the live grid's width, or a square-ish grid when there is no live grid.
+func yardColumnsFor(liveColumns, lots int) int {
+	if liveColumns > 0 {
+		return max(1, int(math.Floor((pitch(liveColumns, BuildingSize, BuildingGap)+ParkedGap)/(ParkedSize+ParkedGap))))
+	}
+	columns := int(math.Ceil(math.Sqrt(float64(lots))))
+	if columns < minYardColumns {
+		columns = minYardColumns
+	}
+	return columns
+}
+
+func newBuilding(s state.Session, slot int, at Point, size float64) *Building {
 	return &Building{
 		Session:   s,
 		slot:      slot,
-		Rect:      local,
+		Rect:      RectAt(at.X, at.Y, size, size),
 		Fill:      math.Min(1, s.ContextPercent/100),
 		Cranes:    s.SubagentsInFlight,
 		Flags:     len(s.PRs),

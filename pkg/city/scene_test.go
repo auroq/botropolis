@@ -163,6 +163,7 @@ func TestScene(t *testing.T) {
 
 	t.Run("when the wheel is turned away from the user", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))
+		s.Camera().Zoom = 1
 		before := s.Camera().Zoom
 		s.Wheel(city.Point{X: 400, Y: 300}, -1)
 
@@ -256,6 +257,83 @@ func TestScene(t *testing.T) {
 			centre := s.Camera().WorldToScreen(s.City().Bounds().Center())
 			assert.InDelta(t, (1024-city.LibraryLabelWidth)/2, centre.X, 1e-6)
 			assert.InDelta(t, city.LabelHeight+(768-city.LabelHeight-city.FitFooter)/2, centre.Y, 1e-6)
+		})
+	})
+}
+
+func TestSceneDetail(t *testing.T) {
+	s := scene(t, session("a", cinders, state.Working))
+
+	t.Run("when the camera is below the detail zoom", func(t *testing.T) {
+		s.Camera().Zoom = city.DetailZoom / 2
+
+		t.Run("it should show the map view", func(t *testing.T) {
+			assert.False(t, s.Detailed())
+		})
+
+		t.Run("it should hide building titles", func(t *testing.T) {
+			assert.False(t, s.TitlesVisible())
+		})
+	})
+
+	t.Run("when the camera is at the title zoom", func(t *testing.T) {
+		s.Camera().Zoom = city.TitleZoom
+
+		t.Run("it should show sprites and titles", func(t *testing.T) {
+			assert.True(t, s.Detailed())
+			assert.True(t, s.TitlesVisible())
+		})
+	})
+
+	t.Run("when a district is narrower on screen than its label needs", func(t *testing.T) {
+		d := s.City().Districts[0]
+		s.Camera().Zoom = (city.DistrictLabelMinWidth - 1) / d.Rect.Width()
+
+		t.Run("it should hide the district's name", func(t *testing.T) {
+			assert.False(t, s.DistrictLabelVisible(d))
+		})
+
+		t.Run("and it is zoomed in a little", func(t *testing.T) {
+			s.Camera().Zoom = city.DistrictLabelMinWidth / d.Rect.Width()
+
+			t.Run("it should show the name", func(t *testing.T) {
+				assert.True(t, s.DistrictLabelVisible(d))
+			})
+		})
+	})
+}
+
+func TestMinimap(t *testing.T) {
+	t.Run("when the city is projected into a box", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		box := city.RectAt(600, 500, 160, 96)
+		m := s.Minimap(box)
+		bounds := s.City().Bounds()
+
+		t.Run("it should keep the whole city inside the box", func(t *testing.T) {
+			assert.True(t, box.Contains(m.Project(bounds.Min)))
+			assert.True(t, box.Contains(m.Project(bounds.Max)))
+		})
+
+		t.Run("it should keep the city's proportions", func(t *testing.T) {
+			r := m.ProjectRect(bounds)
+			assert.InDelta(t, bounds.Width()/bounds.Height(), r.Width()/r.Height(), 1e-9)
+		})
+
+		t.Run("it should mark the fitted camera as seeing the whole city", func(t *testing.T) {
+			r := m.ProjectRect(bounds)
+			assert.LessOrEqual(t, m.View.Min.X, r.Min.X+1e-9)
+			assert.GreaterOrEqual(t, m.View.Max.X, r.Max.X-1e-9)
+		})
+	})
+
+	t.Run("when there is no city", func(t *testing.T) {
+		s := city.NewScene(city.NewLayout())
+		s.Resize(800, 600)
+		m := s.Minimap(city.RectAt(0, 0, 160, 96))
+
+		t.Run("it should have nothing to scale", func(t *testing.T) {
+			assert.Zero(t, m.Scale)
 		})
 	})
 }

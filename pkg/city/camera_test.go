@@ -27,12 +27,16 @@ func TestCamera(t *testing.T) {
 		cam.Pan(city.Point{X: -30, Y: -10})
 		cam.ZoomAt(city.Point{X: 0, Y: 0}, 2)
 
+		t.Run("it should step up the ladder", func(t *testing.T) {
+			assert.InDelta(t, 1.5, cam.Zoom, 1e-9)
+		})
+
 		t.Run("it should place a world point on the screen", func(t *testing.T) {
-			assert.Equal(t, city.Point{X: 140, Y: 180}, cam.WorldToScreen(city.Point{X: 100, Y: 100}))
+			assert.Equal(t, city.Point{X: 105, Y: 135}, cam.WorldToScreen(city.Point{X: 100, Y: 100}))
 		})
 
 		t.Run("it should take a screen point back to the world", func(t *testing.T) {
-			assert.Equal(t, city.Point{X: 100, Y: 100}, cam.ScreenToWorld(city.Point{X: 140, Y: 180}))
+			assert.Equal(t, city.Point{X: 100, Y: 100}, cam.ScreenToWorld(city.Point{X: 105, Y: 135}))
 		})
 	})
 
@@ -68,6 +72,38 @@ func TestCamera(t *testing.T) {
 
 		t.Run("it should stop at the maximum zoom", func(t *testing.T) {
 			assert.InDelta(t, city.MaxZoom, cam.Zoom, 1e-9)
+		})
+	})
+
+	t.Run("when the zoom sits between ladder steps", func(t *testing.T) {
+		cam := city.NewCamera()
+		cam.Zoom = 0.6
+
+		t.Run("and the wheel turns in", func(t *testing.T) {
+			in := *cam
+			in.ZoomAt(city.Point{}, 2)
+
+			t.Run("it should land on the next step up", func(t *testing.T) {
+				assert.InDelta(t, 0.75, in.Zoom, 1e-9)
+			})
+		})
+
+		t.Run("and the wheel turns out", func(t *testing.T) {
+			out := *cam
+			out.ZoomAt(city.Point{}, 0.5)
+
+			t.Run("it should land on the next step down", func(t *testing.T) {
+				assert.InDelta(t, 0.5, out.Zoom, 1e-9)
+			})
+		})
+	})
+
+	t.Run("when a fit falls between ladder steps", func(t *testing.T) {
+		cam := city.NewCamera()
+		cam.FitWithInsets(city.RectAt(0, 0, 1000, 1000), 1100, 1100, city.Insets{})
+
+		t.Run("it should snap down to the step below", func(t *testing.T) {
+			assert.InDelta(t, 1, cam.Zoom, 1e-9)
 		})
 	})
 

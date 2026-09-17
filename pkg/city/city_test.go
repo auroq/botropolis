@@ -417,13 +417,6 @@ func TestBuildingCardDetails(t *testing.T) {
 }
 
 func TestDistrictShape(t *testing.T) {
-	sessionsIn := func(root string, n int) []state.Session {
-		var out []state.Session
-		for i := 0; i < n; i++ {
-			out = append(out, session(fmt.Sprintf("%s-%02d", filepath.Base(root), i), root, state.Parked))
-		}
-		return out
-	}
 
 	t.Run("when a district holds fifty buildings", func(t *testing.T) {
 		c := build(t, city.NewLayout(), sessionsIn(cinders, 50)...)
@@ -455,6 +448,112 @@ func TestDistrictShape(t *testing.T) {
 
 		t.Run("it should stay one row of three", func(t *testing.T) {
 			assert.InDelta(t, city.DistrictPadding*2+city.BuildingSize, c.Districts[0].Rect.Height(), 1e-9)
+		})
+	})
+}
+
+func sessionsIn(root string, n int) []state.Session {
+	var out []state.Session
+	for i := 0; i < n; i++ {
+		out = append(out, session(fmt.Sprintf("%s-%02d", filepath.Base(root), i), root, state.Working))
+	}
+	return out
+}
+
+func TestYard(t *testing.T) {
+	parkedIn := func(cwd string, n int) []state.Session {
+		var out []state.Session
+		for i := 0; i < n; i++ {
+			out = append(out, session(fmt.Sprintf("p%02d", i), cwd, state.Parked))
+		}
+		return out
+	}
+
+	t.Run("when a district has live and parked sessions", func(t *testing.T) {
+		sessions := append(sessionsIn(cinders, 2), parkedIn(cinders, 5)...)
+		c := build(t, city.NewLayout(), sessions...)
+		d := c.Districts[0]
+		var live, parked []*city.Building
+		for _, b := range d.Buildings {
+			if b.BoardedUp {
+				parked = append(parked, b)
+			} else {
+				live = append(live, b)
+			}
+		}
+		require.Len(t, live, 2)
+		require.Len(t, parked, 5)
+
+		t.Run("it should draw parked sessions as smaller lots", func(t *testing.T) {
+			assert.InDelta(t, city.ParkedSize, parked[0].Rect.Width(), 1e-9)
+			assert.InDelta(t, city.BuildingSize, live[0].Rect.Width(), 1e-9)
+		})
+
+		t.Run("it should put the yard below the live grid", func(t *testing.T) {
+			for _, p := range parked {
+				assert.GreaterOrEqual(t, p.Rect.Min.Y, live[0].Rect.Max.Y+city.YardGap)
+			}
+		})
+
+		t.Run("it should keep the yard inside the district", func(t *testing.T) {
+			for _, p := range parked {
+				assert.True(t, d.Rect.Contains(p.Rect.Max), p.Session.ID)
+			}
+		})
+
+		t.Run("it should list live buildings first", func(t *testing.T) {
+			assert.False(t, d.Buildings[0].BoardedUp)
+		})
+	})
+
+	t.Run("when a district holds only parked sessions", func(t *testing.T) {
+		c := build(t, city.NewLayout(), parkedIn(cinders, 9)...)
+		d := c.Districts[0]
+
+		t.Run("it should pack them in a square-ish yard", func(t *testing.T) {
+			assert.InDelta(t, 2*city.DistrictPadding+3*city.ParkedSize+2*city.ParkedGap, d.Rect.Width(), 1e-9)
+			assert.InDelta(t, 2*city.DistrictPadding+3*city.ParkedSize+2*city.ParkedGap, d.Rect.Height(), 1e-9)
+		})
+	})
+
+	t.Run("when a live session parks", func(t *testing.T) {
+		layout := city.NewLayout()
+		a, b := session("a", cinders, state.Working), session("b", cinders, state.Working)
+		build(t, layout, a, b)
+		a.State = state.Parked
+		c := build(t, layout, a, b)
+		d := c.Districts[0]
+
+		t.Run("it should move to the yard", func(t *testing.T) {
+			require.Len(t, d.Buildings, 2)
+			assert.True(t, d.Buildings[1].BoardedUp)
+			assert.Greater(t, d.Buildings[1].Rect.Min.Y, d.Buildings[0].Rect.Max.Y)
+		})
+
+		t.Run("and a new session arrives", func(t *testing.T) {
+			c := build(t, layout, a, b, session("c", cinders, state.Working))
+
+			t.Run("it should take the slot the parked session freed", func(t *testing.T) {
+				for _, bld := range c.Districts[0].Buildings {
+					if bld.Session.ID == "c" {
+						assert.InDelta(t, city.DistrictPadding, bld.Rect.Min.X-c.Districts[0].Rect.Min.X, 1e-9)
+						return
+					}
+				}
+				t.Fatal("session c is not in the city")
+			})
+		})
+
+		t.Run("and it resumes", func(t *testing.T) {
+			a.State = state.Working
+			c := build(t, layout, a, b)
+
+			t.Run("it should come back to the live grid", func(t *testing.T) {
+				for _, bld := range c.Districts[0].Buildings {
+					assert.False(t, bld.BoardedUp)
+					assert.InDelta(t, city.BuildingSize, bld.Rect.Width(), 1e-9)
+				}
+			})
 		})
 	})
 }

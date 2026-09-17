@@ -19,6 +19,7 @@ const (
 type districtLayout struct {
 	Slot  int            `json:"slot"`
 	Slots map[string]int `json:"slots"`
+	Yard  map[string]int `json:"yard,omitempty"`
 }
 
 type Layout struct {
@@ -61,6 +62,9 @@ func LoadLayout(path string) (*Layout, error) {
 		if d.Slots == nil {
 			d.Slots = map[string]int{}
 		}
+		if d.Yard == nil {
+			d.Yard = map[string]int{}
+		}
 	}
 	return &layout, nil
 }
@@ -80,14 +84,36 @@ func (l *Layout) Save(path string) error {
 	return os.Rename(tmp, path)
 }
 
-func (l *Layout) Slots(root string, sessions []state.Session) map[string]int {
-	district := l.district(root)
+// Slots gives every live session a sticky slot in the district's grid. A
+// session that parks gives its slot up (it moves to the yard); one that
+// merely vanishes for a while keeps it.
+func (l *Layout) Slots(root string, live, parked []state.Session) map[string]int {
+	entry := l.district(root)
+	evict(entry.Slots, parked)
+	return assign(entry.Slots, live)
+}
+
+// YardSlots does the same for parked sessions in the district's yard; a
+// session that resumes leaves the yard.
+func (l *Layout) YardSlots(root string, parked, live []state.Session) map[string]int {
+	entry := l.district(root)
+	evict(entry.Yard, live)
+	return assign(entry.Yard, parked)
+}
+
+func evict(sticky map[string]int, sessions []state.Session) {
+	for _, s := range sessions {
+		delete(sticky, s.ID)
+	}
+}
+
+func assign(sticky map[string]int, sessions []state.Session) map[string]int {
 	slots := map[string]int{}
 	for _, s := range sessions {
-		slot, ok := district.Slots[s.ID]
+		slot, ok := sticky[s.ID]
 		if !ok {
-			slot = freeSlot(district.Slots)
-			district.Slots[s.ID] = slot
+			slot = freeSlot(sticky)
+			sticky[s.ID] = slot
 		}
 		slots[s.ID] = slot
 	}
@@ -133,9 +159,12 @@ func (l *Layout) district(root string) *districtLayout {
 		if entry.Slots == nil {
 			entry.Slots = map[string]int{}
 		}
+		if entry.Yard == nil {
+			entry.Yard = map[string]int{}
+		}
 		return entry
 	}
-	entry := &districtLayout{Slot: -1, Slots: map[string]int{}}
+	entry := &districtLayout{Slot: -1, Slots: map[string]int{}, Yard: map[string]int{}}
 	l.Districts[root] = entry
 	return entry
 }
@@ -166,40 +195,10 @@ func freeSlot(slots map[string]int) int {
 	}
 }
 
-func districtColumnsFor(d *District) int {
-	if len(d.Buildings) == 0 {
-		return 1
-	}
-	used := maxSlot(d) + 1
-	if used < d.columns {
-		return used
-	}
-	return d.columns
-}
-
 func districtWidth(d *District) float64 {
-	columns := float64(districtColumnsFor(d))
-	return 2*DistrictPadding + columns*BuildingSize + (columns-1)*BuildingGap
+	return d.size.X
 }
 
 func districtHeight(d *District) float64 {
-	columns := d.columns
-	if columns < 1 {
-		columns = 1
-	}
-	rows := math.Ceil(float64(maxSlot(d)+1) / float64(columns))
-	if rows < 1 {
-		rows = 1
-	}
-	return 2*DistrictPadding + rows*BuildingSize + (rows-1)*BuildingGap
-}
-
-func maxSlot(d *District) int {
-	highest := 0
-	for _, b := range d.Buildings {
-		if b.slot > highest {
-			highest = b.slot
-		}
-	}
-	return highest
+	return d.size.Y
 }

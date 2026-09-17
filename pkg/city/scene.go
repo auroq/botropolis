@@ -94,6 +94,67 @@ func (s *Scene) LabelsVisible() bool {
 	return s.camera.Zoom >= LabelZoom
 }
 
+const (
+	// DetailZoom is where sprites take over from the map view's flat blocks.
+	DetailZoom = 0.75
+	// TitleZoom is where each building gets its title written under it.
+	TitleZoom = 1.5
+	// DistrictLabelMinWidth is the narrowest a district may be on screen
+	// and still carry its name on the ground.
+	DistrictLabelMinWidth = 56.0
+)
+
+// Detailed reports whether the map is close enough for sprites to read.
+func (s *Scene) Detailed() bool {
+	return s.camera.Zoom >= DetailZoom
+}
+
+// TitlesVisible reports whether building titles fit under the buildings.
+func (s *Scene) TitlesVisible() bool {
+	return s.camera.Zoom >= TitleZoom
+}
+
+// DistrictLabelVisible reports whether the district is wide enough on
+// screen for its name.
+func (s *Scene) DistrictLabelVisible(d *District) bool {
+	return d.Rect.Width()*s.camera.Zoom >= DistrictLabelMinWidth
+}
+
+// Minimap projects the whole city into a screen box, with the camera's
+// viewport marked.
+type Minimap struct {
+	Box    Rect
+	Scale  float64
+	origin Point
+	bounds Rect
+	View   Rect
+}
+
+func (s *Scene) Minimap(box Rect) Minimap {
+	bounds := s.city.Bounds()
+	if bounds.Width() <= 0 || bounds.Height() <= 0 {
+		return Minimap{Box: box}
+	}
+	scale := math.Min(box.Width()/bounds.Width(), box.Height()/bounds.Height())
+	m := Minimap{Box: box, Scale: scale, bounds: bounds}
+	m.origin = Point{
+		X: box.Min.X + (box.Width()-bounds.Width()*scale)/2,
+		Y: box.Min.Y + (box.Height()-bounds.Height()*scale)/2,
+	}
+	m.View = Rect{Min: m.Project(s.camera.ScreenToWorld(Point{})), Max: m.Project(s.camera.ScreenToWorld(Point{X: s.width, Y: s.height}))}
+	return m
+}
+
+// Project maps a world point into the minimap box.
+func (m Minimap) Project(p Point) Point {
+	return m.origin.Add(p.Sub(m.bounds.Min).Scale(m.Scale))
+}
+
+// ProjectRect maps a world rect into the minimap box.
+func (m Minimap) ProjectRect(r Rect) Rect {
+	return Rect{Min: m.Project(r.Min), Max: m.Project(r.Max)}
+}
+
 // Insets reserve screen space for text that does not scale with the map.
 func (s *Scene) Insets() Insets {
 	in := Insets{Bottom: FitFooter, Top: LabelHeight}
