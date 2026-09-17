@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -72,7 +73,7 @@ func serveDaemon(t *testing.T, home string) (*daemon.Daemon, string) {
 func TestRun(t *testing.T) {
 	t.Run("when invoked with the version subcommand", func(t *testing.T) {
 		var out bytes.Buffer
-		code := run([]string{"version"}, &out)
+		code := run([]string{"version"}, &out, io.Discard)
 
 		t.Run("it should exit zero", func(t *testing.T) {
 			assert.Equal(t, 0, code)
@@ -85,7 +86,7 @@ func TestRun(t *testing.T) {
 
 	t.Run("when invoked with an unknown subcommand", func(t *testing.T) {
 		var out bytes.Buffer
-		code := run([]string{"bogus"}, &out)
+		code := run([]string{"bogus"}, &out, io.Discard)
 
 		t.Run("it should exit with usage status 2", func(t *testing.T) {
 			assert.Equal(t, 2, code)
@@ -94,7 +95,7 @@ func TestRun(t *testing.T) {
 
 	t.Run("when invoked with status against a home holding one live session", func(t *testing.T) {
 		var out bytes.Buffer
-		code := run([]string{"status", "--home", writeHome(t, os.Getpid())}, &out)
+		code := run([]string{"status", "--home", writeHome(t, os.Getpid())}, &out, io.Discard)
 		lines := bytes.Split(bytes.TrimSpace(out.Bytes()), []byte("\n"))
 
 		t.Run("it should exit zero", func(t *testing.T) {
@@ -131,7 +132,7 @@ func TestRun(t *testing.T) {
 		d, sock := serveDaemon(t, home)
 		d.Apply(claude.HookEvent{Name: claude.HookPreToolUse, SessionID: sid, ToolName: "Bash"}, time.Now())
 		var out bytes.Buffer
-		code := run([]string{"status", "--home", home, "--socket", sock}, &out)
+		code := run([]string{"status", "--home", home, "--socket", sock}, &out, io.Discard)
 		lines := bytes.Split(bytes.TrimSpace(out.Bytes()), []byte("\n"))
 
 		t.Run("it should exit zero", func(t *testing.T) {
@@ -148,12 +149,20 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("when invoked with status and no daemon is serving", func(t *testing.T) {
-		var out bytes.Buffer
-		code := run([]string{"status", "--home", writeHome(t, os.Getpid()), "--socket", filepath.Join(t.TempDir(), "none.sock")}, &out)
+		var out, errOut bytes.Buffer
+		code := run([]string{"status", "--home", writeHome(t, os.Getpid()), "--socket", filepath.Join(t.TempDir(), "none.sock")}, &out, &errOut)
 		lines := bytes.Split(bytes.TrimSpace(out.Bytes()), []byte("\n"))
 
 		t.Run("it should fall back to a direct scan", func(t *testing.T) {
 			assert.Equal(t, 0, code)
+		})
+
+		t.Run("it should say so on stderr", func(t *testing.T) {
+			assert.Contains(t, errOut.String(), "not reachable")
+		})
+
+		t.Run("it should keep stdout to the table", func(t *testing.T) {
+			assert.True(t, bytes.HasPrefix(out.Bytes(), []byte("STATE")))
 		})
 
 		t.Run("it should still print the session", func(t *testing.T) {
@@ -165,7 +174,7 @@ func TestRun(t *testing.T) {
 	t.Run("when invoked with install-hooks against a fresh home", func(t *testing.T) {
 		home := t.TempDir()
 		var out bytes.Buffer
-		code := run([]string{"install-hooks", "--home", home}, &out)
+		code := run([]string{"install-hooks", "--home", home}, &out, io.Discard)
 
 		t.Run("it should exit zero", func(t *testing.T) {
 			assert.Equal(t, 0, code)
@@ -183,7 +192,7 @@ func TestRun(t *testing.T) {
 
 		t.Run("and it is run again with --remove", func(t *testing.T) {
 			var out bytes.Buffer
-			code := run([]string{"install-hooks", "--home", home, "--remove"}, &out)
+			code := run([]string{"install-hooks", "--home", home, "--remove"}, &out, io.Discard)
 
 			t.Run("it should exit zero", func(t *testing.T) {
 				assert.Equal(t, 0, code)
@@ -200,7 +209,7 @@ func TestRun(t *testing.T) {
 	t.Run("when invoked with install-hooks --dry-run", func(t *testing.T) {
 		home := t.TempDir()
 		var out bytes.Buffer
-		code := run([]string{"install-hooks", "--home", home, "--dry-run"}, &out)
+		code := run([]string{"install-hooks", "--home", home, "--dry-run"}, &out, io.Discard)
 
 		t.Run("it should exit zero", func(t *testing.T) {
 			assert.Equal(t, 0, code)
@@ -218,7 +227,7 @@ func TestRun(t *testing.T) {
 
 	t.Run("when invoked with status against an empty home", func(t *testing.T) {
 		var out bytes.Buffer
-		code := run([]string{"status", "--home", t.TempDir()}, &out)
+		code := run([]string{"status", "--home", t.TempDir()}, &out, io.Discard)
 
 		t.Run("it should exit zero", func(t *testing.T) {
 			assert.Equal(t, 0, code)

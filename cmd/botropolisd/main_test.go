@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -129,6 +130,20 @@ func TestRun(t *testing.T) {
 			defer func() { _ = client.Close() }()
 			_, err = client.Snapshot()
 			assert.NoError(t, err)
+		})
+	})
+
+	t.Run("when the socket path is too long for a unix socket", func(t *testing.T) {
+		var out bytes.Buffer
+		sock := filepath.Join(t.TempDir(), strings.Repeat("x", 120), "botropolis.sock")
+		code := run(context.Background(), []string{"--home", t.TempDir(), "--socket", sock}, &out)
+
+		t.Run("it should exit non-zero", func(t *testing.T) {
+			assert.Equal(t, 1, code)
+		})
+
+		t.Run("it should say why", func(t *testing.T) {
+			assert.Contains(t, out.String(), "at most 107")
 		})
 	})
 

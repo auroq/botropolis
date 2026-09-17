@@ -1,0 +1,11 @@
+[Unit]
+Description=Botropolis daemon - watches ~/.claude and serves the city model
+Documentation=https://github.com/auroq/botropolis
+
+[Service]
+ExecStart=/usr/bin/botropolisd
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

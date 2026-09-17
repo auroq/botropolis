@@ -126,6 +126,31 @@ func TestInstall(t *testing.T) {
 		})
 	})
 
+	t.Run("when ours is installed under a different command", func(t *testing.T) {
+		path := settingsPath(t, existing)
+		_, err := hooks.Install(path, "/home/avesta/workspaces/github/auroq/botropolis/bin/botropolis-hook")
+		require.NoError(t, err)
+		changed, err := hooks.Install(path, "/usr/bin/botropolis-hook")
+		require.NoError(t, err)
+		settings := readSettings(t, path)
+
+		t.Run("it should report a change", func(t *testing.T) {
+			assert.True(t, changed)
+		})
+
+		t.Run("it should re-point every event at the new command", func(t *testing.T) {
+			for _, event := range hooks.Events {
+				assert.Contains(t, commandsFor(t, settings, event), "/usr/bin/botropolis-hook", event)
+			}
+		})
+
+		t.Run("it should not keep the old command anywhere", func(t *testing.T) {
+			for _, event := range hooks.Events {
+				assert.Len(t, commandsFor(t, settings, event), map[bool]int{true: 2, false: 1}[event == "PreToolUse"], event)
+			}
+		})
+	})
+
 	t.Run("when the settings file is not valid JSON", func(t *testing.T) {
 		path := settingsPath(t, `{"model":`)
 		_, err := hooks.Install(path, "botropolis-hook")

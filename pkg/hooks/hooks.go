@@ -27,10 +27,10 @@ func Install(settingsPath, command string) (bool, error) {
 		changed := false
 		for _, event := range Events {
 			entries, _ := hooksByEvent[event].([]any)
-			if hasOurs(entries) {
+			if hasOurs(entries, command) {
 				continue
 			}
-			hooksByEvent[event] = append(entries, group(command))
+			hooksByEvent[event] = append(withoutOurs(entries), group(command))
 			changed = true
 		}
 		settings["hooks"] = hooksByEvent
@@ -129,25 +129,29 @@ func group(command string) map[string]any {
 }
 
 func isOurs(entry any) bool {
-	g, _ := entry.(map[string]any)
-	inner, _ := g["hooks"].([]any)
-	for _, h := range inner {
-		hook, _ := h.(map[string]any)
-		command, _ := hook["command"].(string)
-		if strings.Contains(command, commandName) {
+	return ourCommand(entry) != ""
+}
+
+func hasOurs(entries []any, command string) bool {
+	for _, entry := range entries {
+		if isOurs(entry) && ourCommand(entry) == command {
 			return true
 		}
 	}
 	return false
 }
 
-func hasOurs(entries []any) bool {
-	for _, entry := range entries {
-		if isOurs(entry) {
-			return true
+func ourCommand(entry any) string {
+	g, _ := entry.(map[string]any)
+	inner, _ := g["hooks"].([]any)
+	for _, h := range inner {
+		hook, _ := h.(map[string]any)
+		command, _ := hook["command"].(string)
+		if strings.Contains(command, commandName) {
+			return command
 		}
 	}
-	return false
+	return ""
 }
 
 func withoutOurs(entries []any) []any {

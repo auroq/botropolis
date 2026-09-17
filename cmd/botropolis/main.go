@@ -21,10 +21,10 @@ const (
 )
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout))
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-func run(args []string, out io.Writer) int {
+func run(args []string, out, errOut io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprintln(out, usage)
 		return 2
@@ -34,7 +34,7 @@ func run(args []string, out io.Writer) int {
 		version.Print(out, binary)
 		return 0
 	case "status":
-		return runStatus(args[1:], out)
+		return runStatus(args[1:], out, errOut)
 	case "install-hooks":
 		return runInstallHooks(args[1:], out)
 	default:
@@ -43,7 +43,7 @@ func run(args []string, out io.Writer) int {
 	}
 }
 
-func runStatus(args []string, out io.Writer) int {
+func runStatus(args []string, out, errOut io.Writer) int {
 	flags := flag.NewFlagSet("status", flag.ContinueOnError)
 	flags.SetOutput(out)
 	home := flags.String("home", "", "home directory holding .claude (default: $HOME)")
@@ -64,7 +64,7 @@ func runStatus(args []string, out io.Writer) int {
 			return 1
 		}
 	}
-	snapshot, err := loadSnapshot(*home, *sock, *direct)
+	snapshot, err := loadSnapshot(*home, *sock, *direct, errOut)
 	if err != nil {
 		fmt.Fprintf(out, "%s: %v\n", binary, err)
 		return 1
@@ -73,16 +73,24 @@ func runStatus(args []string, out io.Writer) int {
 	return 0
 }
 
-func loadSnapshot(home, sock string, direct bool) (state.Snapshot, error) {
+func loadSnapshot(home, sock string, direct bool, errOut io.Writer) (state.Snapshot, error) {
 	if !direct {
-		if client, err := proto.Dial(sock); err == nil {
-			defer func() { _ = client.Close() }()
-			if snapshot, err := client.Snapshot(); err == nil {
-				return snapshot, nil
-			}
+		snapshot, err := fromDaemon(sock)
+		if err == nil {
+			return snapshot, nil
 		}
+		fmt.Fprintf(errOut, "%s: botropolisd not reachable at %s (%v); scanning %s directly\n", binary, sock, err, home)
 	}
 	return state.Load(home, state.Probes{Alive: state.ProcessAlive, Attached: state.UnixSocketConnected}, time.Now())
+}
+
+func fromDaemon(sock string) (state.Snapshot, error) {
+	client, err := proto.Dial(sock)
+	if err != nil {
+		return state.Snapshot{}, err
+	}
+	defer func() { _ = client.Close() }()
+	return client.Snapshot()
 }
 
 func runInstallHooks(args []string, out io.Writer) int {

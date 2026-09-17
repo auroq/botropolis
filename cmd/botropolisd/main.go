@@ -19,7 +19,10 @@ import (
 	"github.com/auroq/botropolis/pkg/version"
 )
 
-const binary = "botropolisd"
+const (
+	binary        = "botropolisd"
+	maxSocketPath = 107
+)
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -81,6 +84,9 @@ func serve(ctx context.Context, home, sock string, out io.Writer) error {
 }
 
 func listen(sock string) (net.Listener, error) {
+	if len(sock) > maxSocketPath {
+		return nil, fmt.Errorf("socket path is %d bytes; unix sockets allow at most %d: %s", len(sock), maxSocketPath, sock)
+	}
 	if err := os.MkdirAll(filepath.Dir(sock), 0o700); err != nil {
 		return nil, err
 	}
