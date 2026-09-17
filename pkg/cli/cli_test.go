@@ -93,6 +93,10 @@ type fakeNotify struct{ runs int }
 
 func (f *fakeNotify) Run(context.Context) { f.runs++ }
 
+type fakeTUI struct{ runs int }
+
+func (f *fakeTUI) Run(context.Context) error { f.runs++; return nil }
+
 type fakeCity struct{ runs int }
 
 func (f *fakeCity) Run(*cobra.Command) error { f.runs++; return nil }
@@ -104,6 +108,7 @@ type harness struct {
 	city     *fakeCity
 	bar      *fakeBar
 	notify   *fakeNotify
+	tui      *fakeTUI
 	seen     *config.Config
 	out      bytes.Buffer
 	root     *cobra.Command
@@ -115,12 +120,13 @@ func (h *harness) Sessions(cfg *config.Config) cli.SessionsRunner { h.seen = cfg
 func (h *harness) City(cfg *config.Config) cli.CityRunner         { h.seen = cfg; return h.city }
 func (h *harness) Bar(cfg *config.Config) cli.BarRunner           { h.seen = cfg; return h.bar }
 func (h *harness) Notify(cfg *config.Config) cli.NotifyRunner     { h.seen = cfg; return h.notify }
+func (h *harness) TUI(cfg *config.Config) cli.TUIRunner           { h.seen = cfg; return h.tui }
 
 func newHarness(cfg *config.Config) *harness {
-	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}, bar: &fakeBar{}, notify: &fakeNotify{}}
+	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}, bar: &fakeBar{}, notify: &fakeNotify{}, tui: &fakeTUI{}}
 	load := func() (*config.Config, error) { return cfg, nil }
 	v := config.NewViper()
-	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h), cli.NewBarCLI(load, h), cli.NewNotifyCLI(load, h)},
+	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h), cli.NewBarCLI(load, h), cli.NewNotifyCLI(load, h), cli.NewTUICLI(load, h)},
 		cli.NewSessionCLIs(load, h)...)
 	h.root = cli.NewRootCLI(v, subs...)
 	h.root.SetOut(&h.out)
@@ -158,6 +164,25 @@ func TestRootCLI(t *testing.T) {
 
 		t.Run("it should open the city too", func(t *testing.T) {
 			assert.Equal(t, 1, h.city.runs)
+		})
+	})
+
+	t.Run("when run with --tui", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("--tui"))
+
+		t.Run("it should open the terminal table instead of the city", func(t *testing.T) {
+			assert.Equal(t, 1, h.tui.runs)
+			assert.Equal(t, 0, h.city.runs)
+		})
+	})
+
+	t.Run("when run with the tui subcommand", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("tui"))
+
+		t.Run("it should open the terminal table", func(t *testing.T) {
+			assert.Equal(t, 1, h.tui.runs)
 		})
 	})
 

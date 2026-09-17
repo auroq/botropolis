@@ -21,11 +21,22 @@ func NewRootCLI(v *viper.Viper, subcommands ...*cobra.Command) *cobra.Command {
 	root.SetVersionTemplate("{{.Name}} {{.Version}}\n")
 	config.BindFlags(v, root.PersistentFlags())
 	root.AddCommand(subcommands...)
+	root.Flags().Bool("tui", false, "open the terminal table instead of the city")
+	byName := map[string]*cobra.Command{}
 	for _, sub := range subcommands {
-		if sub.Name() == "city" {
-			root.RunE = sub.RunE
-			break
+		byName[sub.Name()] = sub
+	}
+	root.RunE = func(cmd *cobra.Command, args []string) error {
+		wantTUI, _ := cmd.Flags().GetBool("tui")
+		if wantTUI {
+			if tui, ok := byName["tui"]; ok {
+				return tui.RunE(cmd, args)
+			}
 		}
+		if city, ok := byName["city"]; ok {
+			return city.RunE(cmd, args)
+		}
+		return cmd.Help()
 	}
 	return root
 }

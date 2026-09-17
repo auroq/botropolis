@@ -12,6 +12,13 @@ See [DESIGN.md](DESIGN.md) for the design and the plan, and [docs/usage-profile.
 Milestone 1: the read model.
 `botropolis status` prints one row per live session straight from `~/.claude`:
 state, project, title, branch, model, context used, fresh and cache-read tokens per hour, subagents in flight, and age.
+Milestone 6: satellites.
+`botropolis bar` prints one line for waybar (JSON) or any text bar (`--format text`, `--watch` to stream);
+`botropolis notify` (unit `botropolis-notify.service`) sends a desktop notification when a session starts needing you;
+`botropolis --tui` (or `botropolis tui`) is the live table in your terminal with attach, stop, resume and demolish keys.
+Harnesses sit behind `harness.Snapshotter`: Claude Code is the first, and a Codex CLI adapter reads `~/.codex/sessions` rollouts
+(fixture-tested only — there is no Codex on this machine yet).
+
 Milestone 5: parked sessions are catalogued from transcripts with no live record (`parked_days`, default 7) and drawn boarded up;
 the power plant sums the last 24 h of `cost-state` per model and runs lines to every lit building (fresh warm and thick, cached cool and thin);
 one radio tower per MCP server (configured or merely used) with beams to the sessions that called it;
@@ -63,11 +70,17 @@ botropolis status                           # the table, via the daemon
 
 `botropolis install-hooks --remove` takes the hook out again.
 `botropolis status --direct` skips the daemon.
-`botropolis` opens the city; `botropolis new <dir> [prompt]`, `attach <id>`, `stop <id>`, `resume <session-id>`, and `rm <id>` wrap the `claude` CLI;
+`botropolis` opens the city and `botropolis --tui` the terminal table; `botropolis new <dir> [prompt]`, `attach <id>`, `stop <id>`, `resume <session-id>`, `rm <id>` and `prune` wrap the `claude` CLI;
 `packaging/botropolis.bash` makes a plain `claude` in a shell start in the background and attach.
 
-Settings come from flags, then `BOTROPOLIS_HOME`, `BOTROPOLIS_SOCKET`, `BOTROPOLIS_TERMINAL`,
-then `~/.config/botropolis/config.{toml,yaml,json}` (`home`, `socket`, `terminal`, `hook_command`).
+Settings come from flags, then `BOTROPOLIS_HOME`, `BOTROPOLIS_SOCKET`, `BOTROPOLIS_TERMINAL`, `BOTROPOLIS_PARKED_DAYS`, `BOTROPOLIS_CODEX_HOME`,
+then `~/.config/botropolis/config.{toml,yaml,json}` (`home`, `socket`, `terminal`, `hook_command`, `parked_days`, `codex_home`).
+
+A waybar module, for example:
+
+```json
+"custom/botropolis": { "exec": "botropolis bar --watch", "return-type": "json", "on-click": "botropolis" }
+```
 
 ## Tools
 
