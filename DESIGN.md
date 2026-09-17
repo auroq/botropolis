@@ -164,6 +164,9 @@ Each milestone ends with tests green, `make lint` and `make format` clean, and a
   with the parked catalogue loaded for 184 transcripts.
   Getting there needed the daemon wiring split into `pkg/appd` so `botropolisd` no longer links Ebitengine and bubbletea through `pkg/app`,
   and a 16 MiB Go heap cap (`GOMEMLIMIT` overrides it).
+  Re-met at r48 after the city hall, file-touch roads and line cards pushed it to 21.4 MB: 18.2 MB RSS (7.9 MB anonymous, 8.5 MB file-backed).
+  The live heap after a scan is about 1 MB; the rest was scan garbage the scavenger had not returned yet,
+  so the daemon now calls `debug.FreeOSMemory` after every rescan (hook events never rescan, so the 6 ms path is untouched).
   The catalogue had pushed an unsplit r35 daemon to 36 MB.
 
 ### 3 — Control

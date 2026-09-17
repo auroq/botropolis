@@ -110,6 +110,22 @@ type Sources struct {
 	Teams       []claude.Team
 }
 
+// Doing is the tool the session is in and what it is working on, with
+// the subject shown relative to the project when it lies inside it.
+func (s Session) Doing() string {
+	if s.Tool == "" {
+		return ""
+	}
+	if s.Subject == "" {
+		return s.Tool
+	}
+	subject := s.Subject
+	if s.CWD != "" && strings.HasPrefix(subject, s.CWD+"/") {
+		subject = strings.TrimPrefix(subject, s.CWD+"/")
+	}
+	return s.Tool + " " + subject
+}
+
 type Road struct {
 	From     string `json:"from"`
 	To       string `json:"to"`

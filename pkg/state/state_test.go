@@ -618,3 +618,31 @@ func TestPowerHitRatio(t *testing.T) {
 		})
 	})
 }
+
+func TestSessionDoing(t *testing.T) {
+	cwd := "/home/avesta/workspaces/github/auroq/botropolis"
+
+	t.Run("when the tool works on a file inside the project", func(t *testing.T) {
+		t.Run("it should show the path relative to the project", func(t *testing.T) {
+			assert.Equal(t, "Edit pkg/city/city.go", state.Session{CWD: cwd, Tool: "Edit", Subject: cwd + "/pkg/city/city.go"}.Doing())
+		})
+	})
+
+	t.Run("when the tool works on something outside the project", func(t *testing.T) {
+		t.Run("it should show it as is", func(t *testing.T) {
+			assert.Equal(t, "Bash make test", state.Session{CWD: cwd, Tool: "Bash", Subject: "make test"}.Doing())
+		})
+	})
+
+	t.Run("when the tool has no subject", func(t *testing.T) {
+		t.Run("it should show the tool alone", func(t *testing.T) {
+			assert.Equal(t, "Agent", state.Session{CWD: cwd, Tool: "Agent"}.Doing())
+		})
+	})
+
+	t.Run("when no tool is running", func(t *testing.T) {
+		t.Run("it should be empty", func(t *testing.T) {
+			assert.Empty(t, state.Session{CWD: cwd, Subject: "stale"}.Doing())
+		})
+	})
+}

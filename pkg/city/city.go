@@ -261,12 +261,8 @@ func (b *Building) Card(now time.Time) Card {
 		"branch   " + s.Branch,
 		"model    " + s.Model,
 	}
-	if s.Tool != "" {
-		work := s.Tool
-		if s.Subject != "" {
-			work += " " + shortSubject(s.Subject, s.CWD)
-		}
-		lines = append(lines, "doing    "+work)
+	if doing := s.Doing(); doing != "" {
+		lines = append(lines, "doing    "+doing)
 	}
 	context := fmt.Sprintf("context  %s of %s (%s tokens)", format.Percent(s.ContextPercent), format.Tokens(float64(s.ContextWindow)), format.Tokens(float64(s.ContextTokens)))
 	if s.Compactions > 0 {
@@ -294,13 +290,6 @@ func (b *Building) Card(now time.Time) Card {
 	}
 	lines = append(lines, "age      "+format.Age(now.Sub(s.StartedAt)))
 	return Card{Title: title, Lines: lines}
-}
-
-func shortSubject(subject, cwd string) string {
-	if cwd != "" && strings.HasPrefix(subject, cwd+"/") {
-		return strings.TrimPrefix(subject, cwd+"/")
-	}
-	return subject
 }
 
 func (d *District) Card() Card {

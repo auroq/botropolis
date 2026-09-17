@@ -51,16 +51,20 @@ func LiveOnly(snapshot state.Snapshot) state.Snapshot {
 	return live
 }
 
+// DoingWidth caps the DOING column so a long command does not push the
+// rest of the row off the terminal.
+const DoingWidth = 32
+
 func Render(out io.Writer, snapshot state.Snapshot) {
 	if len(snapshot.Sessions) == 0 {
 		fmt.Fprintln(out, "no sessions")
 		return
 	}
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "STATE\tTOOL\tPROJECT\tTITLE\tBRANCH\tMODEL\tCTX\tFRESH/H\tCACHED/H\tSUBS\tAGE")
+	fmt.Fprintln(w, "STATE\tDOING\tPROJECT\tTITLE\tBRANCH\tMODEL\tCTX\tFRESH/H\tCACHED/H\tSUBS\tAGE")
 	for _, s := range snapshot.Sessions {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d/%d\t%s\n",
-			s.State, format.Dash(s.Tool), filepath.Base(s.CWD), s.Title, s.Branch, s.Model,
+			s.State, format.Dash(format.Clip(s.Doing(), DoingWidth)), filepath.Base(s.CWD), s.Title, s.Branch, s.Model,
 			format.Percent(s.ContextPercent), format.Tokens(s.FreshTokensPerHour), format.Tokens(s.CacheReadPerHour),
 			s.SubagentsInFlight, s.Subagents, format.Age(snapshot.At.Sub(s.StartedAt)))
 	}
