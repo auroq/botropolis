@@ -9,13 +9,14 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/auroq/botropolis/pkg/proto"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/pkg/version"
 )
 
 const (
 	binary = "botropolis"
-	usage  = "usage: " + binary + " <version|status> [--home DIR]"
+	usage  = "usage: " + binary + " <version|status> [--home DIR] [--socket PATH] [--direct]"
 )
 
 func main() {
@@ -43,6 +44,8 @@ func runStatus(args []string, out io.Writer) int {
 	flags := flag.NewFlagSet("status", flag.ContinueOnError)
 	flags.SetOutput(out)
 	home := flags.String("home", "", "home directory holding .claude (default: $HOME)")
+	sock := flags.String("socket", proto.SocketPath(), "daemon socket to ask first")
+	direct := flags.Bool("direct", false, "skip the daemon and scan ~/.claude directly")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -53,7 +56,7 @@ func runStatus(args []string, out io.Writer) int {
 			return 1
 		}
 	}
-	snapshot, err := state.Load(*home, state.Probes{Alive: state.ProcessAlive, Attached: state.UnixSocketConnected}, time.Now())
+	snapshot, err := loadSnapshot(*home, *sock, *direct)
 	if err != nil {
 		fmt.Fprintf(out, "%s: %v\n", binary, err)
 		return 1
@@ -62,16 +65,28 @@ func runStatus(args []string, out io.Writer) int {
 	return 0
 }
 
+func loadSnapshot(home, sock string, direct bool) (state.Snapshot, error) {
+	if !direct {
+		if client, err := proto.Dial(sock); err == nil {
+			defer func() { _ = client.Close() }()
+			if snapshot, err := client.Snapshot(); err == nil {
+				return snapshot, nil
+			}
+		}
+	}
+	return state.Load(home, state.Probes{Alive: state.ProcessAlive, Attached: state.UnixSocketConnected}, time.Now())
+}
+
 func printStatus(out io.Writer, snapshot state.Snapshot) {
 	if len(snapshot.Sessions) == 0 {
 		fmt.Fprintln(out, "no sessions")
 		return
 	}
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "STATE\tPROJECT\tTITLE\tBRANCH\tMODEL\tCTX\tFRESH/H\tCACHED/H\tSUBS\tAGE")
+	fmt.Fprintln(w, "STATE\tTOOL\tPROJECT\tTITLE\tBRANCH\tMODEL\tCTX\tFRESH/H\tCACHED/H\tSUBS\tAGE")
 	for _, s := range snapshot.Sessions {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d/%d\t%s\n",
-			s.State, filepath.Base(s.CWD), s.Title, s.Branch, s.Model,
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d/%d\t%s\n",
+			s.State, dash(s.Tool), filepath.Base(s.CWD), s.Title, s.Branch, s.Model,
 			percent(s.ContextPercent), tokens(s.FreshTokensPerHour), tokens(s.CacheReadPerHour),
 			s.SubagentsInFlight, s.Subagents, age(snapshot.At.Sub(s.StartedAt)))
 	}
@@ -79,6 +94,13 @@ func printStatus(out io.Writer, snapshot state.Snapshot) {
 	for _, skipped := range snapshot.Skipped {
 		fmt.Fprintf(out, "skipped %s\n", skipped)
 	}
+}
+
+func dash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }
 
 func percent(p float64) string {

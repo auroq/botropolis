@@ -2,12 +2,18 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
+	"github.com/auroq/botropolis/pkg/claude"
+	"github.com/auroq/botropolis/pkg/daemon"
+	"github.com/auroq/botropolis/pkg/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,6 +42,31 @@ func writeHome(t *testing.T, pid int) string {
 	require.NoError(t, os.WriteFile(filepath.Join(sessions, strconv.Itoa(pid)+".json"), []byte(fmt.Sprintf(liveRecord, pid)), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(project, sid+".jsonl"), []byte(transcriptLines), 0o600))
 	return home
+}
+
+func serveDaemon(t *testing.T, home string) (*daemon.Daemon, string) {
+	t.Helper()
+	probes := state.Probes{Alive: state.ProcessAlive, Attached: func(string) bool { return false }}
+	d := daemon.New(home, probes, time.Now)
+	require.NoError(t, d.Rescan())
+	dir, err := os.MkdirTemp("", "bt")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	sock := filepath.Join(dir, "botropolis.sock")
+	listener, err := net.Listen("unix", sock)
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = d.Serve(ctx, listener)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		_ = listener.Close()
+		<-done
+	})
+	return d, sock
 }
 
 func TestRun(t *testing.T) {
@@ -92,6 +123,42 @@ func TestRun(t *testing.T) {
 
 		t.Run("it should split fresh tokens from cache reads in the header", func(t *testing.T) {
 			assert.Regexp(t, `FRESH/H\s+CACHED/H`, string(lines[0]))
+		})
+	})
+
+	t.Run("when invoked with status and a daemon is serving", func(t *testing.T) {
+		home := writeHome(t, os.Getpid())
+		d, sock := serveDaemon(t, home)
+		d.Apply(claude.HookEvent{Name: claude.HookPreToolUse, SessionID: sid, ToolName: "Bash"}, time.Now())
+		var out bytes.Buffer
+		code := run([]string{"status", "--home", home, "--socket", sock}, &out)
+		lines := bytes.Split(bytes.TrimSpace(out.Bytes()), []byte("\n"))
+
+		t.Run("it should exit zero", func(t *testing.T) {
+			assert.Equal(t, 0, code)
+		})
+
+		t.Run("it should show what only the daemon knows", func(t *testing.T) {
+			assert.Contains(t, string(lines[1]), "Bash")
+		})
+
+		t.Run("it should show the tool column", func(t *testing.T) {
+			assert.Contains(t, string(lines[0]), "TOOL")
+		})
+	})
+
+	t.Run("when invoked with status and no daemon is serving", func(t *testing.T) {
+		var out bytes.Buffer
+		code := run([]string{"status", "--home", writeHome(t, os.Getpid()), "--socket", filepath.Join(t.TempDir(), "none.sock")}, &out)
+		lines := bytes.Split(bytes.TrimSpace(out.Bytes()), []byte("\n"))
+
+		t.Run("it should fall back to a direct scan", func(t *testing.T) {
+			assert.Equal(t, 0, code)
+		})
+
+		t.Run("it should still print the session", func(t *testing.T) {
+			require.Len(t, lines, 2)
+			assert.Contains(t, string(lines[1]), "Fix the CI queue")
 		})
 	})
 
