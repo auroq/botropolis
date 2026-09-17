@@ -12,7 +12,10 @@ See [DESIGN.md](DESIGN.md) for the design and the plan, and [docs/usage-profile.
 Milestone 1: the read model.
 `botropolis status` prints one row per live session straight from `~/.claude`:
 state, project, title, branch, model, context used, fresh and cache-read tokens per hour, subagents in flight, and age.
-No daemon, no hook, no map yet.
+Milestone 2: `botropolisd` watches `~/.claude` with inotify and serves snapshots over a unix socket;
+`botropolis-hook` forwards Claude Code hook events to it in single-digit milliseconds;
+`status` asks the daemon first and scans directly when it is down.
+No map yet.
 
 ```
 $ botropolis status
@@ -24,6 +27,20 @@ needs-you  cinders     pr-reviews-cli-migration  feat/cli-pr-review  claude-opus
 `pkg/claude` reads session records, transcripts (metadata, deduplicated usage, cost, whose turn it is), subagents,
 `stats-cache.json`, and the MCP config.
 `pkg/state` joins them by session id, probes the pid and the background job's pty socket (so an attached `claude --bg` counts as working, not unattended), and derives the state.
+
+## Running it
+
+Build the package from `~/workspaces/aur/botropolis-git` (`makepkg -f`, then `pacman -U`), or `make build` for `bin/`.
+Then:
+
+```
+systemctl --user enable --now botropolisd   # the daemon, socket at $XDG_RUNTIME_DIR/botropolis/botropolis.sock
+botropolis install-hooks                    # registers botropolis-hook in ~/.claude/settings.json (backup kept)
+botropolis status                           # the table, via the daemon
+```
+
+`botropolis install-hooks --remove` takes the hook out again.
+`botropolis status --direct` skips the daemon.
 
 ## Tools
 
