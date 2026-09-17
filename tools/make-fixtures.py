@@ -47,7 +47,7 @@ KEEP_KEYS = {
     "scope", "direction", "prRepository", "prUrl", "origin", "promptSource",
     "queueOrigin", "teamName", "cronKind", "atis", "agentSetting", "toolDenialKind",
     "procStart", "startedAt", "updatedAt", "statusUpdatedAt", "nameSince", "until",
-    "peerFeatures", "ts", "fallbackModel", "originalModel", "apiRefusalCategory",
+    "peerFeatures", "ts", "fallbackModel", "originalModel", "apiRefusalCategory", "modelId",
 }
 TOOL_PART_TYPES = {"tool_use", "server_tool_use", "mcp_tool_use"}
 FORCE_SCRUB_KEYS = {"bridgeSessionId", "pidDomain", "ownerAccountUuid", "ownerOrganizationUuid"}

@@ -96,6 +96,10 @@ func TestReadTranscriptTail(t *testing.T) {
 		t.Run("it should list the pending tool by name", func(t *testing.T) {
 			assert.Equal(t, []string{"Bash"}, transcript.Tail.PendingTools)
 		})
+
+		t.Run("it should list the pending tool's id", func(t *testing.T) {
+			assert.Equal(t, []string{"toolu_01"}, transcript.Tail.PendingToolIDs)
+		})
 	})
 
 	t.Run("when the tool result has arrived", func(t *testing.T) {

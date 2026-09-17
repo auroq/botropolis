@@ -53,6 +53,7 @@ type Transcript struct {
 	Entrypoint    string
 	Title         string
 	Model         string
+	ModelID       string
 	Effort        string
 	Usage         Usage
 	ContextTokens int64
@@ -123,7 +124,13 @@ type transcriptLineJSON struct {
 	IsMeta       bool                      `json:"isMeta"`
 	TotalCostUSD float64                   `json:"totalCostUSD"`
 	ModelUsage   map[string]modelUsageJSON `json:"modelUsage"`
-	Message      struct {
+	Attachment   struct {
+		Type     string `json:"type"`
+		Identity struct {
+			ModelID string `json:"modelId"`
+		} `json:"identity"`
+	} `json:"attachment"`
+	Message struct {
 		ID         string      `json:"id"`
 		Model      string      `json:"model"`
 		StopReason string      `json:"stop_reason"`
@@ -230,6 +237,10 @@ func (s *transcriptScan) apply(rec transcriptLineJSON) {
 		}
 	case "cost-state":
 		s.applyCost(rec)
+	case "attachment":
+		if rec.Attachment.Type == "model" && rec.Attachment.Identity.ModelID != "" {
+			t.ModelID = rec.Attachment.Identity.ModelID
+		}
 	default:
 		s.applyTitle(rec)
 	}

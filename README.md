@@ -9,8 +9,21 @@ See [DESIGN.md](DESIGN.md) for the design and the plan, and [docs/usage-profile.
 
 ## Status
 
-Milestone 0.
-The three binaries build and answer `version`; nothing else runs yet.
+Milestone 1: the read model.
+`botropolis status` prints one row per live session straight from `~/.claude`:
+state, project, title, branch, model, context used, tokens per hour, subagents in flight, and age.
+No daemon, no hook, no map yet.
+
+```
+$ botropolis status
+STATE       PROJECT     TITLE                      BRANCH              MODEL              CTX  TOK/H  SUBS  AGE
+unattended  botropolis  scaffold milestone setup   main                claude-opus-5[1m]  25%  7.8M   0/0   4h49m
+needs-you   cinders     pr-reviews-cli-migration   feat/cli-pr-review  claude-opus-5[1m]  73%  24.8M  0/4   10h00m
+```
+
+`pkg/claude` reads session records, transcripts (metadata, deduplicated usage, cost, whose turn it is), subagents,
+`stats-cache.json`, and the MCP config.
+`pkg/state` joins them by session id, probes the pid, and derives the state.
 
 ## Tools
 

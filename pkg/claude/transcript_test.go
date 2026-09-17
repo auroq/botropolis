@@ -30,6 +30,10 @@ const (
 		`"cwd":"/home/avesta/workspaces/github/mCedar/cinders","sessionId":"` + sid + `",` +
 		`"version":"2.1.273","gitBranch":"main"}`
 	aiTitleLine = `{"type":"ai-title","aiTitle":"Fix the CI queue","sessionId":"` + sid + `"}`
+	modelLine   = `{"parentUuid":"850fabd7-9367-4cbf-b301-4cc67e0e13e3","isSidechain":false,"type":"attachment",` +
+		`"attachment":{"type":"model","identity":{"modelId":"claude-opus-5[1m]","marketingName":"<scrubbed>",` +
+		`"knowledgeCutoff":"<scrubbed>"},"text":"<scrubbed>"},"uuid":"4f596ac0-3825-4f8e-9bf3-ce89f367d32c",` +
+		`"timestamp":"2026-09-16T19:50:32.300Z","sessionId":"` + sid + `"}`
 )
 
 func customTitle(title string) string {
@@ -58,7 +62,7 @@ func readTranscript(t *testing.T, lines ...string) claude.Transcript {
 
 func TestReadTranscript(t *testing.T) {
 	t.Run("when the file holds a typical transcript head", func(t *testing.T) {
-		path := writeTranscript(t, modeLine, permissionLine, bridgeLine, userLine, assistantLine, aiTitleLine)
+		path := writeTranscript(t, modeLine, permissionLine, bridgeLine, userLine, modelLine, assistantLine, aiTitleLine)
 		transcript, err := claude.ReadTranscript(path)
 		require.NoError(t, err)
 
@@ -84,6 +88,10 @@ func TestReadTranscript(t *testing.T) {
 
 		t.Run("it should read the model from the assistant message", func(t *testing.T) {
 			assert.Equal(t, "claude-opus-5", transcript.Model)
+		})
+
+		t.Run("it should read the full model id from the model attachment", func(t *testing.T) {
+			assert.Equal(t, "claude-opus-5[1m]", transcript.ModelID)
 		})
 
 		t.Run("it should read the effort from the assistant record", func(t *testing.T) {

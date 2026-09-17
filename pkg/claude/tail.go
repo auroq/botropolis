@@ -19,6 +19,7 @@ const askUserTool = "AskUserQuestion"
 type Tail struct {
 	Turn            Turn
 	PendingTools    []string
+	PendingToolIDs  []string
 	Prompts         int
 	LastPromptAt    time.Time
 	LastAssistantAt time.Time
@@ -103,6 +104,7 @@ func (s *tailScan) finish() Tail {
 	tail := s.tail
 	for _, p := range s.pending {
 		tail.PendingTools = append(tail.PendingTools, p.name)
+		tail.PendingToolIDs = append(tail.PendingToolIDs, p.id)
 	}
 	switch s.lastRole {
 	case "user":
