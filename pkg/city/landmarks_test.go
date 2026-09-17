@@ -197,7 +197,7 @@ func TestLandmarks(t *testing.T) {
 		t.Run("it should describe the plant with cost and tokens", func(t *testing.T) {
 			card := c.Plant.Card()
 			assert.Equal(t, "Power plant", card.Title)
-			assert.Contains(t, card.Lines, "cost     $12.50 in 24h")
+			assert.Contains(t, card.Lines, "cost     ~$12.50 in 24h (pro-rated)")
 			assert.Contains(t, card.Lines, "fresh    30k tokens")
 			assert.Contains(t, card.Lines, "cached   900k tokens")
 			assert.Contains(t, card.Lines, "hit rate 97% of prompt tokens from cache")

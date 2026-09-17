@@ -484,18 +484,36 @@ func Skills(sessions []Session) []Skill {
 	return out
 }
 
+// PowerSince sums the tokens spent since a moment from each transcript's
+// hourly buckets. Cost is only known for a whole session (one cost-state
+// record, no timestamp), so the window's cost is the session's cost
+// pro-rated by the window's share of its tokens: an estimate, and shown
+// as one. ByModel stays the lifetime split, for the plant's card.
 func PowerSince(transcripts []claude.Transcript, since time.Time) Power {
 	power := Power{Since: since, ByModel: map[string]claude.Usage{}}
+	sinceHour := since.Unix() / 3600
 	for _, t := range transcripts {
 		if t.LastAt.Before(since) {
 			continue
 		}
+		var window claude.Usage
+		for hour, u := range t.Hourly {
+			if hour >= sinceHour {
+				window = window.Add(u)
+			}
+		}
+		var lifetime claude.Usage
+		var lifetimeUSD float64
 		for model, cost := range t.Cost.Models {
 			power.ByModel[model] = power.ByModel[model].Add(cost.Usage)
-			power.CostUSD += cost.USD
-			power.Fresh += cost.Usage.Input + cost.Usage.Output + cost.Usage.CacheCreate
-			power.Cached += cost.Usage.CacheRead
+			lifetime = lifetime.Add(cost.Usage)
+			lifetimeUSD += cost.USD
 		}
+		if all := lifetime.Context() + lifetime.Output; all > 0 {
+			power.CostUSD += lifetimeUSD * float64(window.Context()+window.Output) / float64(all)
+		}
+		power.Fresh += window.Input + window.Output + window.CacheCreate
+		power.Cached += window.CacheRead
 	}
 	return power
 }

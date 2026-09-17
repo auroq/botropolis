@@ -401,22 +401,31 @@ func TestAggregates(t *testing.T) {
 		recent := transcript("recent", claude.TurnAwaitingUser)
 		recent.LastAt = now.Add(-time.Hour)
 		recent.Cost.Models = map[string]claude.ModelCost{
-			"claude-opus-5[1m]":         {USD: 8.65, Usage: claude.Usage{Input: 10, Output: 600, CacheRead: 5000, CacheCreate: 40}},
-			"claude-haiku-4-5-20251001": {USD: 0.01, Usage: claude.Usage{Input: 5, Output: 5}},
+			"claude-opus-5[1m]": {USD: 10, Usage: claude.Usage{Input: 100, Output: 100, CacheRead: 700, CacheCreate: 100}},
+		}
+		hour := func(d time.Duration) int64 { return now.Add(d).Unix() / 3600 }
+		recent.Hourly = map[int64]claude.Usage{
+			hour(-30 * time.Hour): {Input: 50, Output: 50, CacheRead: 350, CacheCreate: 50},
+			hour(-2 * time.Hour):  {Input: 50, Output: 50, CacheRead: 350, CacheCreate: 50},
 		}
 		power := state.PowerSince([]claude.Transcript{old, recent}, now.Add(-state.PowerWindow))
 
+		t.Run("it should count only the tokens spent inside the window", func(t *testing.T) {
+			assert.Equal(t, int64(50+50+50), power.Fresh)
+			assert.Equal(t, int64(350), power.Cached)
+		})
+
+		t.Run("it should pro-rate the session's cost by the window's share of tokens", func(t *testing.T) {
+			assert.InDelta(t, 5, power.CostUSD, 1e-9)
+		})
+
 		t.Run("it should leave out sessions older than the window", func(t *testing.T) {
-			assert.InDelta(t, 8.66, power.CostUSD, 1e-9)
+			_, hasOld := power.ByModel["claude-haiku-4-5-20251001"]
+			assert.False(t, hasOld)
 		})
 
-		t.Run("it should total tokens by model", func(t *testing.T) {
-			assert.Equal(t, int64(600), power.ByModel["claude-opus-5[1m]"].Output)
-		})
-
-		t.Run("it should split fresh from cached", func(t *testing.T) {
-			assert.Equal(t, int64(10+600+40+5+5), power.Fresh)
-			assert.Equal(t, int64(5000), power.Cached)
+		t.Run("it should keep the lifetime split by model", func(t *testing.T) {
+			assert.Equal(t, int64(100), power.ByModel["claude-opus-5[1m]"].Output)
 		})
 	})
 }

@@ -53,18 +53,21 @@ type PR struct {
 }
 
 type Transcript struct {
-	Path             string
-	Project          string
-	SessionID        string
-	CWD              string
-	Branch           string
-	Version          string
-	Entrypoint       string
-	Title            string
-	Model            string
-	ModelID          string
-	Effort           string
-	Usage            Usage
+	Path       string
+	Project    string
+	SessionID  string
+	CWD        string
+	Branch     string
+	Version    string
+	Entrypoint string
+	Title      string
+	Model      string
+	ModelID    string
+	Effort     string
+	Usage      Usage
+	// Hourly is Usage bucketed by unix hour, so a window over recent
+	// activity can be summed without rescanning.
+	Hourly           map[int64]Usage
 	ContextTokens    int64
 	MaxContext       int64
 	Cost             Cost
@@ -302,7 +305,15 @@ func (s *transcriptScan) applyAssistant(rec transcriptLineJSON, mainLine bool) {
 		s.seenMessages[id] = true
 	}
 	if rec.Message.Usage != nil {
-		t.Usage = t.Usage.Add(rec.Message.Usage.usage())
+		u := rec.Message.Usage.usage()
+		t.Usage = t.Usage.Add(u)
+		if at, ok := parseTimestamp(rec.Timestamp); ok {
+			if t.Hourly == nil {
+				t.Hourly = map[int64]Usage{}
+			}
+			hour := at.Unix() / 3600
+			t.Hourly[hour] = t.Hourly[hour].Add(u)
+		}
 	}
 	for _, block := range rec.Message.Content {
 		if block.Type != "tool_use" {

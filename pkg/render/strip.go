@@ -53,7 +53,7 @@ func stripItems(s city.Summary) []stripItem {
 		stripItem{colorChipPark, fmt.Sprintf("%d parked", s.Parked)},
 		stripItem{colorChipFresh, format.Tokens(s.FreshPerH) + "/h fresh"},
 		stripItem{colorChipCache, format.Tokens(s.CachedPerH) + "/h cached"},
-		stripItem{colorChipCost, fmt.Sprintf("$%.2f 24h", s.CostUSD)},
+		stripItem{colorChipCost, fmt.Sprintf("~$%.2f 24h", s.CostUSD)},
 		stripItem{colorChipCache, "hit " + format.Percent(100*s.HitRatio)},
 	)
 	if s.Subagents > 0 {

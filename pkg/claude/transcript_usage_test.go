@@ -83,6 +83,11 @@ func TestReadTranscriptUsage(t *testing.T) {
 		t.Run("it should remember the largest context seen", func(t *testing.T) {
 			assert.Equal(t, int64(5+66000+900), transcript.MaxContext)
 		})
+
+		t.Run("it should bucket usage by the hour it happened", func(t *testing.T) {
+			hour := time.Date(2026, time.September, 16, 19, 0, 0, 0, time.UTC).Unix() / 3600
+			assert.Equal(t, int64(725), transcript.Hourly[hour].Output)
+		})
 	})
 
 	t.Run("when the last assistant message is a sidechain", func(t *testing.T) {
