@@ -10,6 +10,7 @@ const maxTranscriptLine = 64 << 20
 
 type Transcript struct {
 	Path         string
+	Project      string
 	SessionID    string
 	CWD          string
 	Branch       string

@@ -4,3 +4,4 @@
 coverage.out
 tools/sessions.json
 testing/helpers/fixtures/
+.claude/settings.local.json
