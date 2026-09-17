@@ -12,6 +12,13 @@ See [DESIGN.md](DESIGN.md) for the design and the plan, and [docs/usage-profile.
 Milestone 1: the read model.
 `botropolis status` prints one row per live session straight from `~/.claude`:
 state, project, title, branch, model, context used, fresh and cache-read tokens per hour, subagents in flight, and age.
+Milestone 5: parked sessions are catalogued from transcripts with no live record (`parked_days`, default 7) and drawn boarded up;
+the power plant sums the last 24 h of `cost-state` per model and runs lines to every lit building (fresh warm and thick, cached cool and thin);
+one radio tower per MCP server (configured or merely used) with beams to the sessions that called it;
+the library ranks skills; buildings fly a flag per PR and smoke per API error; it is night while anything runs unattended.
+`d d` on a selected building demolishes it (`claude rm`); `botropolis prune [--older-than 168h] [--dry-run]` removes parked background jobs.
+`botropolis status --all` lists parked sessions in the table.
+
 Milestone 4: `botropolis` with no arguments (or `botropolis city`) opens the city:
 one district per project, one building per session, fill level for context used,
 orange and pulsing for needs-you, cranes for subagents in flight, boarded up for parked.

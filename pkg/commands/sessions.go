@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/auroq/botropolis/pkg/claude"
+	"github.com/auroq/botropolis/pkg/control"
+	"github.com/auroq/botropolis/pkg/state"
 )
 
 type Controller interface {
@@ -14,6 +17,53 @@ type Controller interface {
 	Stop(ctx context.Context, id string) error
 	Remove(ctx context.Context, id string) error
 	Resume(ctx context.Context, dir, sessionID string) (string, error)
+	Agents(ctx context.Context, all bool) ([]control.Agent, error)
+}
+
+type Pruned struct {
+	ID       string
+	Title    string
+	LastSeen time.Time
+}
+
+func (s *Sessions) Prune(ctx context.Context, snapshot state.Snapshot, olderThan time.Duration, now time.Time, dryRun bool) ([]Pruned, error) {
+	agents, err := s.ctl.Agents(ctx, true)
+	if err != nil {
+		return nil, err
+	}
+	byID := map[string]state.Session{}
+	for _, session := range snapshot.Sessions {
+		byID[session.ID] = session
+	}
+	cutoff := now.Add(-olderThan)
+	var pruned []Pruned
+	for _, agent := range agents {
+		if agent.Kind != "background" {
+			continue
+		}
+		session, known := byID[agent.SessionID]
+		if known && session.State != state.Parked {
+			continue
+		}
+		lastSeen := time.UnixMilli(agent.StartedAt).UTC()
+		if known && !session.LastActivity.IsZero() {
+			lastSeen = session.LastActivity
+		}
+		if !lastSeen.Before(cutoff) {
+			continue
+		}
+		title := session.Title
+		if title == "" {
+			title = agent.SessionID
+		}
+		if !dryRun {
+			if err := s.ctl.Remove(ctx, agent.ID); err != nil {
+				return pruned, err
+			}
+		}
+		pruned = append(pruned, Pruned{ID: agent.ID, Title: title, LastSeen: lastSeen})
+	}
+	return pruned, nil
 }
 
 type Sessions struct {

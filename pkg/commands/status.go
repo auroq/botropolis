@@ -24,6 +24,10 @@ func NewStatus(source SnapshotSource) *Status {
 	return &Status{source: source}
 }
 
+func (s *Status) Snapshot(direct bool) (state.Snapshot, error) {
+	return s.source.Snapshot(direct)
+}
+
 func (s *Status) Run(out io.Writer, direct, all bool) error {
 	snapshot, err := s.source.Snapshot(direct)
 	if err != nil {

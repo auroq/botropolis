@@ -2,6 +2,7 @@ package city
 
 import (
 	"math"
+	"time"
 
 	"github.com/auroq/botropolis/pkg/state"
 )
@@ -11,10 +12,13 @@ const wheelZoomStep = 1.2
 type ActionKind string
 
 const (
-	ActionNone   ActionKind = ""
-	ActionAttach ActionKind = "attach"
-	ActionResume ActionKind = "resume"
+	ActionNone     ActionKind = ""
+	ActionAttach   ActionKind = "attach"
+	ActionResume   ActionKind = "resume"
+	ActionDemolish ActionKind = "demolish"
 )
+
+const DemolishArmFor = 3 * time.Second
 
 type Action struct {
 	Kind      ActionKind
@@ -30,6 +34,8 @@ type Scene struct {
 	width    float64
 	height   float64
 	touched  bool
+	armed    string
+	armedAt  time.Time
 }
 
 func NewScene(layout *Layout) *Scene {
@@ -123,6 +129,19 @@ func (s *Scene) Click(screen Point) Action {
 		return Action{Kind: ActionResume, SessionID: hit.Building.Session.ID}
 	}
 	return Action{Kind: ActionAttach, SessionID: hit.Building.Session.ID}
+}
+
+func (s *Scene) Demolish(now time.Time) (Action, string) {
+	if s.selected == nil {
+		return Action{}, "select a building first"
+	}
+	id := s.selected.Session.ID
+	if s.armed == id && now.Sub(s.armedAt) <= DemolishArmFor {
+		s.armed = ""
+		return Action{Kind: ActionDemolish, SessionID: id}, "demolished " + s.selected.Card(now).Title
+	}
+	s.armed, s.armedAt = id, now
+	return Action{}, "press d again within 3s to demolish " + s.selected.Card(now).Title
 }
 
 func (s *Scene) Card() (Card, bool) {

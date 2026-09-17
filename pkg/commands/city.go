@@ -82,6 +82,8 @@ func (a Actor) Do(action city.Action) error {
 	case city.ActionResume:
 		_, err := a.Sessions.Resume(context.Background(), "", action.SessionID)
 		return err
+	case city.ActionDemolish:
+		return a.Sessions.Remove(context.Background(), action.SessionID)
 	}
 	return nil
 }

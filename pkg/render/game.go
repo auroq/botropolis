@@ -131,6 +131,15 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
 		g.scene.Fit()
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyD) || inpututil.IsKeyJustPressed(ebiten.KeyDelete) {
+		action, note := g.scene.Demolish(time.Now())
+		g.SetStatus(note)
+		if action.Kind != city.ActionNone && g.actor != nil {
+			if err := g.actor.Do(action); err != nil {
+				g.SetStatus(err.Error())
+			}
+		}
+	}
 	return nil
 }
 
@@ -321,7 +330,7 @@ func (g *Game) footer(screen *ebiten.Image, screenHeight float64) {
 	status := g.status
 	g.mu.Unlock()
 	if status == "" {
-		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click to attach | f to fit | q to quit",
+		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click to attach | d d to demolish | f to fit | q to quit",
 			len(g.scene.City().Buildings()))
 	}
 	g.label(screen, city.Point{X: 12, Y: screenHeight - 24}, status, colorDim)

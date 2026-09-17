@@ -4,15 +4,19 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/auroq/botropolis/pkg/cli"
+	"github.com/auroq/botropolis/pkg/commands"
 	"github.com/auroq/botropolis/pkg/config"
+	"github.com/auroq/botropolis/pkg/state"
 )
 
 type fakeStatus struct {
@@ -25,6 +29,11 @@ func (f *fakeStatus) Run(out io.Writer, direct, all bool) error {
 	f.direct, f.all = direct, all
 	_, _ = io.WriteString(out, "TABLE\n")
 	return f.err
+}
+
+func (f *fakeStatus) Snapshot(direct bool) (state.Snapshot, error) {
+	f.direct = direct
+	return state.Snapshot{}, f.err
 }
 
 type fakeHooks struct{ calls []string }
@@ -55,6 +64,14 @@ func (f *fakeSessions) Remove(_ context.Context, id string) error {
 func (f *fakeSessions) Resume(_ context.Context, dir, sessionID string) (string, error) {
 	f.calls = append(f.calls, "resume "+dir+" "+sessionID)
 	return f.id, f.err
+}
+
+func (f *fakeSessions) Prune(_ context.Context, _ state.Snapshot, olderThan time.Duration, _ time.Time, dryRun bool) ([]commands.Pruned, error) {
+	f.calls = append(f.calls, fmt.Sprintf("prune %s dry=%v", olderThan, dryRun))
+	if f.err != nil {
+		return nil, f.err
+	}
+	return []commands.Pruned{{ID: "11111111", Title: "old job"}}, nil
 }
 
 type fakeCity struct{ runs int }
@@ -256,6 +273,23 @@ func TestSessionCLIs(t *testing.T) {
 			})
 		})
 	}
+
+	t.Run("when prune is run with a cutoff and dry-run", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("prune", "--older-than", "48h", "--dry-run"))
+
+		t.Run("it should take a direct snapshot first", func(t *testing.T) {
+			assert.True(t, h.status.direct)
+		})
+
+		t.Run("it should hand the cutoff and dry-run on", func(t *testing.T) {
+			assert.Equal(t, []string{"prune 48h0m0s dry=true"}, h.sessions.calls)
+		})
+
+		t.Run("it should say what it would remove", func(t *testing.T) {
+			assert.Contains(t, h.out.String(), "would remove 11111111  old job")
+		})
+	})
 
 	t.Run("when resume is given a session id and a directory", func(t *testing.T) {
 		h := newHarness(&config.Config{})

@@ -27,7 +27,7 @@ type fakeRunner struct {
 func (f *fakeRunner) Run(_ context.Context, dir string, name string, args ...string) (string, error) {
 	f.runs = append(f.runs, call{dir, append([]string{name}, args...)})
 	if len(args) > 0 && args[0] == "agents" {
-		return f.agents, nil
+		return f.agents, f.failure
 	}
 	return f.stdout, f.failure
 }
@@ -171,6 +171,45 @@ func TestControl(t *testing.T) {
 
 		t.Run("it should shorten it to the job id", func(t *testing.T) {
 			assert.True(t, strings.HasSuffix(strings.Join(runner.runs[0].argv, " "), " "+jobID))
+		})
+	})
+}
+
+func TestAgents(t *testing.T) {
+	t.Run("when all agents are listed", func(t *testing.T) {
+		runner := &fakeRunner{agents: agentsJSON}
+		agents, err := newControl(runner).Agents(context.Background(), true)
+		require.NoError(t, err)
+
+		t.Run("it should ask claude for everything", func(t *testing.T) {
+			assert.Equal(t, []string{"claude", "agents", "--all", "--json"}, runner.runs[0].argv)
+		})
+
+		t.Run("it should return every entry", func(t *testing.T) {
+			assert.Len(t, agents, 3)
+		})
+
+		t.Run("it should read the job id and kind", func(t *testing.T) {
+			assert.Equal(t, "aaaaaaaa", agents[1].ID)
+			assert.Equal(t, "background", agents[1].Kind)
+		})
+	})
+
+	t.Run("when only running agents are listed", func(t *testing.T) {
+		runner := &fakeRunner{agents: `[]`}
+		_, err := newControl(runner).Agents(context.Background(), false)
+		require.NoError(t, err)
+
+		t.Run("it should not pass --all", func(t *testing.T) {
+			assert.Equal(t, []string{"claude", "agents", "--json"}, runner.runs[0].argv)
+		})
+	})
+
+	t.Run("when the listing is not JSON", func(t *testing.T) {
+		_, err := newControl(&fakeRunner{agents: "nope"}).Agents(context.Background(), true)
+
+		t.Run("it should return an error", func(t *testing.T) {
+			assert.Error(t, err)
 		})
 	})
 }

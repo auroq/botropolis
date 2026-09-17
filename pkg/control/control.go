@@ -71,11 +71,33 @@ func (c *Control) background(ctx context.Context, dir string, args []string) (st
 	return c.newestJob(ctx, dir)
 }
 
-type agentJSON struct {
+type Agent struct {
 	ID        string `json:"id"`
+	SessionID string `json:"sessionId"`
 	CWD       string `json:"cwd"`
 	Kind      string `json:"kind"`
+	Status    string `json:"status"`
+	State     string `json:"state"`
+	PID       int    `json:"pid"`
 	StartedAt int64  `json:"startedAt"`
+}
+
+type agentJSON = Agent
+
+func (c *Control) Agents(ctx context.Context, all bool) ([]Agent, error) {
+	args := []string{"agents", "--json"}
+	if all {
+		args = []string{"agents", "--all", "--json"}
+	}
+	out, err := c.runner.Run(ctx, "", claudeBinary, args...)
+	if err != nil {
+		return nil, err
+	}
+	var agents []Agent
+	if err := json.Unmarshal([]byte(out), &agents); err != nil {
+		return nil, fmt.Errorf("claude agents --json is unreadable: %w", err)
+	}
+	return agents, nil
 }
 
 func (c *Control) newestJob(ctx context.Context, dir string) (string, error) {

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/auroq/botropolis/pkg/state"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -8,6 +9,7 @@ import (
 
 type StatusRunner interface {
 	Run(out io.Writer, direct, all bool) error
+	Snapshot(direct bool) (state.Snapshot, error)
 }
 
 func NewStatusCLI(load Loader, services Services) *cobra.Command {

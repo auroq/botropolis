@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"github.com/auroq/botropolis/pkg/city"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/auroq/botropolis/pkg/commands"
+	"github.com/auroq/botropolis/pkg/control"
 	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/testing/helpers"
@@ -35,6 +38,7 @@ func (f *fakeSource) Snapshot(direct bool) (state.Snapshot, error) {
 type fakeController struct {
 	calls   []string
 	id      string
+	agents  []control.Agent
 	failure error
 }
 
@@ -61,6 +65,11 @@ func (f *fakeController) Remove(_ context.Context, id string) error {
 func (f *fakeController) Resume(_ context.Context, dir, sessionID string) (string, error) {
 	f.calls = append(f.calls, "resume "+dir+" "+sessionID)
 	return f.id, f.failure
+}
+
+func (f *fakeController) Agents(_ context.Context, all bool) ([]control.Agent, error) {
+	f.calls = append(f.calls, fmt.Sprintf("agents all=%v", all))
+	return f.agents, f.failure
 }
 
 func TestStatus(t *testing.T) {
@@ -288,6 +297,77 @@ func TestHooks(t *testing.T) {
 
 		t.Run("it should print the block with the command", func(t *testing.T) {
 			assert.Contains(t, out.String(), `"/usr/bin/botropolis-hook"`)
+		})
+	})
+}
+
+func TestPrune(t *testing.T) {
+	now := time.Date(2026, time.September, 17, 8, 0, 0, 0, time.UTC)
+	agents := []control.Agent{
+		{ID: "11111111", SessionID: "11111111-0000-0000-0000-000000000000", Kind: "background", StartedAt: now.Add(-10 * 24 * time.Hour).UnixMilli()},
+		{ID: "22222222", SessionID: "22222222-0000-0000-0000-000000000000", Kind: "background", StartedAt: now.Add(-time.Hour).UnixMilli()},
+		{ID: "33333333", SessionID: "33333333-0000-0000-0000-000000000000", Kind: "background", StartedAt: now.Add(-30 * 24 * time.Hour).UnixMilli()},
+		{SessionID: "44444444-0000-0000-0000-000000000000", Kind: "interactive", StartedAt: now.Add(-30 * 24 * time.Hour).UnixMilli()},
+	}
+	snapshot := state.Snapshot{At: now, Sessions: []state.Session{
+		{ID: "11111111-0000-0000-0000-000000000000", State: state.Parked, Title: "old job", LastActivity: now.Add(-9 * 24 * time.Hour)},
+		{ID: "33333333-0000-0000-0000-000000000000", State: state.Working, Title: "still running", LastActivity: now.Add(-time.Minute)},
+	}}
+
+	t.Run("when pruning parked background jobs older than a week", func(t *testing.T) {
+		ctl := &fakeController{agents: agents}
+		pruned, err := commands.NewSessions(t.TempDir(), ctl).Prune(context.Background(), snapshot, 7*24*time.Hour, now, false)
+		require.NoError(t, err)
+
+		t.Run("it should remove only the parked job that is old enough", func(t *testing.T) {
+			assert.Equal(t, []string{"agents all=true", "rm 11111111"}, ctl.calls)
+		})
+
+		t.Run("it should report what it removed with the title from the snapshot", func(t *testing.T) {
+			require.Len(t, pruned, 1)
+			assert.Equal(t, commands.Pruned{ID: "11111111", Title: "old job", LastSeen: now.Add(-9 * 24 * time.Hour)}, pruned[0])
+		})
+	})
+
+	t.Run("when the run is a dry run", func(t *testing.T) {
+		ctl := &fakeController{agents: agents}
+		pruned, err := commands.NewSessions(t.TempDir(), ctl).Prune(context.Background(), snapshot, 7*24*time.Hour, now, true)
+		require.NoError(t, err)
+
+		t.Run("it should report but not remove", func(t *testing.T) {
+			assert.Len(t, pruned, 1)
+			assert.Equal(t, []string{"agents all=true"}, ctl.calls)
+		})
+	})
+
+	t.Run("when a job is unknown to the snapshot", func(t *testing.T) {
+		ctl := &fakeController{agents: []control.Agent{{ID: "55555555", SessionID: "55555555-0000-0000-0000-000000000000", Kind: "background", StartedAt: now.Add(-40 * 24 * time.Hour).UnixMilli()}}}
+		pruned, err := commands.NewSessions(t.TempDir(), ctl).Prune(context.Background(), state.Snapshot{}, 7*24*time.Hour, now, false)
+		require.NoError(t, err)
+
+		t.Run("it should fall back to the job's start time", func(t *testing.T) {
+			require.Len(t, pruned, 1)
+			assert.Equal(t, "55555555-0000-0000-0000-000000000000", pruned[0].Title)
+		})
+	})
+
+	t.Run("when listing fails", func(t *testing.T) {
+		ctl := &fakeController{failure: errors.New("boom")}
+		_, err := commands.NewSessions(t.TempDir(), ctl).Prune(context.Background(), snapshot, time.Hour, now, false)
+
+		t.Run("it should return the error", func(t *testing.T) {
+			assert.ErrorContains(t, err, "boom")
+		})
+	})
+}
+
+func TestActorDemolish(t *testing.T) {
+	t.Run("when a building is demolished", func(t *testing.T) {
+		ctl := &fakeController{}
+		require.NoError(t, commands.Actor{Sessions: commands.NewSessions(t.TempDir(), ctl)}.Do(city.Action{Kind: city.ActionDemolish, SessionID: "0898d7e4"}))
+
+		t.Run("it should remove the session", func(t *testing.T) {
+			assert.Equal(t, []string{"rm 0898d7e4"}, ctl.calls)
 		})
 	})
 }

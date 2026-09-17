@@ -4,8 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/auroq/botropolis/pkg/commands"
+	"github.com/auroq/botropolis/pkg/state"
 )
 
 type SessionsRunner interface {
@@ -14,6 +18,7 @@ type SessionsRunner interface {
 	Stop(ctx context.Context, id string) error
 	Remove(ctx context.Context, id string) error
 	Resume(ctx context.Context, dir, sessionID string) (string, error)
+	Prune(ctx context.Context, snapshot state.Snapshot, olderThan time.Duration, now time.Time, dryRun bool) ([]commands.Pruned, error)
 }
 
 func NewSessionCLIs(load Loader, services Services) []*cobra.Command {
@@ -96,5 +101,39 @@ func NewSessionCLIs(load Loader, services Services) []*cobra.Command {
 		},
 	}
 	resume.Flags().String("dir", "", "directory to resume in (default: the session's own cwd)")
-	return []*cobra.Command{newCmd, attach, stop, rm, resume}
+	prune := &cobra.Command{
+		Use:   "prune",
+		Short: "Delete parked background sessions older than a cutoff",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := load()
+			if err != nil {
+				return err
+			}
+			olderThan, _ := cmd.Flags().GetDuration("older-than")
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			snapshot, err := services.Status(cfg).Snapshot(true)
+			if err != nil {
+				return err
+			}
+			pruned, err := services.Sessions(cfg).Prune(cmd.Context(), snapshot, olderThan, time.Now(), dryRun)
+			verb := "removed"
+			if dryRun {
+				verb = "would remove"
+			}
+			for _, p := range pruned {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s %s  %s  (last seen %s)\n", verb, p.ID, p.Title, p.LastSeen.Format("2006-01-02"))
+			}
+			if err != nil {
+				return err
+			}
+			if len(pruned) == 0 {
+				fmt.Fprintln(cmd.OutOrStdout(), "nothing to prune")
+			}
+			return nil
+		},
+	}
+	prune.Flags().Duration("older-than", 7*24*time.Hour, "prune sessions with no activity for this long")
+	prune.Flags().Bool("dry-run", false, "list what would be removed and change nothing")
+	return []*cobra.Command{newCmd, attach, stop, rm, resume, prune}
 }
