@@ -1,6 +1,8 @@
 package city_test
 
 import (
+	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -358,6 +360,49 @@ func TestHoverCard(t *testing.T) {
 
 		t.Run("it should count its sessions", func(t *testing.T) {
 			assert.Contains(t, card.Lines, "sessions 1")
+		})
+	})
+}
+
+func TestDistrictShape(t *testing.T) {
+	sessionsIn := func(root string, n int) []state.Session {
+		var out []state.Session
+		for i := 0; i < n; i++ {
+			out = append(out, session(fmt.Sprintf("%s-%02d", filepath.Base(root), i), root, state.Parked))
+		}
+		return out
+	}
+
+	t.Run("when a district holds fifty buildings", func(t *testing.T) {
+		c := build(t, city.NewLayout(), sessionsIn(cinders, 50)...)
+		d := c.Districts[0]
+
+		t.Run("it should be roughly square rather than a tower", func(t *testing.T) {
+			ratio := d.Rect.Height() / d.Rect.Width()
+			assert.Less(t, ratio, 1.5)
+			assert.Greater(t, ratio, 0.5)
+		})
+
+		t.Run("it should still keep every building inside", func(t *testing.T) {
+			for _, b := range d.Buildings {
+				assert.True(t, d.Rect.Contains(b.Rect.Max), b.Session.ID)
+			}
+		})
+
+		t.Run("it should not overlap any two buildings", func(t *testing.T) {
+			for i, a := range d.Buildings {
+				for _, b := range d.Buildings[i+1:] {
+					assert.False(t, a.Rect.Overlaps(b.Rect), a.Session.ID+" overlaps "+b.Session.ID)
+				}
+			}
+		})
+	})
+
+	t.Run("when a district holds three buildings", func(t *testing.T) {
+		c := build(t, city.NewLayout(), sessionsIn(cinders, 3)...)
+
+		t.Run("it should stay one row of three", func(t *testing.T) {
+			assert.InDelta(t, city.DistrictPadding*2+city.BuildingSize, c.Districts[0].Rect.Height(), 1e-9)
 		})
 	})
 }

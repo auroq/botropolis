@@ -282,3 +282,43 @@ func TestBuild(t *testing.T) {
 		})
 	})
 }
+
+func TestParkedSessions(t *testing.T) {
+	parked := func(partial bool, modelID string, cost map[string]claude.ModelCost) state.Session {
+		tr := transcript(sidA, claude.TurnAwaitingUser)
+		tr.Partial, tr.ModelID, tr.Cost.Models = partial, modelID, cost
+		tr.ContextTokens = 400_000
+		sessions := state.Build(state.Sources{Parked: []claude.Transcript{tr}}, alive, now)
+		require.Len(t, sessions, 1)
+		return sessions[0]
+	}
+
+	t.Run("when a parked transcript was read in full", func(t *testing.T) {
+		s := parked(false, "", nil)
+
+		t.Run("it should be parked and not alive", func(t *testing.T) {
+			assert.Equal(t, state.Parked, s.State)
+			assert.False(t, s.Alive)
+		})
+
+		t.Run("it should measure context against the default window", func(t *testing.T) {
+			assert.InDelta(t, 200, s.ContextPercent, 1e-9)
+		})
+	})
+
+	t.Run("when a parked transcript is a partial read that names its model id", func(t *testing.T) {
+		s := parked(true, "claude-opus-5[1m]", nil)
+
+		t.Run("it should measure context against that window", func(t *testing.T) {
+			assert.InDelta(t, 40, s.ContextPercent, 1e-9)
+		})
+	})
+
+	t.Run("when a parked transcript is a partial read with nothing to size the window", func(t *testing.T) {
+		s := parked(true, "", nil)
+
+		t.Run("it should not guess a percentage", func(t *testing.T) {
+			assert.Zero(t, s.ContextPercent)
+		})
+	})
+}

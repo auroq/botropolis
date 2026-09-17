@@ -166,8 +166,11 @@ func parkedSession(t claude.Transcript) Session {
 		s.Title = t.SessionID
 	}
 	s.ContextTokens = t.ContextTokens
-	s.ContextWindow = ContextWindow(s.Model, t.Cost.Models)
-	s.ContextPercent = 100 * float64(t.ContextTokens) / float64(s.ContextWindow)
+	window, known := contextWindow(s.Model, t.Cost.Models)
+	s.ContextWindow = window
+	if known || !t.Partial {
+		s.ContextPercent = 100 * float64(t.ContextTokens) / float64(window)
+	}
 	return s
 }
 
@@ -192,13 +195,18 @@ func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive, is
 }
 
 func ContextWindow(model string, costModels map[string]claude.ModelCost) int64 {
+	window, _ := contextWindow(model, costModels)
+	return window
+}
+
+func contextWindow(model string, costModels map[string]claude.ModelCost) (int64, bool) {
 	if strings.HasSuffix(model, largeContextSuffix) {
-		return contextWindowLarge
+		return contextWindowLarge, true
 	}
 	if _, ok := costModels[model+largeContextSuffix]; ok {
-		return contextWindowLarge
+		return contextWindowLarge, true
 	}
-	return contextWindowDefault
+	return contextWindowDefault, len(costModels) > 0
 }
 
 func rateSpan(first, last time.Time) time.Duration {

@@ -170,11 +170,11 @@ func districtColumnsFor(d *District) int {
 	if len(d.Buildings) == 0 {
 		return 1
 	}
-	columns := districtColumns
-	if len(d.Buildings) < columns {
-		columns = len(d.Buildings)
+	used := maxSlot(d) + 1
+	if used < d.columns {
+		return used
 	}
-	return columns
+	return d.columns
 }
 
 func districtWidth(d *District) float64 {
@@ -183,7 +183,11 @@ func districtWidth(d *District) float64 {
 }
 
 func districtHeight(d *District) float64 {
-	rows := math.Ceil(float64(maxSlot(d)+1) / float64(districtColumns))
+	columns := d.columns
+	if columns < 1 {
+		columns = 1
+	}
+	rows := math.Ceil(float64(maxSlot(d)+1) / float64(columns))
 	if rows < 1 {
 		rows = 1
 	}

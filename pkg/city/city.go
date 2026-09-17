@@ -13,12 +13,13 @@ import (
 )
 
 const (
-	BuildingSize    = 56.0
-	BuildingGap     = 16.0
-	DistrictPadding = 28.0
-	DistrictGap     = 48.0
-	districtColumns = 3
-	worktreeSegment = ".claude/worktrees"
+	BuildingSize       = 56.0
+	BuildingGap        = 16.0
+	DistrictPadding    = 28.0
+	DistrictGap        = 48.0
+	districtColumns    = 3
+	minBuildingColumns = 3
+	worktreeSegment    = ".claude/worktrees"
 )
 
 type Building struct {
@@ -36,6 +37,7 @@ type District struct {
 	Name      string
 	Root      string
 	slot      int
+	columns   int
 	Rect      Rect
 	Buildings []*Building
 }
@@ -97,8 +99,15 @@ func buildDistrict(root string, sessions []state.Session, layout *Layout) *Distr
 		return sessions[i].ID < sessions[j].ID
 	})
 	slots := layout.Slots(root, sessions)
+	highest := 0
+	for _, slot := range slots {
+		if slot > highest {
+			highest = slot
+		}
+	}
+	district.columns = buildingColumns(highest + 1)
 	for _, s := range sessions {
-		district.Buildings = append(district.Buildings, newBuilding(s, slots[s.ID]))
+		district.Buildings = append(district.Buildings, newBuilding(s, slots[s.ID], district.columns))
 	}
 	sort.Slice(district.Buildings, func(i, j int) bool {
 		return slots[district.Buildings[i].Session.ID] < slots[district.Buildings[j].Session.ID]
@@ -106,8 +115,16 @@ func buildDistrict(root string, sessions []state.Session, layout *Layout) *Distr
 	return district
 }
 
-func newBuilding(s state.Session, slot int) *Building {
-	column, row := slot%districtColumns, slot/districtColumns
+func buildingColumns(slots int) int {
+	columns := int(math.Ceil(math.Sqrt(float64(slots))))
+	if columns < minBuildingColumns {
+		columns = minBuildingColumns
+	}
+	return columns
+}
+
+func newBuilding(s state.Session, slot, columns int) *Building {
+	column, row := slot%columns, slot/columns
 	local := RectAt(
 		DistrictPadding+float64(column)*(BuildingSize+BuildingGap),
 		DistrictPadding+float64(row)*(BuildingSize+BuildingGap),
