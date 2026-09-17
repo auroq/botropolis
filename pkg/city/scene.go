@@ -1,0 +1,136 @@
+package city
+
+import (
+	"math"
+
+	"github.com/auroq/botropolis/pkg/state"
+)
+
+const wheelZoomStep = 1.2
+
+type ActionKind string
+
+const (
+	ActionNone   ActionKind = ""
+	ActionAttach ActionKind = "attach"
+	ActionResume ActionKind = "resume"
+)
+
+type Action struct {
+	Kind      ActionKind
+	SessionID string
+}
+
+type Scene struct {
+	layout   *Layout
+	camera   *Camera
+	city     *City
+	hover    Hit
+	selected *Building
+	width    float64
+	height   float64
+	touched  bool
+}
+
+func NewScene(layout *Layout) *Scene {
+	return &Scene{layout: layout, camera: NewCamera(), city: &City{}}
+}
+
+func (s *Scene) City() *City {
+	return s.city
+}
+
+func (s *Scene) Camera() *Camera {
+	return s.camera
+}
+
+func (s *Scene) Layout() *Layout {
+	return s.layout
+}
+
+func (s *Scene) Hover() Hit {
+	return s.hover
+}
+
+func (s *Scene) Selected() *Building {
+	return s.selected
+}
+
+func (s *Scene) Resize(width, height float64) {
+	if width == s.width && height == s.height {
+		return
+	}
+	s.width, s.height = width, height
+	s.fit()
+}
+
+func (s *Scene) Fit() {
+	s.touched = false
+	s.fit()
+}
+
+func (s *Scene) fit() {
+	if s.touched || len(s.city.Districts) == 0 {
+		return
+	}
+	s.camera.Fit(s.city.Bounds(), s.width, s.height)
+}
+
+func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
+	s.city = Build(snapshot, s.layout)
+	s.selected = s.reselect()
+	s.hover = Hit{}
+	s.fit()
+}
+
+func (s *Scene) reselect() *Building {
+	if s.selected == nil {
+		return nil
+	}
+	for _, b := range s.city.Buildings() {
+		if b.Session.ID == s.selected.Session.ID {
+			return b
+		}
+	}
+	return nil
+}
+
+func (s *Scene) PointerMove(screen Point) {
+	s.hover = s.city.At(s.camera.ScreenToWorld(screen))
+}
+
+func (s *Scene) Pan(delta Point) {
+	s.touched = true
+	s.camera.Pan(delta.Scale(1 / s.camera.Zoom))
+}
+
+func (s *Scene) Wheel(cursor Point, amount float64) {
+	if amount == 0 {
+		return
+	}
+	s.touched = true
+	s.camera.ZoomAt(cursor, math.Pow(wheelZoomStep, amount))
+}
+
+func (s *Scene) Click(screen Point) Action {
+	hit := s.city.At(s.camera.ScreenToWorld(screen))
+	s.hover = hit
+	s.selected = hit.Building
+	if hit.Building == nil {
+		return Action{}
+	}
+	if hit.Building.Session.State == state.Parked {
+		return Action{Kind: ActionResume, SessionID: hit.Building.Session.ID}
+	}
+	return Action{Kind: ActionAttach, SessionID: hit.Building.Session.ID}
+}
+
+func (s *Scene) Card() (Card, bool) {
+	switch {
+	case s.hover.Building != nil:
+		return s.hover.Building.Card(s.city.Time), true
+	case s.hover.District != nil:
+		return s.hover.District.Card(), true
+	}
+	return Card{}, false
+}

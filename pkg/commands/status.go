@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/proto"
 	"github.com/auroq/botropolis/pkg/state"
 )
@@ -41,9 +42,9 @@ func Render(out io.Writer, snapshot state.Snapshot) {
 	fmt.Fprintln(w, "STATE\tTOOL\tPROJECT\tTITLE\tBRANCH\tMODEL\tCTX\tFRESH/H\tCACHED/H\tSUBS\tAGE")
 	for _, s := range snapshot.Sessions {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d/%d\t%s\n",
-			s.State, Dash(s.Tool), filepath.Base(s.CWD), s.Title, s.Branch, s.Model,
-			Percent(s.ContextPercent), Tokens(s.FreshTokensPerHour), Tokens(s.CacheReadPerHour),
-			s.SubagentsInFlight, s.Subagents, Age(snapshot.At.Sub(s.StartedAt)))
+			s.State, format.Dash(s.Tool), filepath.Base(s.CWD), s.Title, s.Branch, s.Model,
+			format.Percent(s.ContextPercent), format.Tokens(s.FreshTokensPerHour), format.Tokens(s.CacheReadPerHour),
+			s.SubagentsInFlight, s.Subagents, format.Age(snapshot.At.Sub(s.StartedAt)))
 	}
 	_ = w.Flush()
 	for _, skipped := range snapshot.Skipped {
@@ -79,42 +80,4 @@ func fromDaemon(sock string) (state.Snapshot, error) {
 	}
 	defer func() { _ = client.Close() }()
 	return client.Snapshot()
-}
-
-func Dash(s string) string {
-	if s == "" {
-		return "-"
-	}
-	return s
-}
-
-func Percent(p float64) string {
-	if p == 0 {
-		return "-"
-	}
-	return fmt.Sprintf("%.0f%%", p)
-}
-
-func Tokens(perHour float64) string {
-	switch {
-	case perHour == 0:
-		return "-"
-	case perHour >= 1_000_000:
-		return fmt.Sprintf("%.1fM", perHour/1_000_000)
-	case perHour >= 1_000:
-		return fmt.Sprintf("%.0fk", perHour/1_000)
-	}
-	return fmt.Sprintf("%.0f", perHour)
-}
-
-func Age(d time.Duration) string {
-	switch {
-	case d < 0:
-		return "-"
-	case d < time.Hour:
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	case d < 24*time.Hour:
-		return fmt.Sprintf("%dh%02dm", int(d.Hours()), int(d.Minutes())%60)
-	}
-	return fmt.Sprintf("%dd%dh", int(d.Hours())/24, int(d.Hours())%24)
 }

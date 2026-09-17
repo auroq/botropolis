@@ -74,6 +74,9 @@ pkg/app/                fx wiring: the botropolis CLI graph and the botropolisd 
 pkg/cli/                cobra commands, one constructor per command, config loaded inside RunE
 pkg/commands/           what the commands do (status table, hooks, session control), tested with fakes
 pkg/config/             viper: flags, BOTROPOLIS_* env, ~/.config/botropolis/config.{toml,yaml,json}
+pkg/city/               the map model: districts, buildings, camera, sticky layout, hover cards
+pkg/render/             the Ebitengine window that draws pkg/city and forwards clicks
+pkg/format/             the shared number formatting the table and the cards both use
 pkg/claude/             read-only model of ~/.claude (transcripts, sessions, subagents, stats, mcp config)
 pkg/state/              the city model: districts, buildings, workers, gauges, derived states
 pkg/control/            actions via the claude CLI; terminal spawning

@@ -56,10 +56,15 @@ func (f *fakeSessions) Resume(_ context.Context, dir, sessionID string) (string,
 	return f.id, f.err
 }
 
+type fakeCity struct{ runs int }
+
+func (f *fakeCity) Run(*cobra.Command) error { f.runs++; return nil }
+
 type harness struct {
 	status   *fakeStatus
 	hooks    *fakeHooks
 	sessions *fakeSessions
+	city     *fakeCity
 	seen     *config.Config
 	out      bytes.Buffer
 	root     *cobra.Command
@@ -68,12 +73,14 @@ type harness struct {
 func (h *harness) Status(cfg *config.Config) cli.StatusRunner     { h.seen = cfg; return h.status }
 func (h *harness) Hooks(cfg *config.Config) cli.HooksRunner       { h.seen = cfg; return h.hooks }
 func (h *harness) Sessions(cfg *config.Config) cli.SessionsRunner { h.seen = cfg; return h.sessions }
+func (h *harness) City(cfg *config.Config) cli.CityRunner         { h.seen = cfg; return h.city }
 
 func newHarness(cfg *config.Config) *harness {
-	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}}
+	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}}
 	load := func() (*config.Config, error) { return cfg, nil }
 	v := config.NewViper()
-	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h)}, cli.NewSessionCLIs(load, h)...)
+	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h)},
+		cli.NewSessionCLIs(load, h)...)
 	h.root = cli.NewRootCLI(v, subs...)
 	h.root.SetOut(&h.out)
 	h.root.SetErr(io.Discard)
@@ -92,6 +99,24 @@ func TestRootCLI(t *testing.T) {
 
 		t.Run("it should print the binary name and version", func(t *testing.T) {
 			assert.Equal(t, "botropolis dev\n", h.out.String())
+		})
+	})
+
+	t.Run("when run with the city subcommand", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("city"))
+
+		t.Run("it should open the city", func(t *testing.T) {
+			assert.Equal(t, 1, h.city.runs)
+		})
+	})
+
+	t.Run("when run with no arguments at all", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run())
+
+		t.Run("it should open the city too", func(t *testing.T) {
+			assert.Equal(t, 1, h.city.runs)
 		})
 	})
 

@@ -12,6 +12,21 @@ See [DESIGN.md](DESIGN.md) for the design and the plan, and [docs/usage-profile.
 Milestone 1: the read model.
 `botropolis status` prints one row per live session straight from `~/.claude`:
 state, project, title, branch, model, context used, fresh and cache-read tokens per hour, subagents in flight, and age.
+Milestone 4: `botropolis` with no arguments (or `botropolis city`) opens the city:
+one district per project, one building per session, fill level for context used,
+orange and pulsing for needs-you, cranes for subagents in flight, boarded up for parked.
+Drag to pan, wheel to zoom, click a building to attach it, `f` to fit, `q` to quit.
+The layout is sticky, in `~/.local/state/botropolis/layout.json`.
+The window sets `WM_CLASS` to `botropolis`, so under i3 you can float it with
+
+```
+for_window [class="Botropolis"] floating enable, resize set 1100 760
+```
+
+It is fitted to whatever size the window manager gives it, and refits on resize until you pan or zoom (`f` refits).
+
+Milestone 3: `botropolis new/attach/stop/resume/rm` wrap the `claude` CLI.
+
 Milestone 2: `botropolisd` watches `~/.claude` with inotify and serves snapshots over a unix socket;
 `botropolis-hook` forwards Claude Code hook events to it in single-digit milliseconds;
 `status` asks the daemon first and scans directly when it is down.
@@ -41,7 +56,7 @@ botropolis status                           # the table, via the daemon
 
 `botropolis install-hooks --remove` takes the hook out again.
 `botropolis status --direct` skips the daemon.
-`botropolis new <dir> [prompt]`, `attach <id>`, `stop <id>`, `resume <session-id>`, and `rm <id>` wrap the `claude` CLI;
+`botropolis` opens the city; `botropolis new <dir> [prompt]`, `attach <id>`, `stop <id>`, `resume <session-id>`, and `rm <id>` wrap the `claude` CLI;
 `packaging/botropolis.bash` makes a plain `claude` in a shell start in the background and attach.
 
 Settings come from flags, then `BOTROPOLIS_HOME`, `BOTROPOLIS_SOCKET`, `BOTROPOLIS_TERMINAL`,

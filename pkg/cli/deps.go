@@ -9,3 +9,7 @@ type Services interface {
 	Hooks(cfg *config.Config) HooksRunner
 	Sessions(cfg *config.Config) SessionsRunner
 }
+
+type CityServices interface {
+	City(cfg *config.Config) CityRunner
+}

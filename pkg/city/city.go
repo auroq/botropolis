@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/auroq/botropolis/pkg/commands"
+	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/state"
 	"time"
 )
@@ -170,10 +170,10 @@ func (b *Building) Card(now time.Time) Card {
 		"state    " + string(s.State),
 		"branch   " + s.Branch,
 		"model    " + s.Model,
-		fmt.Sprintf("context  %s of %s", commands.Percent(s.ContextPercent), commands.Tokens(float64(s.ContextWindow))),
-		fmt.Sprintf("tokens   %s/h fresh, %s/h cached", commands.Tokens(s.FreshTokensPerHour), commands.Tokens(s.CacheReadPerHour)),
+		fmt.Sprintf("context  %s of %s", format.Percent(s.ContextPercent), format.Tokens(float64(s.ContextWindow))),
+		fmt.Sprintf("tokens   %s/h fresh, %s/h cached", format.Tokens(s.FreshTokensPerHour), format.Tokens(s.CacheReadPerHour)),
 		fmt.Sprintf("subs     %d of %d in flight", s.SubagentsInFlight, s.Subagents),
-		"age      " + commands.Age(now.Sub(s.StartedAt)),
+		"age      " + format.Age(now.Sub(s.StartedAt)),
 	}}
 }
 
@@ -185,7 +185,7 @@ func (d *District) Card() Card {
 	}
 	return Card{Title: d.Name, Lines: []string{
 		fmt.Sprintf("sessions %d", len(d.Buildings)),
-		fmt.Sprintf("tokens   %s/h fresh, %s/h cached", commands.Tokens(fresh), commands.Tokens(cached)),
+		fmt.Sprintf("tokens   %s/h fresh, %s/h cached", format.Tokens(fresh), format.Tokens(cached)),
 		"path     " + d.Root,
 	}}
 }

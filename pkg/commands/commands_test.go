@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/auroq/botropolis/pkg/commands"
+	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/testing/helpers"
 	"github.com/stretchr/testify/assert"
@@ -114,7 +115,7 @@ func TestFormatting(t *testing.T) {
 			want string
 		}{{0, "-"}, {999, "999"}, {1000, "1k"}, {152_000, "152k"}, {8_900_000, "8.9M"}} {
 			t.Run("it should render "+c.want, func(t *testing.T) {
-				assert.Equal(t, c.want, commands.Tokens(c.in))
+				assert.Equal(t, c.want, format.Tokens(c.in))
 			})
 		}
 	})
@@ -125,7 +126,7 @@ func TestFormatting(t *testing.T) {
 			want string
 		}{{-time.Second, "-"}, {6 * time.Minute, "6m"}, {5*time.Hour + 6*time.Minute, "5h06m"}, {49 * time.Hour, "2d1h"}} {
 			t.Run("it should render "+c.want, func(t *testing.T) {
-				assert.Equal(t, c.want, commands.Age(c.in))
+				assert.Equal(t, c.want, format.Age(c.in))
 			})
 		}
 	})
@@ -136,7 +137,7 @@ func TestFormatting(t *testing.T) {
 			want string
 		}{{0, "-"}, {25.4, "25%"}, {99.6, "100%"}} {
 			t.Run("it should render "+c.want, func(t *testing.T) {
-				assert.Equal(t, c.want, commands.Percent(c.in))
+				assert.Equal(t, c.want, format.Percent(c.in))
 			})
 		}
 	})
