@@ -578,3 +578,17 @@ func TestContextWindowInference(t *testing.T) {
 		})
 	})
 }
+
+func TestPowerHitRatio(t *testing.T) {
+	t.Run("when most prompt tokens were cache reads", func(t *testing.T) {
+		t.Run("it should report their share", func(t *testing.T) {
+			assert.InDelta(t, 0.9, state.Power{Fresh: 100, Cached: 900}.HitRatio(), 1e-9)
+		})
+	})
+
+	t.Run("when no tokens were read", func(t *testing.T) {
+		t.Run("it should report zero", func(t *testing.T) {
+			assert.Zero(t, state.Power{}.HitRatio())
+		})
+	})
+}

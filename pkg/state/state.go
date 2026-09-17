@@ -90,6 +90,16 @@ type Power struct {
 
 const PowerWindow = 24 * time.Hour
 
+// HitRatio is the share of prompt tokens served from the cache, or 0
+// when nothing has been read.
+func (p Power) HitRatio() float64 {
+	total := p.Fresh + p.Cached
+	if total == 0 {
+		return 0
+	}
+	return float64(p.Cached) / float64(total)
+}
+
 type Sources struct {
 	Records     []claude.SessionRecord
 	Transcripts []claude.Transcript
