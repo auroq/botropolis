@@ -87,7 +87,8 @@ A waybar module, for example:
 
 ## Thanks
 
-The city is drawn with tiles by [Kenney](https://kenney.nl) — Tiny Town, Tiny Factory and Roguelike Modern City, all CC0.
+The city is drawn with tiles by [Kenney](https://kenney.nl) — the isometric Buildings, City, Landscape and Vehicles packs,
+and Tiny Town, Tiny Factory and Roguelike Modern City for the top-down view (`--projection top`), all CC0.
 Thank you, Kenney; see [`pkg/assets/kenney/README.md`](pkg/assets/kenney/README.md) for the packs, versions and terms,
 and [support the studio](https://kenney.nl/donate) if the work helps you too.
 

@@ -156,10 +156,15 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		Retry:   5 * time.Second,
 		OnError: func(err error) { fmt.Fprintf(cmd.ErrOrStderr(), "botropolis: %v\n", err) },
 	}
+	projection, ok := city.ParseProjection(c.config.Projection)
+	if !ok {
+		return fmt.Errorf("unknown projection %q: use iso or top", c.config.Projection)
+	}
 	return render.Run(cmd.Context(), render.Options{
 		Layout:     layout,
 		LayoutPath: layoutPath,
 		Actor:      commands.Actor{Sessions: sessions},
 		Feed:       feed.Run,
+		Projection: projection,
 	})
 }

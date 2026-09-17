@@ -309,7 +309,7 @@ func TestDistrictLabelAt(t *testing.T) {
 
 	t.Run("when the district's padding has room for a line", func(t *testing.T) {
 		s.Camera().Zoom = 1
-		at := s.DistrictLabelAt(d, 16)
+		at := s.DistrictLabelAt(d, 16, 60)
 
 		t.Run("it should sit on the floor inside the kerb", func(t *testing.T) {
 			assert.Greater(t, at.Y, s.Camera().WorldToScreen(d.Rect.Min).Y)
@@ -318,10 +318,60 @@ func TestDistrictLabelAt(t *testing.T) {
 
 	t.Run("when the district is too small on screen", func(t *testing.T) {
 		s.Camera().Zoom = 0.35
-		at := s.DistrictLabelAt(d, 16)
+		at := s.DistrictLabelAt(d, 16, 60)
 
 		t.Run("it should sit just above the kerb", func(t *testing.T) {
 			assert.Less(t, at.Y, s.Camera().WorldToScreen(d.Rect.Min).Y)
+		})
+	})
+}
+
+func TestSceneProjection(t *testing.T) {
+	t.Run("when the scene switches to isometric", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		s.SetProjection(city.Isometric)
+
+		t.Run("it should refit so the projected city is on screen", func(t *testing.T) {
+			b := s.City().Bounds()
+			for _, corner := range city.Isometric.Corners(b) {
+				p := s.Camera().WorldToScreen(city.Isometric.Invert(corner))
+				assert.GreaterOrEqual(t, p.X, 0.0)
+				assert.LessOrEqual(t, p.X, 800.0)
+				assert.GreaterOrEqual(t, p.Y, 0.0)
+				assert.LessOrEqual(t, p.Y, 600.0)
+			}
+		})
+
+		t.Run("it should still find a building under the pointer", func(t *testing.T) {
+			s.PointerMove(centreOf(t, s, "a"))
+			require.NotNil(t, s.Hover().Building)
+			assert.Equal(t, "a", s.Hover().Building.Session.ID)
+		})
+
+		t.Run("it should read sprites from half zoom", func(t *testing.T) {
+			s.Camera().Zoom = city.IsoDetailZoom
+			assert.True(t, s.Detailed())
+		})
+
+		t.Run("it should put the district's name above its top corner", func(t *testing.T) {
+			d := s.City().Districts[0]
+			at := s.DistrictLabelAt(d, 16, 60)
+			top := s.Camera().WorldToScreen(d.Rect.Min)
+			assert.Less(t, at.Y, top.Y)
+			assert.InDelta(t, top.X-30, at.X, 1e-9)
+		})
+
+		t.Run("it should reserve no side insets for labels", func(t *testing.T) {
+			assert.Zero(t, s.Insets().Left)
+			assert.Zero(t, s.Insets().Right)
+		})
+
+		t.Run("it should keep the minimap inside its box", func(t *testing.T) {
+			box := city.RectAt(600, 500, 160, 96)
+			m := s.Minimap(box)
+			for _, corner := range city.Isometric.Corners(s.City().Bounds()) {
+				assert.True(t, box.Contains(m.Project(city.Isometric.Invert(corner))))
+			}
 		})
 	})
 }

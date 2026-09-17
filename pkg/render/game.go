@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -160,8 +161,49 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	width, height := float64(bounds.Dx()), float64(bounds.Dy())
 	seconds := time.Since(g.started).Seconds()
 
-	g.ground(screen, cam, c, width, height, detailed)
+	if cam.Projection == city.Isometric {
+		g.drawIso(screen, c, cam, hover, selected, width, height, seconds)
+		g.minimap(screen, width, height)
+		if card, ok := g.scene.Card(); ok {
+			g.card(screen, card, width, height)
+		}
+		g.footer(screen, width, height)
+		return
+	}
 
+	g.ground(screen, cam, c, width, height, detailed)
+	g.lines(screen, c, cam, hover, labels)
+
+	for _, d := range c.Districts {
+		g.district(screen, cam, d, hover.District == d, c.Night, detailed)
+	}
+	for _, d := range c.Districts {
+		if g.scene.DistrictLabelVisible(d) {
+			g.floorLabel(screen, g.scene.DistrictLabelAt(d, lineHeight, float64(len(d.Name))*charWidth), d.Name, colorText)
+		}
+		for _, b := range d.Buildings {
+			g.building(screen, cam, b, b == selected, detailed, seconds)
+		}
+	}
+	if g.scene.TitlesVisible() {
+		for _, b := range c.Buildings() {
+			if b.BoardedUp && hover.Building != b {
+				continue
+			}
+			g.title(screen, cam, b)
+		}
+	}
+	g.landmarks(screen, cam, labels)
+	g.minimap(screen, width, height)
+
+	if card, ok := g.scene.Card(); ok {
+		g.card(screen, card, width, height)
+	}
+	g.footer(screen, width, height)
+}
+
+// lines draws roads, power lines and beams, highlighting the hovered one.
+func (g *Game) lines(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, labels bool) {
 	for i := range c.Roads {
 		road := &c.Roads[i]
 		g.line(screen, cam, road.A, road.B, 8, colorKerb)
@@ -187,38 +229,15 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			g.line(screen, cam, beam.From, beam.To, 2, colorHighlight)
 		}
 	}
+}
 
-	for _, d := range c.Districts {
-		g.district(screen, cam, d, hover.District == d, c.Night, detailed)
-	}
-	for _, d := range c.Districts {
-		if g.scene.DistrictLabelVisible(d) {
-			g.floorLabel(screen, g.scene.DistrictLabelAt(d, lineHeight), d.Name, colorText)
-		}
-		for _, b := range d.Buildings {
-			g.building(screen, cam, b, b == selected, detailed, seconds)
-		}
-	}
-	if g.scene.TitlesVisible() {
-		for _, b := range c.Buildings() {
-			if b.BoardedUp && hover.Building != b {
-				continue
-			}
-			g.title(screen, cam, b)
-		}
-	}
-	g.landmarks(screen, cam, labels)
-	g.minimap(screen, width, height)
-
-	if card, ok := g.scene.Card(); ok {
-		g.card(screen, card, width, height)
-	}
-	g.footer(screen, width, height)
+func formatTitle(title string) string {
+	return ascii(format.Clip(title, titleChars))
 }
 
 // title writes a building's name under it at a fixed size.
 func (g *Game) title(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
-	name := format.Clip(b.Card(g.scene.City().Time).Title, titleChars)
+	name := formatTitle(b.Card(g.scene.City().Time).Title)
 	w := float64(len(name)) * charWidth
 	at := cam.WorldToScreen(city.Point{X: b.Rect.Center().X, Y: b.Rect.Max.Y}).Add(city.Point{X: -w / 2, Y: 4})
 	g.floorLabel(screen, at, name, colorText)
@@ -518,7 +537,13 @@ func (g *Game) outline(screen *ebiten.Image, cam *city.Camera, r city.Rect, c co
 	vector.StrokeRect(screen, float32(min.X), float32(min.Y), float32(max.X-min.X), float32(max.Y-min.Y), 2, c, false)
 }
 
+// ascii swaps the one glyph the bitmap font lacks.
+func ascii(s string) string {
+	return strings.ReplaceAll(s, "…", "..")
+}
+
 func (g *Game) label(screen *ebiten.Image, at city.Point, s string, c color.NRGBA) {
+	s = ascii(s)
 	op := &text.DrawOptions{}
 	op.GeoM.Translate(at.X, at.Y)
 	op.ColorScale.ScaleWithColor(c)

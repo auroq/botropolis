@@ -17,8 +17,9 @@ const (
 var ZoomSteps = []float64{MinZoom, 0.35, 0.5, 0.75, 1, 1.5, 2, 3, MaxZoom}
 
 type Camera struct {
-	Offset Point
-	Zoom   float64
+	Offset     Point
+	Zoom       float64
+	Projection Projection
 }
 
 func NewCamera() *Camera {
@@ -30,11 +31,11 @@ func (c *Camera) Pan(delta Point) {
 }
 
 func (c *Camera) WorldToScreen(p Point) Point {
-	return p.Add(c.Offset).Scale(c.Zoom)
+	return c.Projection.Apply(p).Add(c.Offset).Scale(c.Zoom)
 }
 
 func (c *Camera) ScreenToWorld(p Point) Point {
-	return p.Scale(1 / c.Zoom).Sub(c.Offset)
+	return c.Projection.Invert(p.Scale(1 / c.Zoom).Sub(c.Offset))
 }
 
 // ZoomAt steps the zoom up (factor > 1) or down the ladder, keeping the
@@ -47,7 +48,8 @@ func (c *Camera) ZoomAt(cursor Point, factor float64) {
 		c.Zoom = stepBelow(c.Zoom)
 	}
 	after := c.ScreenToWorld(cursor)
-	c.Offset = c.Offset.Add(after.Sub(before))
+	// Offset lives on the map plane, so the world shift is projected first.
+	c.Offset = c.Offset.Add(c.Projection.Apply(after).Sub(c.Projection.Apply(before)))
 }
 
 const zoomEpsilon = 1e-9
@@ -93,6 +95,7 @@ type Insets struct {
 }
 
 func (c *Camera) FitWithInsets(bounds Rect, width, height float64, in Insets) {
+	bounds = c.Projection.Bounds(bounds)
 	if bounds.Width() <= 0 || bounds.Height() <= 0 || width <= 0 || height <= 0 {
 		return
 	}
@@ -103,7 +106,12 @@ func (c *Camera) FitWithInsets(bounds Rect, width, height float64, in Insets) {
 	}
 	// Fitting may go below MinZoom: the wheel floor stops the user losing the
 	// city, but a short tiled window still has to show all of it.
-	c.Zoom = snapDown(math.Min(MaxZoom, math.Max(FitMinZoom, math.Min(availW/bounds.Width(), availH/bounds.Height()))))
+	c.Zoom = math.Min(MaxZoom, math.Max(FitMinZoom, math.Min(availW/bounds.Width(), availH/bounds.Height())))
+	if c.Projection == TopDown {
+		// Pixel art wants whole pixels per tile; the isometric renders are
+		// smooth-shaded and scale freely.
+		c.Zoom = snapDown(c.Zoom)
+	}
 	centre := bounds.Center()
 	screenCentre := Point{X: in.Left + (width-in.Left-in.Right)/2, Y: in.Top + (height-in.Top-in.Bottom)/2}
 	c.Offset = screenCentre.Scale(1 / c.Zoom).Sub(centre)

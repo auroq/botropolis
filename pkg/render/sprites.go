@@ -28,6 +28,53 @@ func (a *atlas) tile(col, row int) *ebiten.Image {
 
 type sprites struct {
 	town, factory, modern *atlas
+	iso                   *isoSprites
+}
+
+// isoAtlas is a Kenney packed sheet with named sub-images.
+type isoAtlas struct {
+	sheet *ebiten.Image
+	rects map[string]image.Rectangle
+}
+
+func loadIsoAtlas(pack assets.Pack) (*isoAtlas, error) {
+	a, err := assets.LoadAtlas(pack)
+	if err != nil {
+		return nil, err
+	}
+	return &isoAtlas{sheet: ebiten.NewImageFromImage(a.Image), rects: a.Rects}, nil
+}
+
+func (a *isoAtlas) sprite(name string) *ebiten.Image {
+	r, ok := a.rects[name]
+	if !ok {
+		return nil
+	}
+	return a.sheet.SubImage(r).(*ebiten.Image)
+}
+
+type isoSprites struct {
+	buildings, city, landscape, vehicles *isoAtlas
+}
+
+func loadIsoSprites() (*isoSprites, error) {
+	buildings, err := loadIsoAtlas(assets.IsoBuildings)
+	if err != nil {
+		return nil, err
+	}
+	cityAtlas, err := loadIsoAtlas(assets.IsoCity)
+	if err != nil {
+		return nil, err
+	}
+	landscape, err := loadIsoAtlas(assets.IsoLandscape)
+	if err != nil {
+		return nil, err
+	}
+	vehicles, err := loadIsoAtlas(assets.IsoVehicles)
+	if err != nil {
+		return nil, err
+	}
+	return &isoSprites{buildings: buildings, city: cityAtlas, landscape: landscape, vehicles: vehicles}, nil
 }
 
 func loadSprites() (*sprites, error) {
@@ -43,7 +90,11 @@ func loadSprites() (*sprites, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &sprites{town: town, factory: factory, modern: modern}, nil
+	iso, err := loadIsoSprites()
+	if err != nil {
+		return nil, err
+	}
+	return &sprites{town: town, factory: factory, modern: modern, iso: iso}, nil
 }
 
 // Tile coordinates (column, row) in the packed 16 px sheets.

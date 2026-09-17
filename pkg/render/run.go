@@ -25,10 +25,12 @@ type Options struct {
 	Feed       func(ctx context.Context, offer func(state.Snapshot))
 	Width      int
 	Height     int
+	Projection city.Projection
 }
 
 func Run(ctx context.Context, opts Options) error {
 	scene := city.NewScene(opts.Layout)
+	scene.SetProjection(opts.Projection)
 	width, height := opts.Width, opts.Height
 	if width <= 0 || height <= 0 {
 		width, height = defaultWidth, defaultHeight

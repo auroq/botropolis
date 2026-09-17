@@ -167,3 +167,50 @@ func TestCamera(t *testing.T) {
 		})
 	})
 }
+
+func TestIsometricCamera(t *testing.T) {
+	t.Run("when the camera is isometric", func(t *testing.T) {
+		cam := city.NewCamera()
+		cam.Projection = city.Isometric
+
+		t.Run("it should put a world point where the projection says", func(t *testing.T) {
+			assert.Equal(t, city.Isometric.Apply(city.Point{X: 40, Y: 10}), cam.WorldToScreen(city.Point{X: 40, Y: 10}))
+		})
+
+		t.Run("it should take a screen point back to the same world point", func(t *testing.T) {
+			w := city.Point{X: 40, Y: 10}
+			back := cam.ScreenToWorld(cam.WorldToScreen(w))
+			assert.InDelta(t, w.X, back.X, 1e-9)
+			assert.InDelta(t, w.Y, back.Y, 1e-9)
+		})
+
+		t.Run("and it zooms at a point under the cursor", func(t *testing.T) {
+			zoomed := *cam
+			zoomed.Pan(city.Point{X: 300, Y: 200})
+			cursor := city.Point{X: 400, Y: 300}
+			before := zoomed.ScreenToWorld(cursor)
+			zoomed.ZoomAt(cursor, 2)
+			after := zoomed.ScreenToWorld(cursor)
+
+			t.Run("it should keep that world point under the cursor", func(t *testing.T) {
+				assert.InDelta(t, before.X, after.X, 1e-9)
+				assert.InDelta(t, before.Y, after.Y, 1e-9)
+			})
+		})
+
+		t.Run("and it is fitted to a square", func(t *testing.T) {
+			r := city.RectAt(0, 0, 400, 400)
+			cam.FitWithInsets(r, 800, 600, city.Insets{})
+
+			t.Run("it should keep every projected corner on screen", func(t *testing.T) {
+				for _, corner := range city.Isometric.Corners(r) {
+					p := cam.WorldToScreen(city.Isometric.Invert(corner))
+					assert.GreaterOrEqual(t, p.X, 0.0)
+					assert.LessOrEqual(t, p.X, 800.0)
+					assert.GreaterOrEqual(t, p.Y, 0.0)
+					assert.LessOrEqual(t, p.Y, 600.0)
+				}
+			})
+		})
+	})
+}

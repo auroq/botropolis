@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"github.com/spf13/pflag"
 	"os"
 	"path/filepath"
 	"testing"
@@ -143,6 +144,31 @@ func TestConfig(t *testing.T) {
 
 		t.Run("it should return an error", func(t *testing.T) {
 			assert.Error(t, err)
+		})
+	})
+}
+
+func TestProjectionKey(t *testing.T) {
+	t.Run("when nothing sets the projection", func(t *testing.T) {
+		v := config.NewViper()
+		cfg, err := config.New(v)
+		require.NoError(t, err)
+
+		t.Run("it should draw the city isometric", func(t *testing.T) {
+			assert.Equal(t, "iso", cfg.Projection)
+		})
+	})
+
+	t.Run("when the flag asks for the top-down view", func(t *testing.T) {
+		v := config.NewViper()
+		flags := pflag.NewFlagSet("t", pflag.ContinueOnError)
+		config.BindFlags(v, flags)
+		require.NoError(t, flags.Parse([]string{"--projection", "top"}))
+		cfg, err := config.New(v)
+		require.NoError(t, err)
+
+		t.Run("it should say top", func(t *testing.T) {
+			assert.Equal(t, "top", cfg.Projection)
 		})
 	})
 }

@@ -7,7 +7,7 @@ import (
 	"image/png"
 )
 
-//go:embed kenney/*/tilemap_packed.png kenney/*/License.txt
+//go:embed kenney/*/tilemap_packed.png kenney/*/sheet.png kenney/*/sheet.xml kenney/*/License.txt
 var files embed.FS
 
 const TileSize = 16

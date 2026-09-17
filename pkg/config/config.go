@@ -22,9 +22,12 @@ const (
 	KeyHookCommand = "hook_command"
 	KeyParkedDays  = "parked_days"
 	KeyCodexHome   = "codex_home"
+	KeyProjection  = "projection"
 
 	DefaultParkedDays = 7
 )
+
+const DefaultProjection = "iso"
 
 type Config struct {
 	Home        string
@@ -35,6 +38,7 @@ type Config struct {
 	HookCommand string
 	ParkedDays  int
 	CodexHome   string
+	Projection  string
 	File        string
 }
 
@@ -48,6 +52,7 @@ func NewViper() *viper.Viper {
 	v.SetDefault(KeyHookCommand, "botropolis-hook")
 	v.SetDefault(KeyParkedDays, DefaultParkedDays)
 	v.SetDefault(KeyCodexHome, "")
+	v.SetDefault(KeyProjection, DefaultProjection)
 	v.SetConfigName(configName)
 	v.AddConfigPath(filepath.Join(configHome(), appDir))
 	return v
@@ -57,9 +62,11 @@ func BindFlags(v *viper.Viper, flags *pflag.FlagSet) {
 	flags.String(KeyHome, "", "home directory holding .claude (default: $HOME)")
 	flags.String(KeySocket, "", "daemon socket (default: $XDG_RUNTIME_DIR/botropolis/botropolis.sock)")
 	flags.Int(KeyParkedDays, DefaultParkedDays, "how many days of parked sessions to catalogue (0 disables)")
+	flags.String(KeyProjection, DefaultProjection, "how the city is drawn: iso or top")
 	_ = v.BindPFlag(KeyHome, flags.Lookup(KeyHome))
 	_ = v.BindPFlag(KeySocket, flags.Lookup(KeySocket))
 	_ = v.BindPFlag(KeyParkedDays, flags.Lookup(KeyParkedDays))
+	_ = v.BindPFlag(KeyProjection, flags.Lookup(KeyProjection))
 }
 
 func New(v *viper.Viper) (*Config, error) {
@@ -78,6 +85,7 @@ func New(v *viper.Viper) (*Config, error) {
 		HookCommand: v.GetString(KeyHookCommand),
 		ParkedDays:  v.GetInt(KeyParkedDays),
 		CodexHome:   v.GetString(KeyCodexHome),
+		Projection:  v.GetString(KeyProjection),
 		File:        v.ConfigFileUsed(),
 	}
 	if cfg.Home == "" {
