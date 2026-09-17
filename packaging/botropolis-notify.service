@@ -1,0 +1,13 @@
+[Unit]
+Description=Botropolis notifier - desktop notification when a session needs you
+Documentation=https://github.com/auroq/botropolis
+After=botropolisd.service
+Wants=botropolisd.service
+
+[Service]
+ExecStart=/usr/bin/botropolis notify
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

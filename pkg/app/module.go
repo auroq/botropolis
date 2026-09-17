@@ -28,6 +28,7 @@ type cliParams struct {
 	Sessions []*cobra.Command `name:"sessions"`
 	City     *cobra.Command   `name:"city"`
 	Bar      *cobra.Command   `name:"bar"`
+	Notify   *cobra.Command   `name:"notify"`
 }
 
 var Module = fx.Module("botropolis",
@@ -35,14 +36,15 @@ var Module = fx.Module("botropolis",
 		config.NewViper,
 		newLoader,
 		newProbes,
-		fx.Annotate(newServices, fx.As(new(cli.Services)), fx.As(new(cli.CityServices)), fx.As(new(cli.BarServices))),
+		fx.Annotate(newServices, fx.As(new(cli.Services)), fx.As(new(cli.CityServices)), fx.As(new(cli.BarServices)), fx.As(new(cli.NotifyServices))),
 		fx.Annotate(cli.NewStatusCLI, fx.ResultTags(`name:"status"`)),
 		fx.Annotate(cli.NewInstallHooksCLI, fx.ResultTags(`name:"installHooks"`)),
 		fx.Annotate(cli.NewSessionCLIs, fx.ResultTags(`name:"sessions"`)),
 		fx.Annotate(cli.NewCityCLI, fx.ResultTags(`name:"city"`)),
 		fx.Annotate(cli.NewBarCLI, fx.ResultTags(`name:"bar"`)),
+		fx.Annotate(cli.NewNotifyCLI, fx.ResultTags(`name:"notify"`)),
 		func(p cliParams) *cobra.Command {
-			subs := append([]*cobra.Command{p.Status, p.Hooks, p.City, p.Bar}, p.Sessions...)
+			subs := append([]*cobra.Command{p.Status, p.Hooks, p.City, p.Bar, p.Notify}, p.Sessions...)
 			return cli.NewRootCLI(p.Viper, subs...)
 		},
 	),
@@ -107,6 +109,13 @@ func (s *services) Bar(cfg *config.Config) cli.BarRunner {
 	source := s.source(cfg)
 	feed := commands.Feed{Socket: cfg.Socket, Source: source, Poll: 2 * time.Second, Retry: 5 * time.Second}
 	return commands.NewBar(source, feed.Run)
+}
+
+func (s *services) Notify(cfg *config.Config) cli.NotifyRunner {
+	feed := commands.Feed{Socket: cfg.Socket, Source: s.source(cfg), Poll: 2 * time.Second, Retry: 5 * time.Second}
+	n := commands.NewNotify(feed.Run, commands.NotifySend{})
+	n.OnError = func(err error) { fmt.Fprintf(os.Stderr, "botropolis notify: %v\n", err) }
+	return n
 }
 
 func (s *services) City(cfg *config.Config) cli.CityRunner {

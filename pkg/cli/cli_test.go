@@ -89,6 +89,10 @@ func (f *fakeBar) Watch(_ context.Context, out io.Writer, format commands.BarFor
 	_, _ = io.WriteString(out, "LINE\nLINE\n")
 }
 
+type fakeNotify struct{ runs int }
+
+func (f *fakeNotify) Run(context.Context) { f.runs++ }
+
 type fakeCity struct{ runs int }
 
 func (f *fakeCity) Run(*cobra.Command) error { f.runs++; return nil }
@@ -99,6 +103,7 @@ type harness struct {
 	sessions *fakeSessions
 	city     *fakeCity
 	bar      *fakeBar
+	notify   *fakeNotify
 	seen     *config.Config
 	out      bytes.Buffer
 	root     *cobra.Command
@@ -109,12 +114,13 @@ func (h *harness) Hooks(cfg *config.Config) cli.HooksRunner       { h.seen = cfg
 func (h *harness) Sessions(cfg *config.Config) cli.SessionsRunner { h.seen = cfg; return h.sessions }
 func (h *harness) City(cfg *config.Config) cli.CityRunner         { h.seen = cfg; return h.city }
 func (h *harness) Bar(cfg *config.Config) cli.BarRunner           { h.seen = cfg; return h.bar }
+func (h *harness) Notify(cfg *config.Config) cli.NotifyRunner     { h.seen = cfg; return h.notify }
 
 func newHarness(cfg *config.Config) *harness {
-	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}, bar: &fakeBar{}}
+	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}, bar: &fakeBar{}, notify: &fakeNotify{}}
 	load := func() (*config.Config, error) { return cfg, nil }
 	v := config.NewViper()
-	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h), cli.NewBarCLI(load, h)},
+	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h), cli.NewBarCLI(load, h), cli.NewNotifyCLI(load, h)},
 		cli.NewSessionCLIs(load, h)...)
 	h.root = cli.NewRootCLI(v, subs...)
 	h.root.SetOut(&h.out)
@@ -365,6 +371,17 @@ func TestBarCLI(t *testing.T) {
 
 		t.Run("it should scan directly", func(t *testing.T) {
 			assert.Equal(t, []string{"once waybar direct=true"}, h.bar.calls)
+		})
+	})
+}
+
+func TestNotifyCLI(t *testing.T) {
+	t.Run("when run", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("notify"))
+
+		t.Run("it should start the notifier", func(t *testing.T) {
+			assert.Equal(t, 1, h.notify.runs)
 		})
 	})
 }
