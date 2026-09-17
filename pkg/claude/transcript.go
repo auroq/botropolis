@@ -94,6 +94,19 @@ type modelUsageJSON struct {
 	CostUSD     float64 `json:"costUSD"`
 }
 
+func (mu modelUsageJSON) modelCost() ModelCost {
+	return ModelCost{
+		USD: mu.CostUSD,
+		Usage: Usage{
+			Input:       mu.Input,
+			Output:      mu.Output,
+			CacheRead:   mu.CacheRead,
+			CacheCreate: mu.CacheCreate,
+			Thinking:    mu.Thinking,
+		},
+	}
+}
+
 type transcriptLineJSON struct {
 	Type         string                    `json:"type"`
 	SessionID    string                    `json:"sessionId"`
@@ -254,16 +267,7 @@ func (s *transcriptScan) applyAssistant(rec transcriptLineJSON, mainLine bool) {
 func (s *transcriptScan) applyCost(rec transcriptLineJSON) {
 	cost := Cost{TotalUSD: rec.TotalCostUSD, Models: map[string]ModelCost{}}
 	for model, mu := range rec.ModelUsage {
-		cost.Models[model] = ModelCost{
-			USD: mu.CostUSD,
-			Usage: Usage{
-				Input:       mu.Input,
-				Output:      mu.Output,
-				CacheRead:   mu.CacheRead,
-				CacheCreate: mu.CacheCreate,
-				Thinking:    mu.Thinking,
-			},
-		}
+		cost.Models[model] = mu.modelCost()
 	}
 	s.transcript.Cost = cost
 }
