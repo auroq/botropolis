@@ -1,0 +1,131 @@
+package config_test
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/auroq/botropolis/pkg/config"
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func load(t *testing.T, args ...string) *config.Config {
+	t.Helper()
+	cmd := &cobra.Command{Use: "test", RunE: func(*cobra.Command, []string) error { return nil }}
+	v := config.NewViper()
+	config.BindFlags(v, cmd.PersistentFlags())
+	cmd.SetArgs(args)
+	require.NoError(t, cmd.Execute())
+	cfg, err := config.New(v)
+	require.NoError(t, err)
+	return cfg
+}
+
+func TestConfig(t *testing.T) {
+	t.Run("when nothing is set", func(t *testing.T) {
+		t.Setenv("HOME", "/home/someone")
+		t.Setenv("XDG_RUNTIME_DIR", "/run/user/1000")
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+		t.Setenv("BOTROPOLIS_HOME", "")
+		t.Setenv("BOTROPOLIS_SOCKET", "")
+		t.Setenv("BOTROPOLIS_TERMINAL", "")
+		cfg := load(t)
+
+		t.Run("it should default home to $HOME", func(t *testing.T) {
+			assert.Equal(t, "/home/someone", cfg.Home)
+		})
+
+		t.Run("it should default the socket to the runtime dir", func(t *testing.T) {
+			assert.Equal(t, "/run/user/1000/botropolis/botropolis.sock", cfg.Socket)
+		})
+
+		t.Run("it should default the hook command to the bare binary name", func(t *testing.T) {
+			assert.Equal(t, "botropolis-hook", cfg.HookCommand)
+		})
+
+		t.Run("it should leave the terminal empty", func(t *testing.T) {
+			assert.Empty(t, cfg.Terminal)
+		})
+	})
+
+	t.Run("when flags are given", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+		cfg := load(t, "--home", "/tmp/h", "--socket", "/tmp/s.sock")
+
+		t.Run("it should take home from the flag", func(t *testing.T) {
+			assert.Equal(t, "/tmp/h", cfg.Home)
+		})
+
+		t.Run("it should take the socket from the flag", func(t *testing.T) {
+			assert.Equal(t, "/tmp/s.sock", cfg.Socket)
+		})
+
+		t.Run("it should know home was set explicitly", func(t *testing.T) {
+			assert.True(t, cfg.HomeSet)
+		})
+
+		t.Run("it should know the socket was set explicitly", func(t *testing.T) {
+			assert.True(t, cfg.SocketSet)
+		})
+	})
+
+	t.Run("when environment variables are set", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+		t.Setenv("BOTROPOLIS_HOME", "/env/home")
+		t.Setenv("BOTROPOLIS_TERMINAL", "wezterm start --")
+		cfg := load(t)
+
+		t.Run("it should take home from BOTROPOLIS_HOME", func(t *testing.T) {
+			assert.Equal(t, "/env/home", cfg.Home)
+		})
+
+		t.Run("it should take the terminal from BOTROPOLIS_TERMINAL", func(t *testing.T) {
+			assert.Equal(t, "wezterm start --", cfg.Terminal)
+		})
+
+		t.Run("and a flag is also given", func(t *testing.T) {
+			cfg := load(t, "--home", "/flag/home")
+
+			t.Run("it should let the flag win", func(t *testing.T) {
+				assert.Equal(t, "/flag/home", cfg.Home)
+			})
+		})
+	})
+
+	t.Run("when a config file exists under XDG_CONFIG_HOME", func(t *testing.T) {
+		configHome := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", configHome)
+		t.Setenv("BOTROPOLIS_TERMINAL", "")
+		require.NoError(t, os.MkdirAll(filepath.Join(configHome, "botropolis"), 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(configHome, "botropolis", "config.toml"),
+			[]byte("terminal = \"foot\"\nhook_command = \"/usr/bin/botropolis-hook\"\n"), 0o600))
+		cfg := load(t)
+
+		t.Run("it should read the terminal from the file", func(t *testing.T) {
+			assert.Equal(t, "foot", cfg.Terminal)
+		})
+
+		t.Run("it should read the hook command from the file", func(t *testing.T) {
+			assert.Equal(t, "/usr/bin/botropolis-hook", cfg.HookCommand)
+		})
+
+		t.Run("it should report the file it used", func(t *testing.T) {
+			assert.Equal(t, filepath.Join(configHome, "botropolis", "config.toml"), cfg.File)
+		})
+	})
+
+	t.Run("when the config file is malformed", func(t *testing.T) {
+		configHome := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", configHome)
+		require.NoError(t, os.MkdirAll(filepath.Join(configHome, "botropolis"), 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(configHome, "botropolis", "config.toml"), []byte("terminal = [\n"), 0o600))
+		v := config.NewViper()
+		_, err := config.New(v)
+
+		t.Run("it should return an error", func(t *testing.T) {
+			assert.Error(t, err)
+		})
+	})
+}

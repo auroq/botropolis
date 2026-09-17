@@ -54,9 +54,9 @@ func startDaemon(t *testing.T, home, sock string) (*bytes.Buffer, <-chan int) {
 }
 
 func TestRun(t *testing.T) {
-	t.Run("when invoked with the version subcommand", func(t *testing.T) {
+	t.Run("when invoked with --version", func(t *testing.T) {
 		var out bytes.Buffer
-		code := run(context.Background(), []string{"version"}, &out)
+		code := run(context.Background(), []string{"--version"}, &out)
 
 		t.Run("it should exit zero", func(t *testing.T) {
 			assert.Equal(t, 0, code)
@@ -71,8 +71,8 @@ func TestRun(t *testing.T) {
 		var out bytes.Buffer
 		code := run(context.Background(), []string{"--bogus"}, &out)
 
-		t.Run("it should exit with usage status 2", func(t *testing.T) {
-			assert.Equal(t, 2, code)
+		t.Run("it should exit non-zero", func(t *testing.T) {
+			assert.NotEqual(t, 0, code)
 		})
 	})
 

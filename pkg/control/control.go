@@ -35,8 +35,14 @@ func New(runner Runner, getenv func(string) string, onPath func(string) bool) *C
 	return &Control{runner: runner, getenv: getenv, onPath: onPath}
 }
 
-func Default() *Control {
-	return New(execRunner{}, os.Getenv, func(name string) bool {
+func Default(terminal string) *Control {
+	getenv := func(key string) string {
+		if key == "BOTROPOLIS_TERMINAL" && terminal != "" {
+			return terminal
+		}
+		return os.Getenv(key)
+	}
+	return New(execRunner{}, getenv, func(name string) bool {
 		_, err := exec.LookPath(name)
 		return err == nil
 	})

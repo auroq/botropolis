@@ -41,6 +41,11 @@ botropolis status                           # the table, via the daemon
 
 `botropolis install-hooks --remove` takes the hook out again.
 `botropolis status --direct` skips the daemon.
+`botropolis new <dir> [prompt]`, `attach <id>`, `stop <id>`, `resume <session-id>`, and `rm <id>` wrap the `claude` CLI;
+`packaging/botropolis.bash` makes a plain `claude` in a shell start in the background and attach.
+
+Settings come from flags, then `BOTROPOLIS_HOME`, `BOTROPOLIS_SOCKET`, `BOTROPOLIS_TERMINAL`,
+then `~/.config/botropolis/config.{toml,yaml,json}` (`home`, `socket`, `terminal`, `hook_command`).
 
 ## Tools
 

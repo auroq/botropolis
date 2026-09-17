@@ -53,9 +53,9 @@ func serveDaemon(t *testing.T) (*daemon.Daemon, string) {
 }
 
 func TestRun(t *testing.T) {
-	t.Run("when invoked with the version subcommand", func(t *testing.T) {
+	t.Run("when invoked with --version", func(t *testing.T) {
 		var out, errOut bytes.Buffer
-		code := run([]string{"version"}, strings.NewReader(""), &out, &errOut)
+		code := run([]string{"--version"}, strings.NewReader(""), &out, &errOut)
 
 		t.Run("it should exit zero", func(t *testing.T) {
 			assert.Equal(t, 0, code)
