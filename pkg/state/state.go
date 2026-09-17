@@ -36,6 +36,8 @@ type Session struct {
 	Attached           bool         `json:"attached"`
 	State              State        `json:"state"`
 	Turn               claude.Turn  `json:"turn"`
+	Tool               string       `json:"tool,omitempty"`
+	Note               string       `json:"note,omitempty"`
 	ContextTokens      int64        `json:"contextTokens"`
 	ContextWindow      int64        `json:"contextWindow"`
 	ContextPercent     float64      `json:"contextPercent"`

@@ -2,6 +2,7 @@ package claude
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -38,6 +39,25 @@ type SessionRecord struct {
 type SkippedFile struct {
 	Path string
 	Err  error
+}
+
+func (s SkippedFile) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Path  string `json:"path"`
+		Error string `json:"error"`
+	}{s.Path, s.Err.Error()})
+}
+
+func (s *SkippedFile) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Path  string `json:"path"`
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	s.Path, s.Err = raw.Path, errors.New(raw.Error)
+	return nil
 }
 
 func (s SkippedFile) Error() string {

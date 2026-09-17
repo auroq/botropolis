@@ -1,0 +1,210 @@
+package daemon_test
+
+import (
+	"testing"
+	"time"
+
+	"github.com/auroq/botropolis/pkg/claude"
+	"github.com/auroq/botropolis/pkg/daemon"
+	"github.com/auroq/botropolis/pkg/state"
+	"github.com/auroq/botropolis/testing/helpers"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	sid = "08b1d655-276f-495b-a61f-2214af35a97a"
+	cwd = "/home/avesta/workspaces/github/mCedar/cinders"
+	pid = 4242
+)
+
+var (
+	t0     = time.Date(2026, time.September, 16, 19, 50, 0, 0, time.UTC)
+	now    = t0.Add(time.Hour)
+	probes = state.Probes{Alive: func(int) bool { return true }, Attached: func(string) bool { return false }}
+)
+
+func stamp(d time.Duration) string {
+	return t0.Add(d).Format(time.RFC3339Nano)
+}
+
+func idleHome(t *testing.T, kind string) *helpers.Home {
+	t.Helper()
+	home := helpers.NewHome(t).Session(pid, sid, cwd, kind, "idle")
+	home.Transcript(sid, cwd,
+		helpers.UserPrompt(sid, cwd, stamp(0)),
+		helpers.ModelAttachment(sid, "claude-opus-5[1m]", stamp(time.Second)),
+		helpers.AssistantReply(sid, "msg_01", stamp(10*time.Second)),
+		helpers.AITitle(sid, "Fix the CI queue"))
+	return home
+}
+
+func newDaemon(t *testing.T, home *helpers.Home) *daemon.Daemon {
+	t.Helper()
+	d := daemon.New(home.Path, probes, func() time.Time { return now })
+	require.NoError(t, d.Rescan())
+	return d
+}
+
+func only(t *testing.T, d *daemon.Daemon) state.Session {
+	t.Helper()
+	sessions := d.Snapshot().Sessions
+	require.Len(t, sessions, 1)
+	return sessions[0]
+}
+
+func event(name claude.HookName, tool string) claude.HookEvent {
+	return claude.HookEvent{Name: name, SessionID: sid, CWD: cwd, ToolName: tool}
+}
+
+func TestDaemon(t *testing.T) {
+	t.Run("when created over a home with one idle session", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+
+		t.Run("it should expose the session in its snapshot", func(t *testing.T) {
+			assert.Equal(t, "Fix the CI queue", only(t, d).Title)
+		})
+
+		t.Run("it should derive the state from the files", func(t *testing.T) {
+			assert.Equal(t, state.NeedsYou, only(t, d).State)
+		})
+
+		t.Run("it should stamp the snapshot with the clock", func(t *testing.T) {
+			assert.Equal(t, now, d.Snapshot().At)
+		})
+	})
+
+	t.Run("when a PreToolUse event arrives for an idle interactive session", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		updates, cancel := d.Subscribe()
+		defer cancel()
+		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+
+		t.Run("it should flip the session to working", func(t *testing.T) {
+			assert.Equal(t, state.Working, only(t, d).State)
+		})
+
+		t.Run("it should record the tool in use", func(t *testing.T) {
+			assert.Equal(t, "Bash", only(t, d).Tool)
+		})
+
+		t.Run("it should move last activity to the event time", func(t *testing.T) {
+			assert.Equal(t, now, only(t, d).LastActivity)
+		})
+
+		t.Run("it should notify subscribers", func(t *testing.T) {
+			select {
+			case snapshot := <-updates:
+				assert.Equal(t, state.Working, snapshot.Sessions[0].State)
+			case <-time.After(time.Second):
+				t.Fatal("no update delivered")
+			}
+		})
+	})
+
+	t.Run("when a PreToolUse event arrives for an unattended background session", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "bg"))
+		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+
+		t.Run("it should flip the session to unattended", func(t *testing.T) {
+			assert.Equal(t, state.Unattended, only(t, d).State)
+		})
+	})
+
+	t.Run("when a PostToolUse event follows a PreToolUse event", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+		d.Apply(event(claude.HookPostToolUse, "Bash"), now.Add(time.Second))
+
+		t.Run("it should stay working", func(t *testing.T) {
+			assert.Equal(t, state.Working, only(t, d).State)
+		})
+
+		t.Run("it should clear the tool in use", func(t *testing.T) {
+			assert.Empty(t, only(t, d).Tool)
+		})
+	})
+
+	t.Run("when a Notification event arrives", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+		d.Apply(claude.HookEvent{Name: claude.HookNotification, SessionID: sid, NotificationType: "permission_prompt",
+			Message: "Claude needs your permission to use Bash"}, now.Add(time.Second))
+
+		t.Run("it should need you", func(t *testing.T) {
+			assert.Equal(t, state.NeedsYou, only(t, d).State)
+		})
+
+		t.Run("it should carry the message", func(t *testing.T) {
+			assert.Equal(t, "Claude needs your permission to use Bash", only(t, d).Note)
+		})
+	})
+
+	t.Run("when a Stop event arrives on a working session", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+		d.Apply(event(claude.HookStop, ""), now.Add(time.Second))
+
+		t.Run("it should need you", func(t *testing.T) {
+			assert.Equal(t, state.NeedsYou, only(t, d).State)
+		})
+	})
+
+	t.Run("when a SessionEnd event arrives", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		d.Apply(event(claude.HookSessionEnd, ""), now)
+
+		t.Run("it should park the session", func(t *testing.T) {
+			assert.Equal(t, state.Parked, only(t, d).State)
+		})
+	})
+
+	t.Run("when the transcript catches up after an event", func(t *testing.T) {
+		home := idleHome(t, "interactive")
+		d := newDaemon(t, home)
+		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+		home.AppendTranscript(sid, cwd,
+			helpers.UserPrompt(sid, cwd, now.Add(time.Second).Format(time.RFC3339Nano)),
+			helpers.AssistantReply(sid, "msg_02", now.Add(2*time.Second).Format(time.RFC3339Nano)))
+		require.NoError(t, d.Rescan())
+
+		t.Run("it should trust the files again", func(t *testing.T) {
+			assert.Equal(t, state.NeedsYou, only(t, d).State)
+		})
+
+		t.Run("it should drop the stale tool", func(t *testing.T) {
+			assert.Empty(t, only(t, d).Tool)
+		})
+	})
+
+	t.Run("when the transcript is re-read but is still older than the event", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+		require.NoError(t, d.Rescan())
+
+		t.Run("it should keep the event's state", func(t *testing.T) {
+			assert.Equal(t, state.Working, only(t, d).State)
+		})
+	})
+
+	t.Run("when an event arrives for a session the files do not know", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		d.Apply(claude.HookEvent{Name: claude.HookPreToolUse, SessionID: "ffffffff-0000-0000-0000-000000000000", ToolName: "Bash"}, now)
+
+		t.Run("it should not invent a session", func(t *testing.T) {
+			assert.Len(t, d.Snapshot().Sessions, 1)
+		})
+	})
+
+	t.Run("when a subscriber cancels", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		updates, cancel := d.Subscribe()
+		cancel()
+		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+
+		t.Run("it should close the channel", func(t *testing.T) {
+			_, open := <-updates
+			assert.False(t, open)
+		})
+	})
+}
