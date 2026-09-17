@@ -1,0 +1,102 @@
+package city_test
+
+import (
+	"testing"
+
+	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/state"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestCamera(t *testing.T) {
+	t.Run("when the camera is new", func(t *testing.T) {
+		cam := city.NewCamera()
+
+		t.Run("it should be at unit zoom", func(t *testing.T) {
+			assert.InDelta(t, 1.0, cam.Zoom, 1e-9)
+		})
+
+		t.Run("it should map the origin to the origin", func(t *testing.T) {
+			assert.Equal(t, city.Point{}, cam.WorldToScreen(city.Point{}))
+		})
+	})
+
+	t.Run("when the camera is panned and zoomed", func(t *testing.T) {
+		cam := city.NewCamera()
+		cam.Pan(city.Point{X: -30, Y: -10})
+		cam.ZoomAt(city.Point{X: 0, Y: 0}, 2)
+
+		t.Run("it should place a world point on the screen", func(t *testing.T) {
+			assert.Equal(t, city.Point{X: 140, Y: 180}, cam.WorldToScreen(city.Point{X: 100, Y: 100}))
+		})
+
+		t.Run("it should take a screen point back to the world", func(t *testing.T) {
+			assert.Equal(t, city.Point{X: 100, Y: 100}, cam.ScreenToWorld(city.Point{X: 140, Y: 180}))
+		})
+	})
+
+	t.Run("when zooming at a point under the cursor", func(t *testing.T) {
+		cam := city.NewCamera()
+		cursor := city.Point{X: 400, Y: 300}
+		before := cam.ScreenToWorld(cursor)
+		cam.ZoomAt(cursor, 1.5)
+		after := cam.ScreenToWorld(cursor)
+
+		t.Run("it should keep that world point under the cursor", func(t *testing.T) {
+			assert.InDelta(t, before.X, after.X, 1e-9)
+			assert.InDelta(t, before.Y, after.Y, 1e-9)
+		})
+	})
+
+	t.Run("when zooming far out", func(t *testing.T) {
+		cam := city.NewCamera()
+		for i := 0; i < 50; i++ {
+			cam.ZoomAt(city.Point{}, 0.5)
+		}
+
+		t.Run("it should stop at the minimum zoom", func(t *testing.T) {
+			assert.InDelta(t, city.MinZoom, cam.Zoom, 1e-9)
+		})
+	})
+
+	t.Run("when zooming far in", func(t *testing.T) {
+		cam := city.NewCamera()
+		for i := 0; i < 50; i++ {
+			cam.ZoomAt(city.Point{}, 2)
+		}
+
+		t.Run("it should stop at the maximum zoom", func(t *testing.T) {
+			assert.InDelta(t, city.MaxZoom, cam.Zoom, 1e-9)
+		})
+	})
+
+	t.Run("when the camera is fitted to a city", func(t *testing.T) {
+		c := build(t, city.NewLayout(), session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		cam := city.NewCamera()
+		cam.Fit(c.Bounds(), 800, 600)
+
+		t.Run("it should bring the whole city on screen", func(t *testing.T) {
+			min := cam.WorldToScreen(c.Bounds().Min)
+			max := cam.WorldToScreen(c.Bounds().Max)
+			assert.GreaterOrEqual(t, min.X, 0.0)
+			assert.GreaterOrEqual(t, min.Y, 0.0)
+			assert.LessOrEqual(t, max.X, 800.0)
+			assert.LessOrEqual(t, max.Y, 600.0)
+		})
+
+		t.Run("it should centre it", func(t *testing.T) {
+			centre := cam.WorldToScreen(c.Bounds().Center())
+			assert.InDelta(t, 400, centre.X, 1e-6)
+			assert.InDelta(t, 300, centre.Y, 1e-6)
+		})
+	})
+
+	t.Run("when an empty city is fitted", func(t *testing.T) {
+		cam := city.NewCamera()
+		cam.Fit(city.Rect{}, 800, 600)
+
+		t.Run("it should stay at a usable zoom", func(t *testing.T) {
+			assert.InDelta(t, 1.0, cam.Zoom, 1e-9)
+		})
+	})
+}
