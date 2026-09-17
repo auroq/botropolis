@@ -57,6 +57,7 @@ type City struct {
 	Plant     Plant
 	Towers    []*Tower
 	Library   Library
+	Hall      Hall
 	Roads     []RoadLine
 	Night     bool
 	Time      time.Time
@@ -184,6 +185,9 @@ func (c *City) Bounds() Rect {
 	if c.Library.Rect.Area() > 0 {
 		bounds = bounds.Union(c.Library.Rect)
 	}
+	if c.Hall.Rect.Area() > 0 {
+		bounds = bounds.Union(c.Hall.Rect)
+	}
 	return bounds
 }
 
@@ -198,6 +202,9 @@ func (c *City) At(p Point) Hit {
 	}
 	if c.Library.Rect.Area() > 0 && c.Library.Rect.Contains(p) {
 		return Hit{Landmark: LandmarkLibrary}
+	}
+	if c.Hall.Rect.Area() > 0 && c.Hall.Rect.Contains(p) {
+		return Hit{Landmark: LandmarkHall}
 	}
 	for _, d := range c.Districts {
 		if !d.Rect.Contains(p) {

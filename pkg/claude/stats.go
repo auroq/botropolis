@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -91,4 +92,64 @@ func ReadStats(path string) (Stats, error) {
 		}
 	}
 	return stats, nil
+}
+
+const statsDate = "2006-01-02"
+
+// ComputedOn is LastComputed as a date, or false when it is missing or
+// not a date.
+func (s Stats) ComputedOn() (time.Time, bool) {
+	t, err := time.Parse(statsDate, s.LastComputed)
+	return t, err == nil
+}
+
+// BusiestHour is the hour of day with the most activity, or -1 when nothing
+// has been counted.
+func (s Stats) BusiestHour() int {
+	best, count := -1, 0
+	for hour, n := range s.HourCounts {
+		if n > count {
+			best, count = hour, n
+		}
+	}
+	return best
+}
+
+// RecentDays is the last n counted days, oldest first.
+func (s Stats) RecentDays(n int) []DailyActivity {
+	days := append([]DailyActivity{}, s.DailyActivity...)
+	sort.SliceStable(days, func(i, j int) bool { return days[i].Date < days[j].Date })
+	if len(days) > n {
+		days = days[len(days)-n:]
+	}
+	return days
+}
+
+type ModelShare struct {
+	Model  string
+	Output int64
+	Share  float64
+}
+
+// ModelShare ranks models by output tokens as a share of the total.
+func (s Stats) ModelShare() []ModelShare {
+	var total int64
+	for _, m := range s.ModelUsage {
+		total += m.Usage.Output
+	}
+	shares := make([]ModelShare, 0, len(s.ModelUsage))
+	for name, m := range s.ModelUsage {
+		share := ModelShare{Model: name, Output: m.Usage.Output}
+		if total > 0 {
+			share.Share = float64(m.Usage.Output) / float64(total)
+		}
+		shares = append(shares, share)
+	}
+	sort.Slice(shares, func(i, j int) bool {
+		if shares[i].Output != shares[j].Output {
+			return shares[i].Output > shares[j].Output
+		}
+		return shares[i].Model < shares[j].Model
+	})
+	return shares
 }

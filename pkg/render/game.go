@@ -424,6 +424,25 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, labels bool) {
 			g.label(screen, cam.WorldToScreen(c.Library.Rect.Min).Add(city.Point{X: 0, Y: -14}), "library", colorDim)
 		}
 	}
+	if c.Hall.Rect.Area() > 0 {
+		if g.sprites != nil {
+			cols, rows := 4, 3
+			for row := 0; row < rows; row++ {
+				for col := 0; col < cols; col++ {
+					t := townWallWood[col%len(townWallWood)]
+					if row == 0 {
+						t = townRoofOrange[col%len(townRoofOrange)]
+					}
+					g.drawTile(screen, cam, g.sprites.town.tile(t[0], t[1]), cell(c.Hall.Rect, cols, rows, col, row), nil)
+				}
+			}
+		} else {
+			g.rect(screen, cam, c.Hall.Rect, colorLibrary)
+		}
+		if labels {
+			g.label(screen, cam.WorldToScreen(c.Hall.Rect.Min).Add(city.Point{X: 0, Y: -14}), "city hall", colorDim)
+		}
+	}
 }
 
 func (g *Game) line(screen *ebiten.Image, cam *city.Camera, from, to city.Point, width float32, c color.NRGBA) {

@@ -29,7 +29,67 @@ func richSnapshot() state.Snapshot {
 		Skills: []state.Skill{{Name: "amberPylon:umberEstuary", Calls: 3, Sessions: 2}, {Name: "git-worktrees", Calls: 1, Sessions: 1}},
 		Power: state.Power{Since: now.Add(-24 * time.Hour), CostUSD: 12.5, Fresh: 30_000, Cached: 900_000,
 			ByModel: map[string]claude.Usage{"claude-opus-5[1m]": {Output: 20_000}}},
+		Stats: &claude.Stats{
+			LastComputed:   now.Add(-48 * time.Hour).Format("2006-01-02"),
+			FirstSessionAt: time.Date(2026, time.January, 13, 17, 49, 58, 0, time.UTC),
+			TotalSessions:  513,
+			TotalMessages:  125894,
+			DailyActivity: []claude.DailyActivity{
+				{Date: now.Add(-72 * time.Hour).Format("2006-01-02"), Messages: 100, Sessions: 1},
+				{Date: now.Add(-48 * time.Hour).Format("2006-01-02"), Messages: 300, Sessions: 3},
+			},
+			ModelUsage: map[string]claude.ModelCost{"claude-opus-5": {Usage: claude.Usage{Output: 750}}, "claude-sonnet-5": {Usage: claude.Usage{Output: 250}}},
+			HourCounts: [24]int{9: 40, 14: 41},
+		},
 	}
+}
+
+func TestHall(t *testing.T) {
+	t.Run("when the snapshot carries Claude Code's stats rollup", func(t *testing.T) {
+		c := city.Build(richSnapshot(), city.NewLayout())
+		card := c.Hall.Card(now)
+
+		t.Run("it should stand below the library", func(t *testing.T) {
+			assert.Greater(t, c.Hall.Rect.Min.Y, c.Library.Rect.Max.Y)
+			assert.Equal(t, c.Library.Rect.Min.X, c.Hall.Rect.Min.X)
+		})
+
+		t.Run("it should be part of the city bounds", func(t *testing.T) {
+			assert.True(t, c.Bounds().Contains(c.Hall.Rect.Center()))
+		})
+
+		t.Run("it should be hit at its centre", func(t *testing.T) {
+			assert.Equal(t, city.LandmarkHall, c.At(c.Hall.Rect.Center()).Landmark)
+		})
+
+		t.Run("it should say how stale the rollup is", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "computed "+now.Add(-48*time.Hour).Format("2006-01-02")+" (2 days ago)")
+		})
+
+		t.Run("it should show the totals", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "sessions 513 since 2026-01-13")
+		})
+
+		t.Run("it should average the recent days", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "last 2 days  200 msgs/day, 4 sessions")
+		})
+
+		t.Run("it should name the busiest hour", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "busiest  14:00")
+		})
+
+		t.Run("it should show the model mix", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "claude-opus-5  75%")
+		})
+	})
+
+	t.Run("when the snapshot has no rollup", func(t *testing.T) {
+		c := city.Build(snapshot(session("a", cinders, state.Working)), city.NewLayout())
+
+		t.Run("it should build no hall", func(t *testing.T) {
+			assert.Zero(t, c.Hall.Rect.Area())
+		})
+	})
 }
 
 func TestLandmarks(t *testing.T) {

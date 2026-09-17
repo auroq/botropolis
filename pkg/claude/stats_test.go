@@ -3,6 +3,7 @@ package claude_test
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/stretchr/testify/assert"
@@ -90,6 +91,66 @@ func TestReadStats(t *testing.T) {
 
 		t.Run("it should return an error", func(t *testing.T) {
 			assert.Error(t, err)
+		})
+	})
+}
+
+func TestStatsRollups(t *testing.T) {
+	stats := claude.Stats{
+		LastComputed: "2026-07-02",
+		DailyActivity: []claude.DailyActivity{
+			{Date: "2026-07-02", Messages: 300, Sessions: 2},
+			{Date: "2026-01-13", Messages: 1156, Sessions: 8},
+			{Date: "2026-07-01", Messages: 100, Sessions: 1},
+		},
+		ModelUsage: map[string]claude.ModelCost{
+			"claude-sonnet-4-6": {Usage: claude.Usage{Output: 6_000_000}},
+			"claude-opus-4-8":   {Usage: claude.Usage{Output: 2_000_000}},
+		},
+		HourCounts: [24]int{0: 4, 9: 40, 14: 41, 23: 1},
+	}
+
+	t.Run("when the cache was computed on a date", func(t *testing.T) {
+		t.Run("it should parse it", func(t *testing.T) {
+			on, ok := stats.ComputedOn()
+			require.True(t, ok)
+			assert.Equal(t, time.Date(2026, time.July, 2, 0, 0, 0, 0, time.UTC), on)
+		})
+	})
+
+	t.Run("when the hours have counts", func(t *testing.T) {
+		t.Run("it should find the busiest hour", func(t *testing.T) {
+			assert.Equal(t, 14, stats.BusiestHour())
+		})
+	})
+
+	t.Run("when the days are out of order", func(t *testing.T) {
+		t.Run("it should return the recent days oldest first", func(t *testing.T) {
+			assert.Equal(t, []claude.DailyActivity{
+				{Date: "2026-07-01", Messages: 100, Sessions: 1},
+				{Date: "2026-07-02", Messages: 300, Sessions: 2},
+			}, stats.RecentDays(2))
+		})
+	})
+
+	t.Run("when two models have output", func(t *testing.T) {
+		shares := stats.ModelShare()
+
+		t.Run("it should rank them by share", func(t *testing.T) {
+			require.Len(t, shares, 2)
+			assert.Equal(t, "claude-sonnet-4-6", shares[0].Model)
+			assert.InDelta(t, 0.75, shares[0].Share, 1e-9)
+		})
+	})
+
+	t.Run("when nothing has been counted", func(t *testing.T) {
+		t.Run("it should have no busiest hour", func(t *testing.T) {
+			assert.Equal(t, -1, claude.Stats{}.BusiestHour())
+		})
+
+		t.Run("it should have no computed date", func(t *testing.T) {
+			_, ok := claude.Stats{}.ComputedOn()
+			assert.False(t, ok)
 		})
 	})
 }

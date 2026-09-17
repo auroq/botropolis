@@ -176,6 +176,8 @@ func (s *Scene) Card() (Card, bool) {
 		return s.hover.Tower.Card(), true
 	case s.hover.Landmark == LandmarkLibrary:
 		return s.city.Library.Card(), true
+	case s.hover.Landmark == LandmarkHall:
+		return s.city.Hall.Card(s.city.Time), true
 	case s.hover.Building != nil:
 		return s.hover.Building.Card(s.city.Time), true
 	case s.hover.District != nil:

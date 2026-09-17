@@ -53,6 +53,12 @@ func (h *Home) appendTo(path string, lines []string) {
 	require.NoError(h.t, err)
 }
 
+func (h *Home) StatsCache(content string) *Home {
+	h.t.Helper()
+	h.write("stats-cache.json", content)
+	return h
+}
+
 func (h *Home) RemoveSession(pid int) {
 	h.t.Helper()
 	require.NoError(h.t, os.Remove(filepath.Join(h.ClaudeDir(), "sessions", strconv.Itoa(pid)+".json")))

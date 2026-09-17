@@ -39,6 +39,8 @@ type Loader struct {
 	parked       map[string]cachedTranscript
 	mcp          claude.MCPConfig
 	mcpKey       fileKey
+	stats        *claude.Stats
+	statsKey     fileKey
 	dirs         []string
 	reads        int
 }
@@ -85,6 +87,9 @@ func (l *Loader) Load(now time.Time) (Snapshot, error) {
 	}
 	if src.MCP, err = l.mcpConfig(filepath.Join(l.home, ".claude.json")); err != nil {
 		snapshot.Skipped = append(snapshot.Skipped, claude.SkippedFile{Path: filepath.Join(l.home, ".claude.json"), Err: err})
+	}
+	if snapshot.Stats, err = l.statsCache(filepath.Join(claudeDir, "stats-cache.json")); err != nil {
+		snapshot.Skipped = append(snapshot.Skipped, claude.SkippedFile{Path: filepath.Join(claudeDir, "stats-cache.json"), Err: err})
 	}
 	if src.Teams, skipped, err = claude.ReadTeams(filepath.Join(claudeDir, "teams")); err != nil {
 		return snapshot, err
@@ -166,6 +171,25 @@ func (l *Loader) mcpConfig(path string) (claude.MCPConfig, error) {
 	}
 	l.mcp, l.mcpKey = mcp, key
 	return mcp, nil
+}
+
+func (l *Loader) statsCache(path string) (*claude.Stats, error) {
+	key, err := stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if l.statsKey == key {
+		return l.stats, nil
+	}
+	stats, err := claude.ReadStats(path)
+	if err != nil {
+		return nil, err
+	}
+	l.stats, l.statsKey = &stats, key
+	return l.stats, nil
 }
 
 func (l *Loader) catalogue(projectsDir string, live map[string]bool, now time.Time) ([]claude.Transcript, []claude.SkippedFile, error) {

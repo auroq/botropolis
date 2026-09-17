@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/state"
 )
@@ -16,6 +18,10 @@ const (
 	TowerGap      = 24.0
 	LibraryWidth  = 72.0
 	LibraryHeight = 96.0
+	HallWidth     = 96.0
+	HallHeight    = 64.0
+	maxModelLines = 4
+	recentDays    = 7
 	LandmarkGap   = 64.0
 	maxSkillLines = 6
 
@@ -32,6 +38,7 @@ const (
 	LandmarkPlant   Landmark = "plant"
 	LandmarkTower   Landmark = "tower"
 	LandmarkLibrary Landmark = "library"
+	LandmarkHall    Landmark = "hall"
 )
 
 type Plant struct {
@@ -47,6 +54,11 @@ type Tower struct {
 type Library struct {
 	Rect   Rect
 	Skills []state.Skill
+}
+
+type Hall struct {
+	Rect  Rect
+	Stats claude.Stats
 }
 
 type PowerLine struct {
@@ -132,6 +144,12 @@ func (c *City) placeLandmarks(snapshot state.Snapshot) {
 
 	c.Library = Library{Skills: snapshot.Skills}
 	c.Library.Rect = RectAt(bounds.Max.X+LandmarkGap, bounds.Min.Y, LibraryWidth, LibraryHeight)
+
+	c.Hall = Hall{}
+	if snapshot.Stats != nil {
+		c.Hall.Stats = *snapshot.Stats
+		c.Hall.Rect = RectAt(bounds.Max.X+LandmarkGap, c.Library.Rect.Max.Y+LandmarkGap/2, HallWidth, HallHeight)
+	}
 }
 
 func (c *City) DistrictBounds() Rect {
@@ -228,6 +246,37 @@ func (l Library) Card() Card {
 		lines = []string{"no skills invoked"}
 	}
 	return Card{Title: "Library", Lines: lines}
+}
+
+func (h Hall) Card(now time.Time) Card {
+	st := h.Stats
+	computed := "computed " + format.Dash(st.LastComputed)
+	if on, ok := st.ComputedOn(); ok {
+		computed += fmt.Sprintf(" (%s ago)", plural(int(now.Sub(on).Hours()/24), "day"))
+	}
+	lines := []string{
+		computed,
+		fmt.Sprintf("sessions %d since %s", st.TotalSessions, st.FirstSessionAt.Format("2006-01-02")),
+		fmt.Sprintf("messages %d", st.TotalMessages),
+	}
+	if days := st.RecentDays(recentDays); len(days) > 0 {
+		var msgs, sessions int
+		for _, d := range days {
+			msgs += d.Messages
+			sessions += d.Sessions
+		}
+		lines = append(lines, fmt.Sprintf("last %s  %d msgs/day, %s", plural(len(days), "day"), msgs/len(days), plural(sessions, "session")))
+	}
+	if hour := st.BusiestHour(); hour >= 0 {
+		lines = append(lines, fmt.Sprintf("busiest  %02d:00", hour))
+	}
+	for i, m := range st.ModelShare() {
+		if i == maxModelLines {
+			break
+		}
+		lines = append(lines, fmt.Sprintf("%s  %s", m.Model, format.Percent(100*m.Share)))
+	}
+	return Card{Title: "City hall", Lines: lines}
 }
 
 func plural(n int, noun string) string {

@@ -69,6 +69,27 @@ func TestLoader(t *testing.T) {
 		})
 	})
 
+	t.Run("when the home has a stats cache", func(t *testing.T) {
+		home := liveHome(t).StatsCache(`{"version":4,"lastComputedDate":"2026-07-02","dailyActivity":[],"dailyModelTokens":[],` +
+			`"modelUsage":{},"totalSessions":513,"totalMessages":125894,"firstSessionDate":"2026-01-13T17:49:58.240Z","hourCounts":{}}`)
+		snapshot, err := state.NewLoader(home.Path, alive).Load(now)
+		require.NoError(t, err)
+
+		t.Run("it should carry the rollup in the snapshot", func(t *testing.T) {
+			require.NotNil(t, snapshot.Stats)
+			assert.Equal(t, 513, snapshot.Stats.TotalSessions)
+		})
+	})
+
+	t.Run("when the home has no stats cache", func(t *testing.T) {
+		snapshot, err := state.NewLoader(liveHome(t).Path, alive).Load(now)
+		require.NoError(t, err)
+
+		t.Run("it should carry no rollup", func(t *testing.T) {
+			assert.Nil(t, snapshot.Stats)
+		})
+	})
+
 	t.Run("when a live record has no transcript on disk", func(t *testing.T) {
 		home := helpers.NewHome(t).Session(4242, sidA, loaderCWD, "interactive", "busy")
 		snapshot, err := state.NewLoader(home.Path, alive).Load(now)
