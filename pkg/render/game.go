@@ -13,14 +13,18 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/state"
 )
 
 const (
-	windowTitle = "Botropolis"
-	cardPadding = 10.0
-	lineHeight  = 16.0
-	pulsePeriod = 1.4
+	windowTitle    = "Botropolis"
+	cardPadding    = 10.0
+	lineHeight     = 16.0
+	charWidth      = 7.0
+	pulsePeriod    = 1.4
+	maxFooterLines = 4
+	footerReserve  = 24.0 + lineHeight*maxFooterLines
 )
 
 var (
@@ -158,11 +162,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	cam := g.scene.Camera()
 	hover := g.scene.Hover()
 	selected := g.scene.Selected()
+	labels := g.scene.LabelsVisible()
 
 	for _, road := range c.Roads {
 		g.line(screen, cam, road.A, road.B, 6, colorRoad)
-		mid := city.Point{X: (road.A.X + road.B.X) / 2, Y: (road.A.Y + road.B.Y) / 2}
-		g.label(screen, cam.WorldToScreen(mid).Add(city.Point{X: 4, Y: -14}), fmt.Sprintf("%d msgs", road.Messages), colorDim)
+		if labels {
+			mid := city.Point{X: (road.A.X + road.B.X) / 2, Y: (road.A.Y + road.B.Y) / 2}
+			g.label(screen, cam.WorldToScreen(mid).Add(city.Point{X: 4, Y: -14}), fmt.Sprintf("%d msgs", road.Messages), colorDim)
+		}
 	}
 	for _, line := range c.PowerLines() {
 		g.line(screen, cam, line.From, line.To, lineWidth(line.Cached, 1, 3), colorLineCached)
@@ -174,18 +181,20 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	for _, d := range c.Districts {
 		g.district(screen, cam, d, hover.District == d, c.Night)
-		g.label(screen, cam.WorldToScreen(d.Rect.Min).Add(city.Point{X: 6, Y: 4}), d.Name, colorText)
+		if labels {
+			g.label(screen, cam.WorldToScreen(d.Rect.Min).Add(city.Point{X: 0, Y: -14}), d.Name, colorText)
+		}
 		for _, b := range d.Buildings {
 			g.building(screen, cam, b, b == selected)
 		}
 	}
-	g.landmarks(screen, cam, hover)
+	g.landmarks(screen, cam, labels)
 
 	bounds := screen.Bounds()
 	if card, ok := g.scene.Card(); ok {
-		g.card(screen, card, float64(bounds.Dx()))
+		g.card(screen, card, float64(bounds.Dx()), float64(bounds.Dy()))
 	}
-	g.footer(screen, float64(bounds.Dy()))
+	g.footer(screen, float64(bounds.Dx()), float64(bounds.Dy()))
 }
 
 func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building, selected bool) {
@@ -345,7 +354,7 @@ func (g *Game) windows(screen *ebiten.Image, cam *city.Camera, b *city.Building)
 	}
 }
 
-func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, hover city.Hit) {
+func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, labels bool) {
 	c := g.scene.City()
 	if c.Plant.Rect.Area() > 0 {
 		if g.sprites != nil {
@@ -363,7 +372,9 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, hover city.Hit)
 			core := c.Plant.Rect.Inset(16)
 			g.rect(screen, cam, core, pulse(colorPlantCore, time.Since(g.started).Seconds()*0.5))
 		}
-		g.label(screen, cam.WorldToScreen(c.Plant.Rect.Min).Add(city.Point{X: 4, Y: -14}), "power plant", colorDim)
+		if labels {
+			g.label(screen, cam.WorldToScreen(c.Plant.Rect.Min).Add(city.Point{X: 4, Y: -14}), "power plant", colorDim)
+		}
 	}
 	for _, t := range c.Towers {
 		fill := colorTower
@@ -385,7 +396,9 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, hover city.Hit)
 			g.rect(screen, cam, mast, fill)
 			g.rect(screen, cam, t.Rect, fill)
 		}
-		g.labelRight(screen, cam.WorldToScreen(city.Point{X: t.Rect.Min.X, Y: t.Rect.Center().Y}).Add(city.Point{X: -8, Y: -7}), t.Server.Name, colorDim)
+		if labels {
+			g.labelRight(screen, cam.WorldToScreen(city.Point{X: t.Rect.Min.X, Y: t.Rect.Center().Y}).Add(city.Point{X: -8, Y: -7}), t.Server.Name, colorDim)
+		}
 	}
 	if c.Library.Rect.Area() > 0 {
 		if g.sprites != nil {
@@ -407,9 +420,10 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, hover city.Hit)
 				g.rect(screen, cam, shelf, colorDim)
 			}
 		}
-		g.label(screen, cam.WorldToScreen(c.Library.Rect.Min).Add(city.Point{X: 0, Y: -14}), "library", colorDim)
+		if labels {
+			g.label(screen, cam.WorldToScreen(c.Library.Rect.Min).Add(city.Point{X: 0, Y: -14}), "library", colorDim)
+		}
 	}
-	_ = hover
 }
 
 func (g *Game) line(screen *ebiten.Image, cam *city.Camera, from, to city.Point, width float32, c color.NRGBA) {
@@ -455,24 +469,37 @@ func (g *Game) labelRight(screen *ebiten.Image, end city.Point, s string, c colo
 	g.label(screen, city.Point{X: end.X - width, Y: end.Y}, s, c)
 }
 
-func (g *Game) card(screen *ebiten.Image, card city.Card, screenWidth float64) {
-	width := float64(len(card.Title)) * 8
-	for _, line := range card.Lines {
-		if w := float64(len(line)) * 7.5; w > width {
+func (g *Game) card(screen *ebiten.Image, card city.Card, screenWidth, screenHeight float64) {
+	maxChars := int((screenWidth - 24 - 2*cardPadding) / charWidth)
+	if maxChars < 8 {
+		maxChars = 8
+	}
+	title := format.Clip(card.Title, maxChars)
+	lines := make([]string, 0, len(card.Lines))
+	maxLines := int((screenHeight-footerReserve-24-2*cardPadding)/lineHeight) - 1
+	for i, line := range card.Lines {
+		if maxLines > 0 && i >= maxLines {
+			break
+		}
+		lines = append(lines, format.Clip(line, maxChars))
+	}
+	width := float64(len(title)) * charWidth
+	for _, line := range lines {
+		if w := float64(len(line)) * charWidth; w > width {
 			width = w
 		}
 	}
 	width += 2 * cardPadding
-	height := cardPadding*2 + lineHeight*float64(len(card.Lines)+1)
+	height := cardPadding*2 + lineHeight*float64(len(lines)+1)
 	x := math.Max(12, screenWidth-width-12)
 	vector.FillRect(screen, float32(x), 12, float32(width), float32(height), colorCard, false)
-	g.label(screen, city.Point{X: x + cardPadding, Y: 12 + cardPadding}, card.Title, colorText)
-	for i, line := range card.Lines {
+	g.label(screen, city.Point{X: x + cardPadding, Y: 12 + cardPadding}, title, colorText)
+	for i, line := range lines {
 		g.label(screen, city.Point{X: x + cardPadding, Y: 12 + cardPadding + lineHeight*float64(i+1)}, line, colorDim)
 	}
 }
 
-func (g *Game) footer(screen *ebiten.Image, screenHeight float64) {
+func (g *Game) footer(screen *ebiten.Image, screenWidth, screenHeight float64) {
 	g.mu.Lock()
 	status := g.status
 	g.mu.Unlock()
@@ -480,7 +507,14 @@ func (g *Game) footer(screen *ebiten.Image, screenHeight float64) {
 		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click to attach | d d to demolish | f to fit | q to quit",
 			len(g.scene.City().Buildings()))
 	}
-	g.label(screen, city.Point{X: 12, Y: screenHeight - 24}, status, colorDim)
+	lines := format.Wrap(status, int((screenWidth-24)/charWidth))
+	if len(lines) > maxFooterLines {
+		lines = lines[:maxFooterLines]
+	}
+	for i, line := range lines {
+		y := screenHeight - 24 - lineHeight*float64(len(lines)-1-i)
+		g.label(screen, city.Point{X: 12, Y: y}, line, colorDim)
+	}
 }
 
 func (g *Game) Layout(width, height int) (int, int) {

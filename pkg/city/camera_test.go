@@ -1,6 +1,7 @@
 package city_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/auroq/botropolis/pkg/city"
@@ -87,7 +88,37 @@ func TestCamera(t *testing.T) {
 		t.Run("it should centre it", func(t *testing.T) {
 			centre := cam.WorldToScreen(c.Bounds().Center())
 			assert.InDelta(t, 400, centre.X, 1e-6)
-			assert.InDelta(t, 300, centre.Y, 1e-6)
+			assert.InDelta(t, (600-city.FitFooter)/2, centre.Y, 1e-6)
+		})
+	})
+
+	t.Run("when the camera is fitted with a left inset", func(t *testing.T) {
+		c := build(t, city.NewLayout(), session("a", cinders, state.Working))
+		cam := city.NewCamera()
+		cam.FitWithInsets(c.Bounds(), 800, 600, city.Insets{Left: 150, Bottom: city.FitFooter})
+
+		t.Run("it should keep the city right of the inset", func(t *testing.T) {
+			assert.GreaterOrEqual(t, cam.WorldToScreen(c.Bounds().Min).X, 150.0)
+		})
+
+		t.Run("it should centre it in the remaining width", func(t *testing.T) {
+			assert.InDelta(t, 150+(800-150)/2.0, cam.WorldToScreen(c.Bounds().Center()).X, 1e-6)
+		})
+	})
+
+	t.Run("when the city is far taller than a short window", func(t *testing.T) {
+		var sessions []state.Session
+		for i := 0; i < 60; i++ {
+			sessions = append(sessions, session(fmt.Sprintf("s%02d", i), fmt.Sprintf("/p/%02d", i), state.Working))
+		}
+		c := build(t, city.NewLayout(), sessions...)
+		cam := city.NewCamera()
+		cam.FitWithInsets(c.Bounds(), 1200, 300, city.Insets{Bottom: city.FitFooter})
+
+		t.Run("it should zoom out past the wheel floor to fit", func(t *testing.T) {
+			assert.Less(t, cam.Zoom, city.MinZoom)
+			assert.LessOrEqual(t, cam.WorldToScreen(c.Bounds().Max).Y, 300-city.FitFooter)
+			assert.GreaterOrEqual(t, cam.WorldToScreen(c.Bounds().Min).Y, 0.0)
 		})
 	})
 

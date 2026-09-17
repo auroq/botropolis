@@ -178,9 +178,7 @@ func (c *City) Bounds() Rect {
 		bounds = bounds.Union(c.Plant.Rect)
 	}
 	for _, t := range c.Towers {
-		labelled := t.Rect
-		labelled.Min.X -= TowerLabel
-		bounds = bounds.Union(labelled)
+		bounds = bounds.Union(t.Rect)
 	}
 	if c.Library.Rect.Area() > 0 {
 		bounds = bounds.Union(c.Library.Rect)

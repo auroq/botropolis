@@ -66,8 +66,8 @@ func TestLandmarks(t *testing.T) {
 			assert.True(t, c.Bounds().Contains(c.Library.Rect.Max))
 		})
 
-		t.Run("it should leave room for the tower labels in the bounds", func(t *testing.T) {
-			assert.LessOrEqual(t, c.Bounds().Min.X, c.Towers[0].Rect.Min.X-city.TowerLabel)
+		t.Run("it should not pad the bounds for labels", func(t *testing.T) {
+			assert.Equal(t, c.Towers[0].Rect.Min.X, c.Bounds().Min.X)
 		})
 	})
 

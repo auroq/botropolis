@@ -75,11 +75,35 @@ func (s *Scene) Fit() {
 	s.fit()
 }
 
+// LabelZoom is the zoom below which fixed-size labels would overlap, so the
+// renderer hides them and the fit stops reserving room for them.
+const LabelZoom = 0.3
+
 func (s *Scene) fit() {
 	if s.touched || len(s.city.Districts) == 0 {
 		return
 	}
-	s.camera.Fit(s.city.Bounds(), s.width, s.height)
+	s.camera.FitWithInsets(s.city.Bounds(), s.width, s.height, s.Insets())
+	if s.camera.Zoom < LabelZoom {
+		s.camera.FitWithInsets(s.city.Bounds(), s.width, s.height, Insets{Bottom: FitFooter})
+	}
+}
+
+// LabelsVisible reports whether fixed-size map labels are worth drawing.
+func (s *Scene) LabelsVisible() bool {
+	return s.camera.Zoom >= LabelZoom
+}
+
+// Insets reserve screen space for text that does not scale with the map.
+func (s *Scene) Insets() Insets {
+	in := Insets{Bottom: FitFooter, Top: LabelHeight}
+	if len(s.city.Towers) > 0 {
+		in.Left = TowerLabelWidth
+	}
+	if s.city.Library.Rect.Area() > 0 {
+		in.Right = LibraryLabelWidth
+	}
+	return in
 }
 
 func (s *Scene) SetSnapshot(snapshot state.Snapshot) {

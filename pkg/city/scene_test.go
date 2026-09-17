@@ -1,6 +1,7 @@
 package city_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -162,8 +163,8 @@ func TestScene(t *testing.T) {
 
 		t.Run("it should refit the city to the new size", func(t *testing.T) {
 			centre := s.Camera().WorldToScreen(s.City().Bounds().Center())
-			assert.InDelta(t, 512, centre.X, 1e-6)
-			assert.InDelta(t, 384, centre.Y, 1e-6)
+			assert.InDelta(t, (1024-city.LibraryLabelWidth)/2, centre.X, 1e-6)
+			assert.InDelta(t, city.LabelHeight+(768-city.LabelHeight-city.FitFooter)/2, centre.Y, 1e-6)
 		})
 	})
 
@@ -182,7 +183,7 @@ func TestScene(t *testing.T) {
 
 			t.Run("it should fit again", func(t *testing.T) {
 				centre := s.Camera().WorldToScreen(s.City().Bounds().Center())
-				assert.InDelta(t, 512, centre.X, 1e-6)
+				assert.InDelta(t, (1024-city.LibraryLabelWidth)/2, centre.X, 1e-6)
 			})
 		})
 	})
@@ -194,8 +195,8 @@ func TestScene(t *testing.T) {
 
 		t.Run("it should fit the city to the new size", func(t *testing.T) {
 			centre := s.Camera().WorldToScreen(s.City().Bounds().Center())
-			assert.InDelta(t, 512, centre.X, 1e-6)
-			assert.InDelta(t, 384, centre.Y, 1e-6)
+			assert.InDelta(t, (1024-city.LibraryLabelWidth)/2, centre.X, 1e-6)
+			assert.InDelta(t, city.LabelHeight+(768-city.LabelHeight-city.FitFooter)/2, centre.Y, 1e-6)
 		})
 	})
 }
@@ -251,6 +252,53 @@ func TestDemolish(t *testing.T) {
 
 		t.Run("it should not demolish the new selection on the first press", func(t *testing.T) {
 			assert.Equal(t, city.Action{}, action)
+		})
+	})
+}
+
+func TestSceneInsets(t *testing.T) {
+	t.Run("when the city has towers", func(t *testing.T) {
+		s := city.NewScene(city.NewLayout())
+		s.Resize(800, 600)
+		s.SetSnapshot(richSnapshot())
+
+		t.Run("it should reserve label room on the left and top", func(t *testing.T) {
+			assert.Equal(t, city.Insets{Left: city.TowerLabelWidth, Right: city.LibraryLabelWidth, Top: city.LabelHeight, Bottom: city.FitFooter}, s.Insets())
+		})
+
+		t.Run("it should keep the first tower clear of the label column", func(t *testing.T) {
+			assert.GreaterOrEqual(t, s.Camera().WorldToScreen(s.City().Towers[0].Rect.Min).X, city.TowerLabelWidth)
+		})
+	})
+
+	t.Run("when the window is too small for labels", func(t *testing.T) {
+		s := city.NewScene(city.NewLayout())
+		s.Resize(500, 300)
+		var sessions []state.Session
+		for i := 0; i < 40; i++ {
+			sessions = append(sessions, session(fmt.Sprintf("s%02d", i), fmt.Sprintf("/p/%02d", i), state.Working))
+		}
+		snap := snapshot(sessions...)
+		snap.Servers = []state.Server{{Name: "atlassian"}}
+		s.SetSnapshot(snap)
+
+		t.Run("it should hide the labels", func(t *testing.T) {
+			assert.False(t, s.LabelsVisible())
+		})
+
+		t.Run("it should fit without the label room", func(t *testing.T) {
+			plain := city.NewCamera()
+			plain.FitWithInsets(s.City().Bounds(), 500, 300, city.Insets{Bottom: city.FitFooter})
+			assert.InDelta(t, plain.Zoom, s.Camera().Zoom, 1e-9)
+			assert.GreaterOrEqual(t, s.Camera().WorldToScreen(s.City().Bounds().Min).X, 0.0)
+		})
+	})
+
+	t.Run("when the city has no towers", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+
+		t.Run("it should reserve no left inset", func(t *testing.T) {
+			assert.Zero(t, s.Insets().Left)
 		})
 	})
 }

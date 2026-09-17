@@ -31,13 +31,13 @@ one district per project, one building per session, fill level for context used,
 orange and pulsing for needs-you, cranes for subagents in flight, boarded up for parked.
 Drag to pan, wheel to zoom, click a building to attach it, `f` to fit, `q` to quit.
 The layout is sticky, in `~/.local/state/botropolis/layout.json`.
-The window sets `WM_CLASS` to `botropolis`, so under i3 you can float it with
+The window is built for tiling: it fits the city to whatever size the window manager gives it, refits on resize until you pan or zoom (`f` refits),
+and wraps the footer and clamps the hover card at narrow or short sizes.
+It sets `WM_CLASS` to `botropolis`, so if you would rather float it under i3:
 
 ```
 for_window [class="Botropolis"] floating enable, resize set 1100 760
 ```
-
-It is fitted to whatever size the window manager gives it, and refits on resize until you pan or zoom (`f` refits).
 
 Milestone 3: `botropolis new/attach/stop/resume/rm` wrap the `claude` CLI.
 

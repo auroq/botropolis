@@ -16,8 +16,12 @@ const (
 	LibraryWidth  = 72.0
 	LibraryHeight = 96.0
 	LandmarkGap   = 64.0
-	TowerLabel    = 140.0
 	maxSkillLines = 6
+
+	// Screen-space room for labels drawn beside the map at a fixed font size.
+	TowerLabelWidth   = 150.0
+	LibraryLabelWidth = 40.0
+	LabelHeight       = 20.0
 )
 
 type Landmark string
