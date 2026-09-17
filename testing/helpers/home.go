@@ -49,6 +49,15 @@ func (h *Home) AppendTranscript(sessionID, cwd string, lines ...string) {
 	require.NoError(h.t, err)
 }
 
+func (h *Home) Subagent(sessionID, cwd, agentID, meta string, lines ...string) string {
+	h.t.Helper()
+	dir := filepath.Join("projects", ProjectSlug(cwd), sessionID, "subagents")
+	if meta != "" {
+		h.write(filepath.Join(dir, "agent-"+agentID+".meta.json"), meta)
+	}
+	return h.write(filepath.Join(dir, "agent-"+agentID+".jsonl"), strings.Join(lines, "\n")+"\n")
+}
+
 func (h *Home) Roster(jobID, sessionID, ptySock string) *Home {
 	h.t.Helper()
 	h.write(filepath.Join("daemon", "roster.json"),

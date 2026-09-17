@@ -24,3 +24,12 @@ func ReadTranscripts(projectsDir string) ([]Transcript, []SkippedFile, error) {
 	}
 	return transcripts, skipped, nil
 }
+
+func FindTranscript(projectsDir, sessionID string) (string, bool) {
+	matches, err := filepath.Glob(filepath.Join(projectsDir, "*", sessionID+".jsonl"))
+	if err != nil || len(matches) == 0 {
+		return "", false
+	}
+	sort.Strings(matches)
+	return matches[0], true
+}

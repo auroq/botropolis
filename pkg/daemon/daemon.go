@@ -16,8 +16,7 @@ type overlay struct {
 }
 
 type Daemon struct {
-	home   string
-	probes state.Probes
+	loader *state.Loader
 	clock  func() time.Time
 
 	mu          sync.Mutex
@@ -28,8 +27,7 @@ type Daemon struct {
 
 func New(home string, probes state.Probes, clock func() time.Time) *Daemon {
 	return &Daemon{
-		home:        home,
-		probes:      probes,
+		loader:      state.NewLoader(home, probes),
 		clock:       clock,
 		overlays:    map[string]overlay{},
 		subscribers: map[chan state.Snapshot]struct{}{},
@@ -37,7 +35,7 @@ func New(home string, probes state.Probes, clock func() time.Time) *Daemon {
 }
 
 func (d *Daemon) Rescan() error {
-	snapshot, err := state.Load(d.home, d.probes, d.clock())
+	snapshot, err := d.loader.Load(d.clock())
 	if err != nil {
 		return err
 	}

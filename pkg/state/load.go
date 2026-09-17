@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -25,45 +24,7 @@ type Snapshot struct {
 }
 
 func Load(home string, probes Probes, now time.Time) (Snapshot, error) {
-	claudeDir := filepath.Join(home, ".claude")
-	snapshot := Snapshot{At: now}
-	var src Sources
-	var skipped []claude.SkippedFile
-	var err error
-
-	if src.Records, skipped, err = claude.ReadSessionRecords(filepath.Join(claudeDir, "sessions")); err != nil {
-		return snapshot, err
-	}
-	snapshot.Skipped = append(snapshot.Skipped, skipped...)
-
-	if src.Transcripts, skipped, err = claude.ReadTranscripts(filepath.Join(claudeDir, "projects")); err != nil {
-		return snapshot, err
-	}
-	snapshot.Skipped = append(snapshot.Skipped, skipped...)
-
-	if src.Roster, err = claude.ReadRoster(filepath.Join(claudeDir, "daemon", "roster.json")); err != nil {
-		return snapshot, err
-	}
-
-	live := map[string]bool{}
-	for _, r := range src.Records {
-		live[r.SessionID] = true
-	}
-	src.Subagents = map[string][]claude.Subagent{}
-	for _, t := range src.Transcripts {
-		if !live[t.SessionID] || t.IsBridgeStub {
-			continue
-		}
-		subs, skipped, err := claude.ReadSubagents(t.Path)
-		if err != nil {
-			return snapshot, err
-		}
-		snapshot.Skipped = append(snapshot.Skipped, skipped...)
-		src.Subagents[t.SessionID] = subs
-	}
-
-	snapshot.Sessions = Build(src, probes, now)
-	return snapshot, nil
+	return NewLoader(home, probes).Load(now)
 }
 
 func ProcessAlive(pid int) bool {
