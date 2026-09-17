@@ -676,6 +676,12 @@ func (g *Game) streets(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		over := (w + 1.5) / float64(img.Bounds().Dx())
 		g.drawSprite(screen, img, city.Point{X: top.X - w/2 - 0.75, Y: top.Y - 0.5}, over, nil)
 	}
+	g.streetSigns(screen, c, cam, hover, labels)
+}
+
+// streetSigns highlights the hovered street and signs each one at the
+// middle of its path, in either view.
+func (g *Game) streetSigns(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, labels bool) {
 	for i := range c.Streets {
 		street := &c.Streets[i]
 		if hover.Road == street.Road {

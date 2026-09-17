@@ -176,7 +176,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	g.ground(screen, cam, c, width, height, detailed)
 	g.flatCells(screen, cam, c)
-	g.lines(screen, c, cam, hover, labels)
+	if len(c.StreetCells) > 0 {
+		g.streetSigns(screen, c, cam, hover, labels)
+	} else {
+		g.roadLines(screen, c, cam, hover, labels)
+	}
+	g.beams(screen, c, cam, hover)
+	g.powerLineStrokes(screen, c, cam, hover)
 
 	for _, d := range c.Districts {
 		g.district(screen, cam, d, hover.District == d, c.Night, detailed)
@@ -212,9 +218,8 @@ func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
 	g.footer(screen, width, height)
 }
 
-// lines draws roads, power lines and beams, highlighting the hovered one.
-func (g *Game) lines(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, labels bool) {
-	g.roadsAndBeams(screen, c, cam, hover, labels)
+// powerLineStrokes is the top-down view's power lines: plain strokes.
+func (g *Game) powerLineStrokes(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit) {
 	for _, line := range c.PowerLines() {
 		g.line(screen, cam, line.From, line.To, lineWidth(line.Cached, 1, 3), colorLineCached)
 		g.line(screen, cam, line.From, line.To, lineWidth(line.Fresh, 1, 5), colorLineFresh)
@@ -222,11 +227,6 @@ func (g *Game) lines(screen *ebiten.Image, c *city.City, cam *city.Camera, hover
 			g.line(screen, cam, line.From, line.To, 2, colorHighlight)
 		}
 	}
-}
-
-func (g *Game) roadsAndBeams(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, labels bool) {
-	g.roadLines(screen, c, cam, hover, labels)
-	g.beams(screen, c, cam, hover)
 }
 
 func (g *Game) roadLines(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, labels bool) {
