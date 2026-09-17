@@ -57,6 +57,7 @@ type Sources struct {
 	Transcripts []claude.Transcript
 	Subagents   map[string][]claude.Subagent
 	Roster      map[string]claude.Worker
+	Parked      []claude.Transcript
 }
 
 type Probes struct {
@@ -78,6 +79,9 @@ func Build(src Sources, probes Probes, now time.Time) []Session {
 			isAttached = probes.Attached(worker.PtySock)
 		}
 		sessions = append(sessions, buildSession(r, transcript, hasTranscript, src.Subagents[r.SessionID], isAlive, isAttached))
+	}
+	for _, t := range src.Parked {
+		sessions = append(sessions, parkedSession(t))
 	}
 	sort.SliceStable(sessions, func(i, j int) bool {
 		if sessions[i].CWD != sessions[j].CWD {
@@ -138,6 +142,32 @@ func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript boo
 		s.TokensPerHour = s.FreshTokensPerHour + s.CacheReadPerHour
 	}
 	s.State = derive(r, s.Turn, hasTranscript, isAlive, isAttached)
+	return s
+}
+
+func parkedSession(t claude.Transcript) Session {
+	s := Session{
+		ID:           t.SessionID,
+		Title:        t.Title,
+		CWD:          t.CWD,
+		Branch:       t.Branch,
+		Model:        t.Model,
+		State:        Parked,
+		Turn:         t.Tail.Turn,
+		StartedAt:    t.FirstAt,
+		LastActivity: t.LastAt,
+		Usage:        t.Usage,
+		CostUSD:      t.Cost.TotalUSD,
+	}
+	if t.ModelID != "" {
+		s.Model = t.ModelID
+	}
+	if s.Title == "" {
+		s.Title = t.SessionID
+	}
+	s.ContextTokens = t.ContextTokens
+	s.ContextWindow = ContextWindow(s.Model, t.Cost.Models)
+	s.ContextPercent = 100 * float64(t.ContextTokens) / float64(s.ContextWindow)
 	return s
 }
 

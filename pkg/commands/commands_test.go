@@ -74,7 +74,7 @@ func TestStatus(t *testing.T) {
 	t.Run("when the source has one session", func(t *testing.T) {
 		source := &fakeSource{snapshot: snapshot}
 		var out bytes.Buffer
-		require.NoError(t, commands.NewStatus(source).Run(&out, true))
+		require.NoError(t, commands.NewStatus(source).Run(&out, true, false))
 		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 
 		t.Run("it should pass the direct flag through", func(t *testing.T) {
@@ -90,9 +90,31 @@ func TestStatus(t *testing.T) {
 		})
 	})
 
+	t.Run("when the source holds a parked session", func(t *testing.T) {
+		parked := state.Snapshot{At: now, Sessions: append(snapshot.Sessions, state.Session{ID: "old", State: state.Parked, CWD: cwd, Title: "old"})}
+
+		t.Run("and all sessions are not asked for", func(t *testing.T) {
+			var out bytes.Buffer
+			require.NoError(t, commands.NewStatus(&fakeSource{snapshot: parked}).Run(&out, true, false))
+
+			t.Run("it should leave the parked one out", func(t *testing.T) {
+				assert.Len(t, strings.Split(strings.TrimSpace(out.String()), "\n"), 2)
+			})
+		})
+
+		t.Run("and all sessions are asked for", func(t *testing.T) {
+			var out bytes.Buffer
+			require.NoError(t, commands.NewStatus(&fakeSource{snapshot: parked}).Run(&out, true, true))
+
+			t.Run("it should print the parked one too", func(t *testing.T) {
+				assert.Contains(t, out.String(), "parked")
+			})
+		})
+	})
+
 	t.Run("when the source has no sessions", func(t *testing.T) {
 		var out bytes.Buffer
-		require.NoError(t, commands.NewStatus(&fakeSource{}).Run(&out, false))
+		require.NoError(t, commands.NewStatus(&fakeSource{}).Run(&out, false, false))
 
 		t.Run("it should say so", func(t *testing.T) {
 			assert.Equal(t, "no sessions\n", out.String())
@@ -100,7 +122,7 @@ func TestStatus(t *testing.T) {
 	})
 
 	t.Run("when the source fails", func(t *testing.T) {
-		err := commands.NewStatus(&fakeSource{err: errors.New("boom")}).Run(&bytes.Buffer{}, false)
+		err := commands.NewStatus(&fakeSource{err: errors.New("boom")}).Run(&bytes.Buffer{}, false, false)
 
 		t.Run("it should return the error", func(t *testing.T) {
 			assert.ErrorContains(t, err, "boom")

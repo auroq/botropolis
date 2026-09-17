@@ -7,7 +7,7 @@ import (
 )
 
 type StatusRunner interface {
-	Run(out io.Writer, direct bool) error
+	Run(out io.Writer, direct, all bool) error
 }
 
 func NewStatusCLI(load Loader, services Services) *cobra.Command {
@@ -21,12 +21,14 @@ func NewStatusCLI(load Loader, services Services) *cobra.Command {
 				return err
 			}
 			direct, _ := cmd.Flags().GetBool("direct")
+			all, _ := cmd.Flags().GetBool("all")
 			if cfg.HomeSet && !cfg.SocketSet {
 				direct = true
 			}
-			return services.Status(cfg).Run(cmd.OutOrStdout(), direct)
+			return services.Status(cfg).Run(cmd.OutOrStdout(), direct, all)
 		},
 	}
 	cmd.Flags().Bool("direct", false, "skip the daemon and scan ~/.claude directly (implied by --home without --socket)")
+	cmd.Flags().BoolP("all", "a", false, "include parked sessions")
 	return cmd
 }

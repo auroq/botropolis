@@ -48,6 +48,19 @@ func TestConfig(t *testing.T) {
 		t.Run("it should leave the terminal empty", func(t *testing.T) {
 			assert.Empty(t, cfg.Terminal)
 		})
+
+		t.Run("it should default to a week of parked sessions", func(t *testing.T) {
+			assert.Equal(t, 7, cfg.ParkedDays)
+		})
+	})
+
+	t.Run("when parked days is given as a flag", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+		cfg := load(t, "--parked_days", "30")
+
+		t.Run("it should take it", func(t *testing.T) {
+			assert.Equal(t, 30, cfg.ParkedDays)
+		})
 	})
 
 	t.Run("when flags are given", func(t *testing.T) {

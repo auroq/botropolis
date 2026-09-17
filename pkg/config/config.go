@@ -20,6 +20,9 @@ const (
 	KeySocket      = "socket"
 	KeyTerminal    = "terminal"
 	KeyHookCommand = "hook_command"
+	KeyParkedDays  = "parked_days"
+
+	DefaultParkedDays = 7
 )
 
 type Config struct {
@@ -29,6 +32,7 @@ type Config struct {
 	SocketSet   bool
 	Terminal    string
 	HookCommand string
+	ParkedDays  int
 	File        string
 }
 
@@ -40,6 +44,7 @@ func NewViper() *viper.Viper {
 	v.SetDefault(KeySocket, "")
 	v.SetDefault(KeyTerminal, "")
 	v.SetDefault(KeyHookCommand, "botropolis-hook")
+	v.SetDefault(KeyParkedDays, DefaultParkedDays)
 	v.SetConfigName(configName)
 	v.AddConfigPath(filepath.Join(configHome(), appDir))
 	return v
@@ -48,8 +53,10 @@ func NewViper() *viper.Viper {
 func BindFlags(v *viper.Viper, flags *pflag.FlagSet) {
 	flags.String(KeyHome, "", "home directory holding .claude (default: $HOME)")
 	flags.String(KeySocket, "", "daemon socket (default: $XDG_RUNTIME_DIR/botropolis/botropolis.sock)")
+	flags.Int(KeyParkedDays, DefaultParkedDays, "how many days of parked sessions to catalogue (0 disables)")
 	_ = v.BindPFlag(KeyHome, flags.Lookup(KeyHome))
 	_ = v.BindPFlag(KeySocket, flags.Lookup(KeySocket))
+	_ = v.BindPFlag(KeyParkedDays, flags.Lookup(KeyParkedDays))
 }
 
 func New(v *viper.Viper) (*Config, error) {
@@ -66,6 +73,7 @@ func New(v *viper.Viper) (*Config, error) {
 		SocketSet:   v.GetString(KeySocket) != "",
 		Terminal:    v.GetString(KeyTerminal),
 		HookCommand: v.GetString(KeyHookCommand),
+		ParkedDays:  v.GetInt(KeyParkedDays),
 		File:        v.ConfigFileUsed(),
 	}
 	if cfg.Home == "" {

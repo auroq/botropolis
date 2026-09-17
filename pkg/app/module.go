@@ -83,7 +83,7 @@ func newServices(probes state.Probes) *services {
 
 func (s *services) Status(cfg *config.Config) cli.StatusRunner {
 	return commands.NewStatus(commands.DaemonOrDirect{
-		Home: cfg.Home, Socket: cfg.Socket, Probes: s.probes, Now: time.Now, Notice: os.Stderr,
+		Home: cfg.Home, Socket: cfg.Socket, Probes: s.probes, ParkedMaxAge: parkedMaxAge(cfg), Now: time.Now, Notice: os.Stderr,
 	})
 }
 
@@ -115,7 +115,8 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 	feed := commands.Feed{
 		Socket: c.config.Socket,
 		Source: commands.DaemonOrDirect{
-			Home: c.config.Home, Socket: c.config.Socket, Probes: c.services.probes, Now: time.Now,
+			Home: c.config.Home, Socket: c.config.Socket, Probes: c.services.probes,
+			ParkedMaxAge: parkedMaxAge(c.config), Now: time.Now,
 		},
 		Poll:    2 * time.Second,
 		Retry:   5 * time.Second,

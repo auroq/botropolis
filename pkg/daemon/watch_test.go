@@ -78,9 +78,10 @@ func TestWatch(t *testing.T) {
 		watch(t, d)
 		home.RemoveSession(pid)
 
-		t.Run("it should drop the session", func(t *testing.T) {
+		t.Run("it should park the session", func(t *testing.T) {
 			assert.Eventually(t, func() bool {
-				return len(d.Snapshot().Sessions) == 0
+				s, ok := session(d, sid)
+				return ok && s.State == state.Parked
 			}, settle, tick)
 		})
 	})

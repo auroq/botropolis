@@ -25,22 +25,36 @@ type cachedSubagent struct {
 	skipped  []claude.SkippedFile
 }
 
+const (
+	DefaultParkedMaxAge = 7 * 24 * time.Hour
+	parkedWindowBytes   = 64 << 10
+)
+
 type Loader struct {
-	home        string
-	probes      Probes
-	transcripts map[string]cachedTranscript
-	subagents   map[string]cachedSubagent
-	dirs        []string
-	reads       int
+	home         string
+	probes       Probes
+	parkedMaxAge time.Duration
+	transcripts  map[string]cachedTranscript
+	subagents    map[string]cachedSubagent
+	parked       map[string]cachedTranscript
+	dirs         []string
+	reads        int
 }
 
 func NewLoader(home string, probes Probes) *Loader {
 	return &Loader{
-		home:        home,
-		probes:      probes,
-		transcripts: map[string]cachedTranscript{},
-		subagents:   map[string]cachedSubagent{},
+		home:         home,
+		probes:       probes,
+		parkedMaxAge: DefaultParkedMaxAge,
+		transcripts:  map[string]cachedTranscript{},
+		subagents:    map[string]cachedSubagent{},
+		parked:       map[string]cachedTranscript{},
 	}
+}
+
+func (l *Loader) WithParkedMaxAge(maxAge time.Duration) *Loader {
+	l.parkedMaxAge = maxAge
+	return l
 }
 
 func (l *Loader) Reads() int {
@@ -105,8 +119,64 @@ func (l *Loader) Load(now time.Time) (Snapshot, error) {
 	}
 	l.transcripts, l.subagents, l.dirs = transcripts, subagents, dirs
 
+	if l.parkedMaxAge > 0 {
+		live := map[string]bool{}
+		for _, r := range src.Records {
+			live[r.SessionID] = true
+		}
+		parked, skipped, err := l.catalogue(projectsDir, live, now)
+		if err != nil {
+			return snapshot, err
+		}
+		snapshot.Skipped = append(snapshot.Skipped, skipped...)
+		src.Parked = parked
+	}
+
 	snapshot.Sessions = Build(src, l.probes, now)
 	return snapshot, nil
+}
+
+func (l *Loader) catalogue(projectsDir string, live map[string]bool, now time.Time) ([]claude.Transcript, []claude.SkippedFile, error) {
+	paths, err := filepath.Glob(filepath.Join(projectsDir, "*", "*.jsonl"))
+	if err != nil {
+		return nil, nil, err
+	}
+	var parked []claude.Transcript
+	var skipped []claude.SkippedFile
+	cache := map[string]cachedTranscript{}
+	cutoff := now.Add(-l.parkedMaxAge)
+	for _, path := range paths {
+		id := strings.TrimSuffix(filepath.Base(path), ".jsonl")
+		if live[id] {
+			continue
+		}
+		key, err := stat(path)
+		if err != nil {
+			skipped = append(skipped, claude.SkippedFile{Path: path, Err: err})
+			continue
+		}
+		if key.modTime.Before(cutoff) {
+			continue
+		}
+		entry, ok := l.parked[path]
+		if !ok || entry.key != key {
+			l.reads++
+			transcript, err := claude.ReadTranscriptWindow(path, parkedWindowBytes)
+			if err != nil {
+				skipped = append(skipped, claude.SkippedFile{Path: path, Err: err})
+				continue
+			}
+			transcript.Project = filepath.Base(filepath.Dir(path))
+			entry = cachedTranscript{key: key, transcript: transcript}
+		}
+		cache[path] = entry
+		if entry.transcript.IsBridgeStub || entry.transcript.SessionID == "" || entry.transcript.LastAt.Before(cutoff) {
+			continue
+		}
+		parked = append(parked, entry.transcript)
+	}
+	l.parked = cache
+	return parked, skipped, nil
 }
 
 func (l *Loader) transcript(path string) (cachedTranscript, error) {

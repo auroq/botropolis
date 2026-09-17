@@ -17,11 +17,12 @@ import (
 
 type fakeStatus struct {
 	direct bool
+	all    bool
 	err    error
 }
 
-func (f *fakeStatus) Run(out io.Writer, direct bool) error {
-	f.direct = direct
+func (f *fakeStatus) Run(out io.Writer, direct, all bool) error {
+	f.direct, f.all = direct, all
 	_, _ = io.WriteString(out, "TABLE\n")
 	return f.err
 }
@@ -144,6 +145,15 @@ func TestStatusCLI(t *testing.T) {
 
 		t.Run("it should build the service from the loaded config", func(t *testing.T) {
 			assert.NotNil(t, h.seen)
+		})
+	})
+
+	t.Run("when run with --all", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("status", "--all"))
+
+		t.Run("it should ask for parked sessions too", func(t *testing.T) {
+			assert.True(t, h.status.all)
 		})
 	})
 

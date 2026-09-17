@@ -8,6 +8,12 @@ import (
 	"github.com/auroq/botropolis/pkg/state"
 )
 
+type Option func(*state.Loader)
+
+func WithParkedMaxAge(maxAge time.Duration) Option {
+	return func(l *state.Loader) { l.WithParkedMaxAge(maxAge) }
+}
+
 type overlay struct {
 	at    time.Time
 	state state.State
@@ -28,9 +34,13 @@ type Daemon struct {
 	subscribers map[chan state.Snapshot]struct{}
 }
 
-func New(home string, probes state.Probes, clock func() time.Time) *Daemon {
+func New(home string, probes state.Probes, clock func() time.Time, options ...Option) *Daemon {
+	loader := state.NewLoader(home, probes)
+	for _, option := range options {
+		option(loader)
+	}
 	return &Daemon{
-		loader:      state.NewLoader(home, probes),
+		loader:      loader,
 		clock:       clock,
 		watching:    make(chan struct{}),
 		overlays:    map[string]overlay{},

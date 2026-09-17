@@ -1,8 +1,6 @@
 package claude
 
 import (
-	"bufio"
-	"encoding/json"
 	"os"
 	"time"
 )
@@ -62,6 +60,7 @@ type Transcript struct {
 	FirstAt       time.Time
 	LastAt        time.Time
 	IsBridgeStub  bool
+	Partial       bool
 	Malformed     int
 }
 
@@ -168,32 +167,9 @@ func readTranscriptFile(path string, sidechainIsMain bool) (Transcript, error) {
 		return Transcript{}, err
 	}
 	defer func() { _ = f.Close() }()
-
-	scan := transcriptScan{
-		transcript:    Transcript{Path: path},
-		seenMessages:  map[string]bool{},
-		sidechainMain: sidechainIsMain,
-	}
-	scanner := bufio.NewScanner(f)
-	scanner.Buffer(nil, maxTranscriptLine)
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		if len(line) == 0 {
-			continue
-		}
-		var rec transcriptLineJSON
-		if err := json.Unmarshal(line, &rec); err != nil {
-			scan.transcript.Malformed++
-			continue
-		}
-		scan.apply(rec)
-	}
-	if err := scanner.Err(); err != nil {
-		return scan.transcript, err
-	}
-	scan.transcript.IsBridgeStub = scan.records > 0 && scan.bridgeRecords == scan.records
-	scan.transcript.Tail = scan.tail.finish()
-	return scan.transcript, nil
+	scan := newTranscriptScan(path, sidechainIsMain)
+	scanLines(scan, f)
+	return scan.finish(), nil
 }
 
 func (s *transcriptScan) apply(rec transcriptLineJSON) {

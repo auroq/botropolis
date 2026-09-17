@@ -24,13 +24,27 @@ func NewStatus(source SnapshotSource) *Status {
 	return &Status{source: source}
 }
 
-func (s *Status) Run(out io.Writer, direct bool) error {
+func (s *Status) Run(out io.Writer, direct, all bool) error {
 	snapshot, err := s.source.Snapshot(direct)
 	if err != nil {
 		return err
 	}
+	if !all {
+		snapshot = LiveOnly(snapshot)
+	}
 	Render(out, snapshot)
 	return nil
+}
+
+func LiveOnly(snapshot state.Snapshot) state.Snapshot {
+	live := snapshot
+	live.Sessions = nil
+	for _, s := range snapshot.Sessions {
+		if s.State != state.Parked {
+			live.Sessions = append(live.Sessions, s)
+		}
+	}
+	return live
 }
 
 func Render(out io.Writer, snapshot state.Snapshot) {
@@ -53,11 +67,12 @@ func Render(out io.Writer, snapshot state.Snapshot) {
 }
 
 type DaemonOrDirect struct {
-	Home   string
-	Socket string
-	Probes state.Probes
-	Now    func() time.Time
-	Notice io.Writer
+	Home         string
+	Socket       string
+	Probes       state.Probes
+	ParkedMaxAge time.Duration
+	Now          func() time.Time
+	Notice       io.Writer
 }
 
 func (d DaemonOrDirect) Snapshot(direct bool) (state.Snapshot, error) {
@@ -70,7 +85,7 @@ func (d DaemonOrDirect) Snapshot(direct bool) (state.Snapshot, error) {
 			fmt.Fprintf(d.Notice, "botropolis: botropolisd not reachable at %s (%v); scanning %s directly\n", d.Socket, err, d.Home)
 		}
 	}
-	return state.Load(d.Home, d.Probes, d.Now())
+	return state.LoadWith(d.Home, d.Probes, d.ParkedMaxAge, d.Now())
 }
 
 func fromDaemon(sock string) (state.Snapshot, error) {

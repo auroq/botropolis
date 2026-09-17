@@ -34,21 +34,22 @@ func TestLoader(t *testing.T) {
 		snapshot, err := loader.Load(now)
 		require.NoError(t, err)
 
-		t.Run("it should build the live session", func(t *testing.T) {
-			require.Len(t, snapshot.Sessions, 1)
-			assert.Equal(t, sidA, snapshot.Sessions[0].ID)
+		t.Run("it should build the live session and catalogue the other as parked", func(t *testing.T) {
+			require.Len(t, snapshot.Sessions, 2)
+			assert.Equal(t, state.NeedsYou, sessionByID(t, snapshot, sidA).State)
+			assert.Equal(t, state.Parked, sessionByID(t, snapshot, otherSid).State)
 		})
 
-		t.Run("it should read only the live session's transcript", func(t *testing.T) {
-			assert.Equal(t, 1, loader.Reads())
+		t.Run("it should read each transcript once", func(t *testing.T) {
+			assert.Equal(t, 2, loader.Reads())
 		})
 
 		t.Run("and it loads again with nothing changed", func(t *testing.T) {
 			_, err := loader.Load(now.Add(time.Second))
 			require.NoError(t, err)
 
-			t.Run("it should not read the transcript again", func(t *testing.T) {
-				assert.Equal(t, 1, loader.Reads())
+			t.Run("it should not read the transcripts again", func(t *testing.T) {
+				assert.Equal(t, 2, loader.Reads())
 			})
 		})
 
@@ -59,11 +60,11 @@ func TestLoader(t *testing.T) {
 			require.NoError(t, err)
 
 			t.Run("it should read it again", func(t *testing.T) {
-				assert.Equal(t, 2, loader.Reads())
+				assert.Equal(t, 3, loader.Reads())
 			})
 
 			t.Run("it should reflect the new tail", func(t *testing.T) {
-				assert.Equal(t, state.Working, snapshot.Sessions[0].State)
+				assert.Equal(t, state.Working, sessionByID(t, snapshot, sidA).State)
 			})
 		})
 	})
@@ -89,11 +90,11 @@ func TestLoader(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run("it should count them", func(t *testing.T) {
-			assert.Equal(t, 1, snapshot.Sessions[0].Subagents)
+			assert.Equal(t, 1, sessionByID(t, snapshot, sidA).Subagents)
 		})
 
-		t.Run("it should read transcript and subagent once each", func(t *testing.T) {
-			assert.Equal(t, 2, loader.Reads())
+		t.Run("it should read transcript, subagent, and the parked transcript once each", func(t *testing.T) {
+			assert.Equal(t, 3, loader.Reads())
 		})
 
 		t.Run("and it loads again with nothing changed", func(t *testing.T) {
@@ -101,8 +102,102 @@ func TestLoader(t *testing.T) {
 			require.NoError(t, err)
 
 			t.Run("it should read nothing", func(t *testing.T) {
-				assert.Equal(t, 2, loader.Reads())
+				assert.Equal(t, 3, loader.Reads())
 			})
 		})
 	})
+}
+
+func TestCatalogue(t *testing.T) {
+	old := "2026-09-10T12:00:00.000Z"
+	parkedHome := func(t *testing.T) *helpers.Home {
+		t.Helper()
+		home := liveHome(t)
+		home.Transcript("aaaaaaaa-0000-0000-0000-000000000001", loaderCWD,
+			helpers.UserPrompt("aaaaaaaa-0000-0000-0000-000000000001", loaderCWD, old),
+			helpers.AssistantReply("aaaaaaaa-0000-0000-0000-000000000001", "msg_p1", "2026-09-10T12:00:10.000Z"),
+			helpers.AITitle("aaaaaaaa-0000-0000-0000-000000000001", "An old job"))
+		return home
+	}
+
+	t.Run("when a home holds a transcript with no live record", func(t *testing.T) {
+		home := parkedHome(t)
+		loader := state.NewLoader(home.Path, alive)
+		snapshot, err := loader.Load(now)
+		require.NoError(t, err)
+
+		t.Run("it should list it as a parked session", func(t *testing.T) {
+			require.Len(t, snapshot.Sessions, 3)
+			parked := sessionByID(t, snapshot, "aaaaaaaa-0000-0000-0000-000000000001")
+			assert.Equal(t, state.Parked, parked.State)
+		})
+
+		t.Run("it should carry the transcript's title", func(t *testing.T) {
+			assert.Equal(t, "An old job", sessionByID(t, snapshot, "aaaaaaaa-0000-0000-0000-000000000001").Title)
+		})
+
+		t.Run("it should date it by its last activity", func(t *testing.T) {
+			assert.Equal(t, "2026-09-10T12:00:10Z", sessionByID(t, snapshot, "aaaaaaaa-0000-0000-0000-000000000001").LastActivity.Format("2006-01-02T15:04:05Z"))
+		})
+
+		t.Run("it should not be alive", func(t *testing.T) {
+			assert.False(t, sessionByID(t, snapshot, "aaaaaaaa-0000-0000-0000-000000000001").Alive)
+		})
+
+		t.Run("and it loads again with nothing changed", func(t *testing.T) {
+			before := loader.Reads()
+			_, err := loader.Load(now.Add(time.Second))
+			require.NoError(t, err)
+
+			t.Run("it should read nothing again", func(t *testing.T) {
+				assert.Equal(t, before, loader.Reads())
+			})
+		})
+	})
+
+	t.Run("when a parked transcript is older than the catalogue keeps", func(t *testing.T) {
+		home := parkedHome(t)
+		loader := state.NewLoader(home.Path, alive).WithParkedMaxAge(48 * time.Hour)
+		snapshot, err := loader.Load(time.Date(2026, time.September, 17, 8, 0, 0, 0, time.UTC))
+		require.NoError(t, err)
+
+		t.Run("it should leave it out", func(t *testing.T) {
+			assert.Len(t, snapshot.Sessions, 2)
+		})
+	})
+
+	t.Run("when the catalogue is switched off", func(t *testing.T) {
+		home := parkedHome(t)
+		snapshot, err := state.NewLoader(home.Path, alive).WithParkedMaxAge(0).Load(now)
+		require.NoError(t, err)
+
+		t.Run("it should list live sessions only", func(t *testing.T) {
+			assert.Len(t, snapshot.Sessions, 1)
+		})
+	})
+
+	t.Run("when a transcript with no live record is a bridge stub", func(t *testing.T) {
+		home := liveHome(t)
+		home.Transcript("bbbbbbbb-0000-0000-0000-000000000002", loaderCWD,
+			`{"type":"bridge-session","sessionId":"bbbbbbbb-0000-0000-0000-000000000002","bridgeSessionId":"x"}`)
+		snapshot, err := state.NewLoader(home.Path, alive).Load(now)
+		require.NoError(t, err)
+
+		t.Run("it should leave it out", func(t *testing.T) {
+			for _, s := range snapshot.Sessions {
+				assert.NotEqual(t, "bbbbbbbb-0000-0000-0000-000000000002", s.ID)
+			}
+		})
+	})
+}
+
+func sessionByID(t *testing.T, snapshot state.Snapshot, id string) state.Session {
+	t.Helper()
+	for _, s := range snapshot.Sessions {
+		if s.ID == id {
+			return s
+		}
+	}
+	t.Fatalf("no session %s in snapshot", id)
+	return state.Session{}
 }

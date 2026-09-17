@@ -59,7 +59,11 @@ func RunDaemon(ctx context.Context, cfg *config.Config, out io.Writer) error {
 }
 
 func newDaemon(cfg *config.Config, probes state.Probes) *daemon.Daemon {
-	return daemon.New(cfg.Home, probes, time.Now)
+	return daemon.New(cfg.Home, probes, time.Now, daemon.WithParkedMaxAge(parkedMaxAge(cfg)))
+}
+
+func parkedMaxAge(cfg *config.Config) time.Duration {
+	return time.Duration(cfg.ParkedDays) * 24 * time.Hour
 }
 
 func newListener(cfg *config.Config) (net.Listener, error) {
