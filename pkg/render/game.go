@@ -138,6 +138,13 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
 		g.scene.Fit()
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyN) {
+		if g.scene.ToggleNight() {
+			g.SetStatus("night: forced on (n to release)")
+		} else {
+			g.SetStatus("")
+		}
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyD) || inpututil.IsKeyJustPressed(ebiten.KeyDelete) {
 		action, note := g.scene.Demolish(time.Now())
 		g.SetStatus(note)
@@ -168,6 +175,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	g.ground(screen, cam, c, width, height, detailed)
+	g.flatCells(screen, cam, c)
 	g.lines(screen, c, cam, hover, labels)
 
 	for _, d := range c.Districts {
@@ -605,7 +613,7 @@ func (g *Game) footer(screen *ebiten.Image, screenWidth, screenHeight float64) {
 	status := g.status
 	g.mu.Unlock()
 	if status == "" {
-		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click to attach | d d to demolish | f to fit | q to quit",
+		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click to attach | d d to demolish | f to fit | n for night | q to quit",
 			len(g.scene.City().Buildings()))
 	}
 	lines := format.Wrap(status, int((screenWidth-24)/charWidth))

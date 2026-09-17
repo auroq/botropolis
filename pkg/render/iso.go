@@ -163,6 +163,13 @@ func (g *Game) isoGround(screen *ebiten.Image, cam *city.Camera, c *city.City, w
 					continue
 				}
 			}
+			if land, ok := c.Lake(city.Cell{Col: col, Row: row}); ok {
+				if img := g.sprites.iso.road(lakeTile(land)); img != nil {
+					over := (w + 1.5) / float64(img.Bounds().Dx())
+					g.drawSprite(screen, img, city.Point{X: top.X - w/2 - 0.75, Y: top.Y - 0.5}, over, tint)
+					continue
+				}
+			}
 			img := grass
 			switch pick := groundPick(tileHash(col, row)); pick {
 			case groundGrassAlt:
@@ -535,6 +542,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	if c.Night {
 		vector.FillRect(screen, 0, 0, float32(width), float32(height), colorNightOverlay, false)
+		g.nightLights(screen, cam, c)
 	}
 	for _, d := range c.Districts {
 		if g.scene.DistrictLabelVisible(d) {
@@ -600,6 +608,15 @@ func riverTile(mask int) string {
 		mask = city.DirE | city.DirW
 	}
 	return packTile("river", "river", "river", mask)
+}
+
+// lakeTile names the water sprite for a lake cell by the sides it meets
+// land on, in the pack's rotated compass.
+func lakeTile(land int) string {
+	if land == 0 {
+		return "water"
+	}
+	return packTile("water", "water", "water", land)
 }
 
 // bridgeTile is the bridge for a straight street across the river, or ""
@@ -765,4 +782,47 @@ func (g *Game) drawCar(screen *ebiten.Image, cam *city.Camera, car car) {
 	h := float64(img.Bounds().Dy()) * scale
 	p := cam.WorldToScreen(car.at)
 	g.drawSprite(screen, img, city.Point{X: p.X - w/2, Y: p.Y - h*0.75}, scale, nil)
+}
+
+// Night: the wash dims everything, then every building with a session
+// awake in it glows from its windows, so at night the map reads as
+// "which lights are on".
+var (
+	colorWindowGlow = color.NRGBA{0xff, 0xc8, 0x70, 0x2c}
+	colorWindowCore = color.NRGBA{0xff, 0xe0, 0xa0, 0x30}
+	colorPlantGlow  = color.NRGBA{0xf0, 0xb4, 0x4c, 0x40}
+)
+
+func (g *Game) nightLights(screen *ebiten.Image, cam *city.Camera, c *city.City) {
+	for _, b := range c.Buildings() {
+		if !b.Lit || b.BoardedUp {
+			continue
+		}
+		top, w := footprint(cam, b.Rect)
+		scale := w / assets.IsoTileWidth
+		storeys := isoStoreys(b.Fill)
+		base := top.Y + w/2 + 33*scale - 82*scale + isoStoreyPitch*scale
+		// One lamp per storey, on the walls, not a floodlight over the lot.
+		pitch := isoStoreyPitch * scale
+		for i := 0; i < storeys; i++ {
+			y := base - pitch*(float64(i)+0.5)
+			glow(screen, city.Point{X: top.X - w*0.2, Y: y}, w*0.16, colorWindowGlow)
+			glow(screen, city.Point{X: top.X + w*0.2, Y: y}, w*0.16, colorWindowGlow)
+			glow(screen, city.Point{X: top.X, Y: y}, w*0.1, colorWindowCore)
+		}
+	}
+	if c.Plant.Rect.Area() > 0 {
+		top, w := footprint(cam, c.Plant.Rect)
+		glow(screen, city.Point{X: top.X, Y: stackRoofTop(cam, c.Plant.Rect, 3) - w*0.05}, w*0.22, colorPlantGlow)
+	}
+}
+
+// glow is a soft additive disc: light, not paint.
+func glow(screen *ebiten.Image, at city.Point, radius float64, col color.NRGBA) {
+	var path vector.Path
+	path.Arc(float32(at.X), float32(at.Y), float32(radius), 0, 2*math.Pi, vector.Clockwise)
+	path.Close()
+	op := &vector.DrawPathOptions{AntiAlias: true, Blend: ebiten.BlendLighter}
+	op.ColorScale.ScaleWithColor(col)
+	vector.FillPath(screen, &path, nil, op)
 }

@@ -376,6 +376,36 @@ func TestSceneProjection(t *testing.T) {
 	})
 }
 
+func TestToggleNight(t *testing.T) {
+	t.Run("when nothing runs unattended and night is toggled", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		require.False(t, s.City().Night)
+		on := s.ToggleNight()
+
+		t.Run("it should be night", func(t *testing.T) {
+			assert.True(t, on)
+			assert.True(t, s.City().Night)
+		})
+
+		t.Run("and a new snapshot arrives", func(t *testing.T) {
+			s.SetSnapshot(snapshot(session("a", cinders, state.Working)))
+
+			t.Run("it should stay night", func(t *testing.T) {
+				assert.True(t, s.City().Night)
+			})
+		})
+
+		t.Run("and it is toggled again", func(t *testing.T) {
+			s.ToggleNight()
+			s.SetSnapshot(snapshot(session("a", cinders, state.Working)))
+
+			t.Run("it should follow the sessions again", func(t *testing.T) {
+				assert.False(t, s.City().Night)
+			})
+		})
+	})
+}
+
 func TestTopChrome(t *testing.T) {
 	t.Run("when the window has a strip along the top", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))
@@ -509,7 +539,7 @@ func TestSceneInsets(t *testing.T) {
 
 		t.Run("it should fit without the label room", func(t *testing.T) {
 			plain := city.NewCamera()
-			plain.FitWithInsets(s.City().Bounds(), 500, 300, city.Insets{Bottom: city.FitFooter})
+			plain.FitWithInsets(s.City().Extent(), 500, 300, city.Insets{Bottom: city.FitFooter})
 			assert.InDelta(t, plain.Zoom, s.Camera().Zoom, 1e-9)
 			assert.GreaterOrEqual(t, s.Camera().WorldToScreen(s.City().Bounds().Min).X, 0.0)
 		})

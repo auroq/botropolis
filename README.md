@@ -32,7 +32,7 @@ Hover a building for what its worker is doing right now (tool and file), context
 Milestone 4: `botropolis` with no arguments (or `botropolis city`) opens the city:
 one district per project, one building per session, fill level for context used,
 orange and pulsing for needs-you, cranes for subagents in flight, boarded up for parked.
-Drag to pan, wheel to zoom, click a building to attach it, `f` to fit, `q` to quit.
+Drag to pan, wheel to zoom, click a building to attach it, `f` to fit, `n` to force night (to see the lights), `q` to quit.
 The layout is sticky, in `~/.local/state/botropolis/layout.json`.
 The window is built for tiling: it fits the city to whatever size the window manager gives it, refits on resize until you pan or zoom (`f` refits),
 and wraps the footer and clamps the hover card at narrow or short sizes.
@@ -90,7 +90,9 @@ A waybar module, for example:
 The city is drawn with tiles by [Kenney](https://kenney.nl) — the isometric Buildings, City, Landscape and Vehicles packs,
 Roads, and Tiny Town, Tiny Factory and Roguelike Modern City for the top-down view (`--projection top`), all CC0.
 A resource strip along the top keeps the city-wide tallies in view: sessions by state, token rates, cost and cache hit rate over 24 h, MCP calls, PRs, errors.
-Streets between districts are autotiled from the road pack with cars for traffic; power lines run on poles with sparks for token flow; context fill is the number of storeys.
+Streets between districts are autotiled from the road pack with cars for traffic (one per street, up to three with traffic; never faster); power lines run on poles with sparks for token flow; context fill is the number of storeys.
+At night — whenever something runs unattended — the map dims and every building with a session awake in it shows lit windows.
+A river and a pond sit in the outskirts as background; they mean nothing.
 Thank you, Kenney; see [`pkg/assets/kenney/README.md`](pkg/assets/kenney/README.md) for the packs, versions and terms,
 and [support the studio](https://kenney.nl/donate) if the work helps you too.
 

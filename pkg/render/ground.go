@@ -36,6 +36,10 @@ var (
 	colorLabelBack   = color.NRGBA{0x0a, 0x0c, 0x12, 0xb8}
 	colorMinimapBack = color.NRGBA{0x0a, 0x0c, 0x12, 0xd0}
 	colorMinimapView = color.NRGBA{0xff, 0xff, 0xff, 0xc0}
+	colorWater       = color.NRGBA{0x5a, 0xa8, 0xd0, 0xff}
+	colorWaterNight  = color.NRGBA{0x28, 0x48, 0x68, 0xff}
+	colorStreet      = color.NRGBA{0x4a, 0x4c, 0x52, 0xff}
+	colorStreetLine  = color.NRGBA{0xd8, 0xd8, 0xc8, 0x80}
 	colorHighlight   = color.NRGBA{0xff, 0xff, 0xff, 0xa0}
 
 	townGrass = [3][2]int{{0, 0}, {1, 0}, {2, 0}}
@@ -97,10 +101,49 @@ func (g *Game) ground(screen *ebiten.Image, cam *city.Camera, c *city.City, widt
 			}
 			r := city.RectAt(float64(col)*city.Tile, float64(row)*city.Tile, city.Tile, city.Tile)
 			g.drawTile(screen, cam, g.sprites.town.tile(pick[0], pick[1]), r, scale)
+			if _, water := c.River(city.Cell{Col: col, Row: row}); water {
+				continue
+			}
+			if _, water := c.Lake(city.Cell{Col: col, Row: row}); water {
+				continue
+			}
 			if (h>>8)%treeChance == 0 && clearOfCity(c, r) {
 				tree := townTrees[(h>>16)%uint32(len(townTrees))]
 				g.drawTile(screen, cam, g.sprites.town.tile(tree[0], tree[1]), r, scale)
 			}
+		}
+	}
+}
+
+// flatCells draws the river, lake and streets as flat cells in the
+// top-down view, the same grid the isometric view tiles.
+func (g *Game) flatCells(screen *ebiten.Image, cam *city.Camera, c *city.City) {
+	water := colorWater
+	if c.Night {
+		water = colorWaterNight
+	}
+	for _, rc := range c.RiverCells {
+		g.rect(screen, cam, rc.Cell.Rect(), water)
+	}
+	for _, lc := range c.LakeCells {
+		g.rect(screen, cam, lc.Cell.Rect(), water)
+	}
+	for _, sc := range c.StreetCells {
+		r := sc.Cell.Rect()
+		g.rect(screen, cam, r, colorStreet)
+		centre := r.Center()
+		half := city.BuildingSize / 2
+		if sc.Mask&city.DirW != 0 {
+			g.line(screen, cam, centre, city.Point{X: centre.X - half, Y: centre.Y}, 1, colorStreetLine)
+		}
+		if sc.Mask&city.DirE != 0 {
+			g.line(screen, cam, centre, city.Point{X: centre.X + half, Y: centre.Y}, 1, colorStreetLine)
+		}
+		if sc.Mask&city.DirN != 0 {
+			g.line(screen, cam, centre, city.Point{X: centre.X, Y: centre.Y - half}, 1, colorStreetLine)
+		}
+		if sc.Mask&city.DirS != 0 {
+			g.line(screen, cam, centre, city.Point{X: centre.X, Y: centre.Y + half}, 1, colorStreetLine)
 		}
 	}
 }

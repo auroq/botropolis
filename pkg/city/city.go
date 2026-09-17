@@ -70,6 +70,7 @@ type City struct {
 	Streets     []Street
 	StreetCells []StreetCell
 	RiverCells  []RiverCell
+	LakeCells   []LakeCell
 	Night       bool
 	Time        time.Time
 }
@@ -147,6 +148,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	city.placeLandmarks(snapshot)
 	city.placeRoads(snapshot.Roads)
 	city.placeRiver()
+	city.placeLake()
 	city.placeStreets()
 	return city
 }
@@ -306,6 +308,15 @@ func (c *City) Bounds() Rect {
 	}
 	if c.Hall.Rect.Area() > 0 {
 		bounds = bounds.Union(c.Hall.Rect)
+	}
+	return bounds
+}
+
+// Extent is Bounds plus the lake: what a fit should frame.
+func (c *City) Extent() Rect {
+	bounds := c.Bounds()
+	for _, l := range c.LakeCells {
+		bounds = bounds.Union(l.Cell.Rect())
 	}
 	return bounds
 }

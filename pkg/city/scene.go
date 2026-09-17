@@ -26,17 +26,18 @@ type Action struct {
 }
 
 type Scene struct {
-	topChrome float64
-	layout    *Layout
-	camera    *Camera
-	city      *City
-	hover     Hit
-	selected  *Building
-	width     float64
-	height    float64
-	touched   bool
-	armed     string
-	armedAt   time.Time
+	forceNight bool
+	topChrome  float64
+	layout     *Layout
+	camera     *Camera
+	city       *City
+	hover      Hit
+	selected   *Building
+	width      float64
+	height     float64
+	touched    bool
+	armed      string
+	armedAt    time.Time
 }
 
 func NewScene(layout *Layout) *Scene {
@@ -45,6 +46,20 @@ func NewScene(layout *Layout) *Scene {
 
 func (s *Scene) City() *City {
 	return s.city
+}
+
+// ToggleNight forces night on or off regardless of what is running, to
+// see the city lit; the next snapshot keeps the override.
+func (s *Scene) ToggleNight() bool {
+	s.forceNight = !s.forceNight
+	s.applyNight()
+	return s.forceNight
+}
+
+func (s *Scene) applyNight() {
+	if s.forceNight && s.city != nil {
+		s.city.Night = true
+	}
 }
 
 func (s *Scene) Camera() *Camera {
@@ -84,9 +99,9 @@ func (s *Scene) fit() {
 	if s.touched || len(s.city.Districts) == 0 {
 		return
 	}
-	s.camera.FitWithInsets(s.city.Bounds(), s.width, s.height, s.Insets())
+	s.camera.FitWithInsets(s.city.Extent(), s.width, s.height, s.Insets())
 	if s.camera.Zoom < LabelZoom {
-		s.camera.FitWithInsets(s.city.Bounds(), s.width, s.height, Insets{Bottom: FitFooter})
+		s.camera.FitWithInsets(s.city.Extent(), s.width, s.height, Insets{Bottom: FitFooter})
 	}
 }
 
@@ -166,7 +181,7 @@ type Minimap struct {
 }
 
 func (s *Scene) Minimap(box Rect) Minimap {
-	bounds := s.camera.Projection.Bounds(s.city.Bounds())
+	bounds := s.camera.Projection.Bounds(s.city.Extent())
 	if bounds.Width() <= 0 || bounds.Height() <= 0 {
 		return Minimap{Box: box}
 	}
@@ -220,6 +235,7 @@ func (s *Scene) Insets() Insets {
 
 func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
 	s.city = Build(snapshot, s.layout)
+	s.applyNight()
 	s.selected = s.reselect()
 	s.hover = Hit{}
 	s.fit()

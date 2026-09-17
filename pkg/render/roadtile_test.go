@@ -62,3 +62,24 @@ func TestRiverAndBridgeTiles(t *testing.T) {
 		})
 	})
 }
+
+func TestLakeTile(t *testing.T) {
+	t.Run("when a lake cell is surrounded by water", func(t *testing.T) {
+		t.Run("it should be open water", func(t *testing.T) {
+			assert.Equal(t, "water", lakeTile(0))
+		})
+	})
+
+	t.Run("when a lake cell meets land on its world-west side", func(t *testing.T) {
+		t.Run("it should shore the pack's N edge", func(t *testing.T) {
+			assert.Equal(t, "waterN", lakeTile(city.DirW))
+		})
+	})
+
+	t.Run("when a lake cell is a corner", func(t *testing.T) {
+		t.Run("it should shore two adjacent edges", func(t *testing.T) {
+			assert.Equal(t, "waterNE", lakeTile(city.DirW|city.DirN))
+			assert.Equal(t, "waterSW", lakeTile(city.DirE|city.DirS))
+		})
+	})
+}

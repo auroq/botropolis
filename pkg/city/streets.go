@@ -110,6 +110,9 @@ func (c *City) routeAround(road *RoadLine) []Cell {
 		if cell.Col < minCell.Col || cell.Col > maxCell.Col || cell.Row < minCell.Row || cell.Row > maxCell.Row {
 			return false
 		}
+		if _, water := c.Lake(cell); water {
+			return false
+		}
 		centre := cell.Center()
 		for _, d := range c.Districts {
 			if d != road.From && d != road.To && d.Rect.Contains(centre) {
