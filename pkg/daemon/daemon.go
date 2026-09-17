@@ -16,8 +16,11 @@ type overlay struct {
 }
 
 type Daemon struct {
-	loader *state.Loader
-	clock  func() time.Time
+	loader    *state.Loader
+	clock     func() time.Time
+	scanMu    sync.Mutex
+	watching  chan struct{}
+	watchOnce sync.Once
 
 	mu          sync.Mutex
 	base        state.Snapshot
@@ -29,13 +32,16 @@ func New(home string, probes state.Probes, clock func() time.Time) *Daemon {
 	return &Daemon{
 		loader:      state.NewLoader(home, probes),
 		clock:       clock,
+		watching:    make(chan struct{}),
 		overlays:    map[string]overlay{},
 		subscribers: map[chan state.Snapshot]struct{}{},
 	}
 }
 
 func (d *Daemon) Rescan() error {
+	d.scanMu.Lock()
 	snapshot, err := d.loader.Load(d.clock())
+	d.scanMu.Unlock()
 	if err != nil {
 		return err
 	}

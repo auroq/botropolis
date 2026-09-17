@@ -41,12 +41,26 @@ func (h *Home) Transcript(sessionID, cwd string, lines ...string) string {
 
 func (h *Home) AppendTranscript(sessionID, cwd string, lines ...string) {
 	h.t.Helper()
-	path := filepath.Join(h.ClaudeDir(), "projects", ProjectSlug(cwd), sessionID+".jsonl")
+	h.appendTo(filepath.Join(h.ClaudeDir(), "projects", ProjectSlug(cwd), sessionID+".jsonl"), lines)
+}
+
+func (h *Home) appendTo(path string, lines []string) {
+	h.t.Helper()
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o600)
 	require.NoError(h.t, err)
 	defer func() { _ = f.Close() }()
 	_, err = f.WriteString(strings.Join(lines, "\n") + "\n")
 	require.NoError(h.t, err)
+}
+
+func (h *Home) RemoveSession(pid int) {
+	h.t.Helper()
+	require.NoError(h.t, os.Remove(filepath.Join(h.ClaudeDir(), "sessions", strconv.Itoa(pid)+".json")))
+}
+
+func (h *Home) AppendSubagent(sessionID, cwd, agentID string, lines ...string) {
+	h.t.Helper()
+	h.appendTo(filepath.Join(h.ClaudeDir(), "projects", ProjectSlug(cwd), sessionID, "subagents", "agent-"+agentID+".jsonl"), lines)
 }
 
 func (h *Home) Subagent(sessionID, cwd, agentID, meta string, lines ...string) string {

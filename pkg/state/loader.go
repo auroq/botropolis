@@ -3,6 +3,7 @@ package state
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/auroq/botropolis/pkg/claude"
@@ -29,6 +30,7 @@ type Loader struct {
 	probes      Probes
 	transcripts map[string]cachedTranscript
 	subagents   map[string]cachedSubagent
+	dirs        []string
 	reads       int
 }
 
@@ -43,6 +45,10 @@ func NewLoader(home string, probes Probes) *Loader {
 
 func (l *Loader) Reads() int {
 	return l.reads
+}
+
+func (l *Loader) WatchDirs() []string {
+	return l.dirs
 }
 
 func (l *Loader) Load(now time.Time) (Snapshot, error) {
@@ -65,11 +71,13 @@ func (l *Loader) Load(now time.Time) (Snapshot, error) {
 	transcripts := map[string]cachedTranscript{}
 	subagents := map[string]cachedSubagent{}
 	src.Subagents = map[string][]claude.Subagent{}
+	dirs := []string{filepath.Join(claudeDir, "sessions"), filepath.Join(claudeDir, "daemon"), projectsDir}
 	for _, r := range src.Records {
 		path, ok := claude.FindTranscript(projectsDir, r.SessionID)
 		if !ok {
 			continue
 		}
+		dirs = append(dirs, filepath.Dir(path), strings.TrimSuffix(path, ".jsonl"), claude.SubagentsDir(path))
 		entry, err := l.transcript(path)
 		if err != nil {
 			snapshot.Skipped = append(snapshot.Skipped, claude.SkippedFile{Path: path, Err: err})
@@ -95,7 +103,7 @@ func (l *Loader) Load(now time.Time) (Snapshot, error) {
 			src.Subagents[r.SessionID] = append(src.Subagents[r.SessionID], sub.subagent)
 		}
 	}
-	l.transcripts, l.subagents = transcripts, subagents
+	l.transcripts, l.subagents, l.dirs = transcripts, subagents, dirs
 
 	snapshot.Sessions = Build(src, l.probes, now)
 	return snapshot, nil

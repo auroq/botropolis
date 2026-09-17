@@ -188,3 +188,9 @@ Each milestone ends with tests green, `make lint` and `make format` clean, and a
   Note that one API message is written as several `assistant` records (one per content block, `apiBlockIndex`)
   that repeat the same `usage`, so token totals must be deduplicated by `message.id`.
 - How much of `teams/` and `tasks/` is worth drawing in the first pass?
+- Where do parked sessions come from?
+  The incremental loader (milestone 2) reads a transcript only when a live record points at it,
+  so the daemon's snapshot holds live sessions only and the city has no boarded-up buildings yet.
+  Options for milestone 4: a slow background catalogue pass over `projects/*/*.jsonl` (head-read, cached by mtime),
+  or seeding from `projects/<slug>/sessions-index.json` where it exists (15 of 44 projects on this machine)
+  and falling back to the head-read for the rest.
