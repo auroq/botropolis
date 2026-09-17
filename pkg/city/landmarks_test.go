@@ -286,6 +286,10 @@ func TestRoads(t *testing.T) {
 		t.Run("it should sign each road with its traffic", func(t *testing.T) {
 			assert.Equal(t, "2 msgs, 4 files", roads[1].Label())
 		})
+
+		t.Run("it should sign a lone touch in the singular", func(t *testing.T) {
+			assert.Equal(t, "1 msg, 1 file", city.RoadLine{Messages: 1, Files: 1}.Label())
+		})
 	})
 
 	t.Run("when a district with roads is hovered", func(t *testing.T) {

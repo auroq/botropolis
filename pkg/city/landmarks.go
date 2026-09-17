@@ -75,13 +75,17 @@ func (r RoadLine) Label() string {
 func roadTraffic(messages, files int) string {
 	var parts []string
 	if messages > 0 {
-		parts = append(parts, fmt.Sprintf("%d msgs", messages))
+		parts = append(parts, plural(messages, "msg"))
 	}
 	if files > 0 {
-		parts = append(parts, fmt.Sprintf("%d files", files))
+		parts = append(parts, plural(files, "file"))
 	}
 	return strings.Join(parts, ", ")
 }
+
+// arrow joins the two ends of a line's card title with a glyph the bitmap
+// font has.
+const arrow = " -> "
 
 type RoadLine struct {
 	A, B     Point
@@ -104,17 +108,17 @@ func (r RoadLine) Card() Card {
 		}
 		lines = append(lines, "files    "+strings.Join(short, ", "))
 	}
-	return Card{Title: r.From.Name + " → " + r.To.Name, Lines: lines}
+	return Card{Title: r.From.Name + arrow + r.To.Name, Lines: lines}
 }
 
 func (b Beam) Card() Card {
-	return Card{Title: b.Tower.Server.Name + " → " + b.Building.Card(time.Time{}).Title, Lines: []string{
+	return Card{Title: b.Tower.Server.Name + arrow + b.Building.Card(time.Time{}).Title, Lines: []string{
 		fmt.Sprintf("calls    %d this session", b.Calls),
 	}}
 }
 
 func (l PowerLine) Card() Card {
-	return Card{Title: "power → " + l.Building.Card(time.Time{}).Title, Lines: []string{
+	return Card{Title: "power" + arrow + l.Building.Card(time.Time{}).Title, Lines: []string{
 		fmt.Sprintf("fresh    %s/min", format.Tokens(l.Fresh/60)),
 		fmt.Sprintf("cached   %s/min", format.Tokens(l.Cached/60)),
 	}}

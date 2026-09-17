@@ -110,7 +110,7 @@ func TestScene(t *testing.T) {
 		t.Run("it should offer the road's card with its files relative to the far district", func(t *testing.T) {
 			card, ok := s.Card()
 			require.True(t, ok)
-			assert.Equal(t, "cinders → botropolis", card.Title)
+			assert.Equal(t, "cinders -> botropolis", card.Title)
 			assert.Contains(t, card.Lines, "traffic  3 msgs, 2 files")
 			assert.Contains(t, card.Lines, "files    pkg/city/city.go, README.md")
 		})
@@ -131,7 +131,7 @@ func TestScene(t *testing.T) {
 		t.Run("it should offer the beam's card", func(t *testing.T) {
 			card, ok := s.Card()
 			require.True(t, ok)
-			assert.Equal(t, "atlassian → Fix the CI queue", card.Title)
+			assert.Equal(t, "atlassian -> Fix the CI queue", card.Title)
 			assert.Contains(t, card.Lines, "calls    3 this session")
 		})
 	})
@@ -145,7 +145,7 @@ func TestScene(t *testing.T) {
 		t.Run("it should offer the line's card in tokens per minute", func(t *testing.T) {
 			card, ok := s.Card()
 			require.True(t, ok)
-			assert.Equal(t, "power → Fix the CI queue", card.Title)
+			assert.Equal(t, "power -> Fix the CI queue", card.Title)
 			assert.Contains(t, card.Lines, "cached   148k/min")
 		})
 	})
