@@ -135,16 +135,25 @@ type transcriptScan struct {
 	bridgeRecords int
 	seenMessages  map[string]bool
 	tail          tailScan
+	sidechainMain bool
 }
 
 func ReadTranscript(path string) (Transcript, error) {
+	return readTranscriptFile(path, false)
+}
+
+func readTranscriptFile(path string, sidechainIsMain bool) (Transcript, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return Transcript{}, err
 	}
 	defer func() { _ = f.Close() }()
 
-	scan := transcriptScan{transcript: Transcript{Path: path}, seenMessages: map[string]bool{}}
+	scan := transcriptScan{
+		transcript:    Transcript{Path: path},
+		seenMessages:  map[string]bool{},
+		sidechainMain: sidechainIsMain,
+	}
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(nil, maxTranscriptLine)
 	for scanner.Scan() {
@@ -195,14 +204,15 @@ func (s *transcriptScan) apply(rec transcriptLineJSON) {
 		}
 		t.LastAt = ts
 	}
+	mainLine := !rec.IsSidechain || s.sidechainMain
 	switch rec.Type {
 	case "user":
-		if !rec.IsSidechain {
+		if mainLine {
 			s.tail.user(rec, ts)
 		}
 	case "assistant":
-		s.applyAssistant(rec)
-		if !rec.IsSidechain {
+		s.applyAssistant(rec, mainLine)
+		if mainLine {
 			s.tail.assistant(rec, ts)
 		}
 	case "cost-state":
@@ -217,7 +227,7 @@ func parseTimestamp(raw string) (time.Time, bool) {
 	return ts, err == nil
 }
 
-func (s *transcriptScan) applyAssistant(rec transcriptLineJSON) {
+func (s *transcriptScan) applyAssistant(rec transcriptLineJSON, mainLine bool) {
 	t := &s.transcript
 	if rec.Message.Model != "" {
 		t.Model = rec.Message.Model
@@ -229,7 +239,7 @@ func (s *transcriptScan) applyAssistant(rec transcriptLineJSON) {
 		return
 	}
 	usage := rec.Message.Usage.usage()
-	if !rec.IsSidechain {
+	if mainLine {
 		t.ContextTokens = usage.Context()
 	}
 	if id := rec.Message.ID; id != "" {
