@@ -1,14 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/auroq/botropolis/pkg/claude"
+	"github.com/auroq/botropolis/pkg/control"
 	"github.com/auroq/botropolis/pkg/hooks"
 	"github.com/auroq/botropolis/pkg/proto"
 	"github.com/auroq/botropolis/pkg/state"
@@ -17,7 +21,15 @@ import (
 
 const (
 	binary = "botropolis"
-	usage  = "usage: " + binary + " <version|status|install-hooks> [--home DIR] [--socket PATH] [--direct] [--remove] [--dry-run]"
+	usage  = "usage: " + binary + ` <command> [flags]
+  version                         print the version
+  status [--home DIR] [--socket PATH] [--direct]
+  install-hooks [--home DIR] [--command CMD] [--remove] [--dry-run]
+  new <dir> [prompt...]           start a background session in <dir>; prints its job id
+  attach <id>                     open a terminal on a background session
+  stop <id>                       stop a background session (conversation kept)
+  resume <session-id> [--dir DIR] resume a parked session in the background and attach
+  rm <id>                         delete a background session`
 )
 
 func main() {
@@ -37,6 +49,8 @@ func run(args []string, out, errOut io.Writer) int {
 		return runStatus(args[1:], out, errOut)
 	case "install-hooks":
 		return runInstallHooks(args[1:], out)
+	case "new", "attach", "stop", "resume", "rm":
+		return runControl(args[0], args[1:], out, errOut)
 	default:
 		fmt.Fprintf(out, "%s: unknown command %q\n%s\n", binary, args[0], usage)
 		return 2
@@ -91,6 +105,105 @@ func fromDaemon(sock string) (state.Snapshot, error) {
 	}
 	defer func() { _ = client.Close() }()
 	return client.Snapshot()
+}
+
+type controller interface {
+	New(ctx context.Context, dir, prompt string) (string, error)
+	Attach(id string) error
+	Stop(ctx context.Context, id string) error
+	Remove(ctx context.Context, id string) error
+	Resume(ctx context.Context, dir, sessionID string) (string, error)
+}
+
+var newController = func() controller { return control.Default() }
+
+func runControl(verb string, args []string, out, errOut io.Writer) int {
+	ctx := context.Background()
+	ctl := newController()
+	fail := func(err error) int {
+		fmt.Fprintf(errOut, "%s %s: %v\n", binary, verb, err)
+		return 1
+	}
+	switch verb {
+	case "new":
+		if len(args) == 0 {
+			fmt.Fprintf(errOut, "%s new: a directory is required\n", binary)
+			return 2
+		}
+		dir, err := filepath.Abs(args[0])
+		if err != nil {
+			return fail(err)
+		}
+		id, err := ctl.New(ctx, dir, strings.Join(args[1:], " "))
+		if err != nil {
+			return fail(err)
+		}
+		fmt.Fprintln(out, id)
+		return 0
+	case "resume":
+		flags := flag.NewFlagSet("resume", flag.ContinueOnError)
+		flags.SetOutput(errOut)
+		dir := flags.String("dir", "", "directory to resume in (default: the session's own cwd)")
+		home := flags.String("home", "", "home directory holding .claude (default: $HOME)")
+		if err := flags.Parse(args); err != nil || flags.NArg() != 1 {
+			fmt.Fprintf(errOut, "%s resume: a session id is required\n", binary)
+			return 2
+		}
+		sessionID := flags.Arg(0)
+		if *dir == "" {
+			var err error
+			if *dir, err = sessionDir(*home, sessionID); err != nil {
+				return fail(err)
+			}
+		}
+		id, err := ctl.Resume(ctx, *dir, sessionID)
+		if err != nil {
+			return fail(err)
+		}
+		fmt.Fprintln(out, id)
+		if err := ctl.Attach(id); err != nil {
+			return fail(err)
+		}
+		return 0
+	}
+	if len(args) != 1 {
+		fmt.Fprintf(errOut, "%s %s: an id is required\n", binary, verb)
+		return 2
+	}
+	var err error
+	switch verb {
+	case "attach":
+		err = ctl.Attach(args[0])
+	case "stop":
+		err = ctl.Stop(ctx, args[0])
+	case "rm":
+		err = ctl.Remove(ctx, args[0])
+	}
+	if err != nil {
+		return fail(err)
+	}
+	return 0
+}
+
+func sessionDir(home, sessionID string) (string, error) {
+	if home == "" {
+		var err error
+		if home, err = os.UserHomeDir(); err != nil {
+			return "", err
+		}
+	}
+	path, ok := claude.FindTranscript(filepath.Join(home, ".claude", "projects"), sessionID)
+	if !ok {
+		return "", fmt.Errorf("no transcript for session %s; pass --dir", sessionID)
+	}
+	transcript, err := claude.ReadTranscript(path)
+	if err != nil {
+		return "", err
+	}
+	if transcript.CWD == "" {
+		return "", fmt.Errorf("transcript %s has no cwd; pass --dir", path)
+	}
+	return transcript.CWD, nil
 }
 
 func runInstallHooks(args []string, out io.Writer) int {
