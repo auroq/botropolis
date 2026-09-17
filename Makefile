@@ -38,11 +38,11 @@ test-unit ::
 	$(LOG) "Running unit tests"
 	@go test ./cmd/... ./pkg/...
 
-test-integration ::
+test-integration :: fixtures
 	$(LOG) "Running integration tests"
 	@go test ./testing/integration/...
 
-test-acceptance ::
+test-acceptance :: fixtures
 	$(LOG) "Running acceptance tests"
 	@go test ./testing/acceptance/...
 

@@ -16,3 +16,12 @@ The three binaries build and answer `version`; nothing else runs yet.
 
 `tools/analyze-history.py` summarises Claude Code usage from `~/.claude/projects`.
 Read-only, stdlib only; `--help` for options.
+
+`tools/make-fixtures.py` copies a scrubbed slice of `~/.claude` into `testing/helpers/fixtures/<name>/home/`,
+laid out like a `$HOME` so tests can point the read model at it.
+Ids, timestamps, paths, and `usage` are kept;
+prompts, tool text, titles, and account identifiers become deterministic placeholders.
+Fixtures are not committed:
+`make test-integration` and `make test-acceptance` regenerate the default `sample` fixture first,
+and the tests skip on a machine without `~/.claude`.
+`--help` for options.
