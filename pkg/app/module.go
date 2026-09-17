@@ -86,9 +86,7 @@ func newServices(probes state.Probes) *services {
 }
 
 func (s *services) Status(cfg *config.Config) cli.StatusRunner {
-	return commands.NewStatus(commands.DaemonOrDirect{
-		Home: cfg.Home, Socket: cfg.Socket, Probes: s.probes, ParkedMaxAge: parkedMaxAge(cfg), Now: time.Now, Notice: os.Stderr,
-	})
+	return commands.NewStatus(s.source(cfg))
 }
 
 func (s *services) Hooks(cfg *config.Config) cli.HooksRunner {
@@ -101,7 +99,8 @@ func (s *services) Sessions(cfg *config.Config) cli.SessionsRunner {
 
 func (s *services) source(cfg *config.Config) commands.DaemonOrDirect {
 	return commands.DaemonOrDirect{
-		Home: cfg.Home, Socket: cfg.Socket, Probes: s.probes, ParkedMaxAge: parkedMaxAge(cfg), Now: time.Now, Notice: os.Stderr,
+		Home: cfg.Home, Socket: cfg.Socket, Probes: s.probes, ParkedMaxAge: parkedMaxAge(cfg),
+		Direct: Harnesses(cfg, s.probes).Load, Now: time.Now, Notice: os.Stderr,
 	}
 }
 
@@ -136,11 +135,8 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 	}
 	sessions := commands.NewSessions(c.config.Home, control.Default(c.config.Terminal))
 	feed := commands.Feed{
-		Socket: c.config.Socket,
-		Source: commands.DaemonOrDirect{
-			Home: c.config.Home, Socket: c.config.Socket, Probes: c.services.probes,
-			ParkedMaxAge: parkedMaxAge(c.config), Now: time.Now,
-		},
+		Socket:  c.config.Socket,
+		Source:  c.services.source(c.config),
 		Poll:    2 * time.Second,
 		Retry:   5 * time.Second,
 		OnError: func(err error) { fmt.Fprintf(cmd.ErrOrStderr(), "botropolis: %v\n", err) },

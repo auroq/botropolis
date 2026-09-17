@@ -52,6 +52,10 @@ func TestConfig(t *testing.T) {
 		t.Run("it should default to a week of parked sessions", func(t *testing.T) {
 			assert.Equal(t, 7, cfg.ParkedDays)
 		})
+
+		t.Run("it should default the codex home under home", func(t *testing.T) {
+			assert.Equal(t, "/home/someone/.codex", cfg.CodexHome)
+		})
 	})
 
 	t.Run("when parked days is given as a flag", func(t *testing.T) {

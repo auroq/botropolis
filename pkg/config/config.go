@@ -21,6 +21,7 @@ const (
 	KeyTerminal    = "terminal"
 	KeyHookCommand = "hook_command"
 	KeyParkedDays  = "parked_days"
+	KeyCodexHome   = "codex_home"
 
 	DefaultParkedDays = 7
 )
@@ -33,6 +34,7 @@ type Config struct {
 	Terminal    string
 	HookCommand string
 	ParkedDays  int
+	CodexHome   string
 	File        string
 }
 
@@ -45,6 +47,7 @@ func NewViper() *viper.Viper {
 	v.SetDefault(KeyTerminal, "")
 	v.SetDefault(KeyHookCommand, "botropolis-hook")
 	v.SetDefault(KeyParkedDays, DefaultParkedDays)
+	v.SetDefault(KeyCodexHome, "")
 	v.SetConfigName(configName)
 	v.AddConfigPath(filepath.Join(configHome(), appDir))
 	return v
@@ -74,6 +77,7 @@ func New(v *viper.Viper) (*Config, error) {
 		Terminal:    v.GetString(KeyTerminal),
 		HookCommand: v.GetString(KeyHookCommand),
 		ParkedDays:  v.GetInt(KeyParkedDays),
+		CodexHome:   v.GetString(KeyCodexHome),
 		File:        v.ConfigFileUsed(),
 	}
 	if cfg.Home == "" {
@@ -85,6 +89,9 @@ func New(v *viper.Viper) (*Config, error) {
 	}
 	if cfg.Socket == "" {
 		cfg.Socket = proto.SocketPath()
+	}
+	if cfg.CodexHome == "" {
+		cfg.CodexHome = filepath.Join(cfg.Home, ".codex")
 	}
 	return cfg, nil
 }

@@ -15,6 +15,8 @@ import (
 
 	"github.com/auroq/botropolis/pkg/config"
 	"github.com/auroq/botropolis/pkg/daemon"
+	"github.com/auroq/botropolis/pkg/harness"
+	"github.com/auroq/botropolis/pkg/harness/codex"
 	"github.com/auroq/botropolis/pkg/state"
 )
 
@@ -59,7 +61,16 @@ func RunDaemon(ctx context.Context, cfg *config.Config, out io.Writer) error {
 }
 
 func newDaemon(cfg *config.Config, probes state.Probes) *daemon.Daemon {
-	return daemon.New(cfg.Home, probes, time.Now, daemon.WithParkedMaxAge(parkedMaxAge(cfg)))
+	return daemon.NewWith(Harnesses(cfg, probes), time.Now)
+}
+
+func Harnesses(cfg *config.Config, probes state.Probes) *harness.Multi {
+	claudeLoader := harness.NewClaude(state.NewLoader(cfg.Home, probes).WithParkedMaxAge(parkedMaxAge(cfg)))
+	harnesses := []harness.Snapshotter{claudeLoader}
+	if info, err := os.Stat(filepath.Join(cfg.CodexHome, "sessions")); err == nil && info.IsDir() {
+		harnesses = append(harnesses, codex.NewLoader(cfg.CodexHome, parkedMaxAge(cfg)))
+	}
+	return harness.NewMulti(harnesses...)
 }
 
 func parkedMaxAge(cfg *config.Config) time.Duration {

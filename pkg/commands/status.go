@@ -75,6 +75,7 @@ type DaemonOrDirect struct {
 	Socket       string
 	Probes       state.Probes
 	ParkedMaxAge time.Duration
+	Direct       func(now time.Time) (state.Snapshot, error)
 	Now          func() time.Time
 	Notice       io.Writer
 }
@@ -88,6 +89,9 @@ func (d DaemonOrDirect) Snapshot(direct bool) (state.Snapshot, error) {
 		if d.Notice != nil {
 			fmt.Fprintf(d.Notice, "botropolis: botropolisd not reachable at %s (%v); scanning %s directly\n", d.Socket, err, d.Home)
 		}
+	}
+	if d.Direct != nil {
+		return d.Direct(d.Now())
 	}
 	return state.LoadWith(d.Home, d.Probes, d.ParkedMaxAge, d.Now())
 }

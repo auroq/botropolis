@@ -21,8 +21,13 @@ type overlay struct {
 	note  string
 }
 
+type Snapshotter interface {
+	Load(now time.Time) (state.Snapshot, error)
+	WatchDirs() []string
+}
+
 type Daemon struct {
-	loader    *state.Loader
+	loader    Snapshotter
 	clock     func() time.Time
 	scanMu    sync.Mutex
 	watching  chan struct{}
@@ -39,6 +44,10 @@ func New(home string, probes state.Probes, clock func() time.Time, options ...Op
 	for _, option := range options {
 		option(loader)
 	}
+	return NewWith(loader, clock)
+}
+
+func NewWith(loader Snapshotter, clock func() time.Time) *Daemon {
 	return &Daemon{
 		loader:      loader,
 		clock:       clock,

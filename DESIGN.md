@@ -195,6 +195,11 @@ Each milestone ends with tests green, `make lint` and `make format` clean, and a
   Note that one API message is written as several `assistant` records (one per content block, `apiBlockIndex`)
   that repeat the same `usage`, so token totals must be deduplicated by `message.id`.
 - How much of `teams/` and `tasks/` is worth drawing in the first pass?
+- The Codex adapter (milestone 6) is built from Codex CLI's documented rollout format
+  (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` with `session_meta`, `turn_context`, `response_item` and `event_msg` lines)
+  and is tested against a constructed fixture only, because there is no `~/.codex` on this machine.
+  It proves the seam — `harness.Snapshotter`, merged by `harness.Multi` — not the format;
+  the first real rollout should be turned into a fixture before trusting it.
 - Sprites: the milestone 5 plan says Kenney CC0 city and isometric packs.
   Milestone 5 shipped procedural shapes instead (roofs, lit window grids, flags, smoke, towers, a pulsing plant)
   because vendoring tens of megabytes of third-party assets into the repo is Aria's call, not the agent's,
