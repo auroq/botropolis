@@ -59,6 +59,20 @@ func TestReadTranscriptFromFixture(t *testing.T) {
 					t.Run("it should report a last timestamp no earlier than the first", func(t *testing.T) {
 						assert.False(t, transcript.LastAt.Before(transcript.FirstAt))
 					})
+
+					t.Run("it should know whose turn it is", func(t *testing.T) {
+						assert.NotEqual(t, claude.TurnUnknown, transcript.Tail.Turn)
+					})
+
+					t.Run("it should count at least one prompt", func(t *testing.T) {
+						assert.Positive(t, transcript.Tail.Prompts)
+					})
+
+					t.Run("it should have heard from the assistant after the last prompt or be working", func(t *testing.T) {
+						if transcript.Tail.Turn != claude.TurnWorking {
+							assert.False(t, transcript.Tail.LastAssistantAt.Before(transcript.Tail.LastPromptAt))
+						}
+					})
 				}
 			})
 		}

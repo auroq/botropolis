@@ -57,6 +57,7 @@ type Transcript struct {
 	Usage         Usage
 	ContextTokens int64
 	Cost          Cost
+	Tail          Tail
 	FirstAt       time.Time
 	LastAt        time.Time
 	IsBridgeStub  bool
@@ -106,12 +107,15 @@ type transcriptLineJSON struct {
 	Summary      string                    `json:"summary"`
 	Timestamp    string                    `json:"timestamp"`
 	IsSidechain  bool                      `json:"isSidechain"`
+	IsMeta       bool                      `json:"isMeta"`
 	TotalCostUSD float64                   `json:"totalCostUSD"`
 	ModelUsage   map[string]modelUsageJSON `json:"modelUsage"`
 	Message      struct {
-		ID    string     `json:"id"`
-		Model string     `json:"model"`
-		Usage *usageJSON `json:"usage"`
+		ID         string      `json:"id"`
+		Model      string      `json:"model"`
+		StopReason string      `json:"stop_reason"`
+		Usage      *usageJSON  `json:"usage"`
+		Content    contentJSON `json:"content"`
 	} `json:"message"`
 }
 
@@ -130,6 +134,7 @@ type transcriptScan struct {
 	records       int
 	bridgeRecords int
 	seenMessages  map[string]bool
+	tail          tailScan
 }
 
 func ReadTranscript(path string) (Transcript, error) {
@@ -158,6 +163,7 @@ func ReadTranscript(path string) (Transcript, error) {
 		return scan.transcript, err
 	}
 	scan.transcript.IsBridgeStub = scan.records > 0 && scan.bridgeRecords == scan.records
+	scan.transcript.Tail = scan.tail.finish()
 	return scan.transcript, nil
 }
 
@@ -182,20 +188,33 @@ func (s *transcriptScan) apply(rec transcriptLineJSON) {
 	if rec.Version != "" {
 		t.Version = rec.Version
 	}
-	if ts, err := time.Parse(time.RFC3339Nano, rec.Timestamp); err == nil {
+	ts, hasTime := parseTimestamp(rec.Timestamp)
+	if hasTime {
 		if t.FirstAt.IsZero() {
 			t.FirstAt = ts
 		}
 		t.LastAt = ts
 	}
 	switch rec.Type {
+	case "user":
+		if !rec.IsSidechain {
+			s.tail.user(rec, ts)
+		}
 	case "assistant":
 		s.applyAssistant(rec)
+		if !rec.IsSidechain {
+			s.tail.assistant(rec, ts)
+		}
 	case "cost-state":
 		s.applyCost(rec)
 	default:
 		s.applyTitle(rec)
 	}
+}
+
+func parseTimestamp(raw string) (time.Time, bool) {
+	ts, err := time.Parse(time.RFC3339Nano, raw)
+	return ts, err == nil
 }
 
 func (s *transcriptScan) applyAssistant(rec transcriptLineJSON) {
