@@ -86,6 +86,10 @@ func (l *Loader) Load(now time.Time) (Snapshot, error) {
 	if src.MCP, err = l.mcpConfig(filepath.Join(l.home, ".claude.json")); err != nil {
 		snapshot.Skipped = append(snapshot.Skipped, claude.SkippedFile{Path: filepath.Join(l.home, ".claude.json"), Err: err})
 	}
+	if src.Teams, skipped, err = claude.ReadTeams(filepath.Join(claudeDir, "teams")); err != nil {
+		return snapshot, err
+	}
+	snapshot.Skipped = append(snapshot.Skipped, skipped...)
 
 	transcripts := map[string]cachedTranscript{}
 	subagents := map[string]cachedSubagent{}
@@ -140,6 +144,7 @@ func (l *Loader) Load(now time.Time) (Snapshot, error) {
 	snapshot.Sessions = Build(src, l.probes, now)
 	snapshot.Servers = Servers(snapshot.Sessions, src.MCP)
 	snapshot.Skills = Skills(snapshot.Sessions)
+	snapshot.Roads = Roads(snapshot.Sessions, src.Teams)
 	snapshot.Power = PowerSince(append(append([]claude.Transcript{}, src.Transcripts...), src.Parked...), now.Add(-PowerWindow))
 	return snapshot, nil
 }

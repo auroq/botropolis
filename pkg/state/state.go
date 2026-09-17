@@ -48,6 +48,9 @@ type Session struct {
 	CostUSD            float64        `json:"costUSD"`
 	Subagents          int            `json:"subagents"`
 	SubagentsInFlight  int            `json:"subagentsInFlight"`
+	Team               string         `json:"team,omitempty"`
+	Agent              string         `json:"agent,omitempty"`
+	Messages           map[string]int `json:"messages,omitempty"`
 	MCPCalls           map[string]int `json:"mcpCalls,omitempty"`
 	Skills             map[string]int `json:"skills,omitempty"`
 	PRs                []claude.PR    `json:"prs,omitempty"`
@@ -90,6 +93,14 @@ type Sources struct {
 	Roster      map[string]claude.Worker
 	Parked      []claude.Transcript
 	MCP         claude.MCPConfig
+	Teams       []claude.Team
+}
+
+type Road struct {
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Messages int    `json:"messages"`
+	Sessions int    `json:"sessions"`
 }
 
 type Probes struct {
@@ -209,6 +220,9 @@ func parkedSession(t claude.Transcript) Session {
 }
 
 func attribute(s *Session, t claude.Transcript) {
+	s.Team = t.TeamName
+	s.Agent = t.AgentName
+	s.Messages = t.Messages
 	s.MCPCalls = t.MCPCalls
 	s.Skills = t.SkillCalls
 	s.PRs = t.PRs
@@ -216,6 +230,70 @@ func attribute(s *Session, t claude.Transcript) {
 	s.LastErrorAt = t.LastErrorAt
 	s.Compactions = t.Compactions
 	s.LastCompactionAt = t.LastCompactionAt
+}
+
+func Roads(sessions []Session, teams []claude.Team) []Road {
+	byName := map[string]claude.Team{}
+	for _, team := range teams {
+		byName[team.Name] = team
+	}
+	type key struct{ from, to string }
+	counts := map[key]*Road{}
+	for _, s := range sessions {
+		if s.CWD == "" || s.Team == "" {
+			continue
+		}
+		team, known := byName[s.Team]
+		for name, n := range s.Messages {
+			var member claude.TeamMember
+			var ok bool
+			if known {
+				member, ok = team.Member(name)
+			} else if name == teamLead {
+				member, ok = leadByTeamName(sessions, s.Team)
+			}
+			if !ok || member.CWD == "" || member.CWD == s.CWD {
+				continue
+			}
+			k := key{s.CWD, member.CWD}
+			road, ok := counts[k]
+			if !ok {
+				road = &Road{From: s.CWD, To: member.CWD}
+				counts[k] = road
+			}
+			road.Messages += n
+			road.Sessions++
+		}
+	}
+	out := make([]Road, 0, len(counts))
+	for _, road := range counts {
+		out = append(out, *road)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].From != out[j].From {
+			return out[i].From < out[j].From
+		}
+		return out[i].To < out[j].To
+	})
+	return out
+}
+
+const (
+	teamLead       = "team-lead"
+	teamNamePrefix = "session-"
+)
+
+func leadByTeamName(sessions []Session, teamName string) (claude.TeamMember, bool) {
+	if !strings.HasPrefix(teamName, teamNamePrefix) {
+		return claude.TeamMember{}, false
+	}
+	short := strings.TrimPrefix(teamName, teamNamePrefix)
+	for _, s := range sessions {
+		if strings.HasPrefix(s.ID, short) {
+			return claude.TeamMember{Name: teamLead, CWD: s.CWD}, true
+		}
+	}
+	return claude.TeamMember{}, false
 }
 
 func Servers(sessions []Session, mcp claude.MCPConfig) []Server {

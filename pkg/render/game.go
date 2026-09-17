@@ -39,6 +39,7 @@ var (
 	colorFlag       = color.NRGBA{0xe0, 0x50, 0x50, 0xff}
 	colorPole       = color.NRGBA{0xc0, 0xc0, 0xc0, 0xff}
 	colorSmoke      = color.NRGBA{0x9a, 0x9a, 0x9a, 0x70}
+	colorRoad       = color.NRGBA{0x3c, 0x40, 0x4a, 0xff}
 	colorDistrict   = color.NRGBA{0x1b, 0x20, 0x2b, 0xff}
 	colorDistrictHi = color.NRGBA{0x28, 0x30, 0x40, 0xff}
 	colorBuilding   = color.NRGBA{0x2c, 0x33, 0x44, 0xff}
@@ -154,6 +155,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	hover := g.scene.Hover()
 	selected := g.scene.Selected()
 
+	for _, road := range c.Roads {
+		g.line(screen, cam, road.A, road.B, 6, colorRoad)
+		mid := city.Point{X: (road.A.X + road.B.X) / 2, Y: (road.A.Y + road.B.Y) / 2}
+		g.label(screen, cam.WorldToScreen(mid).Add(city.Point{X: 4, Y: -14}), fmt.Sprintf("%d msgs", road.Messages), colorDim)
+	}
 	for _, line := range c.PowerLines() {
 		g.line(screen, cam, line.From, line.To, lineWidth(line.Cached, 1, 3), colorLineCached)
 		g.line(screen, cam, line.From, line.To, lineWidth(line.Fresh, 1, 5), colorLineFresh)
@@ -257,7 +263,7 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, hover city.Hit)
 		mast := city.RectAt(t.Rect.Center().X-2, t.Rect.Min.Y-18, 4, 18)
 		g.rect(screen, cam, mast, fill)
 		g.rect(screen, cam, t.Rect, fill)
-		g.label(screen, cam.WorldToScreen(city.Point{X: t.Rect.Min.X, Y: t.Rect.Max.Y}).Add(city.Point{X: -4, Y: 2}), t.Server.Name, colorDim)
+		g.labelRight(screen, cam.WorldToScreen(city.Point{X: t.Rect.Min.X, Y: t.Rect.Center().Y}).Add(city.Point{X: -8, Y: -7}), t.Server.Name, colorDim)
 	}
 	if c.Library.Rect.Area() > 0 {
 		g.rect(screen, cam, c.Library.Rect, colorLibrary)
@@ -306,6 +312,11 @@ func (g *Game) label(screen *ebiten.Image, at city.Point, s string, c color.NRGB
 	op.GeoM.Translate(at.X, at.Y)
 	op.ColorScale.ScaleWithColor(c)
 	text.Draw(screen, s, g.face, op)
+}
+
+func (g *Game) labelRight(screen *ebiten.Image, end city.Point, s string, c color.NRGBA) {
+	width, _ := text.Measure(s, g.face, 0)
+	g.label(screen, city.Point{X: end.X - width, Y: end.Y}, s, c)
 }
 
 func (g *Game) card(screen *ebiten.Image, card city.Card, screenWidth float64) {

@@ -16,6 +16,7 @@ const (
 	LibraryWidth  = 72.0
 	LibraryHeight = 96.0
 	LandmarkGap   = 64.0
+	TowerLabel    = 140.0
 	maxSkillLines = 6
 )
 
@@ -47,6 +48,34 @@ type PowerLine struct {
 	From, To      Point
 	Building      *Building
 	Fresh, Cached float64
+}
+
+type RoadLine struct {
+	A, B     Point
+	From, To *District
+	Messages int
+	Sessions int
+}
+
+func (c *City) placeRoads(roads []state.Road) {
+	c.Roads = nil
+	byRoot := map[string]*District{}
+	for _, d := range c.Districts {
+		byRoot[d.Root] = d
+	}
+	for _, r := range roads {
+		from, ok := byRoot[ProjectRoot(r.From)]
+		if !ok {
+			continue
+		}
+		to, ok := byRoot[ProjectRoot(r.To)]
+		if !ok || from == to {
+			continue
+		}
+		c.Roads = append(c.Roads, RoadLine{A: from.Rect.Center(), B: to.Rect.Center(), From: from, To: to, Messages: r.Messages, Sessions: r.Sessions})
+		from.roads = append(from.roads, roadNote{other: to.Name, messages: r.Messages, out: true})
+		to.roads = append(to.roads, roadNote{other: from.Name, messages: r.Messages, out: false})
+	}
 }
 
 type Beam struct {

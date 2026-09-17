@@ -42,6 +42,13 @@ type District struct {
 	columns   int
 	Rect      Rect
 	Buildings []*Building
+	roads     []roadNote
+}
+
+type roadNote struct {
+	other    string
+	messages int
+	out      bool
 }
 
 type City struct {
@@ -49,6 +56,7 @@ type City struct {
 	Plant     Plant
 	Towers    []*Tower
 	Library   Library
+	Roads     []RoadLine
 	Night     bool
 	Time      time.Time
 }
@@ -96,6 +104,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	}
 	layout.PlaceDistricts(city.Districts)
 	city.placeLandmarks(snapshot)
+	city.placeRoads(snapshot.Roads)
 	return city
 }
 
@@ -169,7 +178,9 @@ func (c *City) Bounds() Rect {
 		bounds = bounds.Union(c.Plant.Rect)
 	}
 	for _, t := range c.Towers {
-		bounds = bounds.Union(t.Rect)
+		labelled := t.Rect
+		labelled.Min.X -= TowerLabel
+		bounds = bounds.Union(labelled)
 	}
 	if c.Library.Rect.Area() > 0 {
 		bounds = bounds.Union(c.Library.Rect)
@@ -228,9 +239,21 @@ func (d *District) Card() Card {
 		fresh += b.Session.FreshTokensPerHour
 		cached += b.Session.CacheReadPerHour
 	}
-	return Card{Title: d.Name, Lines: []string{
+	lines := []string{
 		fmt.Sprintf("sessions %d", len(d.Buildings)),
 		fmt.Sprintf("tokens   %s/h fresh, %s/h cached", format.Tokens(fresh), format.Tokens(cached)),
 		"path     " + d.Root,
-	}}
+	}
+	if len(d.roads) > 0 {
+		parts := make([]string, 0, len(d.roads))
+		for _, r := range d.roads {
+			direction := "to"
+			if !r.out {
+				direction = "from"
+			}
+			parts = append(parts, fmt.Sprintf("%d msgs %s %s", r.messages, direction, r.other))
+		}
+		lines = append(lines, "roads    "+strings.Join(parts, ", "))
+	}
+	return Card{Title: d.Name, Lines: lines}
 }

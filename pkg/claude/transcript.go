@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
-const maxTranscriptLine = 64 << 20
+const (
+	maxTranscriptLine = 64 << 20
+	sendMessageTool   = "SendMessage"
+)
 
 type Usage struct {
 	Input       int64 `json:"input"`
@@ -64,6 +67,9 @@ type Transcript struct {
 	ContextTokens    int64
 	Cost             Cost
 	Tail             Tail
+	TeamName         string
+	AgentName        string
+	Messages         map[string]int
 	MCPCalls         map[string]int
 	SkillCalls       map[string]int
 	PRs              []PR
@@ -142,6 +148,8 @@ type transcriptLineJSON struct {
 	PRNumber     int                       `json:"prNumber"`
 	PRURL        string                    `json:"prUrl"`
 	PRRepository string                    `json:"prRepository"`
+	TeamName     string                    `json:"teamName"`
+	AgentName    string                    `json:"agentName"`
 	Compact      json.RawMessage           `json:"compactMetadata"`
 	TotalCostUSD float64                   `json:"totalCostUSD"`
 	ModelUsage   map[string]modelUsageJSON `json:"modelUsage"`
@@ -215,6 +223,12 @@ func (s *transcriptScan) apply(rec transcriptLineJSON) {
 	if rec.Version != "" {
 		t.Version = rec.Version
 	}
+	if rec.TeamName != "" {
+		t.TeamName = rec.TeamName
+	}
+	if rec.AgentName != "" {
+		t.AgentName = rec.AgentName
+	}
 	ts, hasTime := parseTimestamp(rec.Timestamp)
 	if hasTime {
 		if t.FirstAt.IsZero() {
@@ -272,12 +286,8 @@ func (s *transcriptScan) applyAssistant(rec transcriptLineJSON, mainLine bool) {
 	if rec.Effort != "" {
 		t.Effort = rec.Effort
 	}
-	if rec.Message.Usage == nil {
-		return
-	}
-	usage := rec.Message.Usage.usage()
-	if mainLine {
-		t.ContextTokens = usage.Context()
+	if rec.Message.Usage != nil && mainLine {
+		t.ContextTokens = rec.Message.Usage.usage().Context()
 	}
 	if id := rec.Message.ID; id != "" {
 		if s.seenMessages[id] {
@@ -285,7 +295,17 @@ func (s *transcriptScan) applyAssistant(rec transcriptLineJSON, mainLine bool) {
 		}
 		s.seenMessages[id] = true
 	}
-	t.Usage = t.Usage.Add(usage)
+	if rec.Message.Usage != nil {
+		t.Usage = t.Usage.Add(rec.Message.Usage.usage())
+	}
+	for _, block := range rec.Message.Content {
+		if block.Type == "tool_use" && block.Name == sendMessageTool && block.Input.To != "" {
+			if t.Messages == nil {
+				t.Messages = map[string]int{}
+			}
+			t.Messages[block.Input.To]++
+		}
+	}
 	if rec.MCPServer != "" {
 		if t.MCPCalls == nil {
 			t.MCPCalls = map[string]int{}

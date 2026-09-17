@@ -65,6 +65,10 @@ func TestLandmarks(t *testing.T) {
 			assert.True(t, c.Bounds().Contains(c.Towers[0].Rect.Min))
 			assert.True(t, c.Bounds().Contains(c.Library.Rect.Max))
 		})
+
+		t.Run("it should leave room for the tower labels in the bounds", func(t *testing.T) {
+			assert.LessOrEqual(t, c.Bounds().Min.X, c.Towers[0].Rect.Min.X-city.TowerLabel)
+		})
 	})
 
 	t.Run("when lines are drawn from the plant", func(t *testing.T) {
@@ -184,6 +188,53 @@ func TestLandmarksWithoutData(t *testing.T) {
 
 		t.Run("it should have no plant", func(t *testing.T) {
 			assert.Zero(t, c.Plant.Rect.Area())
+		})
+	})
+}
+
+func TestRoads(t *testing.T) {
+	snap := snapshot(session("a", cinders, state.Working), session("b", botropolis, state.Working), session("c", worktree, state.Parked))
+	snap.Roads = []state.Road{
+		{From: cinders, To: botropolis, Messages: 3, Sessions: 1},
+		{From: worktree, To: cinders, Messages: 2, Sessions: 1},
+		{From: cinders, To: "/somewhere/unknown", Messages: 9, Sessions: 1},
+	}
+	c := city.Build(snap, city.NewLayout())
+
+	t.Run("when the snapshot has roads between projects", func(t *testing.T) {
+		roads := c.Roads
+
+		t.Run("it should draw one road per district pair that exists", func(t *testing.T) {
+			require.Len(t, roads, 2)
+		})
+
+		t.Run("it should fold worktrees into their project's district", func(t *testing.T) {
+			assert.Equal(t, "botropolis", roads[1].From.Name)
+			assert.Equal(t, "cinders", roads[1].To.Name)
+		})
+
+		t.Run("it should run between district centres", func(t *testing.T) {
+			assert.Equal(t, roads[0].From.Rect.Center(), roads[0].A)
+			assert.Equal(t, roads[0].To.Rect.Center(), roads[0].B)
+		})
+
+		t.Run("it should carry the message count", func(t *testing.T) {
+			assert.Equal(t, 3, roads[0].Messages)
+		})
+	})
+
+	t.Run("when a district with roads is hovered", func(t *testing.T) {
+		var ciq *city.District
+		for _, d := range c.Districts {
+			if d.Name == "cinders" {
+				ciq = d
+			}
+		}
+		require.NotNil(t, ciq)
+		card := ciq.Card()
+
+		t.Run("it should list the roads in and out", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "roads    3 msgs to botropolis, 2 msgs from botropolis")
 		})
 	})
 }

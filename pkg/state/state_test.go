@@ -411,3 +411,64 @@ func TestAggregates(t *testing.T) {
 		})
 	})
 }
+
+func TestRoads(t *testing.T) {
+	teams := []claude.Team{{Name: "session-26c5d638", Members: []claude.TeamMember{
+		{Name: "team-lead", CWD: "/home/avesta/workspaces/github/auroq"},
+		{Name: "migrate-custom", CWD: "/home/avesta/workspaces/github/mCedar/mullet"},
+	}}}
+	sender := func(id, cwd string, msgs map[string]int) state.Session {
+		return state.Session{ID: id, CWD: cwd, Team: "session-26c5d638", Messages: msgs}
+	}
+
+	t.Run("when sessions message teammates in other projects", func(t *testing.T) {
+		roads := state.Roads([]state.Session{
+			sender("a", "/home/avesta/workspaces/github/mCedar/mullet", map[string]int{"team-lead": 3}),
+			sender("b", "/home/avesta/workspaces/github/mCedar/cinders", map[string]int{"team-lead": 1, "migrate-custom": 2}),
+			sender("c", "/home/avesta/workspaces/github/auroq", map[string]int{"team-lead": 5}),
+		}, teams)
+
+		t.Run("it should draw one road per project pair, sorted", func(t *testing.T) {
+			assert.Equal(t, []state.Road{
+				{From: "/home/avesta/workspaces/github/mCedar/cinders", To: "/home/avesta/workspaces/github/auroq", Messages: 1, Sessions: 1},
+				{From: "/home/avesta/workspaces/github/mCedar/cinders", To: "/home/avesta/workspaces/github/mCedar/mullet", Messages: 2, Sessions: 1},
+				{From: "/home/avesta/workspaces/github/mCedar/mullet", To: "/home/avesta/workspaces/github/auroq", Messages: 3, Sessions: 1},
+			}, roads)
+		})
+
+		t.Run("it should not draw a road from a project to itself", func(t *testing.T) {
+			for _, r := range roads {
+				assert.NotEqual(t, r.From, r.To)
+			}
+		})
+	})
+
+	t.Run("when the team config is gone but the lead session is known", func(t *testing.T) {
+		lead := state.Session{ID: "37d10079-0000-0000-0000-000000000000", CWD: "/home/avesta/workspaces/github/auroq"}
+		worker := sender("w", "/home/avesta/workspaces/github/mCedar/mullet", map[string]int{"team-lead": 4})
+		worker.Team = "session-37d10079"
+		roads := state.Roads([]state.Session{lead, worker}, nil)
+
+		t.Run("it should route team-lead to the lead session's project", func(t *testing.T) {
+			assert.Equal(t, []state.Road{{From: "/home/avesta/workspaces/github/mCedar/mullet", To: "/home/avesta/workspaces/github/auroq", Messages: 4, Sessions: 1}}, roads)
+		})
+	})
+
+	t.Run("when the recipient is not a known teammate", func(t *testing.T) {
+		roads := state.Roads([]state.Session{sender("a", "/p", map[string]int{"nobody": 4})}, teams)
+
+		t.Run("it should draw nothing", func(t *testing.T) {
+			assert.Empty(t, roads)
+		})
+	})
+
+	t.Run("when the session belongs to no team", func(t *testing.T) {
+		s := sender("a", "/p", map[string]int{"team-lead": 4})
+		s.Team = ""
+		roads := state.Roads([]state.Session{s}, teams)
+
+		t.Run("it should draw nothing", func(t *testing.T) {
+			assert.Empty(t, roads)
+		})
+	})
+}

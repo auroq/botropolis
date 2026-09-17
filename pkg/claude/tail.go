@@ -30,6 +30,9 @@ type contentBlockJSON struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	ToolUseID string `json:"tool_use_id"`
+	Input     struct {
+		To string `json:"to"`
+	} `json:"input"`
 }
 
 type contentJSON []contentBlockJSON

@@ -21,6 +21,7 @@ type Snapshot struct {
 	Sessions []Session            `json:"sessions"`
 	Servers  []Server             `json:"servers"`
 	Skills   []Skill              `json:"skills"`
+	Roads    []Road               `json:"roads"`
 	Power    Power                `json:"power"`
 	Skipped  []claude.SkippedFile `json:"skipped"`
 	At       time.Time            `json:"at"`
