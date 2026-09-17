@@ -220,15 +220,51 @@ func (b *Building) Card(now time.Time) Card {
 	if title == "" {
 		title = s.ID
 	}
-	return Card{Title: title, Lines: []string{
+	lines := []string{
 		"state    " + string(s.State),
 		"branch   " + s.Branch,
 		"model    " + s.Model,
-		fmt.Sprintf("context  %s of %s", format.Percent(s.ContextPercent), format.Tokens(float64(s.ContextWindow))),
-		fmt.Sprintf("tokens   %s/h fresh, %s/h cached", format.Tokens(s.FreshTokensPerHour), format.Tokens(s.CacheReadPerHour)),
-		fmt.Sprintf("subs     %d of %d in flight", s.SubagentsInFlight, s.Subagents),
-		"age      " + format.Age(now.Sub(s.StartedAt)),
-	}}
+	}
+	if s.Tool != "" {
+		work := s.Tool
+		if s.Subject != "" {
+			work += " " + shortSubject(s.Subject, s.CWD)
+		}
+		lines = append(lines, "doing    "+work)
+	}
+	context := fmt.Sprintf("context  %s of %s (%s tokens)", format.Percent(s.ContextPercent), format.Tokens(float64(s.ContextWindow)), format.Tokens(float64(s.ContextTokens)))
+	if s.Compactions > 0 {
+		context += fmt.Sprintf(", compacted %dx, last %s", s.Compactions, s.LastCompactionAt.Local().Format("15:04"))
+	}
+	lines = append(lines, context,
+		fmt.Sprintf("tokens   %s/h fresh, %s/h cached", format.Tokens(s.FreshTokensPerHour), format.Tokens(s.CacheReadPerHour)))
+	subs := fmt.Sprintf("subs     %d of %d in flight", s.SubagentsInFlight, s.Subagents)
+	if len(s.SubagentNames) > 0 {
+		subs += ": " + strings.Join(s.SubagentNames, ", ")
+	}
+	lines = append(lines, subs)
+	if len(s.PRs) > 0 {
+		parts := make([]string, 0, len(s.PRs))
+		for _, pr := range s.PRs {
+			parts = append(parts, fmt.Sprintf("#%d %s", pr.Number, pr.Repository))
+		}
+		lines = append(lines, "prs      "+strings.Join(parts, ", "))
+	}
+	if s.APIErrors > 0 {
+		lines = append(lines, fmt.Sprintf("errors   %d api, last %s", s.APIErrors, s.LastErrorAt.Local().Format("15:04")))
+	}
+	if s.Note != "" {
+		lines = append(lines, "note     "+s.Note)
+	}
+	lines = append(lines, "age      "+format.Age(now.Sub(s.StartedAt)))
+	return Card{Title: title, Lines: lines}
+}
+
+func shortSubject(subject, cwd string) string {
+	if cwd != "" && strings.HasPrefix(subject, cwd+"/") {
+		return strings.TrimPrefix(subject, cwd+"/")
+	}
+	return subject
 }
 
 func (d *District) Card() Card {
@@ -237,9 +273,17 @@ func (d *District) Card() Card {
 		fresh += b.Session.FreshTokensPerHour
 		cached += b.Session.CacheReadPerHour
 	}
+	var prs int
+	var active time.Duration
+	for _, b := range d.Buildings {
+		prs += len(b.Session.PRs)
+		active += b.Session.LastActivity.Sub(b.Session.StartedAt)
+	}
 	lines := []string{
 		fmt.Sprintf("sessions %d", len(d.Buildings)),
+		fmt.Sprintf("active   %s across them", format.Age(active)),
 		fmt.Sprintf("tokens   %s/h fresh, %s/h cached", format.Tokens(fresh), format.Tokens(cached)),
+		fmt.Sprintf("prs      %d", prs),
 		"path     " + d.Root,
 	}
 	if len(d.roads) > 0 {

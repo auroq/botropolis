@@ -15,10 +15,11 @@ func WithParkedMaxAge(maxAge time.Duration) Option {
 }
 
 type overlay struct {
-	at    time.Time
-	state state.State
-	tool  string
-	note  string
+	at      time.Time
+	state   state.State
+	tool    string
+	subject string
+	note    string
 }
 
 type Snapshotter interface {
@@ -88,15 +89,15 @@ func (d *Daemon) Apply(event claude.HookEvent, at time.Time) {
 	o.at = at
 	switch event.Name {
 	case claude.HookPreToolUse:
-		o.state, o.tool, o.note = state.Working, event.ToolName, ""
+		o.state, o.tool, o.subject, o.note = state.Working, event.ToolName, event.Subject(), ""
 	case claude.HookPostToolUse, claude.HookUserPromptSubmit:
-		o.state, o.tool, o.note = state.Working, "", ""
+		o.state, o.tool, o.subject, o.note = state.Working, "", "", ""
 	case claude.HookNotification:
-		o.state, o.tool, o.note = state.NeedsYou, "", event.Message
+		o.state, o.tool, o.subject, o.note = state.NeedsYou, "", "", event.Message
 	case claude.HookStop:
-		o.state, o.tool, o.note = state.NeedsYou, "", ""
+		o.state, o.tool, o.subject, o.note = state.NeedsYou, "", "", ""
 	case claude.HookSessionEnd:
-		o.state, o.tool, o.note = state.Parked, "", ""
+		o.state, o.tool, o.subject, o.note = state.Parked, "", "", ""
 	case claude.HookSessionStart:
 		delete(d.overlays, event.SessionID)
 		view := d.view()
@@ -142,6 +143,7 @@ func (d *Daemon) view() state.Snapshot {
 		}
 		s.LastActivity = o.at
 		s.Tool = o.tool
+		s.Subject = o.subject
 		s.Note = o.note
 		switch o.state {
 		case state.Working:

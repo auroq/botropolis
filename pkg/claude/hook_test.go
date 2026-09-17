@@ -31,8 +31,22 @@ func TestParseHookEvent(t *testing.T) {
 			assert.Equal(t, "toolu_01", event.ToolUseID)
 		})
 
+		t.Run("it should name the command as the subject", func(t *testing.T) {
+			assert.Equal(t, "make test", event.Subject())
+		})
+
 		t.Run("it should read the transcript path", func(t *testing.T) {
 			assert.Equal(t, "/home/avesta/.claude/projects/x/"+sid+".jsonl", event.TranscriptPath)
+		})
+	})
+
+	t.Run("when the tool input names a file", func(t *testing.T) {
+		event, err := claude.ParseHookEvent([]byte(`{"session_id":"` + sid + `","hook_event_name":"PreToolUse","tool_name":"Edit",` +
+			`"tool_input":{"file_path":"/home/avesta/workspaces/github/auroq/botropolis/pkg/city/city.go","old_string":"a","new_string":"b"}}`))
+		require.NoError(t, err)
+
+		t.Run("it should make the file the subject", func(t *testing.T) {
+			assert.Equal(t, "/home/avesta/workspaces/github/auroq/botropolis/pkg/city/city.go", event.Subject())
 		})
 	})
 

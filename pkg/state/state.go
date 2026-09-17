@@ -39,6 +39,8 @@ type Session struct {
 	Turn               claude.Turn    `json:"turn"`
 	Tool               string         `json:"tool,omitempty"`
 	Note               string         `json:"note,omitempty"`
+	Subject            string         `json:"subject,omitempty"`
+	SubagentNames      []string       `json:"subagentNames,omitempty"`
 	ContextTokens      int64          `json:"contextTokens"`
 	ContextWindow      int64          `json:"contextWindow"`
 	ContextPercent     float64        `json:"contextPercent"`
@@ -181,6 +183,11 @@ func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript boo
 		s.Usage = s.Usage.Add(sub.Usage)
 		if pending[sub.ToolUseID] {
 			s.SubagentsInFlight++
+			name := sub.AgentType
+			if name == "" {
+				name = sub.AgentID
+			}
+			s.SubagentNames = append(s.SubagentNames, name)
 		}
 	}
 	if hasTranscript {

@@ -32,6 +32,31 @@ type HookEvent struct {
 	AgentType        string   `json:"agent_type"`
 	Reason           string   `json:"reason"`
 	Source           string   `json:"source"`
+	ToolInput        struct {
+		FilePath     string `json:"file_path"`
+		Path         string `json:"path"`
+		NotebookPath string `json:"notebook_path"`
+		Command      string `json:"command"`
+		Pattern      string `json:"pattern"`
+	} `json:"tool_input"`
+}
+
+// Subject is the thing the tool is working on: a file path when there is
+// one, otherwise the command or pattern, or nothing.
+func (e HookEvent) Subject() string {
+	switch {
+	case e.ToolInput.FilePath != "":
+		return e.ToolInput.FilePath
+	case e.ToolInput.NotebookPath != "":
+		return e.ToolInput.NotebookPath
+	case e.ToolInput.Path != "":
+		return e.ToolInput.Path
+	case e.ToolInput.Command != "":
+		return e.ToolInput.Command
+	case e.ToolInput.Pattern != "":
+		return e.ToolInput.Pattern
+	}
+	return ""
 }
 
 var (

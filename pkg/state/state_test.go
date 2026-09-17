@@ -232,7 +232,7 @@ func TestBuild(t *testing.T) {
 	})
 
 	t.Run("when the session has subagents", func(t *testing.T) {
-		spawned := claude.Subagent{ToolUseID: "toolu_A", Transcript: claude.Transcript{
+		spawned := claude.Subagent{ToolUseID: "toolu_A", AgentType: "Explore", Transcript: claude.Transcript{
 			Usage: claude.Usage{Output: 400, Messages: 1}, Tail: claude.Tail{Turn: claude.TurnWorking},
 		}}
 		finished := claude.Subagent{ToolUseID: "toolu_B", Transcript: claude.Transcript{
@@ -258,6 +258,10 @@ func TestBuild(t *testing.T) {
 
 		t.Run("it should count all subagents", func(t *testing.T) {
 			assert.Equal(t, 3, session.Subagents)
+		})
+
+		t.Run("it should name the subagents in flight", func(t *testing.T) {
+			assert.Equal(t, []string{"Explore"}, session.SubagentNames)
 		})
 	})
 

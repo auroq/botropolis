@@ -329,8 +329,8 @@ func TestHoverCard(t *testing.T) {
 			assert.Contains(t, card.Lines, "state    needs-you")
 		})
 
-		t.Run("it should show the same context percentage as the table", func(t *testing.T) {
-			assert.Contains(t, card.Lines, "context  25% of 1.0M")
+		t.Run("it should show the same context percentage as the table, with the token count", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "context  25% of 1.0M (250k tokens)")
 		})
 
 		t.Run("it should show the same token rates as the table", func(t *testing.T) {
@@ -360,6 +360,58 @@ func TestHoverCard(t *testing.T) {
 
 		t.Run("it should count its sessions", func(t *testing.T) {
 			assert.Contains(t, card.Lines, "sessions 1")
+		})
+
+		t.Run("it should count its PRs", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "prs      0")
+		})
+	})
+}
+
+func TestBuildingCardDetails(t *testing.T) {
+	s := session("a", cinders, state.Working)
+	s.Tool, s.Subject = "Edit", cinders+"/pkg/city/city.go"
+	s.Compactions, s.LastCompactionAt = 2, now.Add(-30*time.Minute)
+	s.SubagentNames = []string{"Explore"}
+	s.PRs = []claude.PR{{Number: 1181, Repository: "mCedar/mullet"}}
+	s.APIErrors, s.LastErrorAt = 1, now.Add(-10*time.Minute)
+	s.Note = "Claude needs your permission to use Bash"
+	c := build(t, city.NewLayout(), s)
+	card := c.Buildings()[0].Card(now)
+
+	t.Run("when the worker is mid-tool", func(t *testing.T) {
+		t.Run("it should say the tool and the file relative to the project", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "doing    Edit pkg/city/city.go")
+		})
+	})
+
+	t.Run("when the session was compacted", func(t *testing.T) {
+		t.Run("it should say how often and when", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "context  25% of 1.0M (250k tokens), compacted 2x, last "+now.Add(-30*time.Minute).Local().Format("15:04"))
+		})
+	})
+
+	t.Run("when subagents are in flight", func(t *testing.T) {
+		t.Run("it should name them", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "subs     1 of 4 in flight: Explore")
+		})
+	})
+
+	t.Run("when a PR is linked", func(t *testing.T) {
+		t.Run("it should list it", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "prs      #1181 mCedar/mullet")
+		})
+	})
+
+	t.Run("when there were API errors", func(t *testing.T) {
+		t.Run("it should count them with the last time", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "errors   1 api, last "+now.Add(-10*time.Minute).Local().Format("15:04"))
+		})
+	})
+
+	t.Run("when a hook left a note", func(t *testing.T) {
+		t.Run("it should show it", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "note     Claude needs your permission to use Bash")
 		})
 	})
 }

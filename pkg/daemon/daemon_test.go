@@ -102,6 +102,17 @@ func TestDaemon(t *testing.T) {
 		})
 	})
 
+	t.Run("when a PreToolUse event names a file", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		edit := event(claude.HookPreToolUse, "Edit")
+		edit.ToolInput.FilePath = "/p/x.go"
+		d.Apply(edit, now)
+
+		t.Run("it should record what the tool is working on", func(t *testing.T) {
+			assert.Equal(t, "/p/x.go", only(t, d).Subject)
+		})
+	})
+
 	t.Run("when a PreToolUse event arrives for an unattended background session", func(t *testing.T) {
 		d := newDaemon(t, idleHome(t, "bg"))
 		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
