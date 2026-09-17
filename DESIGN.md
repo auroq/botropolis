@@ -40,7 +40,8 @@ Everything else is redesigned around how the sessions on this machine are actual
 | `~/.claude/projects/<cwd>/<sid>/subagents/**` | subagent and workflow transcripts with their own `usage` | ~25% of spend on this machine |
 | `~/.claude/stats-cache.json` | per-day activity and per-model token totals | cheap daily rollups |
 | `~/.claude.json` | MCP servers configured per project | the towers on the map |
-| `~/.claude/teams/`, `~/.claude/tasks/`, `~/.claude/plans/` | teams, task lists, plans | later |
+| `~/.claude/teams/` | team rosters, to route `SendMessage` traffic into roads | done |
+| `~/.claude/tasks/`, `~/.claude/plans/` | task lists, plans | later |
 | Hooks | `SessionStart`, `SessionEnd`, `Stop`, `PreToolUse`, `PostToolUse`, `SubagentStart`, `SubagentStop`, `Notification` | real-time push; no polling |
 
 ## Architecture

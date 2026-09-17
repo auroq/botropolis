@@ -22,7 +22,10 @@ Harnesses sit behind `harness.Snapshotter`: Claude Code is the first, and a Code
 Milestone 5: parked sessions are catalogued from transcripts with no live record (`parked_days`, default 7) and drawn boarded up;
 the power plant sums the last 24 h of `cost-state` per model and runs lines to every lit building (fresh warm and thick, cached cool and thin);
 one radio tower per MCP server (configured or merely used) with beams to the sessions that called it;
-the library ranks skills; buildings fly a flag per PR and smoke per API error; it is night while anything runs unattended.
+the library ranks skills; the city hall carries Claude Code's own `stats-cache.json` rollup (lifetime totals, busiest hour, model mix);
+roads run between districts whose sessions message each other or edit each other's files, signed with the traffic;
+buildings fly a flag per PR and smoke per API error; it is night while anything runs unattended.
+Hover a building for what its worker is doing right now (tool and file), context with compaction history, the subagents in flight by name, PRs, errors and the last hook note.
 `d d` on a selected building demolishes it (`claude rm`); `botropolis prune [--older-than 168h] [--dry-run]` removes parked background jobs.
 `botropolis status --all` lists parked sessions in the table.
 
