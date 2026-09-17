@@ -10,12 +10,12 @@ import (
 const maxTranscriptLine = 64 << 20
 
 type Usage struct {
-	Input       int64
-	Output      int64
-	CacheRead   int64
-	CacheCreate int64
-	Thinking    int64
-	Messages    int
+	Input       int64 `json:"input"`
+	Output      int64 `json:"output"`
+	CacheRead   int64 `json:"cacheRead"`
+	CacheCreate int64 `json:"cacheCreate"`
+	Thinking    int64 `json:"thinking"`
+	Messages    int   `json:"messages"`
 }
 
 func (u Usage) Add(other Usage) Usage {

@@ -25,29 +25,29 @@ const (
 )
 
 type Session struct {
-	ID                 string
-	Title              string
-	CWD                string
-	Branch             string
-	Model              string
-	Kind               claude.Kind
-	PID                int
-	Alive              bool
-	Attached           bool
-	State              State
-	Turn               claude.Turn
-	ContextTokens      int64
-	ContextWindow      int64
-	ContextPercent     float64
-	Usage              claude.Usage
-	TokensPerHour      float64
-	FreshTokensPerHour float64
-	CacheReadPerHour   float64
-	CostUSD            float64
-	Subagents          int
-	SubagentsInFlight  int
-	StartedAt          time.Time
-	LastActivity       time.Time
+	ID                 string       `json:"id"`
+	Title              string       `json:"title"`
+	CWD                string       `json:"cwd"`
+	Branch             string       `json:"branch"`
+	Model              string       `json:"model"`
+	Kind               claude.Kind  `json:"kind"`
+	PID                int          `json:"pid"`
+	Alive              bool         `json:"alive"`
+	Attached           bool         `json:"attached"`
+	State              State        `json:"state"`
+	Turn               claude.Turn  `json:"turn"`
+	ContextTokens      int64        `json:"contextTokens"`
+	ContextWindow      int64        `json:"contextWindow"`
+	ContextPercent     float64      `json:"contextPercent"`
+	Usage              claude.Usage `json:"usage"`
+	TokensPerHour      float64      `json:"tokensPerHour"`
+	FreshTokensPerHour float64      `json:"freshTokensPerHour"`
+	CacheReadPerHour   float64      `json:"cacheReadPerHour"`
+	CostUSD            float64      `json:"costUSD"`
+	Subagents          int          `json:"subagents"`
+	SubagentsInFlight  int          `json:"subagentsInFlight"`
+	StartedAt          time.Time    `json:"startedAt"`
+	LastActivity       time.Time    `json:"lastActivity"`
 }
 
 type Sources struct {

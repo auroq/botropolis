@@ -19,9 +19,9 @@ const (
 )
 
 type Snapshot struct {
-	Sessions []Session
-	Skipped  []claude.SkippedFile
-	At       time.Time
+	Sessions []Session            `json:"sessions"`
+	Skipped  []claude.SkippedFile `json:"skipped"`
+	At       time.Time            `json:"at"`
 }
 
 func Load(home string, probes Probes, now time.Time) (Snapshot, error) {
