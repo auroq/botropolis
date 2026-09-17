@@ -1,6 +1,7 @@
 package city_test
 
 import (
+	"math"
 	"testing"
 
 	"github.com/auroq/botropolis/pkg/city"
@@ -50,6 +51,32 @@ func TestStreets(t *testing.T) {
 		t.Run("it should lay no streets", func(t *testing.T) {
 			assert.Empty(t, c.Streets)
 			assert.Empty(t, c.StreetCells)
+		})
+	})
+}
+
+func TestStreetsAroundDistricts(t *testing.T) {
+	t.Run("when a third district sits between two that are joined", func(t *testing.T) {
+		// Three districts fill the first grid row; the road joins the two
+		// ends, and the middle one is in the way.
+		snap := snapshot(session("a", "/p/a", state.Working), session("b", "/p/b", state.Working), session("c", "/p/c", state.Working))
+		snap.Roads = []state.Road{{From: "/p/a", To: "/p/c", Messages: 2, Sessions: 1}}
+		c := city.Build(snap, city.NewLayout())
+		require.Len(t, c.Streets, 1)
+		path := c.Streets[0].Path
+
+		t.Run("it should stay contiguous, cell to cell, the whole way", func(t *testing.T) {
+			for i := 1; i < len(path); i++ {
+				d := math.Hypot(path[i].X-path[i-1].X, path[i].Y-path[i-1].Y)
+				assert.InDelta(t, city.BuildingSize, d, 1e-9, "gap between %v and %v", path[i-1], path[i])
+			}
+		})
+
+		t.Run("it should not run through the district in the way", func(t *testing.T) {
+			middle := c.Districts[1]
+			for _, p := range path {
+				assert.False(t, middle.Rect.Contains(p), "%v is inside %s", p, middle.Name)
+			}
 		})
 	})
 }
