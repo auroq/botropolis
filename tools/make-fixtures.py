@@ -162,7 +162,7 @@ def is_bridge_stub(path):
 
 def select_transcripts(claude_dir, live_ids, recent, exclude_id=None):
     projects = claude_dir / "projects"
-    all_main = [p for p in projects.glob("*/*.jsonl") if p.stem != exclude_id]
+    all_main = [p for p in projects.glob("*/*.jsonl") if p.stem != exclude_id and p.stat().st_size > 0]
     by_id = {p.stem: p for p in all_main}
     chosen = {}
     for sid in live_ids:

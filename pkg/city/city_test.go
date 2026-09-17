@@ -506,6 +506,15 @@ func TestYard(t *testing.T) {
 		})
 	})
 
+	t.Run("when a district has far more parked sessions than live ones", func(t *testing.T) {
+		c := build(t, city.NewLayout(), append(sessionsIn(cinders, 1), parkedIn(cinders, 36)...)...)
+		d := c.Districts[0]
+
+		t.Run("it should widen the yard rather than grow a tower", func(t *testing.T) {
+			assert.Less(t, d.Rect.Height()/d.Rect.Width(), 1.5)
+		})
+	})
+
 	t.Run("when a district holds only parked sessions", func(t *testing.T) {
 		c := build(t, city.NewLayout(), parkedIn(cinders, 9)...)
 		d := c.Districts[0]

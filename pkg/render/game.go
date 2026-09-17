@@ -24,12 +24,11 @@ const (
 	charWidth      = 7.0
 	pulsePeriod    = 1.4
 	maxFooterLines = 4
+	titleChars     = 18
 	footerReserve  = 24.0 + lineHeight*maxFooterLines
 )
 
 var (
-	colorBackground = color.NRGBA{0x10, 0x12, 0x18, 0xff}
-	colorNight      = color.NRGBA{0x07, 0x08, 0x10, 0xff}
 	colorPlant      = color.NRGBA{0x4a, 0x3b, 0x2a, 0xff}
 	colorPlantCore  = color.NRGBA{0xf0, 0xb4, 0x4c, 0xff}
 	colorTower      = color.NRGBA{0x2f, 0x3a, 0x48, 0xff}
@@ -47,8 +46,6 @@ var (
 	colorGaugeBack  = color.NRGBA{0x14, 0x16, 0x1c, 0xe0}
 	colorGaugeLow   = color.NRGBA{0x6c, 0xa8, 0xd8, 0xff}
 	colorGaugeHigh  = color.NRGBA{0xe8, 0x6c, 0x4c, 0xff}
-	colorDistrict   = color.NRGBA{0x1b, 0x20, 0x2b, 0xff}
-	colorDistrictHi = color.NRGBA{0x28, 0x30, 0x40, 0xff}
 	colorBuilding   = color.NRGBA{0x2c, 0x33, 0x44, 0xff}
 	colorLit        = color.NRGBA{0x3d, 0x5a, 0x80, 0xff}
 	colorNeedsYou   = color.NRGBA{0xe8, 0xa0, 0x3c, 0xff}
@@ -154,60 +151,104 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	c := g.scene.City()
-	if c.Night {
-		screen.Fill(colorNight)
-	} else {
-		screen.Fill(colorBackground)
-	}
 	cam := g.scene.Camera()
 	hover := g.scene.Hover()
 	selected := g.scene.Selected()
 	labels := g.scene.LabelsVisible()
+	detailed := g.scene.Detailed()
+	bounds := screen.Bounds()
+	width, height := float64(bounds.Dx()), float64(bounds.Dy())
+	seconds := time.Since(g.started).Seconds()
 
-	for _, road := range c.Roads {
+	g.ground(screen, cam, c, width, height, detailed)
+
+	for i := range c.Roads {
+		road := &c.Roads[i]
+		g.line(screen, cam, road.A, road.B, 8, colorKerb)
 		g.line(screen, cam, road.A, road.B, 6, colorRoad)
+		if hover.Road == road {
+			g.line(screen, cam, road.A, road.B, 2, colorHighlight)
+		}
 		if labels {
 			mid := city.Point{X: (road.A.X + road.B.X) / 2, Y: (road.A.Y + road.B.Y) / 2}
-			g.label(screen, cam.WorldToScreen(mid).Add(city.Point{X: 4, Y: -14}), road.Label(), colorDim)
+			g.floorLabel(screen, cam.WorldToScreen(mid).Add(city.Point{X: 4, Y: -14}), road.Label(), colorDim)
 		}
 	}
 	for _, line := range c.PowerLines() {
 		g.line(screen, cam, line.From, line.To, lineWidth(line.Cached, 1, 3), colorLineCached)
 		g.line(screen, cam, line.From, line.To, lineWidth(line.Fresh, 1, 5), colorLineFresh)
+		if hover.Line != nil && hover.Line.Building == line.Building {
+			g.line(screen, cam, line.From, line.To, 2, colorHighlight)
+		}
 	}
 	for _, beam := range c.Beams() {
 		g.line(screen, cam, beam.From, beam.To, lineWidth(float64(beam.Calls)*20_000, 1, 3), colorBeam)
+		if hover.Beam != nil && hover.Beam.Building == beam.Building && hover.Beam.Tower == beam.Tower {
+			g.line(screen, cam, beam.From, beam.To, 2, colorHighlight)
+		}
 	}
 
 	for _, d := range c.Districts {
-		g.district(screen, cam, d, hover.District == d, c.Night)
-		if labels {
-			g.label(screen, cam.WorldToScreen(d.Rect.Min).Add(city.Point{X: 0, Y: -14}), d.Name, colorText)
+		g.district(screen, cam, d, hover.District == d, c.Night, detailed)
+	}
+	for _, d := range c.Districts {
+		if g.scene.DistrictLabelVisible(d) {
+			g.floorLabel(screen, g.scene.DistrictLabelAt(d, lineHeight), d.Name, colorText)
 		}
 		for _, b := range d.Buildings {
-			g.building(screen, cam, b, b == selected)
+			g.building(screen, cam, b, b == selected, detailed, seconds)
+		}
+	}
+	if g.scene.TitlesVisible() {
+		for _, b := range c.Buildings() {
+			if b.BoardedUp && hover.Building != b {
+				continue
+			}
+			g.title(screen, cam, b)
 		}
 	}
 	g.landmarks(screen, cam, labels)
+	g.minimap(screen, width, height)
 
-	bounds := screen.Bounds()
 	if card, ok := g.scene.Card(); ok {
-		g.card(screen, card, float64(bounds.Dx()), float64(bounds.Dy()))
+		g.card(screen, card, width, height)
 	}
-	g.footer(screen, float64(bounds.Dx()), float64(bounds.Dy()))
+	g.footer(screen, width, height)
 }
 
-func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building, selected bool) {
+// title writes a building's name under it at a fixed size.
+func (g *Game) title(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
+	name := format.Clip(b.Card(g.scene.City().Time).Title, titleChars)
+	w := float64(len(name)) * charWidth
+	at := cam.WorldToScreen(city.Point{X: b.Rect.Center().X, Y: b.Rect.Max.Y}).Add(city.Point{X: -w / 2, Y: 4})
+	g.floorLabel(screen, at, name, colorText)
+}
+
+func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building, selected, detailed bool, seconds float64) {
+	if !detailed {
+		g.block(screen, cam, b, seconds)
+		if selected {
+			g.outline(screen, cam, b.Rect, colorSelected)
+		}
+		return
+	}
 	body := colorBuilding
 	switch {
 	case b.BoardedUp:
 		body = colorBoarded
 	case b.Pulse:
-		body = pulse(colorNeedsYou, time.Since(g.started).Seconds())
+		body = pulse(colorNeedsYou, seconds)
 	case b.Session.State == state.Unattended:
 		body = colorUnattended
 	case b.Lit:
 		body = colorLit
+	}
+	if g.sprites != nil && b.BoardedUp {
+		g.shack(screen, cam, b)
+		if selected {
+			g.outline(screen, cam, b.Rect, colorSelected)
+		}
+		return
 	}
 	if g.sprites != nil {
 		g.house(screen, cam, b, body)
@@ -252,7 +293,7 @@ func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building
 		g.rect(screen, cam, flag, colorFlag)
 	}
 	if b.Smoke > 0 {
-		t := time.Since(g.started).Seconds()
+		t := seconds
 		for i := 0; i < min(b.Smoke, 3); i++ {
 			phase := math.Mod(t*0.4+float64(i)*0.33, 1)
 			centre := city.Point{X: b.Rect.Min.X + 12 + float64(i)*10 + 4*math.Sin(phase*6), Y: b.Rect.Min.Y - 4 - phase*18}
@@ -264,13 +305,14 @@ func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building
 	}
 }
 
-func (g *Game) district(screen *ebiten.Image, cam *city.Camera, d *city.District, hovered, night bool) {
-	if g.sprites == nil {
-		fill := colorDistrict
+func (g *Game) district(screen *ebiten.Image, cam *city.Camera, d *city.District, hovered, night, detailed bool) {
+	if g.sprites == nil || !detailed {
+		fill := colorMapDistrict
 		if hovered {
-			fill = colorDistrictHi
+			fill = colorMapDistHi
 		}
 		g.rect(screen, cam, d.Rect, fill)
+		g.stroke(screen, cam, d.Rect, 1, colorKerb)
 		return
 	}
 	scale := &ebiten.ColorScale{}
@@ -287,17 +329,17 @@ func (g *Game) district(screen *ebiten.Image, cam *city.Camera, d *city.District
 		scale.SetG(scale.G() * 0.6)
 		scale.SetB(scale.B() * 0.75)
 	}
-	const tile = 16.0
-	cols := int(math.Ceil(d.Rect.Width() / tile))
-	rows := int(math.Ceil(d.Rect.Height() / tile))
+	cols := int(math.Ceil(d.Rect.Width() / city.Tile))
+	rows := int(math.Ceil(d.Rect.Height() / city.Tile))
 	for row := 0; row < rows; row++ {
 		for col := 0; col < cols; col++ {
 			pick := modernPave[(row+col)%2]
-			r := city.RectAt(d.Rect.Min.X+float64(col)*tile, d.Rect.Min.Y+float64(row)*tile,
-				math.Min(tile, d.Rect.Max.X-d.Rect.Min.X-float64(col)*tile), math.Min(tile, d.Rect.Max.Y-d.Rect.Min.Y-float64(row)*tile))
+			r := city.RectAt(d.Rect.Min.X+float64(col)*city.Tile, d.Rect.Min.Y+float64(row)*city.Tile,
+				math.Min(city.Tile, d.Rect.Max.X-d.Rect.Min.X-float64(col)*city.Tile), math.Min(city.Tile, d.Rect.Max.Y-d.Rect.Min.Y-float64(row)*city.Tile))
 			g.drawTile(screen, cam, g.sprites.modern.tile(pick[0], pick[1]), r, scale)
 		}
 	}
+	g.stroke(screen, cam, d.Rect, 2, colorKerb)
 }
 
 func (g *Game) house(screen *ebiten.Image, cam *city.Camera, b *city.Building, body color.NRGBA) {

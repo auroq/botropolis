@@ -303,6 +303,29 @@ func TestSceneDetail(t *testing.T) {
 	})
 }
 
+func TestDistrictLabelAt(t *testing.T) {
+	s := scene(t, session("a", cinders, state.Working))
+	d := s.City().Districts[0]
+
+	t.Run("when the district's padding has room for a line", func(t *testing.T) {
+		s.Camera().Zoom = 1
+		at := s.DistrictLabelAt(d, 16)
+
+		t.Run("it should sit on the floor inside the kerb", func(t *testing.T) {
+			assert.Greater(t, at.Y, s.Camera().WorldToScreen(d.Rect.Min).Y)
+		})
+	})
+
+	t.Run("when the district is too small on screen", func(t *testing.T) {
+		s.Camera().Zoom = 0.35
+		at := s.DistrictLabelAt(d, 16)
+
+		t.Run("it should sit just above the kerb", func(t *testing.T) {
+			assert.Less(t, at.Y, s.Camera().WorldToScreen(d.Rect.Min).Y)
+		})
+	})
+}
+
 func TestMinimap(t *testing.T) {
 	t.Run("when the city is projected into a box", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
@@ -400,11 +423,11 @@ func TestSceneInsets(t *testing.T) {
 		s.SetSnapshot(richSnapshot())
 
 		t.Run("it should reserve label room on the left and top", func(t *testing.T) {
-			assert.Equal(t, city.Insets{Left: city.TowerLabelWidth, Right: city.LibraryLabelWidth, Top: city.LabelHeight, Bottom: city.FitFooter}, s.Insets())
+			assert.Equal(t, city.Insets{Left: float64(len("datadog-mcp"))*city.LabelCharWidth + city.TowerLabelMargin, Right: city.LibraryLabelWidth, Top: city.LabelHeight, Bottom: city.FitFooter}, s.Insets())
 		})
 
 		t.Run("it should keep the first tower clear of the label column", func(t *testing.T) {
-			assert.GreaterOrEqual(t, s.Camera().WorldToScreen(s.City().Towers[0].Rect.Min).X, city.TowerLabelWidth)
+			assert.GreaterOrEqual(t, s.Camera().WorldToScreen(s.City().Towers[0].Rect.Min).X, s.City().TowerLabelWidth())
 		})
 	})
 

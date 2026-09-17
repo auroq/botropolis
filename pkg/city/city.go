@@ -238,15 +238,16 @@ func buildingColumns(slots int) int {
 	return columns
 }
 
-// yardColumnsFor packs parked lots under the live grid: as many as fit in
-// the live grid's width, or a square-ish grid when there is no live grid.
+// yardColumnsFor packs parked lots under the live grid: square-ish, and at
+// least as wide as the live grid so a district never narrows below it.
 func yardColumnsFor(liveColumns, lots int) int {
-	if liveColumns > 0 {
-		return max(1, int(math.Floor((pitch(liveColumns, BuildingSize, BuildingGap)+ParkedGap)/(ParkedSize+ParkedGap))))
-	}
 	columns := int(math.Ceil(math.Sqrt(float64(lots))))
 	if columns < minYardColumns {
 		columns = minYardColumns
+	}
+	if liveColumns > 0 {
+		fit := int(math.Floor((pitch(liveColumns, BuildingSize, BuildingGap) + ParkedGap) / (ParkedSize + ParkedGap)))
+		columns = max(columns, fit)
 	}
 	return columns
 }
@@ -264,6 +265,16 @@ func newBuilding(s state.Session, slot int, at Point, size float64) *Building {
 		Pulse:     s.State == state.NeedsYou,
 		BoardedUp: s.State == state.Parked,
 	}
+}
+
+// TowerLabelWidth is the screen room the longest tower name needs to the
+// left of the tower column.
+func (c *City) TowerLabelWidth() float64 {
+	longest := 0
+	for _, t := range c.Towers {
+		longest = max(longest, len(t.Server.Name))
+	}
+	return float64(longest)*LabelCharWidth + TowerLabelMargin
 }
 
 func (c *City) Buildings() []*Building {

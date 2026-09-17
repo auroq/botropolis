@@ -120,6 +120,17 @@ func (s *Scene) DistrictLabelVisible(d *District) bool {
 	return d.Rect.Width()*s.camera.Zoom >= DistrictLabelMinWidth
 }
 
+// DistrictLabelAt is where the district's name goes on screen: on the
+// floor inside the kerb when the padding has room for a line of text,
+// otherwise just above the kerb.
+func (s *Scene) DistrictLabelAt(d *District, lineHeight float64) Point {
+	top := s.camera.WorldToScreen(d.Rect.Min)
+	if DistrictPadding*s.camera.Zoom >= lineHeight+4 {
+		return top.Add(Point{X: 6, Y: 4})
+	}
+	return top.Add(Point{X: 0, Y: -lineHeight - 2})
+}
+
 // Minimap projects the whole city into a screen box, with the camera's
 // viewport marked.
 type Minimap struct {
@@ -159,7 +170,7 @@ func (m Minimap) ProjectRect(r Rect) Rect {
 func (s *Scene) Insets() Insets {
 	in := Insets{Bottom: FitFooter, Top: LabelHeight}
 	if len(s.city.Towers) > 0 {
-		in.Left = TowerLabelWidth
+		in.Left = s.city.TowerLabelWidth()
 	}
 	if s.city.Library.Rect.Area() > 0 {
 		in.Right = LibraryLabelWidth
