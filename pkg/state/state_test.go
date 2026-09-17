@@ -451,6 +451,32 @@ func TestRoads(t *testing.T) {
 		})
 	})
 
+	t.Run("when a session edits files in another session's project", func(t *testing.T) {
+		editor := state.Session{ID: "e", CWD: "/home/avesta/workspaces/github/mCedar/mullet", Touches: map[string]int{
+			"/home/avesta/workspaces/github/auroq/botropolis/pkg/city/city.go": 2,
+			"/home/avesta/workspaces/github/auroq/botropolis/README.md":        1,
+			"/home/avesta/.claude/settings.json":                               5,
+		}}
+		other := state.Session{ID: "o", CWD: "/home/avesta/workspaces/github/auroq/botropolis"}
+		roads := state.Roads([]state.Session{editor, other}, nil)
+
+		t.Run("it should draw a road carrying the file touches", func(t *testing.T) {
+			assert.Equal(t, []state.Road{{From: editor.CWD, To: other.CWD, Files: 3, Sessions: 1}}, roads)
+		})
+	})
+
+	t.Run("when a session both messages and edits another project", func(t *testing.T) {
+		worker := sender("w", "/home/avesta/workspaces/github/mCedar/mullet", map[string]int{"team-lead": 4})
+		worker.Team = "session-37d10079"
+		worker.Touches = map[string]int{"/home/avesta/workspaces/github/auroq/x.go": 1}
+		lead := state.Session{ID: "37d10079-0000-0000-0000-000000000000", CWD: "/home/avesta/workspaces/github/auroq"}
+		roads := state.Roads([]state.Session{lead, worker}, nil)
+
+		t.Run("it should count the session once", func(t *testing.T) {
+			assert.Equal(t, []state.Road{{From: worker.CWD, To: lead.CWD, Messages: 4, Files: 1, Sessions: 1}}, roads)
+		})
+	})
+
 	t.Run("when the team config is gone but the lead session is known", func(t *testing.T) {
 		lead := state.Session{ID: "37d10079-0000-0000-0000-000000000000", CWD: "/home/avesta/workspaces/github/auroq"}
 		worker := sender("w", "/home/avesta/workspaces/github/mCedar/mullet", map[string]int{"team-lead": 4})

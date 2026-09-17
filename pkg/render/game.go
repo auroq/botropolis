@@ -168,7 +168,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.line(screen, cam, road.A, road.B, 6, colorRoad)
 		if labels {
 			mid := city.Point{X: (road.A.X + road.B.X) / 2, Y: (road.A.Y + road.B.Y) / 2}
-			g.label(screen, cam.WorldToScreen(mid).Add(city.Point{X: 4, Y: -14}), fmt.Sprintf("%d msgs", road.Messages), colorDim)
+			g.label(screen, cam.WorldToScreen(mid).Add(city.Point{X: 4, Y: -14}), road.Label(), colorDim)
 		}
 	}
 	for _, line := range c.PowerLines() {

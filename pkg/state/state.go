@@ -54,6 +54,7 @@ type Session struct {
 	Team               string         `json:"team,omitempty"`
 	Agent              string         `json:"agent,omitempty"`
 	Messages           map[string]int `json:"messages,omitempty"`
+	Touches            map[string]int `json:"touches,omitempty"`
 	MCPCalls           map[string]int `json:"mcpCalls,omitempty"`
 	Skills             map[string]int `json:"skills,omitempty"`
 	PRs                []claude.PR    `json:"prs,omitempty"`
@@ -103,6 +104,7 @@ type Road struct {
 	From     string `json:"from"`
 	To       string `json:"to"`
 	Messages int    `json:"messages"`
+	Files    int    `json:"files"`
 	Sessions int    `json:"sessions"`
 }
 
@@ -234,6 +236,7 @@ func attribute(s *Session, t claude.Transcript) {
 	s.Team = t.TeamName
 	s.Agent = t.AgentName
 	s.Messages = t.Messages
+	s.Touches = t.Touches
 	s.MCPCalls = t.MCPCalls
 	s.Skills = t.SkillCalls
 	s.PRs = t.PRs
@@ -250,8 +253,34 @@ func Roads(sessions []Session, teams []claude.Team) []Road {
 	}
 	type key struct{ from, to string }
 	counts := map[key]*Road{}
+	travellers := map[key]map[string]bool{}
+	add := func(s Session, to string, messages, files int) {
+		if to == "" || to == s.CWD {
+			return
+		}
+		k := key{s.CWD, to}
+		road, ok := counts[k]
+		if !ok {
+			road = &Road{From: s.CWD, To: to}
+			counts[k] = road
+			travellers[k] = map[string]bool{}
+		}
+		road.Messages += messages
+		road.Files += files
+		if !travellers[k][s.ID] {
+			travellers[k][s.ID] = true
+			road.Sessions++
+		}
+	}
+	roots := projectRoots(sessions)
 	for _, s := range sessions {
-		if s.CWD == "" || s.Team == "" {
+		if s.CWD == "" {
+			continue
+		}
+		for path, n := range s.Touches {
+			add(s, projectOf(roots, path), 0, n)
+		}
+		if s.Team == "" {
 			continue
 		}
 		team, known := byName[s.Team]
@@ -263,17 +292,10 @@ func Roads(sessions []Session, teams []claude.Team) []Road {
 			} else if name == teamLead {
 				member, ok = leadByTeamName(sessions, s.Team)
 			}
-			if !ok || member.CWD == "" || member.CWD == s.CWD {
+			if !ok {
 				continue
 			}
-			k := key{s.CWD, member.CWD}
-			road, ok := counts[k]
-			if !ok {
-				road = &Road{From: s.CWD, To: member.CWD}
-				counts[k] = road
-			}
-			road.Messages += n
-			road.Sessions++
+			add(s, member.CWD, n, 0)
 		}
 	}
 	out := make([]Road, 0, len(counts))
@@ -293,6 +315,29 @@ const (
 	teamLead       = "team-lead"
 	teamNamePrefix = "session-"
 )
+
+func projectRoots(sessions []Session) []string {
+	seen := map[string]bool{}
+	var roots []string
+	for _, s := range sessions {
+		if s.CWD != "" && !seen[s.CWD] {
+			seen[s.CWD] = true
+			roots = append(roots, s.CWD)
+		}
+	}
+	sort.Slice(roots, func(i, j int) bool { return len(roots[i]) > len(roots[j]) })
+	return roots
+}
+
+// projectOf is the longest known project directory containing path.
+func projectOf(roots []string, path string) string {
+	for _, root := range roots {
+		if strings.HasPrefix(path, root+"/") {
+			return root
+		}
+	}
+	return ""
+}
 
 func leadByTeamName(sessions []Session, teamName string) (claude.TeamMember, bool) {
 	if !strings.HasPrefix(teamName, teamNamePrefix) {

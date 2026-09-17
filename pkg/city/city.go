@@ -49,6 +49,7 @@ type roadNote struct {
 	other    string
 	messages int
 	out      bool
+	files    int
 }
 
 type City struct {
@@ -293,7 +294,7 @@ func (d *District) Card() Card {
 			if !r.out {
 				direction = "from"
 			}
-			parts = append(parts, fmt.Sprintf("%d msgs %s %s", r.messages, direction, r.other))
+			parts = append(parts, fmt.Sprintf("%s %s %s", roadTraffic(r.messages, r.files), direction, r.other))
 		}
 		lines = append(lines, "roads    "+strings.Join(parts, ", "))
 	}

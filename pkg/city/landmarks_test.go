@@ -196,7 +196,7 @@ func TestRoads(t *testing.T) {
 	snap := snapshot(session("a", cinders, state.Working), session("b", botropolis, state.Working), session("c", worktree, state.Parked))
 	snap.Roads = []state.Road{
 		{From: cinders, To: botropolis, Messages: 3, Sessions: 1},
-		{From: worktree, To: cinders, Messages: 2, Sessions: 1},
+		{From: worktree, To: cinders, Messages: 2, Files: 4, Sessions: 1},
 		{From: cinders, To: "/somewhere/unknown", Messages: 9, Sessions: 1},
 	}
 	c := city.Build(snap, city.NewLayout())
@@ -221,6 +221,10 @@ func TestRoads(t *testing.T) {
 		t.Run("it should carry the message count", func(t *testing.T) {
 			assert.Equal(t, 3, roads[0].Messages)
 		})
+
+		t.Run("it should sign each road with its traffic", func(t *testing.T) {
+			assert.Equal(t, "2 msgs, 4 files", roads[1].Label())
+		})
 	})
 
 	t.Run("when a district with roads is hovered", func(t *testing.T) {
@@ -234,7 +238,7 @@ func TestRoads(t *testing.T) {
 		card := ciq.Card()
 
 		t.Run("it should list the roads in and out", func(t *testing.T) {
-			assert.Contains(t, card.Lines, "roads    3 msgs to botropolis, 2 msgs from botropolis")
+			assert.Contains(t, card.Lines, "roads    3 msgs to botropolis, 2 msgs, 4 files from botropolis")
 		})
 	})
 }

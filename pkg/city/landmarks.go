@@ -3,6 +3,7 @@ package city
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/state"
@@ -54,10 +55,27 @@ type PowerLine struct {
 	Fresh, Cached float64
 }
 
+// Label is what the road sign says: its message and file traffic.
+func (r RoadLine) Label() string {
+	return roadTraffic(r.Messages, r.Files)
+}
+
+func roadTraffic(messages, files int) string {
+	var parts []string
+	if messages > 0 {
+		parts = append(parts, fmt.Sprintf("%d msgs", messages))
+	}
+	if files > 0 {
+		parts = append(parts, fmt.Sprintf("%d files", files))
+	}
+	return strings.Join(parts, ", ")
+}
+
 type RoadLine struct {
 	A, B     Point
 	From, To *District
 	Messages int
+	Files    int
 	Sessions int
 }
 
@@ -76,9 +94,9 @@ func (c *City) placeRoads(roads []state.Road) {
 		if !ok || from == to {
 			continue
 		}
-		c.Roads = append(c.Roads, RoadLine{A: from.Rect.Center(), B: to.Rect.Center(), From: from, To: to, Messages: r.Messages, Sessions: r.Sessions})
-		from.roads = append(from.roads, roadNote{other: to.Name, messages: r.Messages, out: true})
-		to.roads = append(to.roads, roadNote{other: from.Name, messages: r.Messages, out: false})
+		c.Roads = append(c.Roads, RoadLine{A: from.Rect.Center(), B: to.Rect.Center(), From: from, To: to, Messages: r.Messages, Files: r.Files, Sessions: r.Sessions})
+		from.roads = append(from.roads, roadNote{other: to.Name, messages: r.Messages, files: r.Files, out: true})
+		to.roads = append(to.roads, roadNote{other: from.Name, messages: r.Messages, files: r.Files, out: false})
 	}
 }
 

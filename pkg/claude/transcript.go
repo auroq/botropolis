@@ -3,6 +3,7 @@ package claude
 import (
 	"encoding/json"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -71,6 +72,7 @@ type Transcript struct {
 	TeamName         string
 	AgentName        string
 	Messages         map[string]int
+	Touches          map[string]int
 	MCPCalls         map[string]int
 	SkillCalls       map[string]int
 	PRs              []PR
@@ -303,11 +305,20 @@ func (s *transcriptScan) applyAssistant(rec transcriptLineJSON, mainLine bool) {
 		t.Usage = t.Usage.Add(rec.Message.Usage.usage())
 	}
 	for _, block := range rec.Message.Content {
-		if block.Type == "tool_use" && block.Name == sendMessageTool && block.Input.To != "" {
+		if block.Type != "tool_use" {
+			continue
+		}
+		if block.Name == sendMessageTool && block.Input.To != "" {
 			if t.Messages == nil {
 				t.Messages = map[string]int{}
 			}
 			t.Messages[block.Input.To]++
+		}
+		if path := foreignFile(t.CWD, block); path != "" {
+			if t.Touches == nil {
+				t.Touches = map[string]int{}
+			}
+			t.Touches[path]++
 		}
 	}
 	if rec.MCPServer != "" {
@@ -322,6 +333,24 @@ func (s *transcriptScan) applyAssistant(rec transcriptLineJSON, mainLine bool) {
 		}
 		t.SkillCalls[rec.Skill]++
 	}
+}
+
+var fileTools = map[string]bool{"Read": true, "Edit": true, "MultiEdit": true, "Write": true, "NotebookEdit": true}
+
+// foreignFile is the file a tool_use block touches when it lies outside
+// the session's own project, or "" when it is local or not a file tool.
+func foreignFile(cwd string, block contentBlockJSON) string {
+	if cwd == "" || !fileTools[block.Name] {
+		return ""
+	}
+	path := block.Input.FilePath
+	if path == "" {
+		path = block.Input.NotebookPath
+	}
+	if path == "" || path == cwd || strings.HasPrefix(path, cwd+"/") {
+		return ""
+	}
+	return path
 }
 
 func (s *transcriptScan) applyPR(rec transcriptLineJSON) {

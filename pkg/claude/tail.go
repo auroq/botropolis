@@ -31,7 +31,9 @@ type contentBlockJSON struct {
 	Name      string `json:"name"`
 	ToolUseID string `json:"tool_use_id"`
 	Input     struct {
-		To string `json:"to"`
+		To           string `json:"to"`
+		FilePath     string `json:"file_path"`
+		NotebookPath string `json:"notebook_path"`
 	} `json:"input"`
 }
 

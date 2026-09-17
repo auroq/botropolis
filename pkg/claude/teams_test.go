@@ -87,6 +87,23 @@ func TestTranscriptMessages(t *testing.T) {
 			`"content":[{"type":"tool_use","id":"toolu_` + id + `","name":"SendMessage","input":{"to":"` + to + `","message":"<scrubbed>"}}]}}`
 	}
 
+	edits := func(id, path string) string {
+		return `{"type":"assistant","isSidechain":false,"timestamp":"2026-09-17T04:00:00.000Z","sessionId":"` + sid + `",` +
+			`"message":{"id":"` + id + `","model":"claude-opus-5","role":"assistant","stop_reason":"tool_use",` +
+			`"content":[{"type":"tool_use","id":"toolu_` + id + `","name":"Edit","input":{"file_path":"` + path + `","old_string":"a","new_string":"b"}}]}}`
+	}
+
+	t.Run("when the transcript edits files in another project", func(t *testing.T) {
+		transcript := readTranscript(t, userLine,
+			edits("msg_10", "/home/avesta/workspaces/github/auroq/botropolis/pkg/city/city.go"),
+			edits("msg_11", "/home/avesta/workspaces/github/auroq/botropolis/pkg/city/city.go"),
+			edits("msg_12", "/home/avesta/workspaces/github/mCedar/cinders/main.go"))
+
+		t.Run("it should count the foreign files touched", func(t *testing.T) {
+			assert.Equal(t, map[string]int{"/home/avesta/workspaces/github/auroq/botropolis/pkg/city/city.go": 2}, transcript.Touches)
+		})
+	})
+
 	t.Run("when the transcript sends messages to teammates", func(t *testing.T) {
 		transcript := readTranscript(t, userLine, sendTo("m1", "team-lead"), sendTo("m2", "team-lead"), sendTo("m3", "branch-a"))
 
