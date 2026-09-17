@@ -26,16 +26,17 @@ type Action struct {
 }
 
 type Scene struct {
-	layout   *Layout
-	camera   *Camera
-	city     *City
-	hover    Hit
-	selected *Building
-	width    float64
-	height   float64
-	touched  bool
-	armed    string
-	armedAt  time.Time
+	topChrome float64
+	layout    *Layout
+	camera    *Camera
+	city      *City
+	hover     Hit
+	selected  *Building
+	width     float64
+	height    float64
+	touched   bool
+	armed     string
+	armedAt   time.Time
 }
 
 func NewScene(layout *Layout) *Scene {
@@ -194,12 +195,18 @@ func (m Minimap) ProjectRect(r Rect) Rect {
 }
 
 // Insets reserve screen space for text that does not scale with the map.
+// SetTopChrome reserves screen room for chrome drawn along the top, such
+// as the resource strip, so a fit keeps the city below it.
+func (s *Scene) SetTopChrome(px float64) {
+	s.topChrome = px
+}
+
 func (s *Scene) Insets() Insets {
-	in := Insets{Bottom: FitFooter, Top: LabelHeight}
+	in := Insets{Bottom: FitFooter, Top: LabelHeight + s.topChrome}
 	if s.camera.Projection == Isometric {
 		// Isometric labels sit above their landmarks, inside the diamond's
 		// empty corners, so nothing is reserved at the sides.
-		in.Top = 2 * LabelHeight
+		in.Top = 2*LabelHeight + s.topChrome
 		return in
 	}
 	if len(s.city.Towers) > 0 {

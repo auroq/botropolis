@@ -163,11 +163,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	if cam.Projection == city.Isometric {
 		g.drawIso(screen, c, cam, hover, selected, width, height, seconds)
-		g.minimap(screen, width, height)
-		if card, ok := g.scene.Card(); ok {
-			g.card(screen, card, width, height)
-		}
-		g.footer(screen, width, height)
+		g.chrome(screen, width, height)
 		return
 	}
 
@@ -194,16 +190,38 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 	g.landmarks(screen, cam, labels)
-	g.minimap(screen, width, height)
+	g.chrome(screen, width, height)
+}
 
+// chrome is everything fixed to the window: strip, minimap, card, footer.
+func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
+	top := g.strip(screen, width)
+	g.scene.SetTopChrome(top)
+	g.minimap(screen, width, height)
 	if card, ok := g.scene.Card(); ok {
-		g.card(screen, card, width, height)
+		g.card(screen, card, width, height, top)
 	}
 	g.footer(screen, width, height)
 }
 
 // lines draws roads, power lines and beams, highlighting the hovered one.
 func (g *Game) lines(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, labels bool) {
+	g.roadsAndBeams(screen, c, cam, hover, labels)
+	for _, line := range c.PowerLines() {
+		g.line(screen, cam, line.From, line.To, lineWidth(line.Cached, 1, 3), colorLineCached)
+		g.line(screen, cam, line.From, line.To, lineWidth(line.Fresh, 1, 5), colorLineFresh)
+		if hover.Line != nil && hover.Line.Building == line.Building {
+			g.line(screen, cam, line.From, line.To, 2, colorHighlight)
+		}
+	}
+}
+
+func (g *Game) roadsAndBeams(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, labels bool) {
+	g.roadLines(screen, c, cam, hover, labels)
+	g.beams(screen, c, cam, hover)
+}
+
+func (g *Game) roadLines(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, labels bool) {
 	for i := range c.Roads {
 		road := &c.Roads[i]
 		g.line(screen, cam, road.A, road.B, 8, colorKerb)
@@ -216,13 +234,9 @@ func (g *Game) lines(screen *ebiten.Image, c *city.City, cam *city.Camera, hover
 			g.floorLabel(screen, cam.WorldToScreen(mid).Add(city.Point{X: 4, Y: -14}), road.Label(), colorDim)
 		}
 	}
-	for _, line := range c.PowerLines() {
-		g.line(screen, cam, line.From, line.To, lineWidth(line.Cached, 1, 3), colorLineCached)
-		g.line(screen, cam, line.From, line.To, lineWidth(line.Fresh, 1, 5), colorLineFresh)
-		if hover.Line != nil && hover.Line.Building == line.Building {
-			g.line(screen, cam, line.From, line.To, 2, colorHighlight)
-		}
-	}
+}
+
+func (g *Game) beams(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit) {
 	for _, beam := range c.Beams() {
 		g.line(screen, cam, beam.From, beam.To, lineWidth(float64(beam.Calls)*20_000, 1, 3), colorBeam)
 		if hover.Beam != nil && hover.Beam.Building == beam.Building && hover.Beam.Tower == beam.Tower {
@@ -555,7 +569,7 @@ func (g *Game) labelRight(screen *ebiten.Image, end city.Point, s string, c colo
 	g.label(screen, city.Point{X: end.X - width, Y: end.Y}, s, c)
 }
 
-func (g *Game) card(screen *ebiten.Image, card city.Card, screenWidth, screenHeight float64) {
+func (g *Game) card(screen *ebiten.Image, card city.Card, screenWidth, screenHeight, top float64) {
 	maxChars := int((screenWidth - 24 - 2*cardPadding) / charWidth)
 	if maxChars < 8 {
 		maxChars = 8
@@ -578,10 +592,11 @@ func (g *Game) card(screen *ebiten.Image, card city.Card, screenWidth, screenHei
 	width += 2 * cardPadding
 	height := cardPadding*2 + lineHeight*float64(len(lines)+1)
 	x := math.Max(12, screenWidth-width-12)
-	vector.FillRect(screen, float32(x), 12, float32(width), float32(height), colorCard, false)
-	g.label(screen, city.Point{X: x + cardPadding, Y: 12 + cardPadding}, title, colorText)
+	y := top + 12
+	vector.FillRect(screen, float32(x), float32(y), float32(width), float32(height), colorCard, false)
+	g.label(screen, city.Point{X: x + cardPadding, Y: y + cardPadding}, title, colorText)
 	for i, line := range lines {
-		g.label(screen, city.Point{X: x + cardPadding, Y: 12 + cardPadding + lineHeight*float64(i+1)}, line, colorDim)
+		g.label(screen, city.Point{X: x + cardPadding, Y: y + cardPadding + lineHeight*float64(i+1)}, line, colorDim)
 	}
 }
 

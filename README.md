@@ -88,7 +88,9 @@ A waybar module, for example:
 ## Thanks
 
 The city is drawn with tiles by [Kenney](https://kenney.nl) — the isometric Buildings, City, Landscape and Vehicles packs,
-and Tiny Town, Tiny Factory and Roguelike Modern City for the top-down view (`--projection top`), all CC0.
+Roads, and Tiny Town, Tiny Factory and Roguelike Modern City for the top-down view (`--projection top`), all CC0.
+A resource strip along the top keeps the city-wide tallies in view: sessions by state, token rates, cost and cache hit rate over 24 h, MCP calls, PRs, errors.
+Streets between districts are autotiled from the road pack with cars for traffic; power lines run on poles with sparks for token flow; context fill is the number of storeys.
 Thank you, Kenney; see [`pkg/assets/kenney/README.md`](pkg/assets/kenney/README.md) for the packs, versions and terms,
 and [support the studio](https://kenney.nl/donate) if the work helps you too.
 

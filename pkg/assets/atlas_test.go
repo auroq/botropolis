@@ -48,3 +48,31 @@ func TestLoadAtlas(t *testing.T) {
 		}
 	})
 }
+
+func TestImage(t *testing.T) {
+	t.Run("when a road tile is loaded from the roads pack", func(t *testing.T) {
+		img, err := assets.Image(assets.IsoRoads, "roadNS")
+		require.NoError(t, err)
+
+		t.Run("it should be the pack's tile width", func(t *testing.T) {
+			assert.Equal(t, assets.IsoRoadTileWidth, img.Bounds().Dx())
+		})
+	})
+
+	t.Run("when the roads pack licence is read", func(t *testing.T) {
+		licence, err := assets.License(assets.IsoRoads)
+		require.NoError(t, err)
+
+		t.Run("it should grant personal and commercial use", func(t *testing.T) {
+			assert.Contains(t, licence, "personal and commercial projects")
+		})
+	})
+
+	t.Run("when a sprite is not in the pack", func(t *testing.T) {
+		_, err := assets.Image(assets.IsoRoads, "airport")
+
+		t.Run("it should say so", func(t *testing.T) {
+			assert.Error(t, err)
+		})
+	})
+}

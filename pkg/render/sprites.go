@@ -55,6 +55,21 @@ func (a *isoAtlas) sprite(name string) *ebiten.Image {
 
 type isoSprites struct {
 	buildings, city, landscape, vehicles *isoAtlas
+	roads                                map[string]*ebiten.Image
+}
+
+// road is a loose sprite from the roads pack, loaded on first use.
+func (s *isoSprites) road(name string) *ebiten.Image {
+	if img, ok := s.roads[name]; ok {
+		return img
+	}
+	img, err := assets.Image(assets.IsoRoads, name)
+	if err != nil {
+		s.roads[name] = nil
+		return nil
+	}
+	s.roads[name] = ebiten.NewImageFromImage(img)
+	return s.roads[name]
 }
 
 func loadIsoSprites() (*isoSprites, error) {
@@ -74,7 +89,7 @@ func loadIsoSprites() (*isoSprites, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &isoSprites{buildings: buildings, city: cityAtlas, landscape: landscape, vehicles: vehicles}, nil
+	return &isoSprites{buildings: buildings, city: cityAtlas, landscape: landscape, vehicles: vehicles, roads: map[string]*ebiten.Image{}}, nil
 }
 
 func loadSprites() (*sprites, error) {

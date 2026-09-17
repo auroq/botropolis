@@ -19,7 +19,8 @@ Do not use our logo, as it is reserved for official projects by our studio."
 | Isometric Buildings | as downloaded 2026-09-17 | https://kenney.nl/assets/isometric-tiles-buildings | session buildings: ground floors, storeys, roofs; the landmarks |
 | Isometric City | as downloaded 2026-09-17 | https://kenney.nl/assets/isometric-tiles-city | pavement and street furniture |
 | Isometric Landscape | as downloaded 2026-09-17 | https://kenney.nl/assets/isometric-tiles-landscape | the grass the city stands on |
-| Isometric Vehicles | as downloaded 2026-09-17 | https://kenney.nl/assets/isometric-tiles-vehicles | traffic along the lines (planned) |
+| Isometric Vehicles | as downloaded 2026-09-17 | https://kenney.nl/assets/isometric-tiles-vehicles | the cars on the streets between districts |
+| Isometric Roads | as downloaded 2026-09-17 | https://kenney.nl/assets/isometric-roads | street tiles and the trees on the grass (the loose PNGs we use, under `png/`; its readme is its licence file) |
 
 The isometric packs were fetched from the download links on those pages:
 `kenney_isometric-buildings.zip`, `kenney_isometric-city.zip`, `kenney_isometric-landscape.zip` and `kenney_isometric-vehicles.zip`

@@ -61,14 +61,16 @@ type roadNote struct {
 }
 
 type City struct {
-	Districts []*District
-	Plant     Plant
-	Towers    []*Tower
-	Library   Library
-	Hall      Hall
-	Roads     []RoadLine
-	Night     bool
-	Time      time.Time
+	Districts   []*District
+	Plant       Plant
+	Towers      []*Tower
+	Library     Library
+	Hall        Hall
+	Roads       []RoadLine
+	Streets     []Street
+	StreetCells []StreetCell
+	Night       bool
+	Time        time.Time
 }
 
 type Hit struct {
@@ -143,6 +145,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	layout.PlaceDistricts(city.Districts)
 	city.placeLandmarks(snapshot)
 	city.placeRoads(snapshot.Roads)
+	city.placeStreets()
 	return city
 }
 

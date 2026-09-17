@@ -1,0 +1,87 @@
+package city_test
+
+import (
+	"testing"
+
+	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/state"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestStreets(t *testing.T) {
+	t.Run("when two districts are joined by a road", func(t *testing.T) {
+		snap := snapshot(session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		snap.Roads = []state.Road{{From: cinders, To: botropolis, Messages: 3, Sessions: 1}}
+		c := city.Build(snap, city.NewLayout())
+		require.Len(t, c.Streets, 1)
+		street := c.Streets[0]
+
+		t.Run("it should lay cells only outside the districts", func(t *testing.T) {
+			require.NotEmpty(t, c.StreetCells)
+			for _, sc := range c.StreetCells {
+				for _, d := range c.Districts {
+					assert.False(t, d.Rect.Contains(sc.Cell.Center()), "cell %v is inside %s", sc.Cell, d.Name)
+				}
+			}
+		})
+
+		t.Run("it should join every cell to at least one neighbour", func(t *testing.T) {
+			for _, sc := range c.StreetCells {
+				assert.NotZero(t, sc.Mask, "cell %v", sc.Cell)
+			}
+		})
+
+		t.Run("it should run the path between the two districts", func(t *testing.T) {
+			assert.Equal(t, &c.Roads[0], street.Road)
+			assert.GreaterOrEqual(t, len(street.Path), 2)
+		})
+
+		t.Run("it should keep the street's cells on the grid", func(t *testing.T) {
+			for _, p := range street.Path {
+				assert.InDelta(t, 0, float64(int(p.X-city.BuildingSize/2)%int(city.BuildingSize)), 1e-9)
+			}
+		})
+	})
+
+	t.Run("when there are no roads", func(t *testing.T) {
+		c := city.Build(snapshot(session("a", cinders, state.Working)), city.NewLayout())
+
+		t.Run("it should lay no streets", func(t *testing.T) {
+			assert.Empty(t, c.Streets)
+			assert.Empty(t, c.StreetCells)
+		})
+	})
+}
+
+func TestStreetMasks(t *testing.T) {
+	t.Run("when a road must turn a corner", func(t *testing.T) {
+		// Four districts fill the first grid row and start a second; a road
+		// from the third to the fourth has to bend.
+		snap := snapshot(session("a", "/p/a", state.Working), session("b", "/p/b", state.Working),
+			session("c", "/p/c", state.Working), session("d", "/p/d", state.Working))
+		snap.Roads = []state.Road{{From: "/p/c", To: "/p/d", Messages: 1, Sessions: 1}}
+		c := city.Build(snap, city.NewLayout())
+		var corners int
+		for _, sc := range c.StreetCells {
+			m := sc.Mask
+			horizontal := m&(city.DirE|city.DirW) != 0
+			vertical := m&(city.DirN|city.DirS) != 0
+			if horizontal && vertical {
+				corners++
+			}
+		}
+
+		t.Run("it should have a cell that joins a horizontal and a vertical run", func(t *testing.T) {
+			assert.GreaterOrEqual(t, corners, 1)
+		})
+
+		t.Run("it should bend clear of the other districts", func(t *testing.T) {
+			for _, sc := range c.StreetCells {
+				for _, d := range c.Districts {
+					assert.False(t, d.Rect.Contains(sc.Cell.Center()), "cell %v is inside %s", sc.Cell, d.Name)
+				}
+			}
+		})
+	})
+}

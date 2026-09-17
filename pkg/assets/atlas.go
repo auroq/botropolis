@@ -15,7 +15,12 @@ const (
 	IsoCity      Pack = "isometric-city"
 	IsoLandscape Pack = "isometric-landscape"
 	IsoVehicles  Pack = "isometric-vehicles"
+	IsoRoads     Pack = "isometric-roads"
 )
+
+// IsoRoadTileWidth is the road pack's tile width; its tiles are scaled up to
+// IsoTileWidth to sit on the same grid as the others.
+const IsoRoadTileWidth = 100
 
 // IsoTileWidth is the width of one Kenney isometric ground tile in pixels;
 // its footprint diamond is half as tall.
