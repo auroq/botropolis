@@ -1,0 +1,6 @@
+/bin/
+/dist/
+*.test
+coverage.out
+tools/sessions.json
+testing/helpers/fixtures/*/raw/
