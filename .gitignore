@@ -5,3 +5,6 @@ coverage.out
 tools/sessions.json
 testing/helpers/fixtures/
 .claude/settings.local.json
+
+# Kenney 3D kits for the sprite pipeline: fetched by make kits, never committed
+tools/kits/

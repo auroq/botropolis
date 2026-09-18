@@ -247,6 +247,18 @@ puts the plant, hall and library on the plaza and one shed per parked session in
 The lake, the hashed river and the per-cell hashed grass, dirt and trees are gone; beyond the plan's edge there is nothing,
 and the camera clamps so the plan stays under the middle of the window.
 
+## Sprite pipeline
+
+Started 2026-09-18 (roadmap phase 9, first step).
+`make kits` runs `tools/fetch-kits`, which follows each kenney.nl asset page's download link into the gitignored `tools/kits/<slug>/`;
+the kits themselves are never committed, only what is rendered from them and their CC0 licence files under `pkg/assets/kits/<slug>/`.
+`tools/render-sprites/render.py` is the headless Blender script (Blender 5.2 from `extra`, a developer dependency only).
+Its `scene` mode composes one district — six Commercial buildings on a block, an avenue ring from the Roads kit with bends, T junctions and lamps,
+the plant from the Industrial kit on the plaza next door — under one sun with soft cast shadows,
+seen by an orthographic camera tilted atan(1/2) above the ground and turned 45°, so a tile's top face projects 2:1 like the current map.
+EEVEE renders it in about six seconds; `make kit-district` writes `docs/screenshots/kit-district.png`.
+The atlas mode, headings and zoom levels wait on the comparison with `r64-fit.png`.
+
 ## Open questions
 
 - Should a session that was started the old way (foreground `claude`) get a "convert to background" affordance,

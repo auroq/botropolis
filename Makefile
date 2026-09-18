@@ -64,6 +64,14 @@ analyze ::
 	$(LOG) "Analyzing ~/.claude history"
 	@python3 tools/analyze-history.py
 
+kits ::
+	$(LOG) "Fetching the Kenney kits into tools/kits"
+	@tools/fetch-kits
+
+kit-district :: kits
+	$(LOG) "Rendering one district from the Kenney kits (tools/render-sprites)"
+	@blender -b --python tools/render-sprites/render.py -- scene --out docs/screenshots/kit-district.png 2>&1 | grep -E "WROTE|Traceback|Error" || true
+
 fixtures ::
 	$(LOG) "Generating fixture ${FIXTURE} from ~/.claude"
 	@python3 tools/make-fixtures.py --name ${FIXTURE}

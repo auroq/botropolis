@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Download Kenney's CC0 3D kits into tools/kits/<slug>/ for the sprite
+# pipeline. The kits are not committed; only the atlases rendered from
+# them and their licence files are.
+set -euo pipefail
+
+usage() {
+	cat <<USAGE
+Usage: tools/fetch-kits [--help] [slug ...]
+
+Downloads the named Kenney kits (default: the ones the pipeline uses) into
+tools/kits/<slug>/, keeping each zip beside its folder so a second run is a
+no-op. Each kit page on kenney.nl links its zip from the donate dialog;
+this follows that link.
+
+  --help    show this help
+USAGE
+}
+
+default_kits=(city-kit-commercial city-kit-roads city-kit-industrial city-kit-suburban nature-kit)
+dest="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/kits"
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+	usage
+	exit 0
+fi
+
+kits=("$@")
+if [[ ${#kits[@]} -eq 0 ]]; then
+	kits=("${default_kits[@]}")
+fi
+
+mkdir -p "$dest"
+for slug in "${kits[@]}"; do
+	if [[ -f "$dest/$slug/License.txt" ]]; then
+		echo "$slug: present"
+		continue
+	fi
+	page="https://kenney.nl/assets/$slug"
+	url="$(curl -sSL "$page" | grep -oE "https://kenney\.nl/media/pages/assets/$slug/[^'\"]+\.zip" | head -1)"
+	if [[ -z "$url" ]]; then
+		echo "$slug: no download link on $page" >&2
+		exit 1
+	fi
+	echo "$slug: $url"
+	curl -sSL -o "$dest/$slug.zip" "$url"
+	rm -rf "$dest/$slug"
+	mkdir -p "$dest/$slug"
+	unzip -q -o "$dest/$slug.zip" -d "$dest/$slug"
+	if [[ ! -f "$dest/$slug/License.txt" ]]; then
+		echo "$slug: the zip has no License.txt; refusing to use it" >&2
+		exit 1
+	fi
+done
