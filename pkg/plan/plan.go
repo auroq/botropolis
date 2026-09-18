@@ -96,6 +96,10 @@ type Plan struct {
 	Trees    []Cell
 	Fountain Cell
 	River    []RiverCell
+	// Rails is the freight loop, cell by cell clockwise from the
+	// north-west corner of the inner belt: the ledger's line, which every
+	// district lies inside.
+	Rails []Cell
 
 	rings  int
 	span   int
@@ -250,11 +254,18 @@ func (p *Plan) place(in Input) {
 		{Min: Cell{Row: belt}, Cols: belt, Rows: lastRoad + 1 - belt},
 		{Min: Cell{Col: eastRoad + 1, Row: belt}, Cols: belt, Rows: lastRoad + 1 - belt},
 	}
+	p.Rails = railLoop(Cell{Col: belt - 1, Row: belt - 1}, Cell{Col: eastRoad + 1, Row: lastRoad + 1})
+	onRails := map[Cell]bool{}
+	for _, r := range p.Rails {
+		onRails[r] = true
+	}
 	for _, b := range append(append([]Block(nil), p.Parks...), p.Belt...) {
 		for row := b.Min.Row; row < b.Min.Row+b.Rows; row++ {
 			for col := b.Min.Col; col < b.Min.Col+b.Cols; col++ {
 				p.park[Cell{col, row}] = true
-				p.Trees = append(p.Trees, Cell{col, row})
+				if !onRails[Cell{col, row}] {
+					p.Trees = append(p.Trees, Cell{col, row})
+				}
 			}
 		}
 	}
@@ -313,6 +324,25 @@ func (p *Plan) place(in Input) {
 	sort.Slice(p.Streets, func(i, j int) bool { return less(p.Streets[i].Cell, p.Streets[j].Cell) })
 	sort.Slice(p.Lamps, func(i, j int) bool { return less(p.Lamps[i], p.Lamps[j]) })
 	sort.Slice(p.Trees, func(i, j int) bool { return less(p.Trees[i], p.Trees[j]) })
+}
+
+// railLoop is every cell of the rectangle from nw to se, clockwise from
+// nw, each adjacent to the next and the last to the first.
+func railLoop(nw, se Cell) []Cell {
+	var loop []Cell
+	for col := nw.Col; col < se.Col; col++ {
+		loop = append(loop, Cell{Col: col, Row: nw.Row})
+	}
+	for row := nw.Row; row < se.Row; row++ {
+		loop = append(loop, Cell{Col: se.Col, Row: row})
+	}
+	for col := se.Col; col > nw.Col; col-- {
+		loop = append(loop, Cell{Col: col, Row: se.Row})
+	}
+	for row := se.Row; row > nw.Row; row-- {
+		loop = append(loop, Cell{Col: nw.Col, Row: row})
+	}
+	return loop
 }
 
 func less(a, b Cell) bool {

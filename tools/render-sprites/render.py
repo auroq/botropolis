@@ -53,13 +53,18 @@ PIECES = {
     "city-kit-suburban": ["tree-large", "tree-small"],
     "car-kit": ["sedan", "van", "taxi", "suv", "hatchback-sports", "truck", "delivery"],
     "space-kit": ["rover"],
+    "train-kit": ["train-diesel-a", "train-diesel-b", "train-diesel-c",
+                  "train-carriage-container-red", "train-carriage-container-blue", "train-carriage-container-green",
+                  "train-carriage-box", "train-carriage-tank"],
+    "watercraft-kit": ["boat-tug-a", "boat-tug-b", "boat-row-small"],
     "botropolis": ["drone"],
 }
 
 # Kits that are not modelled at one unit per cell are scaled on import:
 # the Car Kit is in metres, a sedan 2.5 long, and a car on the map is a
-# third of a cell.
-SCALE = {"car-kit": 0.12}
+# third of a cell; the Train Kit's wagons are 2.7 long and the Watercraft
+# Kit's tug 3.5, and a wagon or a barge on the map is two thirds of a cell.
+SCALE = {"car-kit": 0.12, "train-kit": 0.25, "watercraft-kit": 0.25}
 
 GRASS = (0.22, 0.33, 0.17, 1)
 PLAZA = (0.54, 0.53, 0.49, 1)

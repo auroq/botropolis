@@ -715,3 +715,59 @@ func TestDistanceToSegment(t *testing.T) {
 		})
 	})
 }
+
+func TestTrains(t *testing.T) {
+	t.Run("when two models spent tokens in the last day", func(t *testing.T) {
+		c := build(t, city.NewLayout(),
+			spender("a", cinders, "claude-opus-5", map[int]int64{1: 300_000_000}),
+			spender("b", cinders, "claude-sonnet-5", map[int]int64{2: 40_000_000}))
+		require.Len(t, c.Trains, 2)
+
+		t.Run("it should run one train per model, the biggest first", func(t *testing.T) {
+			assert.Equal(t, "claude-opus-5", c.Trains[0].Model)
+			assert.Equal(t, "claude-sonnet-5", c.Trains[1].Model)
+		})
+
+		t.Run("it should size the wagon to keep the biggest train to six", func(t *testing.T) {
+			assert.Equal(t, int64(50_000_000), c.Trains[0].Unit)
+			assert.Equal(t, 6, c.Trains[0].Wagons)
+		})
+
+		t.Run("it should give the small train a wagon per unit, never none", func(t *testing.T) {
+			assert.Equal(t, 1, c.Trains[1].Wagons)
+		})
+
+		t.Run("it should name the model, the tokens, the unit and the cost on the card", func(t *testing.T) {
+			card := c.Trains[0].Card()
+			assert.Equal(t, "claude-opus-5", card.Title)
+			assert.Contains(t, card.Lines, "tokens   300.0M in 24 h")
+			assert.Contains(t, card.Lines, "wagons   6, one per 50.0M tokens")
+			assert.Contains(t, card.Lines, "cost     ~$300000.00 (pro-rated)")
+		})
+
+		t.Run("it should lay the rails as a closed loop", func(t *testing.T) {
+			require.GreaterOrEqual(t, len(c.Rails), 4)
+			assert.Equal(t, c.Rails[0], c.Rails[len(c.Rails)-1])
+		})
+	})
+
+	t.Run("when nothing was spent", func(t *testing.T) {
+		c := build(t, city.NewLayout(), session("a", cinders, state.Working))
+
+		t.Run("it should run no trains", func(t *testing.T) {
+			assert.Empty(t, c.Trains)
+		})
+	})
+
+	t.Run("when a wagon unit is chosen", func(t *testing.T) {
+		cases := []struct {
+			max  int64
+			unit int64
+		}{{0, 1000}, {900, 1000}, {6000, 1000}, {6001, 2000}, {300_000_000, 50_000_000}, {12_000_000, 2_000_000}}
+		for _, tc := range cases {
+			t.Run(fmt.Sprintf("it should keep %d tokens to six wagons of %d", tc.max, tc.unit), func(t *testing.T) {
+				assert.Equal(t, tc.unit, city.TrainUnit(tc.max))
+			})
+		}
+	})
+}

@@ -33,7 +33,8 @@ A vacant plot is a session nothing has been typed into yet;
 it is never counted, and `botropolis prune` clears it once it has sat for an hour.
 The plant on the plaza is the API — click it for the breakdown by model, project and session over an hour, a day or a week;
 the towers on the ridge are MCP servers; the library ranks skills; the city hall carries Claude Code's own rollup.
-Avenues carry traffic between projects whose sessions message each other or edit each other's files; parked sessions are containers in the storage yard.
+Avenues carry traffic between projects whose sessions message each other or edit each other's files; parked sessions are containers in the storage yard, one colour per project.
+The freight loop round the city is the ledger: one train per model, a wagon per unit of the day's tokens, hover for the unit and the cost.
 The strip along the top is the city's tallies; the sidebar (`b`) is the same thing as a list.
 The timeline (`t`) is the daemon's event log, so it survives the window closing:
 when the city opens or comes back into focus, "while you were away" lists what needed you or went wrong since it was last seen.
@@ -75,7 +76,7 @@ A waybar module, for example:
 
 ## Thanks
 
-The city is drawn from [Kenney](https://kenney.nl)'s 3D kits — City Kit Commercial, Roads, Industrial and Suburban, and the Car Kit, all CC0 —
+The city is drawn from [Kenney](https://kenney.nl)'s 3D kits — City Kit Commercial, Roads, Industrial and Suburban, the Car Kit, the Train Kit and the Watercraft Kit, all CC0 —
 pre-rendered once in Blender by `tools/render-sprites` into the atlases under `pkg/assets/kits/` (four headings, two zoom levels),
 the way Factorio ships its sprites: the runtime only ever draws 2D.
 A session's building grows with its context window; a rover works at its door while it is mid-turn and a drone circles the roof for each subagent in flight;

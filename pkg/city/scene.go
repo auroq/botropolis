@@ -830,6 +830,8 @@ func (s *Scene) Card() (Card, bool) {
 		return s.hover.Beam.Card(), true
 	case s.hover.Line != nil:
 		return s.hover.Line.Card(), true
+	case s.hover.Train != nil:
+		return s.hover.Train.Card(), true
 	case s.hover.Landmark == LandmarkWater:
 		return Card{Title: "river", Lines: []string{"the map's edge on this side"}}, true
 	case s.hover.Landmark == LandmarkPark && s.hover.Park != nil:

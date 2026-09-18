@@ -106,9 +106,12 @@ type City struct {
 	Camps    []*Camp
 	Parks    []Park
 	Trees    []Cell
-	Lamps    []Cell
-	bounds   Rect
-	plan     plan.Plan
+	// Rails is the freight loop as a closed polyline; Trains run it.
+	Rails  []Point
+	Trains []*Train
+	Lamps  []Cell
+	bounds Rect
+	plan   plan.Plan
 }
 
 type Hit struct {
@@ -120,6 +123,7 @@ type Hit struct {
 	Beam     *Beam
 	Line     *PowerLine
 	Park     *Park
+	Train    *Train
 }
 
 // Near is the road, beam or power line within tolerance of p, nearest
@@ -233,6 +237,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	for _, t := range p.Trees {
 		city.Trees = append(city.Trees, toCell(t))
 	}
+	city.Rails = railPath(p.Rails)
 	for _, l := range p.Lamps {
 		city.Lamps = append(city.Lamps, toCell(l))
 	}
@@ -243,6 +248,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	city.placeRiver()
 	city.placeStreets()
 	city.placeCamps(snapshot.Teams)
+	city.Trains = trains(city.Breakdown(LastDay))
 	return city
 }
 

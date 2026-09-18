@@ -117,6 +117,7 @@ the socket under `$XDG_RUNTIME_DIR/botropolis`.
 | Cranes on the roof | subagents and workflows in flight | count, names, tokens |
 | Power plant at the centre | the API | tokens today by model, cache hit ratio |
 | Power lines to a building (poles, sagging wires, sparks) | token flow | tokens/min; cache-read vs. fresh drawn differently |
+| Freight loop round the city, a train per model | the ledger: that model's tokens over the last day, a wagon per unit (the unit grows to keep the longest train to six) | model, tokens, the wagon unit, pro-rated cost |
 | Radio towers at the edge | MCP servers | sessions attached, calls today |
 | Beam tower → building | a session using that server | calls this session |
 | Streets between districts (autotiled, cars for traffic) | cross-repo file touches, `SendMessage` between sessions | which files, which sessions |

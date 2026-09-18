@@ -32,6 +32,10 @@ var (
 	kitCars     = []string{"car-kit/sedan", "car-kit/van", "car-kit/taxi", "car-kit/suv", "car-kit/hatchback-sports", "car-kit/delivery"}
 	kitParkTree = "city-kit-suburban/tree-small"
 	kitBeltTree = "city-kit-suburban/tree-large"
+	// The ledger's trains: a locomotive and container wagons in one of
+	// three liveries, matched to city.ContainerHues.
+	kitLocos  = []string{"train-kit/train-diesel-a", "train-kit/train-diesel-b", "train-kit/train-diesel-c"}
+	kitWagons = []string{"train-kit/train-carriage-container-red", "train-kit/train-carriage-container-blue", "train-kit/train-carriage-container-green"}
 )
 
 func hashID(id string) uint32 {

@@ -13,6 +13,8 @@ Only the rendered pages, the manifests and each kit's `License.txt` are committe
 | City Kit Suburban | https://kenney.nl/assets/city-kit-suburban | the trees in the parks and the belt |
 | Car Kit | https://kenney.nl/assets/car-kit | the cars on avenues with traffic (scaled to a third of a cell) |
 | Space Kit | https://kenney.nl/assets/space-kit | the rover at the door of a working session |
+| Train Kit | https://kenney.nl/assets/train-kit | the ledger: a diesel and container wagons per model on the freight loop (scaled to a quarter) |
+| Watercraft Kit | https://kenney.nl/assets/watercraft-kit | the tugs that bring a new session up the river and take a demolished one away (scaled to a quarter) |
 | (modelled in the script) | — | the drone that stands for a subagent in flight |
 
 Every piece is cut at four headings (0, 90, 180, 270 degrees) under one sun,

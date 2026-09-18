@@ -235,6 +235,38 @@ func TestMake(t *testing.T) {
 		})
 	})
 
+	t.Run("when the rail loop is laid", func(t *testing.T) {
+		p := plan.Make(plan.Input{Districts: live(3), Towers: 2, StorageRows: 2}, plan.NewMemory())
+		cols, rows := p.Bounds.Cols, p.Bounds.Rows
+		corners := []plan.Cell{{Col: 1, Row: 1}, {Col: cols - 3, Row: 1}, {Col: cols - 3, Row: rows - 2}, {Col: 1, Row: rows - 2}}
+
+		t.Run("it should start at the north-west corner of the inner belt", func(t *testing.T) {
+			require.NotEmpty(t, p.Rails)
+			assert.Equal(t, corners[0], p.Rails[0])
+		})
+
+		t.Run("it should pass every corner", func(t *testing.T) {
+			for _, c := range corners {
+				assert.Contains(t, p.Rails, c)
+			}
+		})
+
+		t.Run("it should be one closed loop of adjacent cells", func(t *testing.T) {
+			perimeter := 2*(cols-3-1) + 2*(rows-2-1)
+			require.Len(t, p.Rails, perimeter)
+			for i := range p.Rails {
+				a, b := p.Rails[i], p.Rails[(i+1)%len(p.Rails)]
+				assert.Equal(t, 1, abs(a.Col-b.Col)+abs(a.Row-b.Row), "step %d", i)
+			}
+		})
+
+		t.Run("it should leave no tree on the rails", func(t *testing.T) {
+			for _, r := range p.Rails {
+				assert.NotContains(t, p.Trees, r)
+			}
+		})
+	})
+
 	t.Run("when streets are laid", func(t *testing.T) {
 		p := plan.Make(plan.Input{Districts: live(1)}, plan.NewMemory())
 
@@ -252,4 +284,11 @@ func TestMake(t *testing.T) {
 			}
 		})
 	})
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
 }

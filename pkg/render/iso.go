@@ -105,6 +105,7 @@ func (g *Game) isoGround(screen *ebiten.Image, cam *city.Camera, c *city.City, w
 	for _, rc := range c.RiverCells {
 		g.poly(screen, cam, rc.Cell.Rect(), water)
 	}
+	g.isoRails(screen, cam, c)
 }
 
 // isoTree plants one of the plan's trees, back to front with everything else.
@@ -474,6 +475,12 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 				g.isoBuilding(screen, cam, b, b == selected, detailed, seconds)
 			}})
 		}
+	}
+	for _, k := range g.carriages(c, seconds) {
+		k := k
+		items = append(items, drawable{depth: cam.Depth(k.at), draw: func() {
+			g.drawCarriage(screen, cam, k)
+		}})
 	}
 	for _, car := range g.cars(c, seconds) {
 		car := car
