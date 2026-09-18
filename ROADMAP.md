@@ -296,6 +296,16 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   and the park belt keeps the suburban trees rather than the Nature Kit's teal ones. Package `botropolis-git-r129`; install and validate before phase 15.
 - **Phase 15 — Release.** Tag `v0.1.0` (the release workflow has never run) and a README hero shot taken with `h` — the chrome-free frame is the best view of the city.
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
+- **Phase 16 — Planting and the plaza** (Aria, 2026-09-18, from the r129 frames).
+  - *The trees are too consistent.* The Suburban kit has two trees, so variety cannot come from the kit as shipped.
+    Take the Nature Kit's geometry (fifty species: oak, pine, thin, fat, small, bush, flower, `planter`) and **retint its materials in the render script** to the Suburban green family,
+    scaled so no tree stands taller than a two-storey building — the one-palette rule is about colour, and the pipeline assigns colour.
+    Then plant by rule, in `pkg/plan`: street trees in a line at fixed spacing along every avenue (a city plants in rows);
+    two to four species per park block mixed by a seeded scatter with in-cell offsets (a park grows in groves); bushes and planters on the plaza's edge; the belt as the wood it is now, but mixed.
+    Natural texture, planned placement — nothing per-frame random.
+  - *The fountain is a blue disc.* No kit on disk has a fountain. Model one in the pipeline as the drone was: a basin, a column, a lip, a water disc in the plant's steel blue, and three spray frames cycled slowly (still under `reduced_motion`).
+    Its card already says it means nothing; it should at least look like what it is.
+  - Exit: a fit frame and a plaza close-up in `docs/screenshots/`, and `make sprites-check` still byte-identical on a no-op render.
 
 ### Worth knowing, not bugs
 
