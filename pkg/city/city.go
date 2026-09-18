@@ -7,9 +7,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/auroq/botropolis/pkg/format"
-	"github.com/auroq/botropolis/pkg/state"
 	"time"
+
+	"github.com/auroq/botropolis/pkg/format"
+	"github.com/auroq/botropolis/pkg/plan"
+	"github.com/auroq/botropolis/pkg/state"
 )
 
 // World units are pixels at zoom 1; every size is a whole number of 16 px
@@ -45,12 +47,15 @@ type Building struct {
 type District struct {
 	Name      string
 	Root      string
-	slot      int
 	columns   int
 	size      Point
 	Rect      Rect
 	Buildings []*Building
 	roads     []roadNote
+	// Storage marks the one district that holds every parked session,
+	// grouped by project.
+	Storage bool
+	Groups  []StorageGroup
 }
 
 type roadNote struct {
@@ -70,9 +75,18 @@ type City struct {
 	Streets     []Street
 	StreetCells []StreetCell
 	RiverCells  []RiverCell
-	LakeCells   []LakeCell
 	Night       bool
 	Time        time.Time
+
+	// From the plan: the plaza and its fountain, every park block and
+	// belt strip, the trees and lamps, and the map's edge.
+	Plaza    Rect
+	Fountain Rect
+	Parks    []Park
+	Trees    []Cell
+	Lamps    []Cell
+	bounds   Rect
+	plan     plan.Plan
 }
 
 type Hit struct {
@@ -83,15 +97,29 @@ type Hit struct {
 	Road     *RoadLine
 	Beam     *Beam
 	Line     *PowerLine
-	Water    string // "river" or "pond" when Landmark is LandmarkWater
+	Park     *Park
 }
 
 // Near is the road, beam or power line within tolerance of p, nearest
-// first, or nothing.
+// first, or nothing. A road is hovered along the avenues its traffic
+// takes; only a road with no route falls back to its straight line.
 func (c *City) Near(p Point, tolerance float64) Hit {
 	best := tolerance
 	var hit Hit
+	routed := map[*RoadLine]bool{}
+	for i := range c.Streets {
+		street := &c.Streets[i]
+		routed[street.Road] = true
+		for k := 1; k < len(street.Path); k++ {
+			if d := p.DistanceToSegment(street.Path[k-1], street.Path[k]); d < best {
+				best, hit = d, Hit{Road: street.Road}
+			}
+		}
+	}
 	for i := range c.Roads {
+		if routed[&c.Roads[i]] {
+			continue
+		}
 		if d := p.DistanceToSegment(c.Roads[i].A, c.Roads[i].B); d < best {
 			best, hit = d, Hit{Road: &c.Roads[i]}
 		}
@@ -129,8 +157,13 @@ func ProjectRoot(cwd string) string {
 
 func Build(snapshot state.Snapshot, layout *Layout) *City {
 	byRoot := map[string][]state.Session{}
+	parked := map[string][]state.Session{}
 	for _, s := range snapshot.Sessions {
 		root := ProjectRoot(s.CWD)
+		if s.State == state.Parked {
+			parked[root] = append(parked[root], s)
+			continue
+		}
 		byRoot[root] = append(byRoot[root], s)
 	}
 	roots := make([]string, 0, len(byRoot))
@@ -138,84 +171,78 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 		roots = append(roots, root)
 	}
 	sort.Slice(roots, func(i, j int) bool {
-		return filepath.Base(roots[i]) < filepath.Base(roots[j])
+		return baseName(roots[i]) < baseName(roots[j])
 	})
 
 	city := &City{Time: snapshot.At}
-	for _, root := range roots {
-		city.Districts = append(city.Districts, buildDistrict(root, byRoot[root], layout))
+	if len(snapshot.Sessions) == 0 {
+		city.placeLandmarks(snapshot)
+		return city
 	}
-	layout.PlaceDistricts(city.Districts)
+	for _, root := range roots {
+		city.Districts = append(city.Districts, buildDistrict(root, byRoot[root], parked[root], layout))
+	}
+	in := planInput(city.Districts, len(snapshot.Servers))
+	p := plan.Make(in, layout.memory())
+	storage := buildStorage(parked, float64(p.SpanCols())*CellSize)
+	if storage != nil {
+		in.StorageRows = cellsNeeded(storage.size.Y)
+		p = plan.Make(in, layout.memory())
+	}
+	city.plan = p
+	city.bounds = cellRect(p.Bounds)
+	for _, d := range city.Districts {
+		d.placeOn(cellRect(p.Blocks[d.Root]))
+	}
+	if storage != nil {
+		storage.placeOn(cellRect(p.Storage))
+		city.Districts = append(city.Districts, storage)
+	}
+	for _, park := range append(append([]plan.Block(nil), p.Parks...), p.Belt...) {
+		city.Parks = append(city.Parks, Park{Rect: cellRect(park)})
+	}
+	for _, t := range p.Trees {
+		city.Trees = append(city.Trees, toCell(t))
+	}
+	for _, l := range p.Lamps {
+		city.Lamps = append(city.Lamps, toCell(l))
+	}
+	city.Plaza = cellRect(p.Plaza)
+	city.Fountain = cellAt(p.Fountain)
 	city.placeLandmarks(snapshot)
 	city.placeRoads(snapshot.Roads)
-	city.placeRiver(layout)
-	city.placeLake()
+	city.placeRiver()
 	city.placeStreets()
 	return city
 }
 
-func buildDistrict(root string, sessions []state.Session, layout *Layout) *District {
-	district := &District{Name: filepath.Base(root), Root: root}
-	sort.Slice(sessions, func(i, j int) bool {
-		if !sessions[i].StartedAt.Equal(sessions[j].StartedAt) {
-			return sessions[i].StartedAt.Before(sessions[j].StartedAt)
-		}
-		return sessions[i].ID < sessions[j].ID
-	})
-	var live, parked []state.Session
-	for _, s := range sessions {
-		if s.State == state.Parked {
-			parked = append(parked, s)
-		} else {
-			live = append(live, s)
-		}
-	}
-	slots := layout.Slots(root, live, parked)
-	yard := layout.YardSlots(root, parked, live)
+func baseName(root string) string {
+	return filepath.Base(root)
+}
 
-	liveWidth, liveHeight := 0.0, 0.0
-	if len(live) > 0 {
-		district.columns = buildingColumns(maxOf(slots) + 1)
-		used := min(maxOf(slots)+1, district.columns)
-		rows := math.Ceil(float64(maxOf(slots)+1) / float64(district.columns))
-		liveWidth = pitch(used, BuildingSize, BuildingGap)
-		liveHeight = pitch(int(rows), BuildingSize, BuildingGap)
-	}
-	yardColumns := yardColumnsFor(district.columns, maxOf(yard)+1)
-	yardWidth, yardHeight := 0.0, 0.0
-	yardTop := DistrictPadding + liveHeight
-	if len(parked) > 0 {
-		used := min(maxOf(yard)+1, yardColumns)
-		rows := math.Ceil(float64(maxOf(yard)+1) / float64(yardColumns))
-		yardWidth = pitch(used, ParkedSize, ParkedGap)
-		yardHeight = pitch(int(rows), ParkedSize, ParkedGap)
-		if liveHeight > 0 {
-			yardTop += YardGap
+func buildDistrict(root string, live, parked []state.Session, layout *Layout) *District {
+	district := &District{Name: baseName(root), Root: root}
+	sort.Slice(live, func(i, j int) bool {
+		if !live[i].StartedAt.Equal(live[j].StartedAt) {
+			return live[i].StartedAt.Before(live[j].StartedAt)
 		}
-	}
+		return live[i].ID < live[j].ID
+	})
+	slots := layout.Slots(root, live, parked)
+	district.columns = buildingColumns(maxOf(slots) + 1)
+	used := min(maxOf(slots)+1, district.columns)
+	rows := math.Ceil(float64(maxOf(slots)+1) / float64(district.columns))
 	district.size = Point{
-		X: 2*DistrictPadding + math.Max(liveWidth, yardWidth),
-		Y: yardTop + yardHeight + DistrictPadding,
-	}
-	if liveHeight > 0 && yardHeight == 0 {
-		district.size.Y = 2*DistrictPadding + liveHeight
+		X: 2*DistrictPadding + pitch(used, BuildingSize, BuildingGap),
+		Y: 2*DistrictPadding + pitch(int(rows), BuildingSize, BuildingGap),
 	}
 	for _, s := range live {
 		column, row := slots[s.ID]%district.columns, slots[s.ID]/district.columns
 		at := Point{X: DistrictPadding + float64(column)*(BuildingSize+BuildingGap), Y: DistrictPadding + float64(row)*(BuildingSize+BuildingGap)}
 		district.Buildings = append(district.Buildings, newBuilding(s, slots[s.ID], at, BuildingSize))
 	}
-	for _, s := range parked {
-		column, row := yard[s.ID]%yardColumns, yard[s.ID]/yardColumns
-		at := Point{X: DistrictPadding + float64(column)*(ParkedSize+ParkedGap), Y: yardTop + float64(row)*(ParkedSize+ParkedGap)}
-		district.Buildings = append(district.Buildings, newBuilding(s, yard[s.ID], at, ParkedSize))
-	}
 	sort.Slice(district.Buildings, func(i, j int) bool {
-		a, b := district.Buildings[i], district.Buildings[j]
-		if a.BoardedUp != b.BoardedUp {
-			return !a.BoardedUp
-		}
-		return a.slot < b.slot
+		return district.Buildings[i].slot < district.Buildings[j].slot
 	})
 	return district
 }
@@ -242,20 +269,6 @@ func buildingColumns(slots int) int {
 	columns := int(math.Ceil(math.Sqrt(float64(slots))))
 	if columns < minBuildingColumns {
 		columns = minBuildingColumns
-	}
-	return columns
-}
-
-// yardColumnsFor packs parked lots under the live grid: square-ish, and at
-// least as wide as the live grid so a district never narrows below it.
-func yardColumnsFor(liveColumns, lots int) int {
-	columns := int(math.Ceil(math.Sqrt(float64(lots))))
-	if columns < minYardColumns {
-		columns = minYardColumns
-	}
-	if liveColumns > 0 {
-		fit := int(math.Floor((pitch(liveColumns, BuildingSize, BuildingGap) + ParkedGap) / (ParkedSize + ParkedGap)))
-		columns = max(columns, fit)
 	}
 	return columns
 }
@@ -293,33 +306,19 @@ func (c *City) Buildings() []*Building {
 	return buildings
 }
 
+// Bounds is the plan's edge: belt to belt, river included.
 func (c *City) Bounds() Rect {
-	if len(c.Districts) == 0 {
-		return Rect{}
-	}
-	bounds := c.DistrictBounds()
-	if c.Plant.Rect.Area() > 0 {
-		bounds = bounds.Union(c.Plant.Rect)
-	}
-	for _, t := range c.Towers {
-		bounds = bounds.Union(t.Rect)
-	}
-	if c.Library.Rect.Area() > 0 {
-		bounds = bounds.Union(c.Library.Rect)
-	}
-	if c.Hall.Rect.Area() > 0 {
-		bounds = bounds.Union(c.Hall.Rect)
-	}
-	return bounds
+	return c.bounds
 }
 
-// Extent is Bounds plus the lake: what a fit should frame.
+// Extent is what a fit should frame: the whole plan.
 func (c *City) Extent() Rect {
-	bounds := c.Bounds()
-	for _, l := range c.LakeCells {
-		bounds = bounds.Union(l.Cell.Rect())
-	}
-	return bounds
+	return c.bounds
+}
+
+// Plan is the plan the city was laid out on.
+func (c *City) Plan() plan.Plan {
+	return c.plan
 }
 
 func (c *City) At(p Point) Hit {
@@ -337,11 +336,11 @@ func (c *City) At(p Point) Hit {
 	if c.Hall.Rect.Area() > 0 && c.Hall.Rect.Contains(p) {
 		return Hit{Landmark: LandmarkHall}
 	}
-	if _, ok := c.River(cellOf(p)); ok {
-		return Hit{Landmark: LandmarkWater, Water: "river"}
+	if c.Fountain.Area() > 0 && c.Fountain.Contains(p) {
+		return Hit{Landmark: LandmarkFountain}
 	}
-	if _, ok := c.Lake(cellOf(p)); ok {
-		return Hit{Landmark: LandmarkWater, Water: "pond"}
+	if _, ok := c.River(cellOf(p)); ok {
+		return Hit{Landmark: LandmarkWater}
 	}
 	for _, d := range c.Districts {
 		if !d.Rect.Contains(p) {
@@ -355,6 +354,14 @@ func (c *City) At(p Point) Hit {
 			}
 		}
 		return hit
+	}
+	for i := range c.Parks {
+		if c.Parks[i].Rect.Contains(p) {
+			return Hit{Landmark: LandmarkPark, Park: &c.Parks[i]}
+		}
+	}
+	if c.Plaza.Area() > 0 && c.Plaza.Contains(p) {
+		return Hit{Landmark: LandmarkPlaza}
 	}
 	return Hit{}
 }
@@ -402,6 +409,9 @@ func (b *Building) Card(now time.Time) Card {
 }
 
 func (d *District) Card() Card {
+	if d.Storage {
+		return d.storageCard()
+	}
 	var fresh, cached float64
 	for _, b := range d.Buildings {
 		fresh += b.Session.FreshTokensPerHour

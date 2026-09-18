@@ -16,8 +16,6 @@ import (
 // when a tile is at least twelve pixels wide.
 const (
 	maxGroundTiles = 30_000
-	treeChance     = 160
-	grassVariants  = 64
 )
 
 var (
@@ -33,7 +31,15 @@ var (
 	colorMapParked   = color.NRGBA{0x44, 0x42, 0x48, 0xff}
 	colorMinimapView = color.NRGBA{0xff, 0xff, 0xff, 0xc0}
 	colorWater       = color.NRGBA{0x5a, 0xa8, 0xd0, 0xff}
+	colorWaterLight  = color.NRGBA{0xc8, 0xe8, 0xf8, 0xff}
 	colorWaterNight  = color.NRGBA{0x28, 0x48, 0x68, 0xff}
+	colorVoid        = color.NRGBA{0x12, 0x14, 0x1a, 0xff}
+	colorPlazaFloor  = color.NRGBA{0x8a, 0x86, 0x7c, 0xff}
+	colorMapPark     = color.NRGBA{0x2f, 0x4a, 0x2a, 0xff}
+	colorMapPlaza    = color.NRGBA{0x5a, 0x57, 0x50, 0xff}
+	colorLampOff     = color.NRGBA{0x9a, 0x9a, 0x9a, 0xff}
+	colorLampOn      = color.NRGBA{0xff, 0xe0, 0x90, 0xff}
+	colorLampGlow    = color.NRGBA{0xff, 0xd0, 0x70, 0x50}
 	colorStreet      = color.NRGBA{0x4a, 0x4c, 0x52, 0xff}
 	colorStreetLine  = color.NRGBA{0xd8, 0xd8, 0xc8, 0x80}
 	colorHighlight   = color.NRGBA{0xff, 0xff, 0xff, 0xa0}
@@ -41,16 +47,6 @@ var (
 	townGrass = [3][2]int{{0, 0}, {1, 0}, {2, 0}}
 	townTrees = [3][2]int{{4, 0}, {4, 1}, {5, 0}}
 )
-
-// tileHash spreads grass variants and trees deterministically, so the ground
-// never shimmers between frames or scans.
-func tileHash(col, row int) uint32 {
-	h := uint32(col)*0x9e3779b1 ^ uint32(row)*0x85ebca6b
-	h ^= h >> 15
-	h *= 0x2c1b3c6d
-	h ^= h >> 12
-	return h
-}
 
 func groundScale(night bool) *ebiten.ColorScale {
 	scale := &ebiten.ColorScale{}
@@ -66,48 +62,42 @@ func groundScale(night bool) *ebiten.ColorScale {
 	return scale
 }
 
-// ground fills the viewport: flat colour in the map view, hashed grass tiles
-// with the odd tree when the sprites are legible.
+// ground fills the viewport: nothing beyond the map's edge, flat colour
+// in the map view, grass tiles with the plan's trees when the sprites
+// are legible.
 func (g *Game) ground(screen *ebiten.Image, cam *city.Camera, c *city.City, width, height float64, detailed bool) {
+	screen.Fill(colorVoid)
+	bounds := c.Bounds()
+	if bounds.Area() == 0 {
+		return
+	}
 	flat := colorGround
 	if c.Night {
 		flat = colorGroundNight
 	}
-	screen.Fill(flat)
+	g.rect(screen, cam, bounds, flat)
 	if g.sprites == nil || !detailed {
 		return
 	}
 	min := cam.ScreenToWorld(city.Point{})
 	max := cam.ScreenToWorld(city.Point{X: width, Y: height})
-	col0, col1 := int(math.Floor(min.X/city.Tile)), int(math.Ceil(max.X/city.Tile))
-	row0, row1 := int(math.Floor(min.Y/city.Tile)), int(math.Ceil(max.Y/city.Tile))
+	col0, col1 := int(math.Floor(math.Max(min.X, bounds.Min.X)/city.Tile)), int(math.Ceil(math.Min(max.X, bounds.Max.X)/city.Tile))
+	row0, row1 := int(math.Floor(math.Max(min.Y, bounds.Min.Y)/city.Tile)), int(math.Ceil(math.Min(max.Y, bounds.Max.Y)/city.Tile))
 	if (col1-col0)*(row1-row0) > maxGroundTiles {
 		return
 	}
 	scale := groundScale(c.Night)
 	for row := row0; row < row1; row++ {
 		for col := col0; col < col1; col++ {
-			h := tileHash(col, row)
-			pick := townGrass[0]
-			switch h % grassVariants {
-			case 1:
-				pick = townGrass[1]
-			case 2:
-				pick = townGrass[2]
-			}
 			r := city.RectAt(float64(col)*city.Tile, float64(row)*city.Tile, city.Tile, city.Tile)
-			g.drawTile(screen, cam, g.sprites.town.tile(pick[0], pick[1]), r, scale)
-			if _, water := c.River(city.Cell{Col: col, Row: row}); water {
-				continue
-			}
-			if _, water := c.Lake(city.Cell{Col: col, Row: row}); water {
-				continue
-			}
-			if (h>>8)%treeChance == 0 && clearOfCity(c, r) {
-				tree := townTrees[(h>>16)%uint32(len(townTrees))]
-				g.drawTile(screen, cam, g.sprites.town.tile(tree[0], tree[1]), r, scale)
-			}
+			g.drawTile(screen, cam, g.sprites.town.tile(townGrass[0][0], townGrass[0][1]), r, scale)
 		}
+	}
+	for _, t := range c.Trees {
+		centre := t.Center()
+		r := city.RectAt(centre.X-city.Tile/2, centre.Y-city.Tile/2, city.Tile, city.Tile)
+		tree := townTrees[((t.Row%len(townTrees))+len(townTrees))%len(townTrees)]
+		g.drawTile(screen, cam, g.sprites.town.tile(tree[0], tree[1]), r, scale)
 	}
 }
 
@@ -121,8 +111,11 @@ func (g *Game) flatCells(screen *ebiten.Image, cam *city.Camera, c *city.City) {
 	for _, rc := range c.RiverCells {
 		g.rect(screen, cam, rc.Cell.Rect(), water)
 	}
-	for _, lc := range c.LakeCells {
-		g.rect(screen, cam, lc.Cell.Rect(), water)
+	if c.Plaza.Area() > 0 {
+		g.rect(screen, cam, c.Plaza, colorPlazaFloor)
+	}
+	if c.Fountain.Area() > 0 {
+		g.circle(screen, cam, c.Fountain.Center(), city.Tile, water)
 	}
 	for _, sc := range c.StreetCells {
 		r := sc.Cell.Rect()
@@ -142,25 +135,6 @@ func (g *Game) flatCells(screen *ebiten.Image, cam *city.Camera, c *city.City) {
 			g.line(screen, cam, centre, city.Point{X: centre.X, Y: centre.Y + half}, 1, colorStreetLine)
 		}
 	}
-}
-
-// clearOfCity keeps decoration a tile away from anything that matters.
-func clearOfCity(c *city.City, r city.Rect) bool {
-	margin := r.Inset(-city.Tile)
-	for _, d := range c.Districts {
-		if d.Rect.Overlaps(margin) {
-			return false
-		}
-	}
-	if c.Plant.Rect.Overlaps(margin) || c.Library.Rect.Overlaps(margin) || c.Hall.Rect.Overlaps(margin) {
-		return false
-	}
-	for _, t := range c.Towers {
-		if t.Rect.Overlaps(margin) {
-			return false
-		}
-	}
-	return true
 }
 
 func (g *Game) stroke(screen *ebiten.Image, cam *city.Camera, r city.Rect, width float32, c color.NRGBA) {
@@ -242,6 +216,16 @@ func (g *Game) minimap(screen *ebiten.Image, box city.Rect) {
 	}
 	g.roundPanel(screen, box)
 	seconds := 0.0
+	fill := func(r city.Rect, col color.NRGBA) {
+		vector.FillRect(screen, float32(r.Min.X), float32(r.Min.Y), float32(math.Max(1, r.Width())), float32(math.Max(1, r.Height())), col, false)
+	}
+	fill(all, colorGroundNight)
+	for _, park := range c.Parks {
+		fill(m.ProjectRect(park.Rect), colorMapPark)
+	}
+	if c.Plaza.Area() > 0 {
+		fill(m.ProjectRect(c.Plaza), colorMapPlaza)
+	}
 	for _, d := range c.Districts {
 		r := m.ProjectRect(d.Rect)
 		vector.FillRect(screen, float32(r.Min.X), float32(r.Min.Y), float32(math.Max(1, r.Width())), float32(math.Max(1, r.Height())), colorMapDistHi, false)

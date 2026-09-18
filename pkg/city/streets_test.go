@@ -48,9 +48,12 @@ func TestStreets(t *testing.T) {
 	t.Run("when there are no roads", func(t *testing.T) {
 		c := city.Build(snapshot(session("a", cinders, state.Working)), city.NewLayout())
 
-		t.Run("it should lay no streets", func(t *testing.T) {
+		t.Run("it should carry no traffic", func(t *testing.T) {
 			assert.Empty(t, c.Streets)
-			assert.Empty(t, c.StreetCells)
+		})
+
+		t.Run("it should still lay the avenue grid", func(t *testing.T) {
+			assert.NotEmpty(t, c.StreetCells)
 		})
 	})
 }

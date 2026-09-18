@@ -98,6 +98,7 @@ type Plan struct {
 	River    []RiverCell
 
 	rings  int
+	span   int
 	colX   map[int]int
 	rowY   map[int]int
 	width  map[int]int
@@ -107,7 +108,7 @@ type Plan struct {
 }
 
 const (
-	minSlot   = 4
+	minSlot   = 3
 	plazaCols = 6
 	plazaRows = 5
 	belt      = 2
@@ -209,6 +210,7 @@ func (p *Plan) place(in Input) {
 		x += p.width[c] + 1
 	}
 	eastRoad := x - 1
+	p.span = eastRoad - p.colX[-p.rings]
 	cols := eastRoad + 1 + belt + 1
 
 	ridge := belt
@@ -340,6 +342,12 @@ func (p Plan) IsStreet(c Cell) bool {
 // IsPark reports whether a cell is park: an unused block or the belt.
 func (p Plan) IsPark(c Cell) bool {
 	return p.park[c]
+}
+
+// SpanCols is the width of the rings kerb to kerb: what the storage
+// block along the south spans.
+func (p Plan) SpanCols() int {
+	return p.span
 }
 
 // Rings is how many rings of blocks surround the plaza.

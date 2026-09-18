@@ -104,48 +104,6 @@ func TestWirePoint(t *testing.T) {
 	})
 }
 
-func TestGroundPick(t *testing.T) {
-	t.Run("when many cells are picked", func(t *testing.T) {
-		counts := map[int]int{}
-		for col := 0; col < 200; col++ {
-			for row := 0; row < 200; row++ {
-				counts[groundPick(tileHash(col, row))]++
-			}
-		}
-		total := 200 * 200
-
-		t.Run("it should be mostly plain grass", func(t *testing.T) {
-			assert.Greater(t, float64(counts[groundGrass])/float64(total), 0.6)
-		})
-
-		t.Run("it should keep dirt rare", func(t *testing.T) {
-			assert.Less(t, float64(counts[groundDirt])/float64(total), 0.05)
-		})
-
-		t.Run("it should plant some trees", func(t *testing.T) {
-			assert.Greater(t, counts[groundTree], 0)
-		})
-	})
-
-	t.Run("when the same cell is hashed twice", func(t *testing.T) {
-		t.Run("it should not change", func(t *testing.T) {
-			assert.Equal(t, tileHash(7, 9), tileHash(7, 9))
-		})
-	})
-
-	t.Run("when neighbouring cells are hashed", func(t *testing.T) {
-		t.Run("it should not repeat in a stripe", func(t *testing.T) {
-			same := 0
-			for col := 0; col < 50; col++ {
-				if groundPick(tileHash(col, 3)) == groundPick(tileHash(col+1, 3)) && groundPick(tileHash(col, 3)) != groundGrass {
-					same++
-				}
-			}
-			assert.Less(t, same, 10)
-		})
-	})
-}
-
 func TestFootprintAndBlock(t *testing.T) {
 	cam := city.NewCamera()
 	cam.Projection = city.Isometric

@@ -49,9 +49,9 @@ func TestHall(t *testing.T) {
 		c := city.Build(richSnapshot(), city.NewLayout())
 		card := c.Hall.Card(now)
 
-		t.Run("it should stand below the library", func(t *testing.T) {
-			assert.Greater(t, c.Hall.Rect.Min.Y, c.Library.Rect.Max.Y)
-			assert.Equal(t, c.Library.Rect.Min.X, c.Hall.Rect.Min.X)
+		t.Run("it should stand on the plaza, right of the plant", func(t *testing.T) {
+			assert.True(t, c.Plaza.Contains(c.Hall.Rect.Center()))
+			assert.Greater(t, c.Hall.Rect.Min.X, c.Plant.Rect.Max.X)
 		})
 
 		t.Run("it should be part of the city bounds", func(t *testing.T) {
@@ -97,27 +97,30 @@ func TestLandmarks(t *testing.T) {
 	require.NotNil(t, c)
 
 	t.Run("when the city is built from a snapshot with power, servers and skills", func(t *testing.T) {
-		t.Run("it should place the power plant above the districts", func(t *testing.T) {
+		t.Run("it should put the power plant on the plaza", func(t *testing.T) {
+			assert.True(t, c.Plaza.Contains(c.Plant.Rect.Min) && c.Plaza.Contains(c.Plant.Rect.Max))
+		})
+
+		t.Run("it should keep the plaza clear of every district", func(t *testing.T) {
 			for _, d := range c.Districts {
-				assert.LessOrEqual(t, c.Plant.Rect.Max.Y, d.Rect.Min.Y, d.Name)
+				assert.False(t, d.Rect.Overlaps(c.Plaza), d.Name)
 			}
 		})
 
-		t.Run("it should centre the plant over the districts", func(t *testing.T) {
-			bounds := c.DistrictBounds()
-			assert.InDelta(t, bounds.Center().X, c.Plant.Rect.Center().X, 1e-9)
-		})
-
-		t.Run("it should raise one tower per server, down the left edge", func(t *testing.T) {
+		t.Run("it should raise one tower per server along the north ridge", func(t *testing.T) {
 			require.Len(t, c.Towers, 2)
 			for _, tower := range c.Towers {
-				assert.Less(t, tower.Rect.Max.X, c.DistrictBounds().Min.X, tower.Server.Name)
+				assert.LessOrEqual(t, tower.Rect.Max.Y, c.Plaza.Min.Y, tower.Server.Name)
+				for _, d := range c.Districts {
+					assert.LessOrEqual(t, tower.Rect.Max.Y, d.Rect.Min.Y, tower.Server.Name)
+				}
 			}
-			assert.Less(t, c.Towers[0].Rect.Min.Y, c.Towers[1].Rect.Min.Y)
+			assert.Less(t, c.Towers[0].Rect.Min.X, c.Towers[1].Rect.Min.X)
 		})
 
-		t.Run("it should put the library down the right edge", func(t *testing.T) {
-			assert.Greater(t, c.Library.Rect.Min.X, c.DistrictBounds().Max.X)
+		t.Run("it should put the library on the plaza below the plant", func(t *testing.T) {
+			assert.True(t, c.Plaza.Contains(c.Library.Rect.Center()))
+			assert.Greater(t, c.Library.Rect.Min.Y, c.Plant.Rect.Max.Y)
 		})
 
 		t.Run("it should include the landmarks in the bounds", func(t *testing.T) {
@@ -126,8 +129,8 @@ func TestLandmarks(t *testing.T) {
 			assert.True(t, c.Bounds().Contains(c.Library.Rect.Max))
 		})
 
-		t.Run("it should not pad the bounds for labels", func(t *testing.T) {
-			assert.Equal(t, c.Towers[0].Rect.Min.X, c.Bounds().Min.X)
+		t.Run("it should start the map at the origin", func(t *testing.T) {
+			assert.Equal(t, city.Point{}, c.Bounds().Min)
 		})
 	})
 

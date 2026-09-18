@@ -272,14 +272,30 @@ const LineHoverPixels = 6.0
 func (s *Scene) PointerMove(screen Point) {
 	world := s.camera.ScreenToWorld(screen)
 	s.hover = s.city.At(world)
-	if s.hover == (Hit{}) {
-		s.hover = s.city.Near(world, LineHoverPixels/s.camera.Zoom)
+	if s.hover.ground() {
+		if near := s.city.Near(world, LineHoverPixels/s.camera.Zoom); near != (Hit{}) {
+			s.hover = near
+		}
 	}
+}
+
+// ground is a hit on something a line may run over: nothing, a park, the
+// plaza or the river.
+func (h Hit) ground() bool {
+	if h.Building != nil || h.District != nil || h.Tower != nil {
+		return false
+	}
+	switch h.Landmark {
+	case LandmarkNone, LandmarkPark, LandmarkPlaza, LandmarkWater:
+		return true
+	}
+	return false
 }
 
 func (s *Scene) Pan(delta Point) {
 	s.touched = true
 	s.camera.Pan(delta.Scale(1 / s.camera.Zoom))
+	s.clamp()
 }
 
 func (s *Scene) Wheel(cursor Point, amount float64) {
@@ -288,6 +304,19 @@ func (s *Scene) Wheel(cursor Point, amount float64) {
 	}
 	s.touched = true
 	s.camera.ZoomAt(cursor, math.Pow(wheelZoomStep, amount))
+	s.clamp()
+}
+
+// clamp keeps the map under the middle of the window: the camera can
+// reach the edge but never leave the plan for the void beyond it.
+func (s *Scene) clamp() {
+	plane := s.camera.Projection.Bounds(s.city.Extent())
+	if plane.Area() == 0 {
+		return
+	}
+	under := Point{X: s.width / 2, Y: s.height / 2}.Scale(1 / s.camera.Zoom).Sub(s.camera.Offset)
+	held := Point{X: math.Min(math.Max(under.X, plane.Min.X), plane.Max.X), Y: math.Min(math.Max(under.Y, plane.Min.Y), plane.Max.Y)}
+	s.camera.Offset = s.camera.Offset.Add(under.Sub(held))
 }
 
 // JumpTo selects the next building in the given state after the current
@@ -388,7 +417,13 @@ func (s *Scene) Card() (Card, bool) {
 	case s.hover.Line != nil:
 		return s.hover.Line.Card(), true
 	case s.hover.Landmark == LandmarkWater:
-		return Card{Title: s.hover.Water, Lines: []string{"scenery: it means nothing"}}, true
+		return Card{Title: "river", Lines: []string{"the map's edge on this side"}}, true
+	case s.hover.Landmark == LandmarkPark && s.hover.Park != nil:
+		return s.hover.Park.Card(), true
+	case s.hover.Landmark == LandmarkFountain:
+		return fountainCard(), true
+	case s.hover.Landmark == LandmarkPlaza:
+		return plazaCard(), true
 	}
 	return Card{}, false
 }

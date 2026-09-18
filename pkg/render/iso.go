@@ -18,9 +18,6 @@ import (
 // names and the pixel offsets that make the pieces meet at zoom 1.
 const (
 	isoGrass       = "landscapeTiles_067.png"
-	isoGrassAlt    = "landscapeTiles_015.png"
-	isoGrassAlt2   = "landscapeTiles_075.png"
-	isoDirt        = "landscapeTiles_083.png"
 	isoTreeScale   = 1.8 // the road pack's trees are small; scaled to read as trees
 	isoFloorWork   = "buildingTiles_116.png"
 	isoFloorNeeds  = "buildingTiles_030.png"
@@ -115,39 +112,41 @@ func footprint(cam *city.Camera, r city.Rect) (top city.Point, width float64) {
 
 // isoGround tiles the visible world with flat grass, one Kenney tile per
 // building cell.
+// isoGround tiles the plan's ground: grass inside the map's edge, the
+// river down the east side, and a tree on every cell the plan planted;
+// beyond the edge there is nothing to see.
 func (g *Game) isoGround(screen *ebiten.Image, cam *city.Camera, c *city.City, width, height float64) {
-	flat := colorGround
-	if c.Night {
-		flat = colorIsoNight
+	screen.Fill(colorVoid)
+	bounds := c.Bounds()
+	if bounds.Area() == 0 {
+		return
 	}
-	screen.Fill(flat)
 	if g.sprites == nil {
+		flat := colorGround
+		if c.Night {
+			flat = colorIsoNight
+		}
+		g.poly(screen, cam, bounds, flat)
 		return
 	}
 	grass := g.sprites.iso.landscape.sprite(isoGrass)
-	corners := []city.Point{{}, {X: width}, {X: width, Y: height}, {Y: height}}
-	min := city.Point{X: math.Inf(1), Y: math.Inf(1)}
-	max := city.Point{X: math.Inf(-1), Y: math.Inf(-1)}
-	for _, sc := range corners {
-		w := cam.ScreenToWorld(sc)
-		min.X, min.Y = math.Min(min.X, w.X), math.Min(min.Y, w.Y)
-		max.X, max.Y = math.Max(max.X, w.X), math.Max(max.Y, w.Y)
-	}
-	cell := city.BuildingSize
-	col0, col1 := int(math.Floor(min.X/cell))-1, int(math.Ceil(max.X/cell))+1
-	row0, row1 := int(math.Floor(min.Y/cell))-1, int(math.Ceil(max.Y/cell))+1
+	cell := city.CellSize
+	col0, col1 := int(math.Floor(bounds.Min.X/cell)), int(math.Ceil(bounds.Max.X/cell))
+	row0, row1 := int(math.Floor(bounds.Min.Y/cell)), int(math.Ceil(bounds.Max.Y/cell))
 	if (col1-col0)*(row1-row0) > maxIsoCells {
 		return
 	}
-	scale := cam.Zoom
 	tint := groundScale(c.Night)
 	tint.SetR(tint.R() * 1.6)
 	tint.SetG(tint.G() * 1.6)
 	tint.SetB(tint.B() * 1.6)
-	land := g.sprites.iso.landscape
 	river := map[city.Cell]int{}
 	for _, rc := range c.RiverCells {
 		river[rc.Cell] = rc.Mask
+	}
+	trees := map[city.Cell]bool{}
+	for _, t := range c.Trees {
+		trees[t] = true
 	}
 	for row := row0; row < row1; row++ {
 		for col := col0; col < col1; col++ {
@@ -163,82 +162,68 @@ func (g *Game) isoGround(screen *ebiten.Image, cam *city.Camera, c *city.City, w
 					continue
 				}
 			}
-			if land, ok := c.Lake(city.Cell{Col: col, Row: row}); ok {
-				if img := g.sprites.iso.road(lakeTile(land)); img != nil {
-					over := (w + 1.5) / float64(img.Bounds().Dx())
-					g.drawSprite(screen, img, city.Point{X: top.X - w/2 - 0.75, Y: top.Y - 0.5}, over, tint)
-					continue
-				}
-			}
-			img := grass
-			switch pick := groundPick(tileHash(col, row)); pick {
-			case groundGrassAlt:
-				img = land.sprite(isoGrassAlt)
-			case groundGrassAlt2:
-				img = land.sprite(isoGrassAlt2)
-			case groundDirt:
-				img = land.sprite(isoDirt)
-			}
-			if img == nil {
-				img = grass
-			}
 			// A hair of overscan closes the seams linear filtering leaves
-			// between tiles at fractional scales. Taller tiles hang their
-			// extra height above the diamond, so anchor by the bottom skirt.
-			over := scale * (w + 1.5) / w
-			h := float64(img.Bounds().Dy()) * over
-			base := float64(grass.Bounds().Dy()) * over
-			g.drawSprite(screen, img, city.Point{X: top.X - w/2 - 0.75, Y: top.Y - 0.5 - (h - base)}, over, tint)
-			if groundPick(tileHash(col, row)) == groundTree && clearOfCity(c, r) {
-				g.isoTree(screen, cam, r, tileHash(col, row), tint)
+			// between tiles at fractional scales.
+			over := cam.Zoom * (w + 1.5) / w
+			g.drawSprite(screen, grass, city.Point{X: top.X - w/2 - 0.75, Y: top.Y - 0.5}, over, tint)
+			if trees[city.Cell{Col: col, Row: row}] {
+				g.isoTree(screen, cam, r, row, tint)
 			}
 		}
 	}
 }
 
-var isoTrees = []string{"treeTall", "treeShort", "treeAltTall", "coniferTall", "coniferShort", "coniferAltTall"}
+// isoTrees are the two species the plan plants, one per row so the park
+// reads as rows.
+var isoTrees = []string{"treeTall", "coniferTall"}
 
-// isoTree plants one of the road pack's trees on a cell, a little off
-// centre so the woods do not line up.
-func (g *Game) isoTree(screen *ebiten.Image, cam *city.Camera, r city.Rect, h uint32, tint *ebiten.ColorScale) {
-	tree := g.sprites.iso.road(isoTrees[(h>>20)%uint32(len(isoTrees))])
+// isoTree plants a tree on the centre of a cell.
+func (g *Game) isoTree(screen *ebiten.Image, cam *city.Camera, r city.Rect, row int, tint *ebiten.ColorScale) {
+	tree := g.sprites.iso.road(isoTrees[((row%len(isoTrees))+len(isoTrees))%len(isoTrees)])
 	if tree == nil {
 		return
 	}
-	dx := (float64((h>>8)%100)/100 - 0.5) * r.Width() * 0.5
-	dy := (float64((h>>14)%100)/100 - 0.5) * r.Height() * 0.5
-	foot := cam.WorldToScreen(r.Center().Add(city.Point{X: dx, Y: dy}))
+	foot := cam.WorldToScreen(r.Center())
 	scale := cam.Zoom * isoTreeScale
 	w := float64(tree.Bounds().Dx()) * scale
 	hh := float64(tree.Bounds().Dy()) * scale
 	g.drawSprite(screen, tree, city.Point{X: foot.X - w/2, Y: foot.Y - hh}, scale, tint)
 }
 
-// Ground kinds, in the proportions a hashed tile lands on them.
-const (
-	groundGrass = iota
-	groundGrassAlt
-	groundGrassAlt2
-	groundDirt
-	groundTree
-)
-
-// groundPick spreads the kinds so the ground is varied but quiet: mostly
-// plain grass, a little of everything else.
-func groundPick(h uint32) int {
-	switch v := h % 200; {
-	case v < 140:
-		return groundGrass
-	case v < 164:
-		return groundGrassAlt
-	case v < 180:
-		return groundGrassAlt2
-	case v < 184:
-		return groundDirt
-	default:
-		return groundTree
+// isoPlaza is the civic centre's floor and its fountain.
+func (g *Game) isoPlaza(screen *ebiten.Image, cam *city.Camera, c *city.City) {
+	if c.Plaza.Area() == 0 {
+		return
 	}
+	g.poly(screen, cam, c.Plaza, colorPlazaFloor)
+	g.polyStroke(screen, cam, c.Plaza, 2, colorKerb)
 }
+
+// fountain is a round basin on the plaza's centre cell.
+func (g *Game) fountain(screen *ebiten.Image, cam *city.Camera, c *city.City) {
+	if c.Fountain.Area() == 0 {
+		return
+	}
+	centre := c.Fountain.Center()
+	g.circle(screen, cam, centre, city.Tile*1.1, colorKerb)
+	g.circle(screen, cam, centre, city.Tile, colorWater)
+	g.circle(screen, cam, centre, city.Tile*0.35, colorWaterLight)
+}
+
+// lamp is a post at an avenue crossing; it is lit at night.
+func (g *Game) lamp(screen *ebiten.Image, cam *city.Camera, cell city.Cell, night bool) {
+	foot := cam.WorldToScreen(cell.Center())
+	h := lampHeight * cam.Zoom
+	vector.StrokeLine(screen, float32(foot.X), float32(foot.Y), float32(foot.X), float32(foot.Y-h), float32(math.Max(1, 1.5*cam.Zoom)), colorPole, true)
+	head := colorLampOff
+	if night {
+		head = colorLampOn
+		glow(screen, city.Point{X: foot.X, Y: foot.Y - h}, 8*cam.Zoom, colorLampGlow)
+	}
+	vector.FillCircle(screen, float32(foot.X), float32(foot.Y-h), float32(math.Max(1.5, 2.5*cam.Zoom)), head, true)
+}
+
+const lampHeight = 26.0
 
 func (g *Game) isoDistrict(screen *ebiten.Image, cam *city.Camera, d *city.District, hovered bool) {
 	fill := colorIsoFloor
@@ -486,8 +471,16 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	for _, d := range c.Districts {
 		g.isoDistrict(screen, cam, d, hover.District == d)
 	}
+	g.isoPlaza(screen, cam, c)
+	g.fountain(screen, cam, c)
 	g.powerLines(screen, c, cam, hover, seconds)
 	var items []drawable
+	for _, l := range c.Lamps {
+		l := l
+		items = append(items, drawable{depth: l.Center().X + l.Center().Y, draw: func() {
+			g.lamp(screen, cam, l, c.Night)
+		}})
+	}
 	for _, d := range c.Districts {
 		for _, b := range d.Buildings {
 			b := b

@@ -3,6 +3,8 @@ package city
 import (
 	"math"
 	"sort"
+
+	"github.com/auroq/botropolis/pkg/plan"
 )
 
 // Streets are the roads between districts laid on the building-cell grid
@@ -42,98 +44,78 @@ func (c Cell) Center() Point {
 	return c.Rect().Center()
 }
 
-// route walks from a to b along the grid as an L: columns first when
-// colsFirst, rows first otherwise.
-func route(a, b Cell, colsFirst bool) []Cell {
-	step := func(v, to int) int {
-		if v < to {
-			return v + 1
-		}
-		return v - 1
+// placeStreets lays the plan's avenues as street cells and routes each
+// road's traffic along them from one district's kerb to the other's.
+func (c *City) placeStreets() {
+	c.Streets = nil
+	c.StreetCells = nil
+	for _, st := range c.plan.Streets {
+		c.StreetCells = append(c.StreetCells, StreetCell{Cell: toCell(st.Cell), Mask: st.Mask})
 	}
-	cur := a
-	cells := []Cell{cur}
-	walkCols := func() {
-		for cur.Col != b.Col {
-			cur.Col = step(cur.Col, b.Col)
-			cells = append(cells, cur)
+	for i := range c.Roads {
+		road := &c.Roads[i]
+		cells := c.routeStreets(road)
+		var path []Point
+		for _, cell := range cells {
+			path = append(path, cell.Center())
 		}
-	}
-	walkRows := func() {
-		for cur.Row != b.Row {
-			cur.Row = step(cur.Row, b.Row)
-			cells = append(cells, cur)
+		if len(path) >= 2 {
+			c.Streets = append(c.Streets, Street{Road: road, Path: path})
 		}
 	}
-	if colsFirst {
-		walkCols()
-		walkRows()
-	} else {
-		walkRows()
-		walkCols()
-	}
-	return cells
 }
 
-// bestRoute finds the cheapest grid path from one district to the other
-// that never enters a third: a step costs one, a turn a little more, so
-// streets run straight where they can and bend around what is in the way.
-// It falls back to a plain L when nothing is reachable.
-func (c *City) bestRoute(road *RoadLine) []Cell {
-	if path := c.routeAround(road); path != nil {
-		return path
+// kerbCells is every street cell touching a district's block.
+func (c *City) kerbCells(d *District) map[Cell]bool {
+	kerb := map[Cell]bool{}
+	min, max := cellOf(d.Rect.Min), cellOf(d.Rect.Max.Sub(Point{X: 1, Y: 1}))
+	for col := min.Col - 1; col <= max.Col+1; col++ {
+		for row := min.Row - 1; row <= max.Row+1; row++ {
+			edge := col < min.Col || col > max.Col || row < min.Row || row > max.Row
+			corner := (col < min.Col || col > max.Col) && (row < min.Row || row > max.Row)
+			if edge && !corner && c.plan.IsStreet(fromCell(Cell{col, row})) {
+				kerb[Cell{col, row}] = true
+			}
+		}
 	}
-	a, b := cellOf(road.A), cellOf(road.B)
-	first, second := route(a, b, true), route(a, b, false)
-	if c.foreignCells(second, road) < c.foreignCells(first, road) {
-		return second
-	}
-	return first
+	return kerb
 }
 
-const turnCost = 0.6
-
-type routeNode struct {
-	cell Cell
-	dir  int
-}
-
-func (c *City) routeAround(road *RoadLine) []Cell {
+// routeStreets is the shortest walk along the avenues from one
+// district's kerb to the other's; a turn costs a little so traffic keeps
+// to one avenue where it can.
+func (c *City) routeStreets(road *RoadLine) []Cell {
 	if road.From == nil || road.To == nil {
 		return nil
 	}
-	bounds := c.Bounds()
-	minCell, maxCell := cellOf(bounds.Min), cellOf(bounds.Max)
-	minCell.Col, minCell.Row = minCell.Col-2, minCell.Row-2
-	maxCell.Col, maxCell.Row = maxCell.Col+2, maxCell.Row+2
-	passable := func(cell Cell) bool {
-		if cell.Col < minCell.Col || cell.Col > maxCell.Col || cell.Row < minCell.Row || cell.Row > maxCell.Row {
-			return false
-		}
-		if _, water := c.Lake(cell); water {
-			return false
-		}
-		centre := cell.Center()
-		for _, d := range c.Districts {
-			if d != road.From && d != road.To && d.Rect.Contains(centre) {
-				return false
-			}
-		}
-		return true
+	from, to := c.kerbCells(road.From), c.kerbCells(road.To)
+	if len(from) == 0 || len(to) == 0 {
+		return nil
 	}
-	start := cellOf(road.From.Rect.Center())
-	goal := func(cell Cell) bool { return road.To.Rect.Contains(cell.Center()) }
-
-	// Dijkstra over (cell, heading); the grid is small enough for a plain
-	// scan of the frontier each step.
+	// Blocks across one avenue share its cells as kerb: the traffic runs
+	// along that stretch of avenue rather than nowhere at all.
+	var shared []Cell
+	for cell := range from {
+		if to[cell] {
+			shared = append(shared, cell)
+		}
+	}
+	if len(shared) > 0 {
+		sort.Slice(shared, func(i, j int) bool { return lessCell(shared[i], shared[j]) })
+		return shared
+	}
 	type entry struct {
 		node routeNode
 		cost float64
 	}
 	best := map[routeNode]float64{}
 	prev := map[routeNode]routeNode{}
-	frontier := []entry{{routeNode{start, 0}, 0}}
-	best[routeNode{start, 0}] = 0
+	var frontier []entry
+	for cell := range from {
+		frontier = append(frontier, entry{routeNode{cell, 0}, 0})
+		best[routeNode{cell, 0}] = 0
+	}
+	sort.Slice(frontier, func(i, j int) bool { return lessCell(frontier[i].node.cell, frontier[j].node.cell) })
 	steps := []struct {
 		dc, dr, dir int
 	}{{1, 0, DirE}, {-1, 0, DirW}, {0, 1, DirS}, {0, -1, DirN}}
@@ -149,12 +131,12 @@ func (c *City) routeAround(road *RoadLine) []Cell {
 		if cur.cost > best[cur.node] {
 			continue
 		}
-		if goal(cur.node.cell) {
+		if to[cur.node.cell] {
 			return unwind(prev, cur.node)
 		}
 		for _, st := range steps {
 			next := routeNode{Cell{cur.node.cell.Col + st.dc, cur.node.cell.Row + st.dr}, st.dir}
-			if !passable(next.cell) {
+			if !c.plan.IsStreet(fromCell(next.cell)) {
 				continue
 			}
 			cost := cur.cost + 1
@@ -170,6 +152,20 @@ func (c *City) routeAround(road *RoadLine) []Cell {
 		}
 	}
 	return nil
+}
+
+func lessCell(a, b Cell) bool {
+	if a.Row != b.Row {
+		return a.Row < b.Row
+	}
+	return a.Col < b.Col
+}
+
+const turnCost = 0.6
+
+type routeNode struct {
+	cell Cell
+	dir  int
 }
 
 func unwind(prev map[routeNode]routeNode, end routeNode) []Cell {
@@ -188,84 +184,6 @@ func unwind(prev map[routeNode]routeNode, end routeNode) []Cell {
 	return cells
 }
 
-func (c *City) foreignCells(cells []Cell, road *RoadLine) int {
-	n := 0
-	for _, cell := range cells {
-		centre := cell.Center()
-		for _, d := range c.Districts {
-			if d != road.From && d != road.To && d.Rect.Contains(centre) {
-				n++
-				break
-			}
-		}
-	}
-	return n
-}
-
-func (c *City) insideDistrict(cell Cell) bool {
-	centre := cell.Center()
-	for _, d := range c.Districts {
-		if d.Rect.Contains(centre) {
-			return true
-		}
-	}
-	return false
-}
-
-// placeStreets lays every road on the grid. Cells under a district are
-// part of the path for joining purposes (so a street runs up to the kerb
-// instead of ending in a cap) but are not drawn.
-func (c *City) placeStreets() {
-	c.Streets = nil
-	c.StreetCells = nil
-	joined := map[Cell]int{}
-	onPath := map[Cell]bool{}
-	for i := range c.Roads {
-		road := &c.Roads[i]
-		cells := c.bestRoute(road)
-		for k, cell := range cells {
-			onPath[cell] = true
-			if k > 0 {
-				joined[cell] |= dirBetween(cell, cells[k-1])
-				joined[cells[k-1]] |= dirBetween(cells[k-1], cell)
-			}
-		}
-		var path []Point
-		for _, cell := range cells {
-			if !c.insideDistrict(cell) {
-				path = append(path, cell.Center())
-			}
-		}
-		if len(path) >= 2 {
-			c.Streets = append(c.Streets, Street{Road: road, Path: path})
-		}
-	}
-	for cell := range onPath {
-		if c.insideDistrict(cell) {
-			continue
-		}
-		c.StreetCells = append(c.StreetCells, StreetCell{Cell: cell, Mask: joined[cell]})
-	}
-	sort.Slice(c.StreetCells, func(i, j int) bool {
-		a, b := c.StreetCells[i].Cell, c.StreetCells[j].Cell
-		if a.Row != b.Row {
-			return a.Row < b.Row
-		}
-		return a.Col < b.Col
-	})
-}
-
-// dirBetween is the direction from one cell to an adjacent one.
-func dirBetween(from, to Cell) int {
-	switch {
-	case to.Col > from.Col:
-		return DirE
-	case to.Col < from.Col:
-		return DirW
-	case to.Row > from.Row:
-		return DirS
-	case to.Row < from.Row:
-		return DirN
-	}
-	return 0
+func fromCell(c Cell) plan.Cell {
+	return plan.Cell{Col: c.Col, Row: c.Row}
 }

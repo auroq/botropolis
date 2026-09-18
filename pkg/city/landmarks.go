@@ -37,12 +37,15 @@ const (
 type Landmark string
 
 const (
-	LandmarkNone    Landmark = ""
-	LandmarkPlant   Landmark = "plant"
-	LandmarkTower   Landmark = "tower"
-	LandmarkLibrary Landmark = "library"
-	LandmarkHall    Landmark = "hall"
-	LandmarkWater   Landmark = "water"
+	LandmarkNone     Landmark = ""
+	LandmarkPlant    Landmark = "plant"
+	LandmarkTower    Landmark = "tower"
+	LandmarkLibrary  Landmark = "library"
+	LandmarkHall     Landmark = "hall"
+	LandmarkWater    Landmark = "water"
+	LandmarkPark     Landmark = "park"
+	LandmarkPlaza    Landmark = "plaza"
+	LandmarkFountain Landmark = "fountain"
 )
 
 type Plant struct {
@@ -157,6 +160,9 @@ type Beam struct {
 	Calls    int
 }
 
+// placeLandmarks puts the civic buildings on the plaza — the plant top
+// left, the hall top right, the library bottom left, the fountain on the
+// centre cell — and one tower per server along the ridge.
 func (c *City) placeLandmarks(snapshot state.Snapshot) {
 	c.Night = false
 	for _, s := range snapshot.Sessions {
@@ -164,29 +170,33 @@ func (c *City) placeLandmarks(snapshot state.Snapshot) {
 			c.Night = true
 		}
 	}
-	if len(c.Districts) == 0 {
+	if c.Plaza.Area() == 0 {
 		return
 	}
-	bounds := c.DistrictBounds()
-
+	pad := Tile
+	plaza := c.Plaza
 	c.Plant = Plant{Power: snapshot.Power}
-	c.Plant.Rect = RectAt(bounds.Center().X-PlantWidth/2, bounds.Min.Y-LandmarkGap-PlantHeight, PlantWidth, PlantHeight)
+	c.Plant.Rect = RectAt(plaza.Min.X+pad, plaza.Min.Y+pad, PlantWidth, PlantHeight)
 
 	c.Towers = nil
 	for i, server := range snapshot.Servers {
+		if i >= len(c.plan.Towers) {
+			break
+		}
+		cell := cellAt(c.plan.Towers[i])
 		c.Towers = append(c.Towers, &Tower{
 			Server: server,
-			Rect:   RectAt(bounds.Min.X-LandmarkGap-TowerSize, bounds.Min.Y+float64(i)*(TowerSize+TowerGap), TowerSize, TowerSize),
+			Rect:   RectAt(cell.Center().X-TowerSize/2, cell.Center().Y-TowerSize/2, TowerSize, TowerSize),
 		})
 	}
 
 	c.Library = Library{Skills: snapshot.Skills}
-	c.Library.Rect = RectAt(bounds.Max.X+LandmarkGap, bounds.Min.Y, LibraryWidth, LibraryHeight)
+	c.Library.Rect = RectAt(plaza.Min.X+pad, plaza.Max.Y-pad-LibraryHeight, LibraryWidth, LibraryHeight)
 
 	c.Hall = Hall{}
 	if snapshot.Stats != nil {
 		c.Hall.Stats = *snapshot.Stats
-		c.Hall.Rect = RectAt(bounds.Max.X+LandmarkGap, c.Library.Rect.Max.Y+LandmarkGap/2, HallWidth, HallHeight)
+		c.Hall.Rect = RectAt(plaza.Max.X-pad-HallWidth, plaza.Min.Y+pad, HallWidth, HallHeight)
 	}
 }
 

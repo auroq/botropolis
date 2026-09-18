@@ -101,8 +101,9 @@ func TestScene(t *testing.T) {
 		s.Resize(800, 600)
 		s.SetSnapshot(snap)
 		require.Len(t, s.City().Roads, 1)
-		road := s.City().Roads[0]
-		s.PointerMove(s.Camera().WorldToScreen(city.Point{X: (road.A.X + road.B.X) / 2, Y: (road.A.Y + road.B.Y) / 2}))
+		require.Len(t, s.City().Streets, 1)
+		path := s.City().Streets[0].Path
+		s.PointerMove(s.Camera().WorldToScreen(path[len(path)/2]))
 
 		t.Run("it should hover the road", func(t *testing.T) {
 			require.NotNil(t, s.Hover().Road)
@@ -142,7 +143,10 @@ func TestScene(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))
 		lines := s.City().PowerLines()
 		require.Len(t, lines, 1)
-		s.PointerMove(s.Camera().WorldToScreen(city.Point{X: (lines[0].From.X + lines[0].To.X) / 2, Y: (lines[0].From.Y + lines[0].To.Y) / 2}))
+		// A hair past the plant, where the line crosses open plaza rather
+		// than a district's floor.
+		at := lines[0].From.Add(lines[0].To.Sub(lines[0].From).Scale(0.2))
+		s.PointerMove(s.Camera().WorldToScreen(at))
 
 		t.Run("it should offer the line's card in tokens per minute", func(t *testing.T) {
 			card, ok := s.Card()
@@ -474,20 +478,45 @@ func TestActivate(t *testing.T) {
 }
 
 func TestWaterCard(t *testing.T) {
-	t.Run("when the pointer rests on the pond", func(t *testing.T) {
+	t.Run("when the pointer rests on the river", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
-		require.NotEmpty(t, s.City().LakeCells)
-		s.PointerMove(s.Camera().WorldToScreen(s.City().LakeCells[0].Cell.Center()))
+		require.NotEmpty(t, s.City().RiverCells)
+		at := s.Camera().WorldToScreen(s.City().RiverCells[len(s.City().RiverCells)/2].Cell.Center())
+		s.PointerMove(at)
 		card, ok := s.Card()
 		require.True(t, ok)
 
-		t.Run("it should say it is scenery", func(t *testing.T) {
-			assert.Equal(t, "pond", card.Title)
-			assert.Contains(t, card.Lines, "scenery: it means nothing")
+		t.Run("it should say it is the edge", func(t *testing.T) {
+			assert.Equal(t, "river", card.Title)
+			assert.Contains(t, card.Lines, "the map's edge on this side")
 		})
 
 		t.Run("it should not be clickable", func(t *testing.T) {
-			assert.Equal(t, city.Action{}, s.Click(s.Camera().WorldToScreen(s.City().LakeCells[0].Cell.Center())))
+			assert.Equal(t, city.Action{}, s.Click(at))
+		})
+	})
+
+	t.Run("when the pointer rests on a park block", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		require.NotEmpty(t, s.City().Parks)
+		at := s.Camera().WorldToScreen(s.City().Parks[0].Rect.Center())
+		s.PointerMove(at)
+		card, ok := s.Card()
+		require.True(t, ok)
+
+		t.Run("it should say it is planned green", func(t *testing.T) {
+			assert.Equal(t, "park", card.Title)
+		})
+	})
+
+	t.Run("when the pointer rests on the fountain", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.PointerMove(s.Camera().WorldToScreen(s.City().Fountain.Center()))
+		card, ok := s.Card()
+		require.True(t, ok)
+
+		t.Run("it should name the fountain", func(t *testing.T) {
+			assert.Equal(t, "fountain", card.Title)
 		})
 	})
 }
@@ -529,6 +558,29 @@ func TestTopChrome(t *testing.T) {
 
 		t.Run("it should add the strip to the top inset", func(t *testing.T) {
 			assert.InDelta(t, city.LabelHeight+26, s.Insets().Top, 1e-9)
+		})
+	})
+}
+
+func TestCameraClamp(t *testing.T) {
+	t.Run("when the camera is panned far past the edge", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.Pan(city.Point{X: 100_000, Y: -100_000})
+		centre := s.Camera().ScreenToWorld(s.Size().Scale(0.5))
+		plane := s.Camera().Projection.Bounds(s.City().Extent())
+
+		t.Run("it should keep the map under the window's centre", func(t *testing.T) {
+			assert.True(t, plane.Inset(-1e-6).Contains(s.Camera().Projection.Apply(centre)), centre)
+		})
+	})
+
+	t.Run("when the camera is panned a little", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		before := s.Camera().Offset
+		s.Pan(city.Point{X: 10, Y: 10})
+
+		t.Run("it should move freely", func(t *testing.T) {
+			assert.NotEqual(t, before, s.Camera().Offset)
 		})
 	})
 }

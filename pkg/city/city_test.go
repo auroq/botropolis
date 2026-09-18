@@ -248,7 +248,7 @@ func TestStickyLayout(t *testing.T) {
 		t.Run("it should not move the district that was already placed", func(t *testing.T) {
 			for _, d := range second.Districts {
 				if d.Name == "cinders" {
-					assert.Equal(t, first.Districts[0].Rect, d.Rect)
+					assert.Equal(t, first.Districts[0].Rect.Min, d.Rect.Min)
 					return
 				}
 			}
@@ -447,7 +447,9 @@ func TestDistrictShape(t *testing.T) {
 		c := build(t, city.NewLayout(), sessionsIn(cinders, 3)...)
 
 		t.Run("it should stay one row of three", func(t *testing.T) {
-			assert.InDelta(t, city.DistrictPadding*2+city.BuildingSize, c.Districts[0].Rect.Height(), 1e-9)
+			for _, b := range c.Districts[0].Buildings {
+				assert.Equal(t, c.Districts[0].Buildings[0].Rect.Min.Y, b.Rect.Min.Y, b.Session.ID)
+			}
 		})
 	})
 }
@@ -460,68 +462,123 @@ func sessionsIn(root string, n int) []state.Session {
 	return out
 }
 
-func TestYard(t *testing.T) {
-	parkedIn := func(cwd string, n int) []state.Session {
-		var out []state.Session
-		for i := 0; i < n; i++ {
-			out = append(out, session(fmt.Sprintf("p%02d", i), cwd, state.Parked))
-		}
-		return out
+func parkedIn(cwd string, n int) []state.Session {
+	var out []state.Session
+	for i := 0; i < n; i++ {
+		out = append(out, session(fmt.Sprintf("%s-p%02d", filepath.Base(cwd), i), cwd, state.Parked))
 	}
+	return out
+}
 
-	t.Run("when a district has live and parked sessions", func(t *testing.T) {
+func storageOf(t *testing.T, c *city.City) *city.District {
+	t.Helper()
+	for _, d := range c.Districts {
+		if d.Storage {
+			return d
+		}
+	}
+	t.Fatal("the city has no storage district")
+	return nil
+}
+
+func TestStorage(t *testing.T) {
+	t.Run("when a project has live and parked sessions", func(t *testing.T) {
 		sessions := append(sessionsIn(cinders, 2), parkedIn(cinders, 5)...)
 		c := build(t, city.NewLayout(), sessions...)
-		d := c.Districts[0]
-		var live, parked []*city.Building
-		for _, b := range d.Buildings {
-			if b.BoardedUp {
-				parked = append(parked, b)
-			} else {
-				live = append(live, b)
+		storage := storageOf(t, c)
+		live := c.Districts[0]
+
+		t.Run("it should keep only the live sessions in the project's district", func(t *testing.T) {
+			require.Len(t, live.Buildings, 2)
+			for _, b := range live.Buildings {
+				assert.False(t, b.BoardedUp, b.Session.ID)
 			}
-		}
-		require.Len(t, live, 2)
-		require.Len(t, parked, 5)
+		})
+
+		t.Run("it should put the parked sessions in storage", func(t *testing.T) {
+			assert.Len(t, storage.Buildings, 5)
+		})
 
 		t.Run("it should draw parked sessions as smaller lots", func(t *testing.T) {
-			assert.InDelta(t, city.ParkedSize, parked[0].Rect.Width(), 1e-9)
-			assert.InDelta(t, city.BuildingSize, live[0].Rect.Width(), 1e-9)
+			assert.InDelta(t, city.ParkedSize, storage.Buildings[0].Rect.Width(), 1e-9)
 		})
 
-		t.Run("it should put the yard below the live grid", func(t *testing.T) {
-			for _, p := range parked {
-				assert.GreaterOrEqual(t, p.Rect.Min.Y, live[0].Rect.Max.Y+city.YardGap)
+		t.Run("it should name the storage district", func(t *testing.T) {
+			assert.Equal(t, city.StorageName, storage.Name)
+		})
+
+		t.Run("it should group them under the project's name", func(t *testing.T) {
+			require.Len(t, storage.Groups, 1)
+			assert.Equal(t, "cinders", storage.Groups[0].Name)
+		})
+
+		t.Run("it should keep every shed inside its group and the group inside storage", func(t *testing.T) {
+			for _, b := range storage.Buildings {
+				assert.True(t, storage.Groups[0].Rect.Contains(b.Rect.Min) && storage.Groups[0].Rect.Contains(b.Rect.Max), b.Session.ID)
+				assert.True(t, storage.Rect.Contains(b.Rect.Max), b.Session.ID)
 			}
 		})
 
-		t.Run("it should keep the yard inside the district", func(t *testing.T) {
-			for _, p := range parked {
-				assert.True(t, d.Rect.Contains(p.Rect.Max), p.Session.ID)
-			}
-		})
-
-		t.Run("it should list live buildings first", func(t *testing.T) {
-			assert.False(t, d.Buildings[0].BoardedUp)
+		t.Run("it should put storage along the south, below every other district", func(t *testing.T) {
+			assert.Greater(t, storage.Rect.Min.Y, live.Rect.Max.Y)
+			assert.True(t, c.Bounds().Contains(storage.Rect.Max))
 		})
 	})
 
-	t.Run("when a district has far more parked sessions than live ones", func(t *testing.T) {
-		c := build(t, city.NewLayout(), append(sessionsIn(cinders, 1), parkedIn(cinders, 36)...)...)
-		d := c.Districts[0]
+	t.Run("when several projects have parked sessions", func(t *testing.T) {
+		sessions := append(append(sessionsIn(cinders, 1), parkedIn(cinders, 3)...), parkedIn(botropolis, 2)...)
+		c := build(t, city.NewLayout(), sessions...)
+		storage := storageOf(t, c)
+		require.Len(t, storage.Groups, 2)
 
-		t.Run("it should widen the yard rather than grow a tower", func(t *testing.T) {
-			assert.Less(t, d.Rect.Height()/d.Rect.Width(), 1.5)
+		t.Run("it should order the groups by name", func(t *testing.T) {
+			assert.Equal(t, []string{"botropolis", "cinders"}, []string{storage.Groups[0].Name, storage.Groups[1].Name})
+		})
+
+		t.Run("it should keep the groups apart", func(t *testing.T) {
+			assert.False(t, storage.Groups[0].Rect.Overlaps(storage.Groups[1].Rect))
+		})
+
+		t.Run("it should list the projects on the card", func(t *testing.T) {
+			card := storage.Card()
+			assert.Equal(t, city.StorageName, card.Title)
+			assert.Contains(t, card.Lines, "parked   5 in 2 projects")
 		})
 	})
 
-	t.Run("when a district holds only parked sessions", func(t *testing.T) {
+	t.Run("when a project holds only parked sessions", func(t *testing.T) {
 		c := build(t, city.NewLayout(), parkedIn(cinders, 9)...)
-		d := c.Districts[0]
 
-		t.Run("it should pack them in a square-ish yard", func(t *testing.T) {
-			assert.InDelta(t, 2*city.DistrictPadding+3*city.ParkedSize+2*city.ParkedGap, d.Rect.Width(), 1e-9)
-			assert.InDelta(t, 2*city.DistrictPadding+3*city.ParkedSize+2*city.ParkedGap, d.Rect.Height(), 1e-9)
+		t.Run("it should raise no district for it", func(t *testing.T) {
+			require.Len(t, c.Districts, 1)
+			assert.True(t, c.Districts[0].Storage)
+		})
+
+		t.Run("it should still show its sessions in storage", func(t *testing.T) {
+			assert.Len(t, c.Buildings(), 9)
+		})
+	})
+
+	t.Run("when more sessions are parked than fit one row", func(t *testing.T) {
+		c := build(t, city.NewLayout(), append(sessionsIn(cinders, 1), parkedIn(cinders, 36)...)...)
+		storage := storageOf(t, c)
+
+		t.Run("it should wrap into more rows", func(t *testing.T) {
+			assert.Greater(t, storage.Buildings[35].Rect.Min.Y, storage.Buildings[0].Rect.Min.Y)
+		})
+
+		t.Run("it should keep every shed inside storage", func(t *testing.T) {
+			for _, b := range storage.Buildings {
+				assert.True(t, storage.Rect.Contains(b.Rect.Max), b.Session.ID)
+			}
+		})
+
+		t.Run("it should not overlap any two sheds", func(t *testing.T) {
+			for i, a := range storage.Buildings {
+				for _, b := range storage.Buildings[i+1:] {
+					assert.False(t, a.Rect.Overlaps(b.Rect), a.Session.ID+" overlaps "+b.Session.ID)
+				}
+			}
 		})
 	})
 
@@ -531,12 +588,11 @@ func TestYard(t *testing.T) {
 		build(t, layout, a, b)
 		a.State = state.Parked
 		c := build(t, layout, a, b)
-		d := c.Districts[0]
 
-		t.Run("it should move to the yard", func(t *testing.T) {
-			require.Len(t, d.Buildings, 2)
-			assert.True(t, d.Buildings[1].BoardedUp)
-			assert.Greater(t, d.Buildings[1].Rect.Min.Y, d.Buildings[0].Rect.Max.Y)
+		t.Run("it should move to storage", func(t *testing.T) {
+			require.Len(t, c.Districts[0].Buildings, 1)
+			assert.Equal(t, "b", c.Districts[0].Buildings[0].Session.ID)
+			assert.Equal(t, "a", storageOf(t, c).Buildings[0].Session.ID)
 		})
 
 		t.Run("and a new session arrives", func(t *testing.T) {
@@ -558,6 +614,7 @@ func TestYard(t *testing.T) {
 			c := build(t, layout, a, b)
 
 			t.Run("it should come back to the live grid", func(t *testing.T) {
+				require.Len(t, c.Districts, 1)
 				for _, bld := range c.Districts[0].Buildings {
 					assert.False(t, bld.BoardedUp)
 					assert.InDelta(t, city.BuildingSize, bld.Rect.Width(), 1e-9)
