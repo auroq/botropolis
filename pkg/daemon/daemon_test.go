@@ -242,6 +242,28 @@ func TestDaemon(t *testing.T) {
 		})
 	})
 
+	t.Run("when a hook event has been seen for a session", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+
+		t.Run("it should be unhooked until then", func(t *testing.T) {
+			assert.False(t, only(t, d).Hooked)
+		})
+
+		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+
+		t.Run("it should mark the session hooked", func(t *testing.T) {
+			assert.True(t, only(t, d).Hooked)
+		})
+
+		t.Run("and the file scan catches up", func(t *testing.T) {
+			require.NoError(t, d.Rescan())
+
+			t.Run("it should stay hooked", func(t *testing.T) {
+				assert.True(t, only(t, d).Hooked)
+			})
+		})
+	})
+
 	t.Run("when hook events arrive in a burst", func(t *testing.T) {
 		d := newDaemon(t, idleHome(t, "interactive"))
 		var mu sync.Mutex

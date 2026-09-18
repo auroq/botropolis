@@ -34,6 +34,7 @@ it is never counted, and `botropolis prune` clears it once it has sat for an hou
 The plant on the plaza is the API — click it for the breakdown by model, project and session over an hour, a day or a week;
 the towers on the ridge are MCP servers; the library ranks skills; the city hall carries Claude Code's own rollup.
 Avenues carry traffic between projects whose sessions message each other or edit each other's files; parked sessions are containers in the storage yard, one colour per project.
+The wires from the plant carry each session's live token rate, and a session with no wire is one the daemon has seen no hook events from: it is reading files.
 The freight loop round the city is the ledger: one train per model, a wagon per unit of the day's tokens, hover for the unit and the cost.
 A new session arrives on a tug up the river and its building rises once it docks; a session you demolish leaves downriver.
 The strip along the top is the city's tallies; the sidebar (`b`) is the same thing as a list.

@@ -211,8 +211,10 @@ func (c *City) PowerLines() []PowerLine {
 	if c.Plant.Rect.Area() == 0 {
 		return nil
 	}
+	// A wire is the daemon's live line to a session: no hook events, no
+	// wire, and the session is being read from files.
 	for _, b := range c.Buildings() {
-		if !b.Lit || b.Session.FreshTokensPerHour+b.Session.CacheReadPerHour <= 0 {
+		if !b.Lit || !b.Session.Hooked || b.Session.FreshTokensPerHour+b.Session.CacheReadPerHour <= 0 {
 			continue
 		}
 		lines = append(lines, PowerLine{

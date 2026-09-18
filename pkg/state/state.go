@@ -34,18 +34,22 @@ const (
 )
 
 type Session struct {
-	ID                 string         `json:"id"`
-	Harness            string         `json:"harness,omitempty"`
-	Title              string         `json:"title"`
-	CWD                string         `json:"cwd"`
-	Branch             string         `json:"branch"`
-	Model              string         `json:"model"`
-	Kind               claude.Kind    `json:"kind"`
-	PID                int            `json:"pid"`
-	Alive              bool           `json:"alive"`
-	Attached           bool           `json:"attached"`
-	State              State          `json:"state"`
-	Turn               claude.Turn    `json:"turn"`
+	ID       string      `json:"id"`
+	Harness  string      `json:"harness,omitempty"`
+	Title    string      `json:"title"`
+	CWD      string      `json:"cwd"`
+	Branch   string      `json:"branch"`
+	Model    string      `json:"model"`
+	Kind     claude.Kind `json:"kind"`
+	PID      int         `json:"pid"`
+	Alive    bool        `json:"alive"`
+	Attached bool        `json:"attached"`
+	State    State       `json:"state"`
+	Turn     claude.Turn `json:"turn"`
+	// Hooked is whether the daemon has ever seen a hook event from the
+	// session; without one it is reading files, and the map draws no
+	// wire to it.
+	Hooked             bool           `json:"hooked,omitempty"`
 	Tool               string         `json:"tool,omitempty"`
 	Note               string         `json:"note,omitempty"`
 	Subject            string         `json:"subject,omitempty"`

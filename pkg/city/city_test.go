@@ -30,6 +30,7 @@ func session(id, cwd string, s state.State) state.Session {
 		FreshTokensPerHour: 152_000, CacheReadPerHour: 8_900_000,
 		Usage:     claude.Usage{Input: 1000, Output: 600, CacheRead: 2000, Messages: 3},
 		Subagents: 4, SubagentsInFlight: 1, StartedAt: now.Add(-5*time.Hour - 6*time.Minute), LastActivity: now.Add(-6 * time.Minute),
+		Hooked: true,
 	}
 }
 
@@ -785,6 +786,40 @@ func TestTrees(t *testing.T) {
 			assert.NotEqual(t, centre, tree.At)
 			assert.LessOrEqual(t, math.Abs(tree.At.X-centre.X), plan.TreeJitter*city.CellSize+1e-9)
 			assert.LessOrEqual(t, math.Abs(tree.At.Y-centre.Y), plan.TreeJitter*city.CellSize+1e-9)
+		})
+	})
+}
+
+func TestUnhookedSession(t *testing.T) {
+	t.Run("when a session has sent no hook events", func(t *testing.T) {
+		quiet := session("a", cinders, state.Working)
+		quiet.Hooked = false
+		c := build(t, city.NewLayout(), quiet, session("b", cinders, state.Working))
+
+		t.Run("it should get no power line", func(t *testing.T) {
+			lines := c.PowerLines()
+			require.Len(t, lines, 1)
+			assert.Equal(t, "b", lines[0].Building.Session.ID)
+		})
+
+		t.Run("its card should say the daemon is reading files", func(t *testing.T) {
+			var card city.Card
+			for _, b := range c.Buildings() {
+				if b.Session.ID == "a" {
+					card = b.Card(now)
+				}
+			}
+			assert.Contains(t, card.Lines, "telemetry files only; no hook events seen (no wire)")
+		})
+
+		t.Run("a hooked session's card should say so", func(t *testing.T) {
+			var card city.Card
+			for _, b := range c.Buildings() {
+				if b.Session.ID == "b" {
+					card = b.Card(now)
+				}
+			}
+			assert.Contains(t, card.Lines, "telemetry hooks")
 		})
 	})
 }

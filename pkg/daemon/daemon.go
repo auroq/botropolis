@@ -37,9 +37,12 @@ type Daemon struct {
 	watching  chan struct{}
 	watchOnce sync.Once
 
-	mu          sync.Mutex
-	base        state.Snapshot
-	overlays    map[string]overlay
+	mu       sync.Mutex
+	base     state.Snapshot
+	overlays map[string]overlay
+	// hooked is every session a hook event has ever arrived for; a
+	// session without one is only read from files, and the map says so.
+	hooked      map[string]bool
 	subscribers map[chan proto.Update]struct{}
 	// log is what happened, as each view differs from the last; the
 	// daemon keeps it so a client sees what it missed while closed.
@@ -70,6 +73,7 @@ func NewWith(loader Snapshotter, clock func() time.Time) *Daemon {
 		clock:       clock,
 		watching:    make(chan struct{}),
 		overlays:    map[string]overlay{},
+		hooked:      map[string]bool{},
 		subscribers: map[chan proto.Update]struct{}{},
 		log:         events.NewLog(),
 		release:     debug.FreeOSMemory,
@@ -122,6 +126,9 @@ func (d *Daemon) Snapshot() state.Snapshot {
 
 func (d *Daemon) Apply(event claude.HookEvent, at time.Time) {
 	d.mu.Lock()
+	if event.SessionID != "" {
+		d.hooked[event.SessionID] = true
+	}
 	o, known := d.overlays[event.SessionID]
 	if !known {
 		o = overlay{}
@@ -200,6 +207,7 @@ func (d *Daemon) view() state.Snapshot {
 	copy(view.Sessions, d.base.Sessions)
 	for i := range view.Sessions {
 		s := &view.Sessions[i]
+		s.Hooked = d.hooked[s.ID]
 		o, ok := d.overlays[s.ID]
 		if !ok || !o.at.After(s.LastActivity) {
 			continue
