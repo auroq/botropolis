@@ -114,9 +114,15 @@ type Game struct {
 	timelineLayout ui.Timeline
 	focused        bool
 	blurredAt      time.Time
-	dragging       bool
-	dragFrom       city.Point
-	started        time.Time
+
+	// searching is the box on /; query is the filter it holds;
+	// scriptedRune is a typed character from --keys.
+	searching    bool
+	query        string
+	scriptedRune rune
+	dragging     bool
+	dragFrom     city.Point
+	started      time.Time
 }
 
 func NewGame(scene *city.Scene, actor Actor, theme ui.Theme, faces *faces, saveLayout func(*city.Layout), sprites *sprites) *Game {
@@ -150,10 +156,13 @@ func (g *Game) Update() error {
 			g.shotFrames = 1
 		}
 	}
-	g.scripted = -1
+	g.scripted, g.scriptedRune = -1, 0
 	if g.shotFrames > 0 && len(g.script) > 0 {
 		if key, ok := keyByName(g.script[0]); ok {
 			g.scripted = key
+		}
+		if r := []rune(g.script[0]); len(r) == 1 && g.searching {
+			g.scriptedRune = r[0]
 		}
 		g.script = g.script[1:]
 		g.shotFrames = 1

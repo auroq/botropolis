@@ -89,6 +89,7 @@ type Scene struct {
 	merged      map[string]int
 	celebrating map[string]time.Time
 	log         *Log
+	filter      Filter
 }
 
 // CelebrateFor is how long a merge is shown off.

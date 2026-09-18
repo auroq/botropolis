@@ -36,6 +36,7 @@ var bindings = []ui.Key{
 	{Key: "b", Action: "sidebar"},
 	{Key: "h", Action: "hide the UI"},
 	{Key: "p", Action: "save a screenshot"},
+	{Key: "/", Action: "search: the map dims what does not match"},
 	{Key: "?", Action: "this help"},
 	{Key: "q", Action: "quit"},
 }
@@ -68,6 +69,14 @@ func (g *Game) handleKeys() error {
 		g.timeline = g.timelineKeys()
 		return nil
 	}
+	if g.searching {
+		g.searching = g.searchKeys()
+		return nil
+	}
+	if just(ebiten.KeySlash) && !ebiten.IsKeyPressed(ebiten.KeyShift) {
+		g.searching = true
+		return nil
+	}
 	if just(ebiten.KeyT) {
 		g.timeline, g.away, g.cursor = true, nil, 0
 		return nil
@@ -90,7 +99,7 @@ func (g *Game) handleKeys() error {
 	if just(ebiten.KeyQ) {
 		return g.quit()
 	}
-	if just(ebiten.KeySlash) || just(ebiten.KeyF1) {
+	if (just(ebiten.KeySlash) && ebiten.IsKeyPressed(ebiten.KeyShift)) || just(ebiten.KeyF1) {
 		g.help = !g.help
 	}
 	if just(ebiten.KeyH) {

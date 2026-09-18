@@ -249,6 +249,8 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	}
 	var tint *ebiten.ColorScale
 	switch {
+	case g.scene.Dimmed(b):
+		tint = dimmed()
 	case b.BoardedUp:
 		tint = &ebiten.ColorScale{}
 		tint.SetR(0.7)
@@ -261,7 +263,7 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		tint.SetB(1)
 	}
 	r := g.kit(screen, cam, buildingPiece(b), 0, b.Rect.Center(), tint)
-	if r.Area() == 0 {
+	if r.Area() == 0 || g.scene.Dimmed(b) {
 		return
 	}
 	// The state light: a beacon over the door in the state's own colour,

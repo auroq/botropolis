@@ -50,6 +50,7 @@ func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
 			g.card(screen, ui.LayoutCard(th, card, bounds, g.faces.Measure))
 		}
 	}
+	g.drawSearch(screen, top, width)
 	g.footer(screen, footer)
 }
 
