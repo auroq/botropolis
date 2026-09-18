@@ -176,6 +176,30 @@ func TestBuild(t *testing.T) {
 		})
 	})
 
+	t.Run("when parked sessions are built", func(t *testing.T) {
+		c := build(t, city.NewLayout(),
+			session("a", cinders, state.Parked), session("b", cinders, state.Parked),
+			session("c", botropolis, state.Parked), session("d", "/p/mullet", state.Parked))
+		storage := storageOf(t, c)
+		hues := map[string]int{}
+		for _, b := range storage.Buildings {
+			hues[b.Session.ID] = b.Hue
+		}
+
+		t.Run("it should give one project's containers one hue", func(t *testing.T) {
+			assert.Equal(t, hues["a"], hues["b"])
+		})
+
+		t.Run("it should tell projects apart by hue where the palette allows", func(t *testing.T) {
+			assert.NotEqual(t, hues["a"], hues["c"])
+		})
+
+		t.Run("it should name each project's colour on the storage card", func(t *testing.T) {
+			lines := storage.Card().Lines
+			assert.Contains(t, lines, fmt.Sprintf("%-11s %d  %s", "cinders", 2, city.ContainerHues[hues["a"]]))
+		})
+	})
+
 	t.Run("when a building's session is working", func(t *testing.T) {
 		c := build(t, city.NewLayout(), session("a", cinders, state.Working))
 

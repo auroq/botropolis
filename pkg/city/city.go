@@ -2,6 +2,7 @@ package city
 
 import (
 	"fmt"
+	"hash/fnv"
 	"math"
 	"path/filepath"
 	"sort"
@@ -47,6 +48,20 @@ type Building struct {
 	// Vacant is a plot with no building: a session nothing has been typed
 	// into yet.
 	Vacant bool
+	// Hue is a parked session's container colour, one per project, an
+	// index into ContainerHues.
+	Hue int
+}
+
+// ContainerHues names the container colours the storage yard has, in
+// the order the kit's pieces come; a project keeps one for good.
+var ContainerHues = []string{"red", "blue", "green"}
+
+// projectHue picks a project's container colour from its root.
+func projectHue(root string) int {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(root))
+	return int(h.Sum32() % uint32(len(ContainerHues)))
 }
 
 type District struct {
@@ -312,6 +327,7 @@ func newBuilding(s state.Session, slot int, at Point, size float64) *Building {
 		Pulse:     s.State == state.NeedsYou,
 		BoardedUp: s.State == state.Parked,
 		Vacant:    s.State == state.Empty,
+		Hue:       projectHue(ProjectRoot(s.CWD)),
 	}
 }
 

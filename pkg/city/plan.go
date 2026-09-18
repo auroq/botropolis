@@ -20,6 +20,8 @@ type StorageGroup struct {
 	Root string
 	Name string
 	Rect Rect
+	// Hue is the project's container colour, an index into ContainerHues.
+	Hue int
 }
 
 func cellRect(b plan.Block) Rect {
@@ -80,7 +82,7 @@ func buildStorage(byRoot map[string][]state.Session, width float64) *District {
 		if x > DistrictPadding && x+math.Min(need, right-DistrictPadding) > right {
 			x, y = DistrictPadding, y+pitch+YardGap
 		}
-		group := StorageGroup{Root: root, Name: baseName(root)}
+		group := StorageGroup{Root: root, Name: baseName(root), Hue: projectHue(root)}
 		for i, s := range sessions {
 			if x+ParkedSize > right {
 				x, y = DistrictPadding, y+pitch
@@ -124,7 +126,7 @@ func (d *District) storageCard() Card {
 				n++
 			}
 		}
-		lines = append(lines, fmt.Sprintf("%-8s %d", g.Name, n))
+		lines = append(lines, fmt.Sprintf("%-11s %d  %s", g.Name, n, ContainerHues[g.Hue]))
 	}
 	return Card{Title: StorageName, Lines: lines}
 }

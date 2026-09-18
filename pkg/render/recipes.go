@@ -40,12 +40,12 @@ func hashID(id string) uint32 {
 	return h.Sum32()
 }
 
-// buildingPiece is the piece for a session: a shed when parked, else by
-// how full its context is.
+// buildingPiece is the piece for a session: a container in its project's
+// colour when parked, else by how full its context is.
 func buildingPiece(b *city.Building) string {
 	h := hashID(b.Session.ID)
 	if b.BoardedUp {
-		return sheds[h%uint32(len(sheds))]
+		return sheds[b.Hue%len(sheds)]
 	}
 	class := len(fillSteps)
 	for i, step := range fillSteps {
