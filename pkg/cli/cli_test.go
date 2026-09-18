@@ -97,9 +97,16 @@ type fakeTUI struct{ runs int }
 
 func (f *fakeTUI) Run(context.Context) error { f.runs++; return nil }
 
-type fakeCity struct{ runs int }
+type fakeCity struct {
+	runs       int
+	screenshot string
+}
 
-func (f *fakeCity) Run(*cobra.Command) error { f.runs++; return nil }
+func (f *fakeCity) Run(cmd *cobra.Command) error {
+	f.runs++
+	f.screenshot = cli.Screenshot(cmd)
+	return nil
+}
 
 type harness struct {
 	status   *fakeStatus
@@ -164,6 +171,35 @@ func TestRootCLI(t *testing.T) {
 
 		t.Run("it should open the city too", func(t *testing.T) {
 			assert.Equal(t, 1, h.city.runs)
+		})
+	})
+
+	t.Run("when asked for a screenshot", func(t *testing.T) {
+		t.Run("and the city subcommand is used", func(t *testing.T) {
+			h := newHarness(&config.Config{})
+			require.NoError(t, h.run("city", "--screenshot", "out.png"))
+
+			t.Run("it should hand the path to the city", func(t *testing.T) {
+				assert.Equal(t, "out.png", h.city.screenshot)
+			})
+		})
+
+		t.Run("and no subcommand is used", func(t *testing.T) {
+			h := newHarness(&config.Config{})
+			require.NoError(t, h.run("--screenshot", "out.png"))
+
+			t.Run("it should hand the path to the city as well", func(t *testing.T) {
+				assert.Equal(t, "out.png", h.city.screenshot)
+			})
+		})
+
+		t.Run("and no path is given", func(t *testing.T) {
+			h := newHarness(&config.Config{})
+			require.NoError(t, h.run("city"))
+
+			t.Run("it should ask for no screenshot", func(t *testing.T) {
+				assert.Empty(t, h.city.screenshot)
+			})
 		})
 	})
 

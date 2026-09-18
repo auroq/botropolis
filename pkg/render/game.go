@@ -2,8 +2,11 @@ package render
 
 import (
 	"fmt"
+	"image"
 	"image/color"
+	"image/png"
 	"math"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -76,6 +79,12 @@ type Game struct {
 	status     string
 	shownTitle string
 	stripHits  []stripHit
+
+	// screenshot mode: frames drawn since the first snapshot, and the result.
+	screenshot string
+	shotFrames int
+	shotErr    error
+	shotDone   bool
 	dragging   bool
 	dragFrom   city.Point
 	started    time.Time
@@ -108,6 +117,15 @@ func (g *Game) Update() error {
 			g.shownTitle = title
 			ebiten.SetWindowTitle(title)
 		}
+		if g.screenshot != "" && g.shotFrames == 0 {
+			g.shotFrames = 1
+		}
+	}
+	if g.shotDone {
+		if g.shotErr != nil {
+			return g.shotErr
+		}
+		return ebiten.Termination
 	}
 
 	x, y := ebiten.CursorPosition()
@@ -175,7 +193,37 @@ func (g *Game) Update() error {
 	return nil
 }
 
+// capture writes the frame just drawn to the screenshot path. It waits for
+// the second frame after the first snapshot so the fit has settled.
+func (g *Game) capture(screen *ebiten.Image) {
+	if g.screenshot == "" || g.shotFrames == 0 || g.shotDone {
+		return
+	}
+	g.shotFrames++
+	if g.shotFrames < 3 {
+		return
+	}
+	b := screen.Bounds()
+	img := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+	screen.ReadPixels(img.Pix)
+	g.shotErr = writePNG(g.screenshot, img)
+	g.shotDone = true
+}
+
+func writePNG(path string, img image.Image) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	if err := png.Encode(f, img); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
+}
+
 func (g *Game) Draw(screen *ebiten.Image) {
+	defer g.capture(screen)
 	c := g.scene.City()
 	cam := g.scene.Camera()
 	hover := g.scene.Hover()

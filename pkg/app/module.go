@@ -166,5 +166,6 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		Actor:      commands.Actor{Sessions: sessions},
 		Feed:       feed.Run,
 		Projection: projection,
+		Screenshot: cli.Screenshot(cmd),
 	})
 }

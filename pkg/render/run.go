@@ -26,6 +26,8 @@ type Options struct {
 	Width      int
 	Height     int
 	Projection city.Projection
+	// Screenshot, when set, renders one frame to this PNG and exits.
+	Screenshot string
 }
 
 func Run(ctx context.Context, opts Options) error {
@@ -48,6 +50,7 @@ func Run(ctx context.Context, opts Options) error {
 		return loadErr
 	}
 	game := NewGame(scene, opts.Actor, face, save, sprites)
+	game.screenshot = opts.Screenshot
 
 	feedCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
