@@ -125,7 +125,20 @@ func (f *fakeCity) Run(cmd *cobra.Command) error {
 	return nil
 }
 
+type fakeEvents struct {
+	since time.Duration
+	runs  int
+}
+
+func (f *fakeEvents) Run(out io.Writer, since time.Time) error {
+	f.runs++
+	f.since = time.Since(since).Round(time.Hour)
+	_, _ = io.WriteString(out, "EVENTS\n")
+	return nil
+}
+
 type harness struct {
+	events   *fakeEvents
 	status   *fakeStatus
 	hooks    *fakeHooks
 	sessions *fakeSessions
@@ -146,12 +159,13 @@ func (h *harness) City(cfg *config.Config) cli.CityRunner         { h.seen = cfg
 func (h *harness) Bar(cfg *config.Config) cli.BarRunner           { h.seen = cfg; return h.bar }
 func (h *harness) Notify(cfg *config.Config) cli.NotifyRunner     { h.seen = cfg; return h.notify }
 func (h *harness) TUI(cfg *config.Config) cli.TUIRunner           { h.seen = cfg; return h.tui }
+func (h *harness) Events(cfg *config.Config) cli.EventsRunner     { h.seen = cfg; return h.events }
 
 func newHarness(cfg *config.Config) *harness {
-	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}, bar: &fakeBar{}, notify: &fakeNotify{}, tui: &fakeTUI{}, doctor: &fakeDoctor{}}
+	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}, bar: &fakeBar{}, notify: &fakeNotify{}, tui: &fakeTUI{}, doctor: &fakeDoctor{}, events: &fakeEvents{}}
 	load := func() (*config.Config, error) { return cfg, nil }
 	v := config.NewViper()
-	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h), cli.NewBarCLI(load, h), cli.NewNotifyCLI(load, h), cli.NewTUICLI(load, h), cli.NewDoctorCLI(load, h)},
+	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h), cli.NewBarCLI(load, h), cli.NewNotifyCLI(load, h), cli.NewTUICLI(load, h), cli.NewDoctorCLI(load, h), cli.NewEventsCLI(load, h)},
 		cli.NewSessionCLIs(load, h)...)
 	h.root = cli.NewRootCLI(v, subs...)
 	h.root.SetOut(&h.out)
@@ -162,6 +176,28 @@ func newHarness(cfg *config.Config) *harness {
 func (h *harness) run(args ...string) error {
 	h.root.SetArgs(args)
 	return h.root.Execute()
+}
+
+func TestEventsCLI(t *testing.T) {
+	t.Run("when events is run with a window", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("events", "--since", "2h"))
+
+		t.Run("it should ask for the daemon's log over that window", func(t *testing.T) {
+			assert.Equal(t, 1, h.events.runs)
+			assert.Equal(t, 2*time.Hour, h.events.since)
+			assert.Contains(t, h.out.String(), "EVENTS")
+		})
+	})
+
+	t.Run("when events is run without a window", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("events"))
+
+		t.Run("it should default to a day", func(t *testing.T) {
+			assert.Equal(t, 24*time.Hour, h.events.since)
+		})
+	})
 }
 
 func TestDoctorCLI(t *testing.T) {

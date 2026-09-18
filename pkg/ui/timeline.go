@@ -1,6 +1,9 @@
 package ui
 
-import "github.com/auroq/botropolis/pkg/city"
+import (
+	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/events"
+)
 
 // TimelineRow is one event on the timeline.
 type TimelineRow struct {
@@ -24,41 +27,41 @@ type Timeline struct {
 const timelineGrids = 80
 
 // EventTone is the tone an event kind is drawn in.
-func EventTone(kind city.EventKind) Tone {
+func EventTone(kind events.Kind) Tone {
 	switch kind {
-	case city.EventNeedsYou:
+	case events.NeedsYou:
 		return ToneNeedsYou
-	case city.EventError:
+	case events.Error:
 		return ToneError
-	case city.EventMerged:
+	case events.Merged:
 		return ToneMerged
-	case city.EventPR, city.EventStarted:
+	case events.PR, events.Started:
 		return ToneWorking
-	case city.EventEnded:
+	case events.Ended:
 		return ToneParked
 	}
 	return ToneNone
 }
 
 // eventWords says what an event was, for its row.
-func eventWords(e city.Event) string {
+func eventWords(e events.Event) string {
 	switch e.Kind {
-	case city.EventNeedsYou:
+	case events.NeedsYou:
 		if e.Detail != "" {
 			return "needs you: " + e.Detail
 		}
 		return "needs you"
-	case city.EventError:
+	case events.Error:
 		return e.Detail
-	case city.EventPR:
+	case events.PR:
 		return "opened " + e.Detail
-	case city.EventMerged:
+	case events.Merged:
 		return "merged " + e.Detail
-	case city.EventCompaction:
+	case events.Compaction:
 		return e.Detail
-	case city.EventStarted:
+	case events.Started:
 		return "started " + e.Detail
-	case city.EventEnded:
+	case events.Ended:
 		return "ended (" + e.Detail + ")"
 	}
 	return string(e.Kind)
@@ -66,7 +69,7 @@ func eventWords(e city.Event) string {
 
 // LayoutTimeline centres a titled list of events, newest first, with
 // the cursor's row flagged; rows past the bottom are dropped.
-func LayoutTimeline(th Theme, width, height float64, title string, events []city.Event, cursor int, measure Measure) Timeline {
+func LayoutTimeline(th Theme, width, height float64, title string, list []events.Event, cursor int, measure Measure) Timeline {
 	grid := th.Grid()
 	pad := 3 * grid
 	_, titleH := measure(title, Title)
@@ -81,7 +84,7 @@ func LayoutTimeline(th Theme, width, height float64, title string, events []city
 	if maxRows < 1 {
 		maxRows = 1
 	}
-	n := min(len(events), maxRows)
+	n := min(len(list), maxRows)
 	if n == 0 {
 		n = 1
 	}
@@ -90,7 +93,7 @@ func LayoutTimeline(th Theme, width, height float64, title string, events []city
 	x0 := tl.Rect.Min.X + pad
 	tl.Title = Text{Text: title, At: city.Point{X: x0, Y: tl.Rect.Min.Y + pad}, Size: Title}
 	y := tl.Rect.Min.Y + pad + titleH + grid
-	if len(events) == 0 {
+	if len(list) == 0 {
 		tl.Rows = append(tl.Rows, TimelineRow{
 			Rect:  city.RectAt(tl.Rect.Min.X, y, w, rowH),
 			Title: Text{Text: "nothing yet", At: city.Point{X: x0, Y: y + grid/2}, Size: Body},
@@ -99,7 +102,7 @@ func LayoutTimeline(th Theme, width, height float64, title string, events []city
 	}
 	timeW, _ := measure("00:00", Small)
 	titleW := 28 * grid
-	for i, e := range events {
+	for i, e := range list {
 		if i == maxRows {
 			break
 		}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/daemon"
+	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/testing/helpers"
 	"github.com/stretchr/testify/assert"
@@ -94,8 +95,8 @@ func TestDaemon(t *testing.T) {
 
 		t.Run("it should notify subscribers", func(t *testing.T) {
 			select {
-			case snapshot := <-updates:
-				assert.Equal(t, state.Working, snapshot.Sessions[0].State)
+			case update := <-updates:
+				assert.Equal(t, state.Working, update.Snapshot.Sessions[0].State)
 			case <-time.After(time.Second):
 				t.Fatal("no update delivered")
 			}
@@ -204,6 +205,39 @@ func TestDaemon(t *testing.T) {
 
 		t.Run("it should not invent a session", func(t *testing.T) {
 			assert.Len(t, d.Snapshot().Sessions, 1)
+		})
+	})
+
+	t.Run("when a Stop event follows a PreToolUse after the first scan", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+		updates, cancel := d.Subscribe()
+		defer cancel()
+		d.Apply(event(claude.HookStop, ""), now.Add(time.Minute))
+
+		t.Run("it should log a needs-you event", func(t *testing.T) {
+			logged := d.Events(time.Time{})
+			require.Len(t, logged, 1)
+			assert.Equal(t, events.NeedsYou, logged[0].Kind)
+			assert.Equal(t, "Fix the CI queue", logged[0].Title)
+		})
+
+		t.Run("it should give a subscriber the fresh events with the update", func(t *testing.T) {
+			select {
+			case update := <-updates:
+				require.Len(t, update.Events, 1)
+				assert.Equal(t, events.NeedsYou, update.Events[0].Kind)
+			case <-time.After(time.Second):
+				t.Fatal("no update delivered")
+			}
+		})
+	})
+
+	t.Run("when the first scan lands", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+
+		t.Run("it should set the baseline without logging anything", func(t *testing.T) {
+			assert.Empty(t, d.Events(time.Time{}))
 		})
 	})
 

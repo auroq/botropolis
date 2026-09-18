@@ -35,6 +35,8 @@ The plant on the plaza is the API — click it for the breakdown by model, proje
 the towers on the ridge are MCP servers; the library ranks skills; the city hall carries Claude Code's own rollup.
 Avenues carry traffic between projects whose sessions message each other or edit each other's files; parked sessions are containers in the storage yard.
 The strip along the top is the city's tallies; the sidebar (`b`) is the same thing as a list.
+The timeline (`t`) is the daemon's event log, so it survives the window closing:
+when the city opens or comes back into focus, "while you were away" lists what needed you or went wrong since it was last seen.
 
 Keys: drag to pan, wheel to zoom, `r` to turn, `f` or `0` to fit, `tab` for the next session that needs you, `enter` to attach it,
 `c` for a new session here, `d d` to demolish, `b` sidebar, `x` breakdown, `t` timeline, `/` search, `s` settings, `n` night/day/live, `[` `]` scrub the clock,
@@ -56,6 +58,7 @@ botropolis status                           # the table, via the daemon
 The package also installs `botropolis.desktop`, so the city is in your launcher (`i3-dmenu-desktop`, rofi's drun) under "Botropolis".
 `botropolis install-hooks --remove` takes the hook out again.
 `botropolis status --direct` skips the daemon.
+`botropolis events --since 2h` prints the daemon's event log.
 `botropolis` opens the city and `botropolis --tui` the terminal table; `botropolis new <dir> [prompt]`, `attach <id>`, `stop <id>`, `resume <session-id>`, `rm <id>` and `prune` wrap the `claude` CLI;
 `packaging/botropolis.bash` makes a plain `claude` in a shell start in the background and attach.
 

@@ -7,6 +7,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/pkg/ui"
 )
@@ -22,7 +23,9 @@ type Options struct {
 	Layout     *city.Layout
 	LayoutPath string
 	Actor      Actor
-	Feed       func(ctx context.Context, offer func(state.Snapshot))
+	// Feed delivers snapshots and, before each, the events logged since
+	// the last delivery.
+	Feed       func(ctx context.Context, offer func(state.Snapshot), events func([]events.Event))
 	Width      int
 	Height     int
 	Projection city.Projection
@@ -92,7 +95,7 @@ func Run(ctx context.Context, opts Options) error {
 	feedCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	if opts.Feed != nil {
-		go opts.Feed(feedCtx, game.Offer)
+		go opts.Feed(feedCtx, game.Offer, game.AddEvents)
 	}
 	go func() {
 		<-feedCtx.Done()

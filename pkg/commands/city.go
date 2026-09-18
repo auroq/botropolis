@@ -5,16 +5,24 @@ import (
 	"time"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/proto"
 	"github.com/auroq/botropolis/pkg/state"
 )
 
+// Feed delivers snapshots: streamed from the daemon when it is there,
+// polled from the source directly when it is not. Events, when set,
+// receives what happened before each snapshot is offered — the daemon's
+// log since Since with the first, then each change as it is logged;
+// without a daemon the feed diffs the polled snapshots itself.
 type Feed struct {
 	Socket  string
 	Source  SnapshotSource
 	Poll    time.Duration
 	Retry   time.Duration
 	OnError func(error)
+	Since   func() time.Time
+	Events  func([]events.Event)
 }
 
 func (f Feed) Run(ctx context.Context, offer func(state.Snapshot)) {
@@ -32,7 +40,7 @@ func (f Feed) subscribe(ctx context.Context, offer func(state.Snapshot)) bool {
 		return false
 	}
 	defer func() { _ = client.Close() }()
-	updates, err := client.Subscribe()
+	updates, err := client.Subscribe(f.since())
 	if err != nil {
 		return false
 	}
@@ -41,24 +49,40 @@ func (f Feed) subscribe(ctx context.Context, offer func(state.Snapshot)) bool {
 		select {
 		case <-ctx.Done():
 			return true
-		case snapshot, ok := <-updates:
+		case update, ok := <-updates:
 			if !ok {
 				return delivered
 			}
 			delivered = true
-			offer(snapshot)
+			f.deliver(update.Events)
+			offer(update.Snapshot)
 		}
+	}
+}
+
+func (f Feed) since() time.Time {
+	if f.Since == nil {
+		return time.Time{}
+	}
+	return f.Since()
+}
+
+func (f Feed) deliver(fresh []events.Event) {
+	if f.Events != nil {
+		f.Events(fresh)
 	}
 }
 
 func (f Feed) poll(ctx context.Context, offer func(state.Snapshot)) {
 	deadline := time.After(f.Retry)
+	log := events.NewLog()
 	for {
 		snapshot, err := f.Source.Snapshot(true)
 		if err != nil && f.OnError != nil {
 			f.OnError(err)
 		}
 		if err == nil {
+			f.deliver(log.Observe(snapshot, time.Now()))
 			offer(snapshot)
 		}
 		select {

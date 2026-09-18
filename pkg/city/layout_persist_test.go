@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/state"
@@ -33,6 +34,30 @@ func TestLayoutPersistence(t *testing.T) {
 			info, err := os.Stat(path)
 			require.NoError(t, err)
 			assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+		})
+	})
+
+	t.Run("when a layout remembers when it was last seen", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "layout.json")
+		layout := city.NewLayout()
+		layout.Seen = time.Date(2026, time.September, 18, 20, 0, 0, 0, time.UTC)
+		require.NoError(t, layout.Save(path))
+		reloaded, err := city.LoadLayout(path)
+		require.NoError(t, err)
+
+		t.Run("it should round-trip the moment", func(t *testing.T) {
+			assert.True(t, reloaded.Seen.Equal(layout.Seen))
+		})
+	})
+
+	t.Run("when a layout was never seen", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "layout.json")
+		require.NoError(t, city.NewLayout().Save(path))
+		data, err := os.ReadFile(path)
+		require.NoError(t, err)
+
+		t.Run("it should leave the moment out of the file", func(t *testing.T) {
+			assert.NotContains(t, string(data), "seen")
 		})
 	})
 

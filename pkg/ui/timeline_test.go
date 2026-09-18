@@ -8,15 +8,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/ui"
 )
 
-func someEvents() []city.Event {
+func someEvents() []events.Event {
 	t0 := time.Date(2026, 9, 18, 14, 5, 0, 0, time.UTC)
-	return []city.Event{
-		{At: t0.Add(2 * time.Minute), Kind: city.EventMerged, SessionID: "a", Title: "Fix the CI queue", Detail: "#7 mCedar/cinders"},
-		{At: t0.Add(time.Minute), Kind: city.EventError, SessionID: "b", Title: "Scaffold", Detail: "2 api errors"},
-		{At: t0, Kind: city.EventNeedsYou, SessionID: "c", Title: "Issue 613", Detail: ""},
+	return []events.Event{
+		{At: t0.Add(2 * time.Minute), Kind: events.Merged, SessionID: "a", Title: "Fix the CI queue", Detail: "#7 mCedar/cinders"},
+		{At: t0.Add(time.Minute), Kind: events.Error, SessionID: "b", Title: "Scaffold", Detail: "2 api errors"},
+		{At: t0, Kind: events.NeedsYou, SessionID: "c", Title: "Issue 613", Detail: ""},
 	}
 }
 
@@ -80,9 +81,9 @@ func TestLayoutTimeline(t *testing.T) {
 	})
 
 	t.Run("when there are more events than fit", func(t *testing.T) {
-		var many []city.Event
+		var many []events.Event
 		for i := 0; i < 60; i++ {
-			many = append(many, city.Event{Kind: city.EventStarted, Title: "s"})
+			many = append(many, events.Event{Kind: events.Started, Title: "s"})
 		}
 		p := ui.LayoutTimeline(th, 900, 400, "Timeline", many, 0, measure7)
 

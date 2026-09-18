@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/auroq/botropolis/pkg/plan"
 	"github.com/auroq/botropolis/pkg/state"
@@ -32,6 +33,9 @@ type Layout struct {
 	// anywhere near ~/.claude.
 	Hidden  map[string]bool `json:"hidden,omitempty"`
 	Starred map[string]bool `json:"starred,omitempty"`
+	// Seen is the last moment the window was open and focused; the
+	// away list on the next start covers everything after it.
+	Seen time.Time `json:"seen,omitzero"`
 }
 
 func NewLayout() *Layout {

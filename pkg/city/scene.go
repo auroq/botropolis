@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/state"
 )
 
@@ -88,7 +89,7 @@ type Scene struct {
 	// celebrating is when a session's count rose, for a one-shot show.
 	merged      map[string]int
 	celebrating map[string]time.Time
-	log         *Log
+	log         *events.Log
 	filter      Filter
 	budget      float64
 	spriteHover bool
@@ -98,7 +99,7 @@ type Scene struct {
 const CelebrateFor = 2500 * time.Millisecond
 
 func NewScene(layout *Layout) *Scene {
-	return &Scene{layout: layout, camera: NewCamera(), city: &City{}, now: time.Now, location: time.Local, log: NewLog()}
+	return &Scene{layout: layout, camera: NewCamera(), city: &City{}, now: time.Now, location: time.Local, log: events.NewLog()}
 }
 
 // SetClock replaces the wall clock and its zone, for tests and for a
@@ -378,7 +379,6 @@ func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
 	s.city = Build(snapshot, s.layout)
 	s.city.Plant.BudgetUSD = s.budget
 	s.noteMerges()
-	s.log.Observe(snapshot, s.now())
 	s.applyNight()
 	s.selected = s.reselect()
 	s.hover = Hit{}
@@ -629,15 +629,21 @@ func (s *Scene) SetBudget(usd float64) {
 	}
 }
 
-// Events is everything the map has seen happen, newest first.
-func (s *Scene) Events() []Event {
+// AddEvents takes what the daemon (or the feed, without one) logged
+// since the last batch; the map keeps no diff of its own.
+func (s *Scene) AddEvents(fresh []events.Event) {
+	s.log.Add(fresh...)
+}
+
+// Events is everything that has happened, newest first.
+func (s *Scene) Events() []events.Event {
 	return s.log.Events()
 }
 
 // Away is what needed you or went wrong after a moment, newest first:
 // the list shown when the window comes back into focus.
-func (s *Scene) Away(since time.Time) []Event {
-	return s.log.Since(since, EventNeedsYou, EventError)
+func (s *Scene) Away(since time.Time) []events.Event {
+	return s.log.Since(since, events.NeedsYou, events.Error)
 }
 
 // noteMerges starts a celebration for every session whose merged-PR

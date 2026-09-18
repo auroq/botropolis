@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/state"
 )
 
@@ -32,39 +33,63 @@ func (c *Client) Snapshot() (state.Snapshot, error) {
 	if err := Write(c.conn, Request{Op: OpSnapshot}); err != nil {
 		return state.Snapshot{}, err
 	}
-	return c.readSnapshot()
+	update, err := c.readUpdate()
+	return update.Snapshot, err
 }
 
-func (c *Client) Subscribe() (<-chan state.Snapshot, error) {
-	if err := Write(c.conn, Request{Op: OpSubscribe}); err != nil {
+// Subscribe streams every change; the first update carries the current
+// snapshot and the log since the moment given (all of it when zero).
+func (c *Client) Subscribe(since time.Time) (<-chan Update, error) {
+	if err := Write(c.conn, Request{Op: OpSubscribe, Since: since}); err != nil {
 		return nil, err
 	}
-	updates := make(chan state.Snapshot, 1)
+	updates := make(chan Update, 1)
 	go func() {
 		defer close(updates)
 		for {
-			snapshot, err := c.readSnapshot()
+			update, err := c.readUpdate()
 			if err != nil {
 				return
 			}
-			updates <- snapshot
+			updates <- update
 		}
 	}()
 	return updates, nil
 }
 
-func (c *Client) readSnapshot() (state.Snapshot, error) {
-	var response Response
-	if err := c.decoder.Decode(&response); err != nil {
-		return state.Snapshot{}, err
+// Events is the daemon's log after a moment (all of it when zero),
+// newest first.
+func (c *Client) Events(since time.Time) ([]events.Event, error) {
+	if err := Write(c.conn, Request{Op: OpEvents, Since: since}); err != nil {
+		return nil, err
 	}
-	if response.Error != "" {
-		return state.Snapshot{}, errors.New(response.Error)
+	response, err := c.readResponse()
+	if err != nil {
+		return nil, err
+	}
+	return response.Events, nil
+}
+
+func (c *Client) readUpdate() (Update, error) {
+	response, err := c.readResponse()
+	if err != nil {
+		return Update{}, err
 	}
 	if response.Snapshot == nil {
-		return state.Snapshot{}, errors.New("response carried no snapshot")
+		return Update{}, errors.New("response carried no snapshot")
 	}
-	return *response.Snapshot, nil
+	return Update{Snapshot: *response.Snapshot, Events: response.Events}, nil
+}
+
+func (c *Client) readResponse() (Response, error) {
+	var response Response
+	if err := c.decoder.Decode(&response); err != nil {
+		return Response{}, err
+	}
+	if response.Error != "" {
+		return Response{}, errors.New(response.Error)
+	}
+	return response, nil
 }
 
 func SendEvent(sock string, event json.RawMessage) error {

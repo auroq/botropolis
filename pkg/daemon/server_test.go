@@ -11,6 +11,7 @@ import (
 
 	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/daemon"
+	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/proto"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/stretchr/testify/assert"
@@ -88,13 +89,13 @@ func TestServe(t *testing.T) {
 		client, err := proto.Dial(serve(t, d))
 		require.NoError(t, err)
 		defer func() { _ = client.Close() }()
-		updates, err := client.Subscribe()
+		updates, err := client.Subscribe(time.Time{})
 		require.NoError(t, err)
 
 		t.Run("it should receive the current snapshot first", func(t *testing.T) {
 			select {
-			case snapshot := <-updates:
-				assert.Equal(t, state.NeedsYou, snapshot.Sessions[0].State)
+			case update := <-updates:
+				assert.Equal(t, state.NeedsYou, update.Snapshot.Sessions[0].State)
 			case <-time.After(time.Second):
 				t.Fatal("no initial snapshot")
 			}
@@ -105,12 +106,62 @@ func TestServe(t *testing.T) {
 
 			t.Run("it should receive the update", func(t *testing.T) {
 				select {
-				case snapshot := <-updates:
-					assert.Equal(t, "Grep", snapshot.Sessions[0].Tool)
+				case update := <-updates:
+					assert.Equal(t, "Grep", update.Snapshot.Sessions[0].Tool)
 				case <-time.After(time.Second):
 					t.Fatal("no update")
 				}
 			})
+		})
+	})
+
+	t.Run("when a client asks for events", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		d.Apply(claude.HookEvent{Name: claude.HookPreToolUse, SessionID: sid, ToolName: "Grep"}, now)
+		d.Apply(claude.HookEvent{Name: claude.HookStop, SessionID: sid}, now.Add(time.Minute))
+		client, err := proto.Dial(serve(t, d))
+		require.NoError(t, err)
+		defer func() { _ = client.Close() }()
+
+		t.Run("and since is before the log", func(t *testing.T) {
+			logged, err := client.Events(t0)
+			require.NoError(t, err)
+
+			t.Run("it should list the needs-you event", func(t *testing.T) {
+				require.Len(t, logged, 1)
+				assert.Equal(t, events.NeedsYou, logged[0].Kind)
+			})
+		})
+
+		t.Run("and since is the log's own moment", func(t *testing.T) {
+			logged, err := client.Events(now)
+			require.NoError(t, err)
+
+			t.Run("it should list nothing", func(t *testing.T) {
+				assert.Empty(t, logged)
+			})
+		})
+	})
+
+	t.Run("when a client subscribes with a since", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		d.Apply(claude.HookEvent{Name: claude.HookPreToolUse, SessionID: sid, ToolName: "Grep"}, now)
+		d.Apply(claude.HookEvent{Name: claude.HookStop, SessionID: sid}, now.Add(time.Minute))
+		client, err := proto.Dial(serve(t, d))
+		require.NoError(t, err)
+		defer func() { _ = client.Close() }()
+		updates, err := client.Subscribe(t0)
+		require.NoError(t, err)
+
+		t.Run("it should carry the backlog with the first snapshot", func(t *testing.T) {
+			select {
+			case update := <-updates:
+				require.Len(t, update.Events, 1)
+				assert.Equal(t, events.NeedsYou, update.Events[0].Kind)
+				assert.Len(t, update.Snapshot.Sessions, 1)
+			case <-time.After(time.Second):
+				t.Fatal("no initial update")
+			}
 		})
 	})
 

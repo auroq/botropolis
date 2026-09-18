@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/auroq/botropolis/pkg/claude"
+	"github.com/auroq/botropolis/pkg/events"
+	"github.com/auroq/botropolis/pkg/proto"
 	"github.com/auroq/botropolis/pkg/state"
 )
 
@@ -38,7 +40,10 @@ type Daemon struct {
 	mu          sync.Mutex
 	base        state.Snapshot
 	overlays    map[string]overlay
-	subscribers map[chan state.Snapshot]struct{}
+	subscribers map[chan proto.Update]struct{}
+	// log is what happened, as each view differs from the last; the
+	// daemon keeps it so a client sees what it missed while closed.
+	log *events.Log
 }
 
 func New(home string, probes state.Probes, clock func() time.Time, options ...Option) *Daemon {
@@ -55,7 +60,8 @@ func NewWith(loader Snapshotter, clock func() time.Time) *Daemon {
 		clock:       clock,
 		watching:    make(chan struct{}),
 		overlays:    map[string]overlay{},
-		subscribers: map[chan state.Snapshot]struct{}{},
+		subscribers: map[chan proto.Update]struct{}{},
+		log:         events.NewLog(),
 	}
 }
 
@@ -121,12 +127,27 @@ func (d *Daemon) Apply(event claude.HookEvent, at time.Time) {
 	d.notify(view)
 }
 
-func (d *Daemon) Subscribe() (<-chan state.Snapshot, func()) {
-	ch := make(chan state.Snapshot, 1)
+// Subscribe delivers every change from now on, with the events each one
+// logged.
+func (d *Daemon) Subscribe() (<-chan proto.Update, func()) {
+	_, updates, cancel := d.Attach(time.Time{}, false)
+	return updates, cancel
+}
+
+// Attach is a subscription that also hands over the current view and
+// the log since a moment (the whole log when zero), taken in the same
+// breath so nothing is missed or delivered twice; withBacklog false
+// skips the log.
+func (d *Daemon) Attach(since time.Time, withBacklog bool) (proto.Update, <-chan proto.Update, func()) {
+	ch := make(chan proto.Update, 1)
 	d.mu.Lock()
 	d.subscribers[ch] = struct{}{}
+	first := proto.Update{Snapshot: d.view()}
+	if withBacklog {
+		first.Events = d.log.Since(since)
+	}
 	d.mu.Unlock()
-	return ch, func() {
+	return first, ch, func() {
 		d.mu.Lock()
 		defer d.mu.Unlock()
 		if _, ok := d.subscribers[ch]; ok {
@@ -134,6 +155,13 @@ func (d *Daemon) Subscribe() (<-chan state.Snapshot, func()) {
 			close(ch)
 		}
 	}
+}
+
+// Events is the log after a moment (all of it when zero), newest first.
+func (d *Daemon) Events(since time.Time) []events.Event {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.log.Since(since)
 }
 
 func (d *Daemon) view() state.Snapshot {
@@ -178,18 +206,24 @@ func (d *Daemon) pruneOverlays() {
 	}
 }
 
+// notify logs what changed and hands every subscriber the new view with
+// those events; a subscriber that has not taken the last update gets
+// the newer view with both batches, so no event is lost.
 func (d *Daemon) notify(snapshot state.Snapshot) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	fresh := d.log.Observe(snapshot, d.clock())
 	for ch := range d.subscribers {
+		update := proto.Update{Snapshot: snapshot, Events: fresh}
 		select {
-		case ch <- snapshot:
+		case ch <- update:
 		default:
 			select {
-			case <-ch:
+			case stale := <-ch:
+				update.Events = append(append([]events.Event(nil), fresh...), stale.Events...)
 			default:
 			}
-			ch <- snapshot
+			ch <- update
 		}
 	}
 }

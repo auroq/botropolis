@@ -1,6 +1,8 @@
 package render
 
 import (
+	"time"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
@@ -14,14 +16,14 @@ import (
 func (g *Game) drawTimeline(screen *ebiten.Image, width, height float64) {
 	th := g.theme
 	vector.FillRect(screen, 0, 0, float32(width), float32(height), colorScrim, false)
-	title, events := "Timeline", g.scene.Events()
+	title, list := "Timeline", g.scene.Events()
 	if g.away != nil {
-		title, events = "While you were away", g.away
+		title, list = "While you were away", g.away
 	}
-	if g.cursor >= len(events) {
-		g.cursor = max(0, len(events)-1)
+	if g.cursor >= len(list) {
+		g.cursor = max(0, len(list)-1)
 	}
-	tl := ui.LayoutTimeline(th, width, height, title, events, g.cursor, g.faces.Measure)
+	tl := ui.LayoutTimeline(th, width, height, title, list, g.cursor, g.faces.Measure)
 	g.roundPanel(screen, tl.Rect)
 	g.run(screen, tl.Title, th.Palette.Text)
 	for _, row := range tl.Rows {
@@ -65,12 +67,12 @@ func (g *Game) timelineKeys() bool {
 
 // jumpToEvent selects and centres the session under the cursor.
 func (g *Game) jumpToEvent() {
-	events := g.scene.Events()
+	list := g.scene.Events()
 	if g.away != nil {
-		events = g.away
+		list = g.away
 	}
-	if g.cursor < len(events) && events[g.cursor].SessionID != "" {
-		if !g.scene.Select(events[g.cursor].SessionID) {
+	if g.cursor < len(list) && list[g.cursor].SessionID != "" {
+		if !g.scene.Select(list[g.cursor].SessionID) {
 			g.SetStatus("that session is no longer on the map")
 		}
 	}
@@ -98,13 +100,27 @@ func (g *Game) clickTimeline(at city.Point) bool {
 // back it opens the away list when something needed you meanwhile.
 func (g *Game) watchFocus() {
 	focused := ebiten.IsFocused()
+	now := timeNow()
 	switch {
 	case g.focused && !focused:
-		g.blurredAt = timeNow()
-	case !g.focused && focused && !g.blurredAt.IsZero():
-		if away := g.scene.Away(g.blurredAt); len(away) > 0 && !g.timeline {
-			g.away, g.timeline, g.cursor = away, true, 0
+		g.blurredAt = now
+		g.scene.Layout().Seen = now
+		if g.saveState != nil && g.record == "" {
+			g.saveState(g.scene.Layout())
 		}
+	case !g.focused && focused && !g.blurredAt.IsZero():
+		g.awaySince = g.blurredAt
 	}
 	g.focused = focused
+	if focused && g.record == "" {
+		g.scene.Layout().Seen = now
+	}
+	// The away list waits for the log to arrive, so a window that was
+	// closed shows what happened meanwhile, not an empty panel.
+	if focused && g.eventsArrived && !g.awaySince.IsZero() {
+		if away := g.scene.Away(g.awaySince); len(away) > 0 && !g.timeline {
+			g.away, g.timeline, g.cursor = away, true, 0
+		}
+		g.awaySince = time.Time{}
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/proto"
@@ -42,8 +43,12 @@ func (d *Daemon) handle(ctx context.Context, conn net.Conn) {
 				return
 			}
 		case proto.OpSubscribe:
-			d.stream(ctx, conn)
+			d.stream(ctx, conn, request.Since)
 			return
+		case proto.OpEvents:
+			if err := proto.Write(conn, proto.Response{Events: d.Events(request.Since)}); err != nil {
+				return
+			}
 		case proto.OpEvent:
 			response := proto.Response{}
 			event, err := claude.ParseHookEvent(request.Event)
@@ -63,22 +68,21 @@ func (d *Daemon) handle(ctx context.Context, conn net.Conn) {
 	}
 }
 
-func (d *Daemon) stream(ctx context.Context, conn net.Conn) {
-	updates, cancel := d.Subscribe()
+func (d *Daemon) stream(ctx context.Context, conn net.Conn, since time.Time) {
+	first, updates, cancel := d.Attach(since, true)
 	defer cancel()
-	snapshot := d.Snapshot()
-	if err := proto.Write(conn, proto.Response{Snapshot: &snapshot}); err != nil {
+	if err := proto.Write(conn, proto.Response{Snapshot: &first.Snapshot, Events: first.Events}); err != nil {
 		return
 	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case snapshot, ok := <-updates:
+		case update, ok := <-updates:
 			if !ok {
 				return
 			}
-			if err := proto.Write(conn, proto.Response{Snapshot: &snapshot}); err != nil {
+			if err := proto.Write(conn, proto.Response{Snapshot: &update.Snapshot, Events: update.Events}); err != nil {
 				return
 			}
 		}

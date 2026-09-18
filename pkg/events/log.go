@@ -1,4 +1,7 @@
-package city
+// Package events is the city's event log: what happened to sessions, as
+// seen by diffing one snapshot against the next. The daemon keeps the
+// log and serves it over the socket; the map shows it.
+package events
 
 import (
 	"fmt"
@@ -7,30 +10,30 @@ import (
 	"github.com/auroq/botropolis/pkg/state"
 )
 
-// EventKind is what happened to a session.
-type EventKind string
+// Kind is what happened to a session.
+type Kind string
 
 const (
-	EventNeedsYou   EventKind = "needs-you"
-	EventError      EventKind = "error"
-	EventPR         EventKind = "pr"
-	EventMerged     EventKind = "merged"
-	EventCompaction EventKind = "compaction"
-	EventStarted    EventKind = "started"
-	EventEnded      EventKind = "ended"
+	NeedsYou   Kind = "needs-you"
+	Error      Kind = "error"
+	PR         Kind = "pr"
+	Merged     Kind = "merged"
+	Compaction Kind = "compaction"
+	Started    Kind = "started"
+	Ended      Kind = "ended"
 )
 
-// Event is one thing that happened, as the map saw it happen.
+// Event is one thing that happened, as the daemon saw it happen.
 type Event struct {
-	At        time.Time
-	Kind      EventKind
-	SessionID string
-	Title     string
-	Detail    string
+	At        time.Time `json:"at"`
+	Kind      Kind      `json:"kind"`
+	SessionID string    `json:"session_id"`
+	Title     string    `json:"title"`
+	Detail    string    `json:"detail,omitempty"`
 }
 
-// LogKeep is how many events the log holds.
-const LogKeep = 500
+// Keep is how many events the log holds.
+const Keep = 500
 
 // Log turns the stream of snapshots into events by what changed between
 // one and the next; the first snapshot only sets the baseline.
@@ -54,48 +57,56 @@ func (l *Log) Observe(snapshot state.Snapshot, at time.Time) []Event {
 		return nil
 	}
 	var fresh []Event
-	add := func(kind EventKind, s state.Session, detail string) {
+	add := func(kind Kind, s state.Session, detail string) {
 		fresh = append(fresh, Event{At: at, Kind: kind, SessionID: s.ID, Title: titleOf(s), Detail: detail})
 	}
 	for id, s := range current {
 		was, known := l.seen[id]
 		if !known {
 			if s.State != state.Parked {
-				add(EventStarted, s, string(s.State))
+				add(Started, s, string(s.State))
 			}
 			continue
 		}
 		if s.State == state.NeedsYou && was.State != state.NeedsYou {
-			add(EventNeedsYou, s, s.Note)
+			add(NeedsYou, s, s.Note)
 		}
 		if s.APIErrors > was.APIErrors {
-			add(EventError, s, fmt.Sprintf("%d api errors", s.APIErrors))
+			add(Error, s, fmt.Sprintf("%d api errors", s.APIErrors))
 		}
 		if s.Compactions > was.Compactions {
-			add(EventCompaction, s, fmt.Sprintf("compacted %dx", s.Compactions))
+			add(Compaction, s, fmt.Sprintf("compacted %dx", s.Compactions))
 		}
 		for _, pr := range s.PRs {
 			old, had := findPR(was, pr.Number)
 			switch {
 			case !had:
-				add(EventPR, s, fmt.Sprintf("#%d %s", pr.Number, pr.Repository))
+				add(PR, s, fmt.Sprintf("#%d %s", pr.Number, pr.Repository))
 			case pr.Merged() && !old.Merged():
-				add(EventMerged, s, fmt.Sprintf("#%d %s", pr.Number, pr.Repository))
+				add(Merged, s, fmt.Sprintf("#%d %s", pr.Number, pr.Repository))
 			}
 		}
 	}
 	for id, was := range l.seen {
 		if _, still := current[id]; !still && was.State != state.Parked {
-			add(EventEnded, was, string(was.State))
+			add(Ended, was, string(was.State))
 		}
 	}
 	l.seen = current
-	// Newest first; a fresh batch keeps its own order.
-	l.events = append(append([]Event(nil), fresh...), l.events...)
-	if len(l.events) > LogKeep {
-		l.events = l.events[:LogKeep]
-	}
+	l.Add(fresh...)
 	return fresh
+}
+
+// Add puts events at the head of the log, newest first; a batch keeps
+// its own order, and the oldest fall off the end.
+func (l *Log) Add(fresh ...Event) {
+	if len(fresh) == 0 {
+		return
+	}
+	l.events = append(append([]Event(nil), fresh...), l.events...)
+	if len(l.events) > Keep {
+		l.events = l.events[:Keep]
+	}
 }
 
 // Events is the log, newest first.
@@ -103,9 +114,10 @@ func (l *Log) Events() []Event {
 	return l.events
 }
 
-// Since is the events after a moment, of the given kinds or of every
-// kind when none is given, newest first.
-func (l *Log) Since(t time.Time, kinds ...EventKind) []Event {
+// Since is the events after a moment (every event when the moment is
+// zero), of the given kinds or of every kind when none is given, newest
+// first.
+func (l *Log) Since(t time.Time, kinds ...Kind) []Event {
 	var out []Event
 	for _, e := range l.events {
 		if !e.At.After(t) {
@@ -119,7 +131,7 @@ func (l *Log) Since(t time.Time, kinds ...EventKind) []Event {
 	return out
 }
 
-func hasKind(kinds []EventKind, k EventKind) bool {
+func hasKind(kinds []Kind, k Kind) bool {
 	for _, kind := range kinds {
 		if kind == k {
 			return true

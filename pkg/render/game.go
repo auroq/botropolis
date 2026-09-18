@@ -18,6 +18,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/pkg/ui"
@@ -116,11 +117,19 @@ type Game struct {
 	// timeline is the event list on t; away is the list shown when the
 	// window comes back into focus, or nil for the whole log.
 	timeline       bool
-	away           []city.Event
+	away           []events.Event
 	cursor         int
 	timelineLayout ui.Timeline
 	focused        bool
 	blurredAt      time.Time
+	// awaySince is a moment the away list is owed for — the last time
+	// the window was seen, or when it lost focus — once the first batch
+	// of events has arrived; pendingEvents is that batch, queued by the
+	// feed for the game loop.
+	awaySince      time.Time
+	eventsArrived  bool
+	pendingEvents  []events.Event
+	pendingBatches int
 
 	// hits are the sprites drawn last frame, front last, with what each
 	// stands for; the pointer is tested against them after the map's
@@ -140,13 +149,26 @@ type Game struct {
 }
 
 func NewGame(scene *city.Scene, actor Actor, theme ui.Theme, faces *faces, saveLayout func(*city.Layout), sprites *sprites) *Game {
-	return &Game{scene: scene, actor: actor, theme: theme, faces: faces, saveState: saveLayout, sprites: sprites, started: time.Now(), focused: true}
+	g := &Game{scene: scene, actor: actor, theme: theme, faces: faces, saveState: saveLayout, sprites: sprites, started: time.Now(), focused: true}
+	// A window that was closed owes the away list from when it was last
+	// seen, the way a blurred one does from when it lost focus.
+	g.awaySince = scene.Layout().Seen
+	return g
 }
 
 func (g *Game) Offer(snapshot state.Snapshot) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.pending = &snapshot
+}
+
+// AddEvents queues a batch from the feed for the game loop; an empty
+// batch still counts as the log having arrived.
+func (g *Game) AddEvents(fresh []events.Event) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.pendingEvents = append(g.pendingEvents, fresh...)
+	g.pendingBatches++
 }
 
 func (g *Game) SetStatus(status string) {
@@ -159,7 +181,13 @@ func (g *Game) Update() error {
 	g.mu.Lock()
 	pending := g.pending
 	g.pending = nil
+	fresh, batches := g.pendingEvents, g.pendingBatches
+	g.pendingEvents, g.pendingBatches = nil, 0
 	g.mu.Unlock()
+	if batches > 0 {
+		g.scene.AddEvents(fresh)
+		g.eventsArrived = true
+	}
 	if pending != nil {
 		g.scene.SetSnapshot(*pending)
 		if title := windowTitle + " — " + g.scene.City().Summary().Headline(); title != g.shownTitle {

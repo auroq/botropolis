@@ -3,13 +3,14 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/auroq/botropolis/pkg/proto"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/auroq/botropolis/pkg/proto"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -22,6 +23,7 @@ import (
 	"github.com/auroq/botropolis/pkg/commands"
 	"github.com/auroq/botropolis/pkg/config"
 	"github.com/auroq/botropolis/pkg/control"
+	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/render"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/pkg/tui"
@@ -39,6 +41,7 @@ type cliParams struct {
 	Notify   *cobra.Command   `name:"notify"`
 	TUI      *cobra.Command   `name:"tui"`
 	Doctor   *cobra.Command   `name:"doctor"`
+	Events   *cobra.Command   `name:"events"`
 }
 
 var Module = fx.Module("botropolis",
@@ -46,7 +49,7 @@ var Module = fx.Module("botropolis",
 		config.NewViper,
 		newLoader,
 		appd.NewProbes,
-		fx.Annotate(newServices, fx.As(new(cli.Services)), fx.As(new(cli.CityServices)), fx.As(new(cli.BarServices)), fx.As(new(cli.NotifyServices)), fx.As(new(cli.TUIServices)), fx.As(new(cli.DoctorServices))),
+		fx.Annotate(newServices, fx.As(new(cli.Services)), fx.As(new(cli.CityServices)), fx.As(new(cli.BarServices)), fx.As(new(cli.NotifyServices)), fx.As(new(cli.TUIServices)), fx.As(new(cli.DoctorServices)), fx.As(new(cli.EventsServices))),
 		fx.Annotate(cli.NewStatusCLI, fx.ResultTags(`name:"status"`)),
 		fx.Annotate(cli.NewInstallHooksCLI, fx.ResultTags(`name:"installHooks"`)),
 		fx.Annotate(cli.NewSessionCLIs, fx.ResultTags(`name:"sessions"`)),
@@ -55,8 +58,9 @@ var Module = fx.Module("botropolis",
 		fx.Annotate(cli.NewNotifyCLI, fx.ResultTags(`name:"notify"`)),
 		fx.Annotate(cli.NewTUICLI, fx.ResultTags(`name:"tui"`)),
 		fx.Annotate(cli.NewDoctorCLI, fx.ResultTags(`name:"doctor"`)),
+		fx.Annotate(cli.NewEventsCLI, fx.ResultTags(`name:"events"`)),
 		func(p cliParams) *cobra.Command {
-			subs := append([]*cobra.Command{p.Status, p.Hooks, p.City, p.Bar, p.Notify, p.TUI, p.Doctor}, p.Sessions...)
+			subs := append([]*cobra.Command{p.Status, p.Hooks, p.City, p.Bar, p.Notify, p.TUI, p.Doctor, p.Events}, p.Sessions...)
 			return cli.NewRootCLI(p.Viper, subs...)
 		},
 	),
@@ -95,6 +99,10 @@ func newServices(probes state.Probes) *services {
 
 func (s *services) Status(cfg *config.Config) cli.StatusRunner {
 	return commands.NewStatus(s.source(cfg))
+}
+
+func (s *services) Events(cfg *config.Config) cli.EventsRunner {
+	return commands.NewEvents(cfg.Socket)
 }
 
 func (s *services) Hooks(cfg *config.Config) cli.HooksRunner {
@@ -206,6 +214,7 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		Poll:    2 * time.Second,
 		Retry:   5 * time.Second,
 		OnError: func(err error) { fmt.Fprintf(cmd.ErrOrStderr(), "botropolis: %v\n", err) },
+		Since:   func() time.Time { return layout.Seen },
 	}
 	projection, ok := city.ParseProjection(c.config.Projection)
 	if !ok {
@@ -213,10 +222,13 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 	}
 	recordDir, recordSeconds := cli.Record(cmd)
 	return render.Run(cmd.Context(), render.Options{
-		Layout:        layout,
-		LayoutPath:    layoutPath,
-		Actor:         actor,
-		Feed:          feed.Run,
+		Layout:     layout,
+		LayoutPath: layoutPath,
+		Actor:      actor,
+		Feed: func(ctx context.Context, offer func(state.Snapshot), fresh func([]events.Event)) {
+			feed.Events = fresh
+			feed.Run(ctx, offer)
+		},
 		Projection:    projection,
 		Screenshot:    cli.Screenshot(cmd),
 		Keys:          cli.Keys(cmd),

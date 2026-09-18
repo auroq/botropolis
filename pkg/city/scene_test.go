@@ -7,6 +7,7 @@ import (
 
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/claude"
+	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -736,26 +737,22 @@ func TestSceneEvents(t *testing.T) {
 	s.Resize(800, 600)
 	s.SetClock(func() time.Time { return clock }, time.UTC)
 	s.SetSnapshot(snapshot(session("a", cinders, state.Working)))
-	clock = clock.Add(time.Minute)
-	s.SetSnapshot(snapshot(session("a", cinders, state.NeedsYou)))
-	left := clock
-	clock = clock.Add(time.Minute)
-	errored := session("a", cinders, state.NeedsYou)
-	errored.APIErrors = 1
-	s.SetSnapshot(snapshot(errored))
+	s.AddEvents([]events.Event{{At: clock.Add(time.Minute), Kind: events.NeedsYou, SessionID: "a", Title: "Fix the CI queue"}})
+	left := clock.Add(time.Minute)
+	s.AddEvents([]events.Event{{At: clock.Add(2 * time.Minute), Kind: events.Error, SessionID: "a", Title: "Fix the CI queue", Detail: "1 api errors"}})
 
-	t.Run("when snapshots have come and gone", func(t *testing.T) {
+	t.Run("when events have been handed in", func(t *testing.T) {
 		t.Run("it should log what happened, newest first", func(t *testing.T) {
-			events := s.Events()
-			require.Len(t, events, 2)
-			assert.Equal(t, city.EventError, events[0].Kind)
-			assert.Equal(t, city.EventNeedsYou, events[1].Kind)
+			logged := s.Events()
+			require.Len(t, logged, 2)
+			assert.Equal(t, events.Error, logged[0].Kind)
+			assert.Equal(t, events.NeedsYou, logged[1].Kind)
 		})
 
 		t.Run("it should say what needed you since you left", func(t *testing.T) {
 			away := s.Away(left)
 			require.Len(t, away, 1)
-			assert.Equal(t, city.EventError, away[0].Kind)
+			assert.Equal(t, events.Error, away[0].Kind)
 		})
 	})
 }
