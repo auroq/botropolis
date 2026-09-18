@@ -22,8 +22,8 @@ func TestLayoutFooter(t *testing.T) {
 			assert.Equal(t, city.RectAt(0, 600-f.Rect.Height(), 800, f.Rect.Height()), f.Rect)
 		})
 
-		t.Run("it should be one line plus a grid unit each side tall", func(t *testing.T) {
-			assert.Equal(t, 16+2*8.0, f.Rect.Height())
+		t.Run("it should be the key row plus a line and a grid tall", func(t *testing.T) {
+			assert.Equal(t, 32+16+8.0, f.Rect.Height())
 		})
 
 		t.Run("it should show the status", func(t *testing.T) {
@@ -32,11 +32,19 @@ func TestLayoutFooter(t *testing.T) {
 		})
 
 		t.Run("it should start the text two grid units in", func(t *testing.T) {
-			assert.Equal(t, city.Point{X: 16, Y: 600 - 32 + 8}, f.Lines[0].At)
+			assert.Equal(t, city.Point{X: 16, Y: 600 - 56 + 8}, f.Lines[0].At)
 		})
 
-		t.Run("it should show no keys", func(t *testing.T) {
-			assert.Empty(t, f.Keys)
+		t.Run("it should keep the key row", func(t *testing.T) {
+			assert.Len(t, f.Keys, 2)
+		})
+
+		t.Run("it should put the status above the keys", func(t *testing.T) {
+			assert.Less(t, f.Lines[0].At.Y, f.Keys[0].KeyAt.Y)
+		})
+
+		t.Run("it should keep the key row's own height apart, for the map's reserve", func(t *testing.T) {
+			assert.Equal(t, 32.0, f.KeyRow.Height())
 		})
 	})
 
@@ -52,8 +60,8 @@ func TestLayoutFooter(t *testing.T) {
 			assert.LessOrEqual(t, len(f.Lines), 4)
 		})
 
-		t.Run("it should grow with the lines", func(t *testing.T) {
-			assert.Equal(t, 16*float64(len(f.Lines))+16, f.Rect.Height())
+		t.Run("it should grow with the lines above the key row", func(t *testing.T) {
+			assert.Equal(t, 32+16*float64(len(f.Lines))+8, f.Rect.Height())
 		})
 	})
 
@@ -62,6 +70,10 @@ func TestLayoutFooter(t *testing.T) {
 
 		t.Run("it should show no lines", func(t *testing.T) {
 			assert.Empty(t, f.Lines)
+		})
+
+		t.Run("it should make the key row the whole footer", func(t *testing.T) {
+			assert.Equal(t, f.Rect, f.KeyRow)
 		})
 
 		t.Run("it should lay out every key", func(t *testing.T) {

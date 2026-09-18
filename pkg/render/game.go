@@ -75,7 +75,7 @@ type Game struct {
 
 	mu          sync.Mutex
 	pending     *state.Snapshot
-	status      string
+	notice      ui.Notice
 	shownTitle  string
 	stripLayout ui.Strip
 
@@ -171,10 +171,11 @@ func (g *Game) AddEvents(fresh []events.Event) {
 	g.pendingBatches++
 }
 
+// SetStatus puts a line above the key row for a few seconds.
 func (g *Game) SetStatus(status string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	g.status = status
+	g.notice.Set(status, timeNow())
 }
 
 func (g *Game) Update() error {

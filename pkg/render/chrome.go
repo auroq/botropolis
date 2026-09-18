@@ -16,21 +16,22 @@ var colorScrim = color.NRGBA{0x00, 0x00, 0x00, 0x80}
 func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
 	th := g.theme
 	g.mu.Lock()
-	status := g.status
+	status := g.notice.Text(timeNow())
 	g.mu.Unlock()
 	footer := ui.LayoutFooter(th, width, height, status, footerKeys, g.faces.Measure)
 	top := g.strip(screen, width)
 	g.scene.SetTopChrome(top)
-	g.scene.SetBottomChrome(footer.Rect.Height())
-	if box, ok := ui.LayoutMinimap(th, width, height, footer.Rect.Height()); ok {
+	bottom := footer.KeyRow.Height()
+	g.scene.SetBottomChrome(bottom)
+	if box, ok := ui.LayoutMinimap(th, width, height, bottom); ok {
 		g.minimap(screen, box)
 	}
 	x, y := ebiten.CursorPosition()
-	bounds := city.RectAt(0, top, width, height-top-footer.Rect.Height())
+	bounds := city.RectAt(0, top, width, height-top-bottom)
 	g.pinned = ui.Card{}
 	g.pinnedKinds = nil
 	if g.sidebar {
-		g.drawSidebar(screen, top, height-footer.Rect.Height())
+		g.drawSidebar(screen, top, height-bottom)
 		g.scene.SetLeftChrome(ui.SidebarWidth(th))
 		bounds.Min.X = ui.SidebarWidth(th)
 	} else {

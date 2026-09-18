@@ -22,13 +22,16 @@ type PlacedKey struct {
 	LabelAt city.Point
 }
 
-// Footer is the bar along the bottom: a status when there is one, else
-// the key row.
+// Footer is the bar along the bottom: the key row, with a status on its
+// own lines above it when there is one. KeyRow is the key row's part,
+// which is all the map ever makes room for, so a passing status never
+// moves the map.
 type Footer struct {
-	Rect  city.Rect
-	Size  Size
-	Lines []Text
-	Keys  []PlacedKey
+	Rect   city.Rect
+	KeyRow city.Rect
+	Size   Size
+	Lines  []Text
+	Keys   []PlacedKey
 }
 
 // LayoutFooter lays the footer along the bottom of a width×height window.
@@ -36,23 +39,24 @@ func LayoutFooter(th Theme, width, height float64, status string, keys []Key, me
 	grid := th.Grid()
 	f := Footer{Size: Small}
 	_, lineH := measure("", Small)
+	f.KeyRow = city.RectAt(0, height-lineH-2*grid, width, lineH+2*grid)
+	f.Rect = f.KeyRow
 	if status != "" {
 		lines := format.Wrap(status, int((width-4*grid)/avgChar(Small, measure)))
 		if len(lines) > maxFooterLines {
 			lines = lines[:maxFooterLines]
 		}
-		f.Rect = city.RectAt(0, height-lineH*float64(len(lines))-2*grid, width, lineH*float64(len(lines))+2*grid)
+		top := f.KeyRow.Min.Y - lineH*float64(len(lines)) - grid
+		f.Rect = city.RectAt(0, top, width, height-top)
 		for i, line := range lines {
-			f.Lines = append(f.Lines, Text{Text: line, At: city.Point{X: 2 * grid, Y: f.Rect.Min.Y + grid + lineH*float64(i)}, Size: Small})
+			f.Lines = append(f.Lines, Text{Text: line, At: city.Point{X: 2 * grid, Y: top + grid + lineH*float64(i)}, Size: Small})
 		}
-		return f
 	}
-	f.Rect = city.RectAt(0, height-lineH-2*grid, width, lineH+2*grid)
 	x := 2 * grid
 	for _, k := range keys {
 		kw, _ := measure(k.Key, Small)
 		lw, _ := measure(k.Action, Small)
-		chip := city.RectAt(x, f.Rect.Min.Y+grid/2, kw+grid, lineH+grid)
+		chip := city.RectAt(x, f.KeyRow.Min.Y+grid/2, kw+grid, lineH+grid)
 		labelX := chip.Max.X + grid
 		if labelX+lw > width-2*grid {
 			break
@@ -60,8 +64,8 @@ func LayoutFooter(th Theme, width, height float64, status string, keys []Key, me
 		f.Keys = append(f.Keys, PlacedKey{
 			Key:     k,
 			Chip:    chip,
-			KeyAt:   city.Point{X: x + grid/2, Y: f.Rect.Min.Y + grid},
-			LabelAt: city.Point{X: labelX, Y: f.Rect.Min.Y + grid},
+			KeyAt:   city.Point{X: x + grid/2, Y: f.KeyRow.Min.Y + grid},
+			LabelAt: city.Point{X: labelX, Y: f.KeyRow.Min.Y + grid},
 		})
 		x = labelX + lw + 3*grid
 	}

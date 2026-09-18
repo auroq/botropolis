@@ -109,11 +109,10 @@ func (g *Game) handleKeys() error {
 	}
 	if !g.quit.armed(timeNow()) {
 		g.mu.Lock()
-		prompting := g.status == quitPrompt
-		g.mu.Unlock()
-		if prompting {
-			g.SetStatus("")
+		if g.notice.Text(timeNow()) == quitPrompt {
+			g.notice.Clear()
 		}
+		g.mu.Unlock()
 	}
 	if just(ebiten.KeyQ) {
 		return g.leave()
