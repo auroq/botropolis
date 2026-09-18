@@ -56,7 +56,7 @@ func (c *City) Summary() Summary {
 		case state.Parked:
 			s.Parked++
 		}
-		if b.Session.State != state.Parked {
+		if state.Live(b.Session.State) {
 			s.FreshPerH += b.Session.FreshTokensPerHour
 			s.CachedPerH += b.Session.CacheReadPerHour
 			s.Subagents += b.Session.SubagentsInFlight

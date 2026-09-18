@@ -30,6 +30,9 @@ var (
 	colorMapNeedsYou = colorNeedsYou
 	colorMapUnatt    = color.NRGBA{0x8a, 0x6c, 0xd8, 0xff}
 	colorMapParked   = color.NRGBA{0x44, 0x42, 0x48, 0xff}
+	colorMapVacant   = color.NRGBA{0x4e, 0x48, 0x3c, 0xff}
+	colorVacant      = color.NRGBA{0x6b, 0x62, 0x50, 0xff}
+	colorVacantDim   = color.NRGBA{0x3a, 0x36, 0x2e, 0xff}
 	colorMinimapView = color.NRGBA{0xff, 0xff, 0xff, 0xc0}
 	colorWater       = color.NRGBA{0x5a, 0xa8, 0xd0, 0xff}
 	colorWaterLight  = color.NRGBA{0xc8, 0xe8, 0xf8, 0xff}
@@ -155,6 +158,8 @@ func blockColor(b *city.Building, seconds float64) color.NRGBA {
 	switch {
 	case b.BoardedUp:
 		return colorMapParked
+	case b.Vacant:
+		return colorMapVacant
 	case b.Pulse:
 		return pulse(colorMapNeedsYou, seconds)
 	case b.Session.State == state.Waiting:

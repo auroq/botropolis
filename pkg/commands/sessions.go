@@ -28,6 +28,12 @@ type Pruned struct {
 	LastSeen time.Time
 }
 
+// EmptyAfter is how long an empty session — one nothing was typed into —
+// may sit before prune clears it, whatever the parked cutoff is.
+const EmptyAfter = time.Hour
+
+// Prune removes parked background jobs last seen before the cutoff, and
+// empty ones that have sat for EmptyAfter.
 func (s *Sessions) Prune(ctx context.Context, snapshot state.Snapshot, olderThan time.Duration, now time.Time, dryRun bool) ([]Pruned, error) {
 	agents, err := s.ctl.Agents(ctx, true)
 	if err != nil {
@@ -44,14 +50,18 @@ func (s *Sessions) Prune(ctx context.Context, snapshot state.Snapshot, olderThan
 			continue
 		}
 		session, known := byID[agent.SessionID]
-		if known && session.State != state.Parked {
+		limit := cutoff
+		switch {
+		case known && session.State == state.Empty:
+			limit = now.Add(-EmptyAfter)
+		case known && session.State != state.Parked:
 			continue
 		}
 		lastSeen := time.UnixMilli(agent.StartedAt).UTC()
 		if known && !session.LastActivity.IsZero() {
 			lastSeen = session.LastActivity
 		}
-		if !lastSeen.Before(cutoff) {
+		if !lastSeen.Before(limit) {
 			continue
 		}
 		title := session.Title

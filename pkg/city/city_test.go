@@ -140,6 +140,42 @@ func TestBuild(t *testing.T) {
 		})
 	})
 
+	t.Run("when a building's session is empty", func(t *testing.T) {
+		empty := session("a", cinders, state.Empty)
+		empty.Title, empty.ContextPercent, empty.ContextTokens, empty.ContextWindow = "", 0, 0, 0
+		c := build(t, city.NewLayout(), empty, session("b", cinders, state.Working))
+		require.Len(t, c.Districts, 1)
+		require.Len(t, c.Districts[0].Buildings, 2)
+		plot := c.Districts[0].Buildings[0]
+		if plot.Session.ID != "a" {
+			plot = c.Districts[0].Buildings[1]
+		}
+
+		t.Run("it should stand on a plot in its district", func(t *testing.T) {
+			assert.Equal(t, "a", plot.Session.ID)
+		})
+
+		t.Run("it should be vacant", func(t *testing.T) {
+			assert.True(t, plot.Vacant)
+		})
+
+		t.Run("it should not be lit", func(t *testing.T) {
+			assert.False(t, plot.Lit)
+		})
+
+		t.Run("it should not count in the summary", func(t *testing.T) {
+			assert.Equal(t, 1, c.Summary().Live())
+		})
+
+		t.Run("it should not count as live in its project row", func(t *testing.T) {
+			assert.Equal(t, 1, c.Projects(nil)[0].Live)
+		})
+
+		t.Run("its card should say nothing was typed", func(t *testing.T) {
+			assert.Contains(t, plot.Card(now).Lines, "empty    nothing typed yet; prune clears it after an hour")
+		})
+	})
+
 	t.Run("when a building's session is working", func(t *testing.T) {
 		c := build(t, city.NewLayout(), session("a", cinders, state.Working))
 

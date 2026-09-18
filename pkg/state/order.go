@@ -15,8 +15,9 @@ func Rank(st State) int {
 	return len(Order)
 }
 
-// Live is the filter for states with a session behind them right now.
-func Live(st State) bool { return st != Parked }
+// Live is the filter for states with a conversation going right now:
+// not parked, and not empty (an empty session is never counted).
+func Live(st State) bool { return st != Parked && st != Empty }
 
 // Count is how many sessions are in a state.
 type Count struct {

@@ -66,7 +66,7 @@ func Summarize(snapshot state.Snapshot) BarLine {
 	var needs []string
 	var busiest float64
 	for _, s := range snapshot.Sessions {
-		if s.State == state.Parked {
+		if !state.Live(s.State) {
 			continue
 		}
 		counts[s.State]++

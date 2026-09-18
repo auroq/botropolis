@@ -50,6 +50,22 @@ func TestOrder(t *testing.T) {
 		})
 	})
 
+	t.Run("when an empty session is tallied", func(t *testing.T) {
+		counts := state.Tally([]state.Session{{State: state.Empty}, {State: state.Working}})
+
+		t.Run("it should never be counted", func(t *testing.T) {
+			assert.Equal(t, []state.Count{{state.Working, 1}}, state.Nonzero(counts))
+		})
+
+		t.Run("it should rank after parked", func(t *testing.T) {
+			assert.Greater(t, state.Rank(state.Empty), state.Rank(state.Parked))
+		})
+
+		t.Run("it should not be live", func(t *testing.T) {
+			assert.False(t, state.Live(state.Empty))
+		})
+	})
+
 	t.Run("when only live counts are walked", func(t *testing.T) {
 		counts := state.Nonzero(map[state.State]int{state.Parked: 4, state.Working: 3}, state.Live)
 

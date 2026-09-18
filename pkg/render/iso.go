@@ -247,6 +247,10 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		}
 		return
 	}
+	if b.Vacant {
+		g.vacantPlot(screen, cam, b, selected)
+		return
+	}
 	var tint *ebiten.ColorScale
 	switch {
 	case g.scene.Dimmed(b):
@@ -337,6 +341,37 @@ func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, 
 
 // noteHit remembers a drawn sprite for the pointer; drawIso gathers
 // them front-last.
+// vacantPlot is a session with nothing typed into it yet: bare ground
+// inside the plot's kerb, no building, no light, hoverable like one.
+func (g *Game) vacantPlot(screen *ebiten.Image, cam *city.Camera, b *city.Building, selected bool) {
+	plot := b.Rect.Inset(city.Tile * 0.15)
+	fill := colorVacant
+	if g.scene.Dimmed(b) {
+		fill = colorVacantDim
+	}
+	g.poly(screen, cam, plot, fill)
+	g.polyStroke(screen, cam, plot, 1, colorKitKerb)
+	if selected {
+		g.polyStroke(screen, cam, plot, 2, colorSelected)
+	}
+	g.noteHit(screenBounds(cam, plot), city.Hit{Building: b, District: g.scene.City().DistrictOf(b)})
+}
+
+// screenBounds is the screen box around a world rectangle's projection.
+func screenBounds(cam *city.Camera, r city.Rect) city.Rect {
+	var out city.Rect
+	for i, corner := range cam.Corners(r) {
+		p := corner.Add(cam.Offset).Scale(cam.Zoom)
+		if i == 0 {
+			out = city.Rect{Min: p, Max: p}
+			continue
+		}
+		out.Min.X, out.Min.Y = math.Min(out.Min.X, p.X), math.Min(out.Min.Y, p.Y)
+		out.Max.X, out.Max.Y = math.Max(out.Max.X, p.X), math.Max(out.Max.Y, p.Y)
+	}
+	return out
+}
+
 func (g *Game) noteHit(r city.Rect, hit city.Hit) {
 	if r.Area() == 0 {
 		return
@@ -453,7 +488,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	if g.titlesVisible() {
 		for _, b := range c.Buildings() {
-			if b.BoardedUp && hover.Building != b {
+			if (b.BoardedUp || b.Vacant) && hover.Building != b {
 				continue
 			}
 			g.isoTitle(screen, cam, b)

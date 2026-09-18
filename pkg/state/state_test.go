@@ -41,7 +41,7 @@ func transcript(sid string, turn claude.Turn) claude.Transcript {
 		ContextTokens: 250_000,
 		Cost:          claude.Cost{TotalUSD: 8.65},
 		FirstAt:       started, LastAt: started.Add(time.Hour),
-		Tail: claude.Tail{Turn: turn},
+		Tail: claude.Tail{Turn: turn, Prompts: 1, LastPromptAt: started},
 	}
 }
 
@@ -208,8 +208,16 @@ func TestBuild(t *testing.T) {
 		t.Run("and the record says idle", func(t *testing.T) {
 			session := build(t, []claude.SessionRecord{record(sidA, claude.KindInteractive, claude.StatusIdle)}, nil, nil, alive)[0]
 
-			t.Run("it should need you", func(t *testing.T) {
-				assert.Equal(t, state.NeedsYou, session.State)
+			t.Run("it should be empty", func(t *testing.T) {
+				assert.Equal(t, state.Empty, session.State)
+			})
+		})
+
+		t.Run("and the record has no status", func(t *testing.T) {
+			session := build(t, []claude.SessionRecord{record(sidA, claude.KindBackground, "")}, nil, nil, alive)[0]
+
+			t.Run("it should be empty", func(t *testing.T) {
+				assert.Equal(t, state.Empty, session.State)
 			})
 		})
 	})
@@ -745,6 +753,44 @@ func TestRecordStatus(t *testing.T) {
 
 		t.Run("it should need you", func(t *testing.T) {
 			assert.Equal(t, state.NeedsYou, session.State)
+		})
+	})
+}
+
+func TestEmptySession(t *testing.T) {
+	blank := transcript(sidA, claude.TurnUnknown)
+	blank.Usage = claude.Usage{}
+	blank.Tail = claude.Tail{}
+
+	t.Run("when a live idle record's transcript holds no prompt and no reply", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusIdle)},
+			[]claude.Transcript{blank}, nil, alive)[0]
+
+		t.Run("it should be empty", func(t *testing.T) {
+			assert.Equal(t, state.Empty, session.State)
+		})
+	})
+
+	t.Run("when a live idle record's transcript holds a prompt", func(t *testing.T) {
+		prompted := blank
+		prompted.Tail = claude.Tail{Turn: claude.TurnWorking, Prompts: 1, LastPromptAt: started}
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusIdle)},
+			[]claude.Transcript{prompted}, nil, alive)[0]
+
+		t.Run("it should need you", func(t *testing.T) {
+			assert.Equal(t, state.NeedsYou, session.State)
+		})
+	})
+
+	t.Run("when the pid is gone and the transcript is blank", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusIdle)},
+			[]claude.Transcript{blank}, nil, dead)[0]
+
+		t.Run("it should be parked", func(t *testing.T) {
+			assert.Equal(t, state.Parked, session.State)
 		})
 	})
 }

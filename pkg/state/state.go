@@ -19,6 +19,11 @@ const (
 	Waiting    State = "waiting"
 	Unattended State = "unattended"
 	Parked     State = "parked"
+	// Empty is a live session nothing has been typed into yet: no
+	// transcript, or one with no prompt and no reply. It is drawn as a
+	// plot without a building, never counted, and pruned once it has sat
+	// for an hour.
+	Empty State = "empty"
 )
 
 const (
@@ -235,7 +240,8 @@ func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript boo
 		s.CacheReadPerHour = float64(s.Usage.CacheRead) / hours
 		s.TokensPerHour = s.FreshTokensPerHour + s.CacheReadPerHour
 	}
-	s.State = derive(r, s.Turn, hasTranscript, isAlive, isAttached)
+	conversation := hasTranscript && (t.Tail.Prompts > 0 || !t.Tail.LastAssistantAt.IsZero())
+	s.State = derive(r, s.Turn, conversation, isAlive, isAttached)
 	return s
 }
 
@@ -552,14 +558,18 @@ func PowerSince(transcripts []claude.Transcript, since time.Time) Power {
 // derive picks a live session's state. The record's own status is the
 // CLI's word and wins over the transcript tail: an idle session needs you
 // (or is waiting on its own watch), a busy one is working unless it is
-// blocked in a question only you can answer. The tail alone decides for a
-// record that carries no status.
-func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive, isAttached bool) State {
+// blocked in a question only you can answer. A session with no
+// conversation yet is empty unless the CLI says it is busy. The tail alone
+// decides for a record that carries no status.
+func derive(r claude.SessionRecord, turn claude.Turn, hasConversation, isAlive, isAttached bool) State {
 	if !isAlive {
 		return Parked
 	}
 	switch r.Status {
 	case claude.StatusIdle:
+		if !hasConversation {
+			return Empty
+		}
 		if turn == claude.TurnWaiting {
 			return Waiting
 		}
@@ -570,8 +580,8 @@ func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive, is
 		}
 		return busy(r, isAttached)
 	}
-	if !hasTranscript {
-		return Working
+	if !hasConversation {
+		return Empty
 	}
 	switch turn {
 	case claude.TurnNeedsInput, claude.TurnAwaitingUser:

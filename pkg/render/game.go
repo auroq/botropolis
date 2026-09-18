@@ -483,6 +483,8 @@ func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building
 	switch {
 	case b.BoardedUp:
 		body = colorBoarded
+	case b.Vacant:
+		body = colorMapVacant
 	case b.Pulse:
 		body = pulse(colorNeedsYou, seconds)
 	case b.Session.State == state.Unattended:

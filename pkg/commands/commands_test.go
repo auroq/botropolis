@@ -350,6 +350,33 @@ func TestPrune(t *testing.T) {
 		})
 	})
 
+	t.Run("when an empty job has sat for over an hour", func(t *testing.T) {
+		ctl := &fakeController{agents: []control.Agent{{ID: "66666666", SessionID: "66666666-0000-0000-0000-000000000000", Kind: "background", StartedAt: now.Add(-2 * time.Hour).UnixMilli()}}}
+		blank := state.Snapshot{Sessions: []state.Session{{ID: "66666666-0000-0000-0000-000000000000", State: state.Empty, LastActivity: now.Add(-2 * time.Hour)}}}
+		pruned, err := commands.NewSessions(t.TempDir(), ctl).Prune(context.Background(), blank, 7*24*time.Hour, now, false)
+		require.NoError(t, err)
+
+		t.Run("it should remove it inside the parked cutoff", func(t *testing.T) {
+			assert.Equal(t, []string{"agents all=true", "rm 66666666"}, ctl.calls)
+		})
+
+		t.Run("it should name it by its session id", func(t *testing.T) {
+			require.Len(t, pruned, 1)
+			assert.Equal(t, "66666666-0000-0000-0000-000000000000", pruned[0].Title)
+		})
+	})
+
+	t.Run("when an empty job is younger than an hour", func(t *testing.T) {
+		ctl := &fakeController{agents: []control.Agent{{ID: "77777777", SessionID: "77777777-0000-0000-0000-000000000000", Kind: "background", StartedAt: now.Add(-30 * time.Minute).UnixMilli()}}}
+		blank := state.Snapshot{Sessions: []state.Session{{ID: "77777777-0000-0000-0000-000000000000", State: state.Empty, LastActivity: now.Add(-30 * time.Minute)}}}
+		pruned, err := commands.NewSessions(t.TempDir(), ctl).Prune(context.Background(), blank, 7*24*time.Hour, now, false)
+		require.NoError(t, err)
+
+		t.Run("it should leave it alone", func(t *testing.T) {
+			assert.Empty(t, pruned)
+		})
+	})
+
 	t.Run("when a job is unknown to the snapshot", func(t *testing.T) {
 		ctl := &fakeController{agents: []control.Agent{{ID: "55555555", SessionID: "55555555-0000-0000-0000-000000000000", Kind: "background", StartedAt: now.Add(-40 * 24 * time.Hour).UnixMilli()}}}
 		pruned, err := commands.NewSessions(t.TempDir(), ctl).Prune(context.Background(), state.Snapshot{}, 7*24*time.Hour, now, false)

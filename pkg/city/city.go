@@ -44,6 +44,9 @@ type Building struct {
 	Lit       bool
 	Pulse     bool
 	BoardedUp bool
+	// Vacant is a plot with no building: a session nothing has been typed
+	// into yet.
+	Vacant bool
 }
 
 type District struct {
@@ -305,9 +308,10 @@ func newBuilding(s state.Session, slot int, at Point, size float64) *Building {
 		Flags:     len(s.PRs),
 		Merged:    mergedPRs(s),
 		Smoke:     s.APIErrors,
-		Lit:       s.State != state.Parked,
+		Lit:       state.Live(s.State),
 		Pulse:     s.State == state.NeedsYou,
 		BoardedUp: s.State == state.Parked,
+		Vacant:    s.State == state.Empty,
 	}
 }
 
@@ -397,9 +401,11 @@ func (b *Building) Card(now time.Time) Card {
 	}
 	lines := []string{
 		"state    " + string(s.State),
-		"branch   " + s.Branch,
-		"model    " + s.Model,
 	}
+	if b.Vacant {
+		lines = append(lines, "empty    nothing typed yet; prune clears it after an hour")
+	}
+	lines = append(lines, "branch   "+s.Branch, "model    "+s.Model)
 	if doing := s.Doing(); doing != "" {
 		lines = append(lines, "doing    "+doing)
 	}

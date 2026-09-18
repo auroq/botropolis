@@ -66,6 +66,15 @@ func TestBar(t *testing.T) {
 		})
 	})
 
+	t.Run("when the only session is empty", func(t *testing.T) {
+		line := commands.Summarize(state.Snapshot{Sessions: []state.Session{{State: state.Empty, Title: "nothing yet"}}})
+
+		t.Run("it should say no sessions with the idle class", func(t *testing.T) {
+			assert.Equal(t, "no sessions", line.Text)
+			assert.Equal(t, "idle", line.Class)
+		})
+	})
+
 	t.Run("when printed once for waybar", func(t *testing.T) {
 		var out bytes.Buffer
 		require.NoError(t, commands.NewBar(&fakeSource{snapshot: snapshot}, nil).Once(&out, commands.BarWaybar, true))

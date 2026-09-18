@@ -32,7 +32,7 @@ func (c *City) Projects(layout *Layout) []ProjectRow {
 			roots = append(roots, root)
 		}
 		row.Sessions = append(row.Sessions, b)
-		if b.Session.State != state.Parked {
+		if state.Live(b.Session.State) {
 			row.Live++
 		}
 		if b.Session.State == state.NeedsYou {

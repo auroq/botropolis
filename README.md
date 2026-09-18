@@ -29,6 +29,8 @@ and the terminal is only ever a view of it.
 One district per project, one building per session, and every object stands for one datum you can read by hovering it:
 a building's height is its context window used, its beacon is its state (needs-you amber, working blue, waiting-on-its-own-watch teal, unattended violet, parked slate),
 a rover works at the door while it is mid-turn, a drone circles the roof for each subagent in flight, a flag per PR (green once merged), smoke per API error.
+A vacant plot is a session nothing has been typed into yet;
+it is never counted, and `botropolis prune` clears it once it has sat for an hour.
 The plant on the plaza is the API — click it for the breakdown by model, project and session over an hour, a day or a week;
 the towers on the ridge are MCP servers; the library ranks skills; the city hall carries Claude Code's own rollup.
 Avenues carry traffic between projects whose sessions message each other or edit each other's files; parked sessions are containers in the storage yard.
