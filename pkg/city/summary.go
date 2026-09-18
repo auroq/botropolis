@@ -1,6 +1,10 @@
 package city
 
-import "github.com/auroq/botropolis/pkg/state"
+import (
+	"fmt"
+
+	"github.com/auroq/botropolis/pkg/state"
+)
 
 // Summary is the city-wide tally drawn along the top of the window, the
 // way a strategy game keeps its resources in view.
@@ -51,4 +55,16 @@ func (c *City) Summary() Summary {
 		s.MCPCalls += t.Server.Calls
 	}
 	return s
+}
+
+// Headline is the one-line form for a window title or a bar: what needs
+// you first, then what is running.
+func (s Summary) Headline() string {
+	switch {
+	case s.NeedsYou > 0:
+		return fmt.Sprintf("%d need you · %d working", s.NeedsYou, s.Working+s.Unattended)
+	case s.Working+s.Unattended > 0:
+		return fmt.Sprintf("%d working", s.Working+s.Unattended)
+	}
+	return "quiet"
 }

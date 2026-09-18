@@ -71,13 +71,14 @@ type Game struct {
 	saveState func(*city.Layout)
 	sprites   *sprites
 
-	mu        sync.Mutex
-	pending   *state.Snapshot
-	status    string
-	stripHits []stripHit
-	dragging  bool
-	dragFrom  city.Point
-	started   time.Time
+	mu         sync.Mutex
+	pending    *state.Snapshot
+	status     string
+	shownTitle string
+	stripHits  []stripHit
+	dragging   bool
+	dragFrom   city.Point
+	started    time.Time
 }
 
 func NewGame(scene *city.Scene, actor Actor, face text.Face, saveLayout func(*city.Layout), sprites *sprites) *Game {
@@ -103,6 +104,10 @@ func (g *Game) Update() error {
 	g.mu.Unlock()
 	if pending != nil {
 		g.scene.SetSnapshot(*pending)
+		if title := windowTitle + " — " + g.scene.City().Summary().Headline(); title != g.shownTitle {
+			g.shownTitle = title
+			ebiten.SetWindowTitle(title)
+		}
 	}
 
 	x, y := ebiten.CursorPosition()

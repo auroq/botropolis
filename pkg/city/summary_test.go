@@ -40,6 +40,24 @@ func TestSummary(t *testing.T) {
 		})
 	})
 
+	t.Run("when a headline is asked for", func(t *testing.T) {
+		cases := map[string]struct {
+			s    city.Summary
+			want string
+		}{
+			"with sessions needing you": {city.Summary{NeedsYou: 2, Working: 1, Unattended: 1}, "2 need you · 2 working"},
+			"with only work running":    {city.Summary{Working: 3}, "3 working"},
+			"with nothing live":         {city.Summary{Parked: 9}, "quiet"},
+		}
+		for name, c := range cases {
+			t.Run("and the city is "+name, func(t *testing.T) {
+				t.Run("it should say so in one line", func(t *testing.T) {
+					assert.Equal(t, c.want, c.s.Headline())
+				})
+			})
+		}
+	})
+
 	t.Run("when the city is empty", func(t *testing.T) {
 		t.Run("it should be all zero", func(t *testing.T) {
 			assert.Equal(t, city.Summary{}, city.Build(state.Snapshot{}, city.NewLayout()).Summary())
