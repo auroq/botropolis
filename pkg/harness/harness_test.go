@@ -2,6 +2,7 @@ package harness_test
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -96,5 +97,68 @@ func TestMulti(t *testing.T) {
 		t.Run("it should return the error", func(t *testing.T) {
 			assert.ErrorContains(t, err, "boom")
 		})
+	})
+}
+
+// filled builds a value of v's type with every field set to something
+// other than its zero value, so a merge that drops a field shows.
+func filled(v reflect.Value) {
+	switch v.Kind() {
+	case reflect.String:
+		v.SetString("x")
+	case reflect.Bool:
+		v.SetBool(true)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		v.SetInt(1)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		v.SetUint(1)
+	case reflect.Float32, reflect.Float64:
+		v.SetFloat(1.5)
+	case reflect.Slice:
+		elem := reflect.New(v.Type().Elem()).Elem()
+		filled(elem)
+		v.Set(reflect.Append(reflect.MakeSlice(v.Type(), 0, 1), elem))
+	case reflect.Map:
+		key := reflect.New(v.Type().Key()).Elem()
+		filled(key)
+		elem := reflect.New(v.Type().Elem()).Elem()
+		filled(elem)
+		m := reflect.MakeMap(v.Type())
+		m.SetMapIndex(key, elem)
+		v.Set(m)
+	case reflect.Pointer:
+		p := reflect.New(v.Type().Elem())
+		filled(p.Elem())
+		v.Set(p)
+	case reflect.Struct:
+		if v.Type() == reflect.TypeOf(time.Time{}) {
+			v.Set(reflect.ValueOf(now))
+			return
+		}
+		for i := 0; i < v.NumField(); i++ {
+			if v.Type().Field(i).IsExported() {
+				filled(v.Field(i))
+			}
+		}
+	}
+}
+
+func TestMultiKeepsEveryField(t *testing.T) {
+	t.Run("when one harness's snapshot goes through the merge", func(t *testing.T) {
+		var in state.Snapshot
+		filled(reflect.ValueOf(&in).Elem())
+		out, err := harness.NewMulti(fake{name: "claude", snapshot: in}).Load(now)
+		require.NoError(t, err)
+		// At is the merge's own moment and Power.Since its own window; every
+		// other exported field must come through untouched.
+		in.At, out.At = time.Time{}, time.Time{}
+		in.Power.Since, out.Power.Since = time.Time{}, time.Time{}
+
+		for i := 0; i < reflect.TypeOf(in).NumField(); i++ {
+			field := reflect.TypeOf(in).Field(i)
+			t.Run("it should keep "+field.Name, func(t *testing.T) {
+				assert.Equal(t, reflect.ValueOf(in).Field(i).Interface(), reflect.ValueOf(out).Field(i).Interface())
+			})
+		}
 	})
 }
