@@ -29,7 +29,7 @@ func TestMulti(t *testing.T) {
 	a := fake{name: "claude", dirs: []string{"/a"}, snapshot: state.Snapshot{
 		Sessions: []state.Session{{ID: "1", State: state.Working}},
 		Servers:  []state.Server{{Name: "atlassian"}},
-		Power:    state.Power{CostUSD: 1.5, Fresh: 10, Cached: 100, ByModel: map[string]claude.Usage{"opus": {Output: 5}}},
+		Power:    state.Power{CostUSD: 1.5, CostKnown: true, Fresh: 10, Cached: 100, ByModel: map[string]claude.Usage{"opus": {Output: 5}}},
 		Stats:    &claude.Stats{TotalSessions: 513},
 		Teams:    []claude.Team{{Name: "review", LeadSessionID: "1"}},
 	}}
@@ -54,6 +54,10 @@ func TestMulti(t *testing.T) {
 			assert.Equal(t, int64(7), snapshot.Power.ByModel["gpt"].Output)
 		})
 
+		t.Run("it should know the cost when either harness does", func(t *testing.T) {
+			assert.True(t, snapshot.Power.CostKnown)
+		})
+
 		t.Run("it should keep the servers", func(t *testing.T) {
 			assert.Len(t, snapshot.Servers, 1)
 		})
@@ -74,6 +78,15 @@ func TestMulti(t *testing.T) {
 
 		t.Run("it should union the watch directories", func(t *testing.T) {
 			assert.Equal(t, []string{"/a", "/b"}, harness.NewMulti(a, b).WatchDirs())
+		})
+	})
+
+	t.Run("when neither harness knows the cost", func(t *testing.T) {
+		snapshot, err := harness.NewMulti(b, b).Load(now)
+		require.NoError(t, err)
+
+		t.Run("it should not know it either", func(t *testing.T) {
+			assert.False(t, snapshot.Power.CostKnown)
 		})
 	})
 
