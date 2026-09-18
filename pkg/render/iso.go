@@ -109,8 +109,8 @@ func (g *Game) isoGround(screen *ebiten.Image, cam *city.Camera, c *city.City, w
 }
 
 // isoTree plants one of the plan's trees, back to front with everything else.
-func (g *Game) isoTree(screen *ebiten.Image, cam *city.Camera, cell city.Cell, tint *ebiten.ColorScale) {
-	g.kit(screen, cam, treePiece(cell), 0, cell.Center(), tint)
+func (g *Game) isoTree(screen *ebiten.Image, cam *city.Camera, t city.Tree, tint *ebiten.ColorScale) {
+	g.kit(screen, cam, treePiece(t), 0, t.At, tint)
 }
 
 // isoPlaza is the civic centre's floor and its fountain.
@@ -496,7 +496,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	for _, t := range c.Trees {
 		t := t
-		items = append(items, drawable{depth: cam.Depth(t.Center()), draw: func() {
+		items = append(items, drawable{depth: cam.Depth(t.At), draw: func() {
 			g.isoTree(screen, cam, t, nil)
 		}})
 	}

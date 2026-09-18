@@ -6,7 +6,11 @@
 // here, so every tree can be pointed at.
 package plan
 
-import "sort"
+import (
+	"fmt"
+	"hash/fnv"
+	"sort"
+)
 
 // Cell is one grid cell; the city decides how many pixels that is.
 type Cell struct {
@@ -69,6 +73,27 @@ const (
 	DirW
 )
 
+// Tree is one tree on a park cell: which of the two variants, and how
+// far off the cell's centre it stands, in cells, so a block of park
+// reads as trees rather than a hedge. Both are seeded from the cell,
+// so the same plan grows the same wood.
+type Tree struct {
+	Cell    Cell
+	Variant int
+	DX, DY  float64
+}
+
+// TreeJitter is how far a tree may stand from its cell's centre, in cells.
+const TreeJitter = 0.3
+
+func plantTree(c Cell) Tree {
+	h := fnv.New32a()
+	_, _ = fmt.Fprintf(h, "%d,%d", c.Col, c.Row)
+	seed := h.Sum32()
+	unit := func(bits uint32) float64 { return float64(bits&0xffff)/0xffff*2 - 1 }
+	return Tree{Cell: c, Variant: int(seed & 1), DX: unit(seed>>1) * TreeJitter, DY: unit(seed>>17) * TreeJitter}
+}
+
 // Street is one avenue cell and which neighbours it joins.
 type Street struct {
 	Cell Cell
@@ -93,7 +118,7 @@ type Plan struct {
 	Towers   []Cell
 	Streets  []Street
 	Lamps    []Cell
-	Trees    []Cell
+	Trees    []Tree
 	Fountain Cell
 	River    []RiverCell
 	// Rails is the freight loop, cell by cell clockwise from the
@@ -264,7 +289,7 @@ func (p *Plan) place(in Input) {
 			for col := b.Min.Col; col < b.Min.Col+b.Cols; col++ {
 				p.park[Cell{col, row}] = true
 				if !onRails[Cell{col, row}] {
-					p.Trees = append(p.Trees, Cell{col, row})
+					p.Trees = append(p.Trees, plantTree(Cell{col, row}))
 				}
 			}
 		}
@@ -323,7 +348,7 @@ func (p *Plan) place(in Input) {
 	}
 	sort.Slice(p.Streets, func(i, j int) bool { return less(p.Streets[i].Cell, p.Streets[j].Cell) })
 	sort.Slice(p.Lamps, func(i, j int) bool { return less(p.Lamps[i], p.Lamps[j]) })
-	sort.Slice(p.Trees, func(i, j int) bool { return less(p.Trees[i], p.Trees[j]) })
+	sort.Slice(p.Trees, func(i, j int) bool { return less(p.Trees[i].Cell, p.Trees[j].Cell) })
 }
 
 // railLoop is every cell of the rectangle from nw to se, clockwise from

@@ -131,6 +131,14 @@ func (d *District) storageCard() Card {
 	return Card{Title: StorageName, Lines: lines}
 }
 
+// Tree is one of the plan's trees: its cell, its variant and where it
+// stands, a seeded step off the cell's centre.
+type Tree struct {
+	Cell    Cell
+	Variant int
+	At      Point
+}
+
 // Park is a block the plan left green.
 type Park struct {
 	Rect Rect

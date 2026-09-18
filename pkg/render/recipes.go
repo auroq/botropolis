@@ -63,10 +63,10 @@ func buildingPiece(b *city.Building) string {
 }
 
 // treePiece is the tree on a park cell: the suburban kit's two trees,
-// which share the city kits' palette, large on even rows and small on
-// odd so a block reads as rows.
-func treePiece(cell city.Cell) string {
-	if ((cell.Row%2)+2)%2 == 0 {
+// which share the city kits' palette, the plan's seeded variant picking
+// which so a block reads as a wood, not a hedge.
+func treePiece(t city.Tree) string {
+	if t.Variant == 0 {
 		return kitBeltTree
 	}
 	return kitParkTree

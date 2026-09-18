@@ -96,9 +96,9 @@ func (g *Game) ground(screen *ebiten.Image, cam *city.Camera, c *city.City, widt
 		}
 	}
 	for _, t := range c.Trees {
-		centre := t.Center()
+		centre := t.At
 		r := city.RectAt(centre.X-city.Tile/2, centre.Y-city.Tile/2, city.Tile, city.Tile)
-		tree := townTrees[((t.Row%len(townTrees))+len(townTrees))%len(townTrees)]
+		tree := townTrees[((t.Cell.Row%len(townTrees))+len(townTrees))%len(townTrees)]
 		g.drawTile(screen, cam, g.sprites.town.tile(tree[0], tree[1]), r, scale)
 	}
 }

@@ -2,6 +2,7 @@ package plan_test
 
 import (
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -262,8 +263,35 @@ func TestMake(t *testing.T) {
 
 		t.Run("it should leave no tree on the rails", func(t *testing.T) {
 			for _, r := range p.Rails {
-				assert.NotContains(t, p.Trees, r)
+				for _, tree := range p.Trees {
+					assert.NotEqual(t, r, tree.Cell)
+				}
 			}
+		})
+	})
+
+	t.Run("when trees are planted", func(t *testing.T) {
+		p := plan.Make(plan.Input{Districts: live(2)}, plan.NewMemory())
+		again := plan.Make(plan.Input{Districts: live(2)}, plan.NewMemory())
+		require.NotEmpty(t, p.Trees)
+
+		t.Run("it should set each tree off its cell's centre within the jitter", func(t *testing.T) {
+			for _, tree := range p.Trees {
+				assert.LessOrEqual(t, math.Abs(tree.DX), plan.TreeJitter, tree)
+				assert.LessOrEqual(t, math.Abs(tree.DY), plan.TreeJitter, tree)
+			}
+		})
+
+		t.Run("it should plant both variants", func(t *testing.T) {
+			seen := map[int]bool{}
+			for _, tree := range p.Trees {
+				seen[tree.Variant] = true
+			}
+			assert.Equal(t, map[int]bool{0: true, 1: true}, seen)
+		})
+
+		t.Run("it should plant the same trees for the same plan", func(t *testing.T) {
+			assert.Equal(t, p.Trees, again.Trees)
 		})
 	})
 

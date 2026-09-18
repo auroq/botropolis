@@ -105,7 +105,7 @@ type City struct {
 	Fountain Rect
 	Camps    []*Camp
 	Parks    []Park
-	Trees    []Cell
+	Trees    []Tree
 	// Rails is the freight loop as a closed polyline; Trains run it.
 	Rails  []Point
 	Trains []*Train
@@ -235,7 +235,9 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 		city.Parks = append(city.Parks, Park{Rect: cellRect(park)})
 	}
 	for _, t := range p.Trees {
-		city.Trees = append(city.Trees, toCell(t))
+		cell := toCell(t.Cell)
+		centre := cell.Center()
+		city.Trees = append(city.Trees, Tree{Cell: cell, Variant: t.Variant, At: Point{X: centre.X + t.DX*CellSize, Y: centre.Y + t.DY*CellSize}})
 	}
 	city.Rails = railPath(p.Rails)
 	for _, l := range p.Lamps {

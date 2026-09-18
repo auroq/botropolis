@@ -2,12 +2,14 @@ package city_test
 
 import (
 	"fmt"
+	"math"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/claude"
+	"github.com/auroq/botropolis/pkg/plan"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -769,5 +771,20 @@ func TestTrains(t *testing.T) {
 				assert.Equal(t, tc.unit, city.TrainUnit(tc.max))
 			})
 		}
+	})
+}
+
+func TestTrees(t *testing.T) {
+	t.Run("when the city plants the plan's trees", func(t *testing.T) {
+		c := build(t, city.NewLayout(), session("a", cinders, state.Working))
+		require.NotEmpty(t, c.Trees)
+
+		t.Run("it should set each tree at its cell's centre plus its offset", func(t *testing.T) {
+			tree := c.Trees[0]
+			centre := tree.Cell.Center()
+			assert.NotEqual(t, centre, tree.At)
+			assert.LessOrEqual(t, math.Abs(tree.At.X-centre.X), plan.TreeJitter*city.CellSize+1e-9)
+			assert.LessOrEqual(t, math.Abs(tree.At.Y-centre.Y), plan.TreeJitter*city.CellSize+1e-9)
+		})
 	})
 }
