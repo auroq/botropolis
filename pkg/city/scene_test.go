@@ -15,6 +15,7 @@ import (
 func scene(t *testing.T, sessions ...state.Session) *city.Scene {
 	t.Helper()
 	s := city.NewScene(city.NewLayout())
+	s.SetClock(func() time.Time { return now }, time.UTC)
 	s.Resize(800, 600)
 	s.SetSnapshot(snapshot(sessions...))
 	return s
