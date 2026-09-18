@@ -69,9 +69,9 @@ func treePiece(cell city.Cell) string {
 }
 
 // roadPiece is the road piece and its turn for a street cell's joins.
-// A straight at turn 0 runs east–west; a bend at turn 0 joins south and
-// east; a T at turn 0 has its bar east–west and its stem south; an end
-// at turn 0 is open to the east.
+// A straight at turn 0 runs east–west; a bend at turn 0 joins north and
+// west (its arc bulges to the south-east); a T at turn 0 has its bar
+// east–west and its stem south; an end at turn 0 is open to the east.
 func roadPiece(mask int) (string, int) {
 	n, e, s, w := mask&city.DirN != 0, mask&city.DirE != 0, mask&city.DirS != 0, mask&city.DirW != 0
 	count := 0
@@ -101,13 +101,13 @@ func roadPiece(mask int) (string, int) {
 		case n && s:
 			return "city-kit-roads/road-straight", 90
 		case s && e:
-			return "city-kit-roads/road-bend", 0
-		case s && w:
-			return "city-kit-roads/road-bend", 90
-		case n && w:
 			return "city-kit-roads/road-bend", 180
-		default:
+		case s && w:
 			return "city-kit-roads/road-bend", 270
+		case n && w:
+			return "city-kit-roads/road-bend", 0
+		default:
+			return "city-kit-roads/road-bend", 90
 		}
 	case 1:
 		switch {

@@ -12,6 +12,7 @@ import (
 type Summary struct {
 	Working    int
 	NeedsYou   int
+	Waiting    int
 	Unattended int
 	Parked     int
 	FreshPerH  float64
@@ -37,7 +38,7 @@ func (s Summary) BudgetShare() float64 {
 
 // Live is every session that is not parked.
 func (s Summary) Live() int {
-	return s.Working + s.NeedsYou + s.Unattended
+	return s.Working + s.NeedsYou + s.Waiting + s.Unattended
 }
 
 func (c *City) Summary() Summary {
@@ -48,6 +49,8 @@ func (c *City) Summary() Summary {
 			s.Working++
 		case state.NeedsYou:
 			s.NeedsYou++
+		case state.Waiting:
+			s.Waiting++
 		case state.Unattended:
 			s.Unattended++
 		case state.Parked:
@@ -75,6 +78,7 @@ func (s Summary) Counts() map[state.State]int {
 	return map[state.State]int{
 		state.NeedsYou:   s.NeedsYou,
 		state.Working:    s.Working,
+		state.Waiting:    s.Waiting,
 		state.Unattended: s.Unattended,
 		state.Parked:     s.Parked,
 	}

@@ -157,7 +157,13 @@ func (d *Daemon) view() state.Snapshot {
 			} else {
 				s.State = state.Working
 			}
-		case state.NeedsYou, state.Parked:
+		case state.NeedsYou:
+			// A session waiting on its own watch handed the turn back on
+			// purpose; the Stop hook does not make it need you.
+			if s.State != state.Waiting {
+				s.State = o.state
+			}
+		case state.Parked:
 			s.State = o.state
 		}
 	}

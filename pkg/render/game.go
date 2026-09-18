@@ -122,6 +122,11 @@ type Game struct {
 	focused        bool
 	blurredAt      time.Time
 
+	// hits are the sprites drawn last frame, front last, with what each
+	// stands for; the pointer is tested against them after the map's
+	// footprints, so a tall building or tower is hovered by its body.
+	hits      []spriteHit
+	frameHits []spriteHit
 	// quit is the two-press guard on Escape.
 	quit confirm
 	// searching is the box on /; query is the filter it holds;
@@ -202,6 +207,7 @@ func (g *Game) Update() error {
 	x, y := ebiten.CursorPosition()
 	cursor := city.Point{X: float64(x), Y: float64(y)}
 	g.scene.PointerMove(cursor)
+	g.hoverSprites(cursor)
 
 	if _, wheel := ebiten.Wheel(); wheel != 0 {
 		g.scene.Wheel(cursor, wheel)
@@ -373,6 +379,29 @@ func (g *Game) overlay(screen *ebiten.Image, width, height float64) {
 
 // clock is the animation time; with reduced motion it stands still at
 // the point where the needs-you pulse is at full colour.
+// spriteHit is a drawn sprite's screen rect and what it stands for.
+type spriteHit struct {
+	rect city.Rect
+	hit  city.Hit
+}
+
+// hoverSprites lets a sprite's body take the hover when the map's
+// footprints found only ground under the pointer.
+func (g *Game) hoverSprites(cursor city.Point) {
+	if !g.scene.Hover().Ground() {
+		return
+	}
+	g.mu.Lock()
+	hits := g.hits
+	g.mu.Unlock()
+	for i := len(hits) - 1; i >= 0; i-- {
+		if hits[i].rect.Contains(cursor) {
+			g.scene.SetHover(hits[i].hit)
+			return
+		}
+	}
+}
+
 // timeNow is the wall clock, one seam for the keys that stamp files.
 var timeNow = time.Now
 

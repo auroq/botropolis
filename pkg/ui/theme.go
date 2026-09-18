@@ -40,6 +40,7 @@ const (
 	ToneNone Tone = iota
 	ToneNeedsYou
 	ToneWorking
+	ToneWaiting
 	ToneUnattended
 	ToneParked
 	ToneError
@@ -52,6 +53,8 @@ func (t Tone) String() string {
 		return "needs-you"
 	case ToneWorking:
 		return "working"
+	case ToneWaiting:
+		return "waiting"
 	case ToneUnattended:
 		return "unattended"
 	case ToneParked:
@@ -71,6 +74,8 @@ func StateTone(st state.State) Tone {
 		return ToneNeedsYou
 	case state.Working:
 		return ToneWorking
+	case state.Waiting:
+		return ToneWaiting
 	case state.Unattended:
 		return ToneUnattended
 	case state.Parked:
@@ -88,6 +93,7 @@ type Palette struct {
 
 	NeedsYou   color.NRGBA
 	Working    color.NRGBA
+	Waiting    color.NRGBA
 	Unattended color.NRGBA
 	Parked     color.NRGBA
 	Error      color.NRGBA
@@ -110,6 +116,7 @@ var DefaultPalette = Palette{
 	Accent:     amber,
 	NeedsYou:   amber,
 	Working:    color.NRGBA{0x55, 0x9a, 0xe0, 0xff},
+	Waiting:    color.NRGBA{0x4c, 0xb8, 0xa8, 0xff},
 	Unattended: color.NRGBA{0x8a, 0x6c, 0xd8, 0xff},
 	Parked:     color.NRGBA{0x6b, 0x72, 0x80, 0xff},
 	Error:      color.NRGBA{0xe0, 0x50, 0x50, 0xff},
@@ -157,6 +164,8 @@ func (t Theme) Color(tone Tone) color.NRGBA {
 		return t.Palette.NeedsYou
 	case ToneWorking:
 		return t.Palette.Working
+	case ToneWaiting:
+		return t.Palette.Waiting
 	case ToneUnattended:
 		return t.Palette.Unattended
 	case ToneParked:

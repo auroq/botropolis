@@ -87,7 +87,7 @@ func Summarize(snapshot state.Snapshot) BarLine {
 	case counts[state.NeedsYou] > 0:
 		line.Class = string(state.NeedsYou)
 		line.Text = "● " + line.Text
-	case counts[state.Working]+counts[state.Unattended] > 0:
+	case counts[state.Working]+counts[state.Waiting]+counts[state.Unattended] > 0:
 		line.Class = string(state.Working)
 		line.Text = "○ " + line.Text
 	default:

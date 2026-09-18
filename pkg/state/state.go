@@ -11,8 +11,12 @@ import (
 type State string
 
 const (
-	NeedsYou   State = "needs-you"
-	Working    State = "working"
+	NeedsYou State = "needs-you"
+	Working  State = "working"
+	// Waiting is a session that handed the turn back but armed its own
+	// watch — a scheduled wakeup, a Monitor, a cron loop — so it will
+	// carry on by itself; you can talk to it, it does not need you.
+	Waiting    State = "waiting"
 	Unattended State = "unattended"
 	Parked     State = "parked"
 )
@@ -558,6 +562,8 @@ func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive, is
 	switch turn {
 	case claude.TurnNeedsInput, claude.TurnAwaitingUser:
 		return NeedsYou
+	case claude.TurnWaiting:
+		return Waiting
 	}
 	if r.Kind == claude.KindBackground && !isAttached {
 		return Unattended

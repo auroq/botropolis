@@ -27,7 +27,7 @@ and the terminal is only ever a view of it.
 ## What you see
 
 One district per project, one building per session, and every object stands for one datum you can read by hovering it:
-a building's height is its context window used, its beacon is its state (needs-you amber, working blue, unattended violet, parked slate),
+a building's height is its context window used, its beacon is its state (needs-you amber, working blue, waiting-on-its-own-watch teal, unattended violet, parked slate),
 a rover works at the door while it is mid-turn, a drone circles the roof for each subagent in flight, a flag per PR (green once merged), smoke per API error.
 The plant on the plaza is the API — click it for the breakdown by model, project and session over an hour, a day or a week;
 the towers on the ridge are MCP servers; the library ranks skills; the city hall carries Claude Code's own rollup.

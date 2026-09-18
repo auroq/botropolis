@@ -12,9 +12,16 @@ const (
 	TurnWorking      Turn = "working"
 	TurnAwaitingUser Turn = "awaiting-user"
 	TurnNeedsInput   Turn = "needs-input"
+	// TurnWaiting is a turn handed back by a session that armed its own
+	// watch — a scheduled wakeup, a Monitor, a cron loop — so it will
+	// carry on by itself and only takes input in the meantime.
+	TurnWaiting Turn = "waiting"
 )
 
 const askUserTool = "AskUserQuestion"
+
+// watchTools arm a session's own watch: it will wake itself.
+var watchTools = map[string]bool{"ScheduleWakeup": true, "Monitor": true, "CronCreate": true}
 
 type Tail struct {
 	Turn            Turn
@@ -34,6 +41,7 @@ type contentBlockJSON struct {
 		To           string `json:"to"`
 		FilePath     string `json:"file_path"`
 		NotebookPath string `json:"notebook_path"`
+		Stop         bool   `json:"stop"`
 	} `json:"input"`
 }
 
@@ -62,6 +70,9 @@ type tailScan struct {
 	lastStop  string
 	messageID string
 	pending   []pendingTool
+	// watch is set once the session armed a wakeup since the last real
+	// prompt, and cleared by the next one.
+	watch bool
 }
 
 func (s *tailScan) user(rec transcriptLineJSON, ts time.Time) {
@@ -76,6 +87,7 @@ func (s *tailScan) user(rec transcriptLineJSON, ts time.Time) {
 	if !results && prompt {
 		s.tail.Prompts++
 		s.tail.LastPromptAt = ts
+		s.watch = false
 	}
 }
 
@@ -92,6 +104,9 @@ func (s *tailScan) assistant(rec transcriptLineJSON, ts time.Time) {
 	for _, block := range rec.Message.Content {
 		if block.Type == "tool_use" {
 			s.pending = append(s.pending, pendingTool{id: block.ID, name: block.Name})
+			if watchTools[block.Name] {
+				s.watch = !block.Input.Stop
+			}
 		}
 	}
 }
@@ -116,6 +131,11 @@ func (s *tailScan) finish() Tail {
 		tail.Turn = TurnWorking
 	case "assistant":
 		tail.Turn = s.assistantTurn()
+	}
+	// A session that armed its own watch and has nothing in flight is
+	// waiting on it, whoever spoke last.
+	if s.watch && len(s.pending) == 0 && tail.Turn != TurnNeedsInput {
+		tail.Turn = TurnWaiting
 	}
 	return tail
 }

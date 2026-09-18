@@ -91,6 +91,7 @@ type Scene struct {
 	log         *Log
 	filter      Filter
 	budget      float64
+	spriteHover bool
 }
 
 // CelebrateFor is how long a merge is shown off.
@@ -402,6 +403,7 @@ const LineHoverPixels = 6.0
 
 func (s *Scene) PointerMove(screen Point) {
 	world := s.camera.ScreenToWorld(screen)
+	s.spriteHover = false
 	s.hover = s.city.At(world)
 	if s.hover.ground() {
 		if near := s.city.Near(world, LineHoverPixels/s.camera.Zoom); near != (Hit{}) {
@@ -410,8 +412,20 @@ func (s *Scene) PointerMove(screen Point) {
 	}
 }
 
+// SetHover replaces the hover with what the renderer found under the
+// pointer in screen space — a sprite standing taller than its footprint.
+func (s *Scene) SetHover(hit Hit) {
+	s.hover = hit
+	s.spriteHover = true
+}
+
 // ground is a hit on something a line may run over: nothing, a park, the
 // plaza or the river.
+// Ground is ground() for the renderer.
+func (h Hit) Ground() bool {
+	return h.ground()
+}
+
 func (h Hit) ground() bool {
 	if h.Building != nil || h.District != nil || h.Tower != nil {
 		return false
@@ -538,6 +552,11 @@ func (s *Scene) CenterOn(world Point) {
 
 func (s *Scene) Click(screen Point) Action {
 	hit := s.city.At(s.camera.ScreenToWorld(screen))
+	if hit.ground() && s.spriteHover && s.hover.Building != nil {
+		// The pointer is on a building's upper storeys, found by the
+		// renderer's sprite pass rather than the footprint.
+		hit = s.hover
+	}
 	s.hover = hit
 	s.selected = hit.Building
 	return s.Activate()

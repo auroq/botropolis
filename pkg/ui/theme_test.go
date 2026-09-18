@@ -78,6 +78,7 @@ func TestTheme(t *testing.T) {
 		}{
 			{ui.ToneNeedsYou, "amber"},
 			{ui.ToneWorking, "blue"},
+			{ui.ToneWaiting, "teal"},
 			{ui.ToneUnattended, "violet"},
 			{ui.ToneParked, "slate"},
 			{ui.ToneError, "red"},
@@ -105,6 +106,7 @@ func TestTheme(t *testing.T) {
 		}{
 			{state.NeedsYou, ui.ToneNeedsYou},
 			{state.Working, ui.ToneWorking},
+			{state.Waiting, ui.ToneWaiting},
 			{state.Unattended, ui.ToneUnattended},
 			{state.Parked, ui.ToneParked},
 			{state.State("gone"), ui.ToneNone},
@@ -137,6 +139,8 @@ func hue(c color.NRGBA) string {
 		return "amber"
 	case r == max:
 		return "red"
+	case g == max && b > r && b > g*3/4:
+		return "teal"
 	case g == max:
 		return "green"
 	case b == max && r > g:

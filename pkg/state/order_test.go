@@ -17,8 +17,9 @@ func TestOrder(t *testing.T) {
 		}{
 			{state.NeedsYou, 0},
 			{state.Working, 1},
-			{state.Unattended, 2},
-			{state.Parked, 3},
+			{state.Waiting, 2},
+			{state.Unattended, 3},
+			{state.Parked, 4},
 		}
 		for _, tc := range ranks {
 			t.Run(fmt.Sprintf("it should rank %s at %d", tc.state, tc.rank), func(t *testing.T) {

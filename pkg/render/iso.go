@@ -263,6 +263,7 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		tint.SetB(1)
 	}
 	r := g.kit(screen, cam, buildingPiece(b), 0, b.Rect.Center(), tint)
+	g.noteHit(r, city.Hit{Building: b, District: g.scene.City().DistrictOf(b)})
 	if r.Area() == 0 || g.scene.Dimmed(b) {
 		return
 	}
@@ -324,13 +325,25 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	}
 }
 
-// isoLandmark draws a kit piece standing on a world rect's centre.
-func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, name string, tint *ebiten.ColorScale) {
+// isoLandmark draws a kit piece standing on a world rect's centre and
+// notes where it landed for the pointer.
+func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, name string, tint *ebiten.ColorScale, hit city.Hit) {
 	if g.kits == nil {
 		g.poly(screen, cam, r, colorPlant)
 		return
 	}
-	g.kit(screen, cam, name, 0, r.Center(), tint)
+	g.noteHit(g.kit(screen, cam, name, 0, r.Center(), tint), hit)
+}
+
+// noteHit remembers a drawn sprite for the pointer; drawIso gathers
+// them front-last.
+func (g *Game) noteHit(r city.Rect, hit city.Hit) {
+	if r.Area() == 0 {
+		return
+	}
+	g.mu.Lock()
+	g.frameHits = append(g.frameHits, spriteHit{rect: r, hit: hit})
+	g.mu.Unlock()
 }
 
 func (g *Game) isoTitle(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
@@ -345,6 +358,14 @@ func (g *Game) isoTitle(screen *ebiten.Image, cam *city.Camera, b *city.Building
 func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, selected *city.Building, width, height float64, seconds float64) {
 	detailed := g.scene.Detailed()
 	labels := g.labelsVisible()
+	g.mu.Lock()
+	g.frameHits = g.frameHits[:0]
+	g.mu.Unlock()
+	defer func() {
+		g.mu.Lock()
+		g.hits = append(g.hits[:0], g.frameHits...)
+		g.mu.Unlock()
+	}()
 	g.isoGround(screen, cam, c, width, height)
 	g.streets(screen, c, cam, hover, labels)
 	g.beams(screen, c, cam, hover)
@@ -378,7 +399,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	if c.Plant.Rect.Area() > 0 {
 		items = append(items, drawable{depth: cam.Depth(c.Plant.Rect.Max), draw: func() {
-			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, nil)
+			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, nil, city.Hit{Landmark: city.LandmarkPlant})
 			g.kit(screen, cam, kitStack, 0, city.Point{X: c.Plant.Rect.Max.X - city.Tile, Y: c.Plant.Rect.Max.Y - city.Tile}, nil)
 		}})
 	}
@@ -401,17 +422,17 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 				tint.SetG(1)
 				tint.SetB(0.95)
 			}
-			g.isoLandmark(screen, cam, t.Rect, kitTower, tint)
+			g.isoLandmark(screen, cam, t.Rect, kitTower, tint, city.Hit{Landmark: city.LandmarkTower, Tower: t})
 		}})
 	}
 	if c.Library.Rect.Area() > 0 {
 		items = append(items, drawable{depth: cam.Depth(c.Library.Rect.Max), draw: func() {
-			g.isoLandmark(screen, cam, c.Library.Rect, kitLibrary, nil)
+			g.isoLandmark(screen, cam, c.Library.Rect, kitLibrary, nil, city.Hit{Landmark: city.LandmarkLibrary})
 		}})
 	}
 	if c.Hall.Rect.Area() > 0 {
 		items = append(items, drawable{depth: cam.Depth(c.Hall.Rect.Max), draw: func() {
-			g.isoLandmark(screen, cam, c.Hall.Rect, kitHall, nil)
+			g.isoLandmark(screen, cam, c.Hall.Rect, kitHall, nil, city.Hit{Landmark: city.LandmarkHall})
 		}})
 	}
 	sort.SliceStable(items, func(i, j int) bool { return items[i].depth < items[j].depth })
@@ -458,7 +479,7 @@ func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city
 	// detail zoom the stagger is shorter than a line, so only a hovered
 	// tower is named.
 	for _, t := range c.Towers {
-		if !g.scene.Detailed() && hover.Tower != t {
+		if t.Server.Calls == 0 && hover.Tower != t {
 			continue
 		}
 		top, w := footprint(cam, t.Rect)

@@ -3,7 +3,7 @@ package state
 // Order is every state by urgency. It is the one place the order lives:
 // the strip, the window title, the bar and the TUI rows all walk it, so
 // they cannot disagree.
-var Order = []State{NeedsYou, Working, Unattended, Parked}
+var Order = []State{NeedsYou, Working, Waiting, Unattended, Parked}
 
 // Rank is a state's place in Order, for sorting; unknown states sort last.
 func Rank(st State) int {

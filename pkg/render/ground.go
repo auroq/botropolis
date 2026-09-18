@@ -8,6 +8,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/pkg/ui"
 )
 
@@ -156,7 +157,9 @@ func blockColor(b *city.Building, seconds float64) color.NRGBA {
 		return colorMapParked
 	case b.Pulse:
 		return pulse(colorMapNeedsYou, seconds)
-	case b.Session.State == "unattended":
+	case b.Session.State == state.Waiting:
+		return ui.DefaultPalette.Waiting
+	case b.Session.State == state.Unattended:
 		return colorMapUnatt
 	case b.Lit:
 		return colorMapLit

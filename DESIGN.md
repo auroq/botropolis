@@ -97,7 +97,8 @@ the socket under `$XDG_RUNTIME_DIR/botropolis`.
 | --- | --- | --- | --- |
 | **Needs you** | pid alive and the last main-thread message handed the turn back, or a `Notification` hook | the building's light pulses | terminal running `claude attach` |
 | **Working** | pid alive, mid-turn (`PreToolUse` seen, or last message called a tool) | lit windows, worker at the bench, cranes for subagents | attach |
-| **Unattended** | loop / `ScheduleWakeup` / `kind: background` with no terminal attached (no client on the job's pty socket in `daemon/roster.json`) | night-shift lamp, alarm clock | attach |
+| **Waiting** | the turn was handed back after the session armed its own watch — `ScheduleWakeup` (not stopped), `Monitor`, `CronCreate` — with nothing in flight, so it will carry on by itself; you can talk to it, it does not need you (added 2026-09-18 at Aria's request) | teal beacon, lit | attach |
+| **Unattended** | `kind: background` with no terminal attached (no client on the job's pty socket in `daemon/roster.json`) | night-shift lamp, alarm clock | attach |
 | **Parked** | pid gone; `SessionEnd` seen or inferred; transcript resumable | boarded-up, grey | `claude --bg --resume <id>` then attach |
 | **Gone** | transcript aged out, or you demolished it (`claude rm`) | nothing | — |
 

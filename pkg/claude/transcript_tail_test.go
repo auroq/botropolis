@@ -38,6 +38,12 @@ func toolCall(id, ts, toolUseID, name string) string {
 		`"content":[{"type":"tool_use","id":%q,"name":%q,"input":{}}]}}`, ts, sid, id, toolUseID, name)
 }
 
+func watchCall(id, ts, toolUseID, name string, stop bool) string {
+	return fmt.Sprintf(`{"type":"assistant","isSidechain":false,"timestamp":%q,"sessionId":%q,"apiBlockIndex":1,`+
+		`"message":{"id":%q,"model":"claude-opus-5","role":"assistant","stop_reason":"tool_use",`+
+		`"content":[{"type":"tool_use","id":%q,"name":%q,"input":{"delaySeconds":600,"stop":%t}}]}}`, ts, sid, id, toolUseID, name, stop)
+}
+
 func toolResult(ts, toolUseID string) string {
 	return fmt.Sprintf(`{"type":"user","isSidechain":false,"timestamp":%q,"sessionId":%q,"toolUseResult":"<scrubbed>",`+
 		`"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":%q,"content":"<scrubbed>"}]}}`,
@@ -172,6 +178,62 @@ func TestReadTranscriptTail(t *testing.T) {
 
 		t.Run("it should have an unknown turn", func(t *testing.T) {
 			assert.Equal(t, claude.TurnUnknown, transcript.Tail.Turn)
+		})
+	})
+}
+
+func TestTranscriptTailWaiting(t *testing.T) {
+	const (
+		t0 = "2026-09-16T19:50:00.000Z"
+		t1 = "2026-09-16T19:50:10.000Z"
+		t2 = "2026-09-16T19:50:20.000Z"
+		t3 = "2026-09-16T19:50:30.000Z"
+	)
+	t.Run("when the assistant scheduled a wakeup and the turn ended", func(t *testing.T) {
+		transcript := readTranscript(t, userLine, prompt(t0), watchCall("msg_01", t1, "toolu_01", "ScheduleWakeup", false), toolResult(t2, "toolu_01"))
+
+		t.Run("it should be waiting on its own watch", func(t *testing.T) {
+			assert.Equal(t, claude.TurnWaiting, transcript.Tail.Turn)
+		})
+	})
+
+	t.Run("when the assistant spoke after scheduling", func(t *testing.T) {
+		transcript := readTranscript(t, userLine, prompt(t0), watchCall("msg_01", t1, "toolu_01", "ScheduleWakeup", false), toolResult(t2, "toolu_01"), reply("msg_02", t3))
+
+		t.Run("it should still be waiting", func(t *testing.T) {
+			assert.Equal(t, claude.TurnWaiting, transcript.Tail.Turn)
+		})
+	})
+
+	t.Run("when a Monitor is set", func(t *testing.T) {
+		transcript := readTranscript(t, userLine, prompt(t0), watchCall("msg_01", t1, "toolu_01", "Monitor", false), toolResult(t2, "toolu_01"))
+
+		t.Run("it should be waiting", func(t *testing.T) {
+			assert.Equal(t, claude.TurnWaiting, transcript.Tail.Turn)
+		})
+	})
+
+	t.Run("when the wakeup was stopped", func(t *testing.T) {
+		transcript := readTranscript(t, userLine, prompt(t0), watchCall("msg_01", t1, "toolu_01", "ScheduleWakeup", true), toolResult(t2, "toolu_01"), reply("msg_02", t3))
+
+		t.Run("it should hand the turn back to you", func(t *testing.T) {
+			assert.Equal(t, claude.TurnAwaitingUser, transcript.Tail.Turn)
+		})
+	})
+
+	t.Run("when a real prompt follows the scheduling", func(t *testing.T) {
+		transcript := readTranscript(t, userLine, prompt(t0), watchCall("msg_01", t1, "toolu_01", "ScheduleWakeup", false), toolResult(t2, "toolu_01"), prompt(t3))
+
+		t.Run("it should be working on the prompt", func(t *testing.T) {
+			assert.Equal(t, claude.TurnWorking, transcript.Tail.Turn)
+		})
+	})
+
+	t.Run("when a tool is still in flight after scheduling", func(t *testing.T) {
+		transcript := readTranscript(t, userLine, prompt(t0), watchCall("msg_01", t1, "toolu_01", "ScheduleWakeup", false), toolResult(t2, "toolu_01"), toolCall("msg_02", t3, "toolu_02", "Bash"))
+
+		t.Run("it should be working", func(t *testing.T) {
+			assert.Equal(t, claude.TurnWorking, transcript.Tail.Turn)
 		})
 	})
 }

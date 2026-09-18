@@ -53,6 +53,18 @@ func build(t *testing.T, records []claude.SessionRecord, transcripts []claude.Tr
 	return sessions
 }
 
+func TestWaitingSession(t *testing.T) {
+	t.Run("when a live session is waiting on its own watch", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusIdle)},
+			[]claude.Transcript{transcript(sidA, claude.TurnWaiting)}, nil, alive)[0]
+
+		t.Run("it should be waiting, not needing you", func(t *testing.T) {
+			assert.Equal(t, state.Waiting, session.State)
+		})
+	})
+}
+
 func TestBuild(t *testing.T) {
 	t.Run("when a live interactive session is awaiting the user", func(t *testing.T) {
 		session := build(t,

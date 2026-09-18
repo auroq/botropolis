@@ -305,7 +305,7 @@ func newBuilding(s state.Session, slot int, at Point, size float64) *Building {
 		Flags:     len(s.PRs),
 		Merged:    mergedPRs(s),
 		Smoke:     s.APIErrors,
-		Lit:       s.State == state.Working || s.State == state.NeedsYou || s.State == state.Unattended,
+		Lit:       s.State != state.Parked,
 		Pulse:     s.State == state.NeedsYou,
 		BoardedUp: s.State == state.Parked,
 	}
@@ -440,6 +440,18 @@ func (b *Building) Card(now time.Time) Card {
 	}
 	lines = append(lines, "age      "+format.Age(now.Sub(s.StartedAt)))
 	return Card{Title: title, Lines: lines, Series: b.Series(LastDay, now)}
+}
+
+// DistrictOf is the district a building stands in.
+func (c *City) DistrictOf(b *Building) *District {
+	for _, d := range c.Districts {
+		for _, other := range d.Buildings {
+			if other == b {
+				return d
+			}
+		}
+	}
+	return nil
 }
 
 // Busy reports whether anything in the district is awake: the rule for
