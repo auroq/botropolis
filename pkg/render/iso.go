@@ -11,6 +11,7 @@ import (
 	"github.com/auroq/botropolis/pkg/assets"
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/state"
+	"github.com/auroq/botropolis/pkg/ui"
 )
 
 // Kenney's isometric building pack stacks: a 132 px ground floor with a
@@ -42,9 +43,7 @@ const (
 )
 
 var (
-	colorIsoFloor   = color.NRGBA{0x8c, 0x86, 0x78, 0xff}
-	colorIsoFloorHi = color.NRGBA{0xa4, 0x9e, 0x90, 0xff}
-	colorIsoNight   = color.NRGBA{0x2a, 0x33, 0x2a, 0xff}
+	colorIsoNight = color.NRGBA{0x2a, 0x33, 0x2a, 0xff}
 )
 
 // isoStoreys is how tall a building stands for its context fill.
@@ -121,73 +120,19 @@ func (g *Game) isoGround(screen *ebiten.Image, cam *city.Camera, c *city.City, w
 	if bounds.Area() == 0 {
 		return
 	}
-	if g.sprites == nil {
-		flat := colorGround
-		if c.Night {
-			flat = colorIsoNight
-		}
-		g.poly(screen, cam, bounds, flat)
-		return
+	grass, water := colorKitGrass, colorKitWater
+	if c.Night {
+		grass, water = colorIsoNight, colorWaterNight
 	}
-	grass := g.sprites.iso.landscape.sprite(isoGrass)
-	cell := city.CellSize
-	col0, col1 := int(math.Floor(bounds.Min.X/cell)), int(math.Ceil(bounds.Max.X/cell))
-	row0, row1 := int(math.Floor(bounds.Min.Y/cell)), int(math.Ceil(bounds.Max.Y/cell))
-	if (col1-col0)*(row1-row0) > maxIsoCells {
-		return
-	}
-	tint := groundScale(c.Night)
-	tint.SetR(tint.R() * 1.6)
-	tint.SetG(tint.G() * 1.6)
-	tint.SetB(tint.B() * 1.6)
-	river := map[city.Cell]int{}
+	g.poly(screen, cam, bounds, grass)
 	for _, rc := range c.RiverCells {
-		river[rc.Cell] = rc.Mask
-	}
-	trees := map[city.Cell]bool{}
-	for _, t := range c.Trees {
-		trees[t] = true
-	}
-	for row := row0; row < row1; row++ {
-		for col := col0; col < col1; col++ {
-			r := city.RectAt(float64(col)*cell, float64(row)*cell, cell, cell)
-			top, w := footprint(cam, r)
-			if top.X+w < 0 || top.X-w > width || top.Y > height || top.Y+w < 0 {
-				continue
-			}
-			if mask, ok := river[city.Cell{Col: col, Row: row}]; ok {
-				if img := g.sprites.iso.road(riverTile(mask)); img != nil {
-					over := (w + 1.5) / float64(img.Bounds().Dx())
-					g.drawSprite(screen, img, city.Point{X: top.X - w/2 - 0.75, Y: top.Y - 0.5}, over, tint)
-					continue
-				}
-			}
-			// A hair of overscan closes the seams linear filtering leaves
-			// between tiles at fractional scales.
-			over := cam.Zoom * (w + 1.5) / w
-			g.drawSprite(screen, grass, city.Point{X: top.X - w/2 - 0.75, Y: top.Y - 0.5}, over, tint)
-			if trees[city.Cell{Col: col, Row: row}] {
-				g.isoTree(screen, cam, r, row, tint)
-			}
-		}
+		g.poly(screen, cam, rc.Cell.Rect(), water)
 	}
 }
 
-// isoTrees are the two species the plan plants, one per row so the park
-// reads as rows.
-var isoTrees = []string{"treeTall", "coniferTall"}
-
-// isoTree plants a tree on the centre of a cell.
-func (g *Game) isoTree(screen *ebiten.Image, cam *city.Camera, r city.Rect, row int, tint *ebiten.ColorScale) {
-	tree := g.sprites.iso.road(isoTrees[((row%len(isoTrees))+len(isoTrees))%len(isoTrees)])
-	if tree == nil {
-		return
-	}
-	foot := cam.WorldToScreen(r.Center())
-	scale := cam.Zoom * isoTreeScale
-	w := float64(tree.Bounds().Dx()) * scale
-	hh := float64(tree.Bounds().Dy()) * scale
-	g.drawSprite(screen, tree, city.Point{X: foot.X - w/2, Y: foot.Y - hh}, scale, tint)
+// isoTree plants one of the plan's trees, back to front with everything else.
+func (g *Game) isoTree(screen *ebiten.Image, cam *city.Camera, cell city.Cell, tint *ebiten.ColorScale) {
+	g.kit(screen, cam, treePiece(cell), 0, cell.Center(), tint)
 }
 
 // isoPlaza is the civic centre's floor and its fountain.
@@ -195,8 +140,8 @@ func (g *Game) isoPlaza(screen *ebiten.Image, cam *city.Camera, c *city.City) {
 	if c.Plaza.Area() == 0 {
 		return
 	}
-	g.poly(screen, cam, c.Plaza, colorPlazaFloor)
-	g.polyStroke(screen, cam, c.Plaza, 2, colorKerb)
+	g.poly(screen, cam, c.Plaza, colorKitConcrete)
+	g.polyStroke(screen, cam, c.Plaza, 2, colorKitKerb)
 }
 
 // fountain is a round basin on the plaza's centre cell.
@@ -210,28 +155,21 @@ func (g *Game) fountain(screen *ebiten.Image, cam *city.Camera, c *city.City) {
 	g.circle(screen, cam, centre, city.Tile*0.35, colorWaterLight)
 }
 
-// lamp is a post at an avenue crossing; it is lit at night.
+// lamp is a post at an avenue crossing; at night its head glows.
 func (g *Game) lamp(screen *ebiten.Image, cam *city.Camera, cell city.Cell, night bool) {
-	foot := cam.WorldToScreen(cell.Center())
-	h := lampHeight * cam.Zoom
-	vector.StrokeLine(screen, float32(foot.X), float32(foot.Y), float32(foot.X), float32(foot.Y-h), float32(math.Max(1, 1.5*cam.Zoom)), colorPole, true)
-	head := colorLampOff
-	if night {
-		head = colorLampOn
-		glow(screen, city.Point{X: foot.X, Y: foot.Y - h}, 8*cam.Zoom, colorLampGlow)
+	r := g.kit(screen, cam, kitLamp, 0, cell.Center(), nil)
+	if night && r.Area() > 0 {
+		glow(screen, city.Point{X: r.Min.X + r.Width()*0.5, Y: r.Min.Y + r.Height()*0.12}, 7*cam.Zoom, colorLampGlow)
 	}
-	vector.FillCircle(screen, float32(foot.X), float32(foot.Y-h), float32(math.Max(1.5, 2.5*cam.Zoom)), head, true)
 }
 
-const lampHeight = 26.0
-
 func (g *Game) isoDistrict(screen *ebiten.Image, cam *city.Camera, d *city.District, hovered bool) {
-	fill := colorIsoFloor
+	fill := colorKitFloor
 	if hovered {
-		fill = colorIsoFloorHi
+		fill = colorKitFloorHi
 	}
 	g.poly(screen, cam, d.Rect, fill)
-	g.polyStroke(screen, cam, d.Rect, 2, colorKerb)
+	g.polyStroke(screen, cam, d.Rect, 2, colorKitKerb)
 }
 
 const (
@@ -325,7 +263,7 @@ type drawable struct {
 // isoBuilding draws a session as a stacked building on its footprint, or a
 // flat diamond in the map view.
 func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Building, selected, detailed bool, seconds float64) {
-	if !detailed || g.sprites == nil {
+	if !detailed || g.kits == nil {
 		g.poly(screen, cam, b.Rect, blockColor(b, seconds))
 		g.polyStroke(screen, cam, b.Rect, 1, colorKerb)
 		if selected {
@@ -333,102 +271,54 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		}
 		return
 	}
-	top, w := footprint(cam, b.Rect)
-	scale := w / assets.IsoTileWidth
-	if b.BoardedUp {
-		sheet := g.sprites.iso.buildings
-		shed := sheet.sprite(isoShed)
-		tint := &ebiten.ColorScale{}
-		tint.SetR(0.55)
-		tint.SetG(0.55)
-		tint.SetB(0.6)
-		bottom := top.Y + w/2 + 17*scale
-		g.drawSprite(screen, shed, city.Point{X: top.X - float64(shed.Bounds().Dx())*scale/2, Y: bottom - float64(shed.Bounds().Dy())*scale}, scale, tint)
-		if selected {
-			g.polyStroke(screen, cam, b.Rect, 2, colorSelected)
-		}
-		return
-	}
-	floorName := isoFloorIdle
 	var tint *ebiten.ColorScale
 	switch {
-	case b.Pulse:
-		floorName = isoFloorNeeds
+	case b.BoardedUp:
 		tint = &ebiten.ColorScale{}
-		f := float32(pulse(colorNeedsYou, seconds).R) / float32(colorNeedsYou.R)
-		tint.SetR(0.6 + 0.4*f)
-		tint.SetG(0.6 + 0.4*f)
-		tint.SetB(0.6 + 0.4*f)
+		tint.SetR(0.7)
+		tint.SetG(0.7)
+		tint.SetB(0.72)
 	case b.Session.State == state.Unattended:
-		floorName = isoFloorUnatt
 		tint = &ebiten.ColorScale{}
-		tint.SetR(0.75)
-		tint.SetG(0.65)
+		tint.SetR(0.85)
+		tint.SetG(0.8)
 		tint.SetB(1)
-	case b.Lit:
-		floorName = isoFloorWork
 	}
-	roofName := isoRoof
-	if b.Pulse {
-		roofName = isoRoofNeeds
+	r := g.kit(screen, cam, buildingPiece(b), 0, b.Rect.Center(), tint)
+	if r.Area() == 0 {
+		return
 	}
-	roofTop := g.isoStack(screen, cam, b.Rect, floorName, isoStorey, roofName, isoStoreys(b.Fill), tint)
-	rw := 99 * scale
-	dot := 6 * scale
+	// The state light: a beacon over the door in the state's own colour,
+	// pulsing for needs-you, so the palette reads the same as the strip.
+	foot := cam.WorldToScreen(b.Rect.Center())
+	if !b.BoardedUp {
+		beacon := g.theme.Color(ui.StateTone(b.Session.State))
+		if b.Pulse {
+			beacon = pulse(beacon, seconds)
+		}
+		radius := math.Max(2, 4*cam.Zoom)
+		vector.FillCircle(screen, float32(foot.X), float32(foot.Y-radius*2), float32(radius*1.6), colorKitKerb, true)
+		vector.FillCircle(screen, float32(foot.X), float32(foot.Y-radius*2), float32(radius), beacon, true)
+	}
+	roofTop := r.Min.Y
+	dot := math.Max(3, 6*cam.Zoom)
 	for i := 0; i < min(b.Cranes, 3); i++ {
-		vector.FillRect(screen, float32(top.X-rw/4+float64(i)*dot*1.6), float32(roofTop+dot), float32(dot), float32(dot), colorCrane, false)
+		vector.FillRect(screen, float32(r.Min.X+r.Width()*0.3+float64(i)*dot*1.6), float32(roofTop+dot), float32(dot), float32(dot), colorCrane, false)
 	}
 	if b.Flags > 0 {
-		vector.FillRect(screen, float32(top.X+rw/4), float32(roofTop-dot*2), float32(dot*0.4), float32(dot*2.5), colorPole, false)
-		vector.FillRect(screen, float32(top.X+rw/4), float32(roofTop-dot*2), float32(dot*1.4), float32(dot), colorFlag, false)
+		vector.FillRect(screen, float32(r.Min.X+r.Width()*0.7), float32(roofTop-dot*2), float32(dot*0.4), float32(dot*2.5), colorPole, false)
+		vector.FillRect(screen, float32(r.Min.X+r.Width()*0.7), float32(roofTop-dot*2), float32(dot*1.4), float32(dot), colorFlag, false)
 	}
 	if b.Smoke > 0 {
 		for i := 0; i < min(b.Smoke, 3); i++ {
 			phase := math.Mod(seconds*0.4+float64(i)*0.33, 1)
-			x := top.X - rw/4 + float64(i)*dot*2 + 4*scale*math.Sin(phase*6)
-			y := roofTop - phase*30*scale
-			vector.FillCircle(screen, float32(x), float32(y), float32((3+phase*3)*scale), colorSmoke, true)
+			at := city.Point{X: r.Min.X + r.Width()*0.5 + float64(i)*dot*1.5 + 3*cam.Zoom*math.Sin(phase*6), Y: roofTop - phase*18*cam.Zoom}
+			vector.FillCircle(screen, float32(at.X), float32(at.Y), float32((3+phase*3)*cam.Zoom), colorSmoke, true)
 		}
 	}
 	if selected {
 		g.polyStroke(screen, cam, b.Rect, 2, colorSelected)
 	}
-}
-
-// isoStack draws a ground floor, some storeys and a roof on a footprint,
-// the pack's pieces meeting at the measured offsets. It returns the top
-// of the roof on screen.
-func (g *Game) isoStack(screen *ebiten.Image, cam *city.Camera, r city.Rect, ground, storey, roof string, storeys int, tint *ebiten.ColorScale) float64 {
-	sheet := g.sprites.iso.buildings
-	floor := sheet.sprite(ground)
-	if floor == nil {
-		return 0
-	}
-	top, w := footprint(cam, r)
-	scale := w / assets.IsoTileWidth
-	bottom := top.Y + w/2 + 33*scale
-	floorH := float64(floor.Bounds().Dy()) * scale
-	g.drawSprite(screen, floor, city.Point{X: top.X - w/2, Y: bottom - floorH}, scale, tint)
-	pieceTop := bottom - floorH
-	storeyBottom := bottom - isoPlinthLift*scale
-	if piece := sheet.sprite(storey); piece != nil {
-		sw := float64(piece.Bounds().Dx()) * scale
-		sh := float64(piece.Bounds().Dy()) * scale
-		for i := 1; i < storeys; i++ {
-			g.drawSprite(screen, piece, city.Point{X: top.X - sw/2, Y: storeyBottom - sh}, scale, tint)
-			pieceTop = storeyBottom - sh
-			storeyBottom -= isoStoreyPitch * scale
-		}
-	}
-	cap := sheet.sprite(roof)
-	if cap == nil {
-		return pieceTop
-	}
-	rw := float64(cap.Bounds().Dx()) * scale
-	rh := float64(cap.Bounds().Dy()) * scale
-	roofBottom := pieceTop + isoRoofSeat*scale
-	g.drawSprite(screen, cap, city.Point{X: top.X - rw/2, Y: roofBottom - rh}, scale, tint)
-	return roofBottom - rh
 }
 
 // stackRoofTop is where a stack's roof ends up on screen, from the same
@@ -444,13 +334,13 @@ func stackRoofTop(cam *city.Camera, r city.Rect, storeys int) float64 {
 	return pieceTop - 10*scale
 }
 
-// isoLandmark draws a stacked landmark on a world rect.
-func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, ground, storey, roof string, storeys int, tint *ebiten.ColorScale) {
-	if g.sprites == nil {
+// isoLandmark draws a kit piece standing on a world rect's centre.
+func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, name string, tint *ebiten.ColorScale) {
+	if g.kits == nil {
 		g.poly(screen, cam, r, colorPlant)
 		return
 	}
-	g.isoStack(screen, cam, r, ground, storey, roof, storeys, tint)
+	g.kit(screen, cam, name, 0, r.Center(), tint)
 }
 
 func (g *Game) isoTitle(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
@@ -497,7 +387,14 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	if c.Plant.Rect.Area() > 0 {
 		items = append(items, drawable{depth: c.Plant.Rect.Max.X + c.Plant.Rect.Max.Y, draw: func() {
-			g.isoLandmark(screen, cam, c.Plant.Rect, isoPlant, isoPlantStorey, isoRoofDome, 3, nil)
+			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, nil)
+			g.kit(screen, cam, kitStack, 0, city.Point{X: c.Plant.Rect.Max.X - city.Tile, Y: c.Plant.Rect.Max.Y - city.Tile}, nil)
+		}})
+	}
+	for _, t := range c.Trees {
+		t := t
+		items = append(items, drawable{depth: t.Center().X + t.Center().Y, draw: func() {
+			g.isoTree(screen, cam, t, nil)
 		}})
 	}
 	for _, t := range c.Towers {
@@ -513,17 +410,17 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 				tint.SetG(1)
 				tint.SetB(0.95)
 			}
-			g.isoLandmark(screen, cam, t.Rect, isoTower, isoStorey, isoRoofFlat, 2, tint)
+			g.isoLandmark(screen, cam, t.Rect, kitTower, tint)
 		}})
 	}
 	if c.Library.Rect.Area() > 0 {
 		items = append(items, drawable{depth: c.Library.Rect.Max.X + c.Library.Rect.Max.Y, draw: func() {
-			g.isoLandmark(screen, cam, c.Library.Rect, isoLibrary, isoStorey, isoRoofFlat, 2, nil)
+			g.isoLandmark(screen, cam, c.Library.Rect, kitLibrary, nil)
 		}})
 	}
 	if c.Hall.Rect.Area() > 0 {
 		items = append(items, drawable{depth: c.Hall.Rect.Max.X + c.Hall.Rect.Max.Y, draw: func() {
-			g.isoLandmark(screen, cam, c.Hall.Rect, isoHall, isoStorey, isoRoofDome, 2, nil)
+			g.isoLandmark(screen, cam, c.Hall.Rect, kitHall, nil)
 		}})
 	}
 	sort.SliceStable(items, func(i, j int) bool { return items[i].depth < items[j].depth })
@@ -556,13 +453,14 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 }
 
 func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city.City, hover city.Hit) {
-	above := func(r city.Rect, s string, storeys int) {
-		top, _ := footprint(cam, r)
+	above := func(r city.Rect, s string, name string) {
+		foot := cam.WorldToScreen(r.Center())
+		size := g.kitSize(cam, name)
 		wText, h := g.measure(s)
-		g.floorLabel(screen, city.Point{X: top.X - wText/2, Y: stackRoofTop(cam, r, storeys) - h - g.theme.Px(4)}, s, colorDim)
+		g.floorLabel(screen, city.Point{X: foot.X - wText/2, Y: foot.Y - float64(size.Y) - h - g.theme.Px(4)}, s, colorDim)
 	}
 	if c.Plant.Rect.Area() > 0 {
-		above(c.Plant.Rect, "power plant", 3)
+		above(c.Plant.Rect, "power plant", kitPlant)
 	}
 	// Towers run down the diagonal, so their names hang off each one's
 	// left corner and stagger with it instead of piling up; below the
@@ -578,10 +476,10 @@ func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city
 		g.floorLabel(screen, city.Point{X: top.X - w/2 - wText - g.theme.Px(8), Y: top.Y + w/4 - h/2}, name, colorDim)
 	}
 	if c.Library.Rect.Area() > 0 {
-		above(c.Library.Rect, "library", 2)
+		above(c.Library.Rect, "library", kitLibrary)
 	}
 	if c.Hall.Rect.Area() > 0 {
-		above(c.Hall.Rect, "city hall", 2)
+		above(c.Hall.Rect, "city hall", kitHall)
 	}
 }
 
@@ -652,24 +550,13 @@ func packTile(two, one, many string, mask int) string {
 // streets lays the autotiled road cells over the grass and signs each
 // road at the middle of its path.
 func (g *Game) streets(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, labels bool) {
-	if g.sprites == nil {
+	if g.kits == nil {
 		g.roadLines(screen, c, cam, hover, labels)
 		return
 	}
 	for _, sc := range c.StreetCells {
-		name := roadTile(sc.Mask)
-		if _, onRiver := c.River(sc.Cell); onRiver {
-			if bridge := bridgeTile(sc.Mask); bridge != "" {
-				name = bridge
-			}
-		}
-		img := g.sprites.iso.road(name)
-		if img == nil {
-			continue
-		}
-		top, w := footprint(cam, sc.Cell.Rect())
-		over := (w + 1.5) / float64(img.Bounds().Dx())
-		g.drawSprite(screen, img, city.Point{X: top.X - w/2 - 0.75, Y: top.Y - 0.5}, over, nil)
+		name, turn := roadPiece(sc.Mask)
+		g.kit(screen, cam, name, turn, sc.Cell.Center(), nil)
 	}
 	g.streetSigns(screen, c, cam, hover, labels)
 }
@@ -799,22 +686,21 @@ func (g *Game) nightLights(screen *ebiten.Image, cam *city.Camera, c *city.City)
 		if !b.Lit || b.BoardedUp {
 			continue
 		}
-		top, w := footprint(cam, b.Rect)
-		scale := w / assets.IsoTileWidth
-		storeys := isoStoreys(b.Fill)
-		base := top.Y + w/2 + 33*scale - 82*scale + isoStoreyPitch*scale
-		// One lamp per storey, on the walls, not a floodlight over the lot.
-		pitch := isoStoreyPitch * scale
+		foot := cam.WorldToScreen(b.Rect.Center())
+		size := g.kitSize(cam, buildingPiece(b))
+		w, h := float64(size.X), float64(size.Y)
+		storeys := max(1, int(h/(38*cam.Zoom)))
 		for i := 0; i < storeys; i++ {
-			y := base - pitch*(float64(i)+0.5)
-			glow(screen, city.Point{X: top.X - w*0.2, Y: y}, w*0.16, colorWindowGlow)
-			glow(screen, city.Point{X: top.X + w*0.2, Y: y}, w*0.16, colorWindowGlow)
-			glow(screen, city.Point{X: top.X, Y: y}, w*0.1, colorWindowCore)
+			y := foot.Y - h*0.15 - (h*0.7)*(float64(i)+0.5)/float64(storeys)
+			glow(screen, city.Point{X: foot.X - w*0.2, Y: y}, w*0.16, colorWindowGlow)
+			glow(screen, city.Point{X: foot.X + w*0.2, Y: y}, w*0.16, colorWindowGlow)
+			glow(screen, city.Point{X: foot.X, Y: y}, w*0.1, colorWindowCore)
 		}
 	}
 	if c.Plant.Rect.Area() > 0 {
-		top, w := footprint(cam, c.Plant.Rect)
-		glow(screen, city.Point{X: top.X, Y: stackRoofTop(cam, c.Plant.Rect, 3) - w*0.05}, w*0.22, colorPlantGlow)
+		foot := cam.WorldToScreen(c.Plant.Rect.Center())
+		size := g.kitSize(cam, kitPlant)
+		glow(screen, city.Point{X: foot.X, Y: foot.Y - float64(size.Y)*0.6}, float64(size.X)*0.22, colorPlantGlow)
 	}
 }
 

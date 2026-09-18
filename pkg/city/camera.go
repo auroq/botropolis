@@ -20,6 +20,9 @@ type Camera struct {
 	Offset     Point
 	Zoom       float64
 	Projection Projection
+	// Heading is the way the camera faces, in degrees, one of four; the
+	// sprites are cut for each.
+	Heading int
 }
 
 func NewCamera() *Camera {

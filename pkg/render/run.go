@@ -26,8 +26,10 @@ type Options struct {
 	Width      int
 	Height     int
 	Projection city.Projection
-	// Screenshot, when set, renders one frame to this PNG and exits.
+	// Screenshot, when set, renders one frame to this PNG and exits;
+	// Keys are pressed first, one per frame.
 	Screenshot string
+	Keys       []string
 	// Scale is the chrome and pixel scale; 0 follows the display.
 	Scale float64
 	// ReducedMotion stops every animation and keeps the colours.
@@ -64,8 +66,14 @@ func Run(ctx context.Context, opts Options) error {
 	if loadErr != nil {
 		return loadErr
 	}
+	kitSprites, err := loadKits()
+	if err != nil {
+		return err
+	}
 	game := NewGame(scene, opts.Actor, theme, faces, save, sprites)
+	game.kits = kitSprites
 	game.screenshot = opts.Screenshot
+	game.script = opts.Keys
 	game.reduced = opts.ReducedMotion
 	game.settings = opts.Settings
 	game.apply = opts.Apply

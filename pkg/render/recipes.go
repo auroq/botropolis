@@ -1,0 +1,123 @@
+package render
+
+import (
+	"hash/fnv"
+
+	"github.com/auroq/botropolis/pkg/city"
+)
+
+// Recipes: which kit piece stands for what. A session's building grows
+// with its context: the more of the window it has used, the taller the
+// piece, with a little variety from the session id so a block of equals
+// is not a row of clones.
+var (
+	fillClasses = [][]string{
+		{"city-kit-commercial/building-c"},
+		{"city-kit-commercial/building-a", "city-kit-commercial/building-d", "city-kit-commercial/building-h"},
+		{"city-kit-commercial/building-f", "city-kit-commercial/building-g"},
+		{"city-kit-commercial/building-l", "city-kit-commercial/building-skyscraper-a"},
+		{"city-kit-commercial/building-skyscraper-b", "city-kit-commercial/building-skyscraper-c"},
+	}
+	fillSteps = []float64{0.2, 0.45, 0.7, 0.9}
+	sheds     = []string{"city-kit-industrial/shipping-container-a", "city-kit-industrial/shipping-container-b", "city-kit-industrial/shipping-container-c"}
+
+	kitPlant    = "city-kit-industrial/building-a"
+	kitStack    = "city-kit-industrial/chimney-large"
+	kitHall     = "city-kit-commercial/building-n"
+	kitLibrary  = "city-kit-commercial/building-l"
+	kitTower    = "city-kit-industrial/water-tower"
+	kitLamp     = "city-kit-roads/light-square"
+	kitParkTree = "nature-kit/tree_default"
+	kitBeltTree = "nature-kit/tree_pineTallA"
+	kitOakTree  = "nature-kit/tree_oak"
+)
+
+func hashID(id string) uint32 {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(id))
+	return h.Sum32()
+}
+
+// buildingPiece is the piece for a session: a shed when parked, else by
+// how full its context is.
+func buildingPiece(b *city.Building) string {
+	h := hashID(b.Session.ID)
+	if b.BoardedUp {
+		return sheds[h%uint32(len(sheds))]
+	}
+	class := len(fillSteps)
+	for i, step := range fillSteps {
+		if b.Fill < step {
+			class = i
+			break
+		}
+	}
+	choices := fillClasses[class]
+	return choices[h%uint32(len(choices))]
+}
+
+// treePiece is the tree on a park cell: the suburban kit's two trees,
+// which share the city kits' palette, large on even rows and small on
+// odd so a block reads as rows.
+func treePiece(cell city.Cell) string {
+	if ((cell.Row%2)+2)%2 == 0 {
+		return kitBeltTree
+	}
+	return kitParkTree
+}
+
+// roadPiece is the road piece and its turn for a street cell's joins.
+// A straight at turn 0 runs east–west; a bend at turn 0 joins south and
+// east; a T at turn 0 has its bar east–west and its stem south; an end
+// at turn 0 is open to the east.
+func roadPiece(mask int) (string, int) {
+	n, e, s, w := mask&city.DirN != 0, mask&city.DirE != 0, mask&city.DirS != 0, mask&city.DirW != 0
+	count := 0
+	for _, v := range []bool{n, e, s, w} {
+		if v {
+			count++
+		}
+	}
+	switch count {
+	case 4:
+		return "city-kit-roads/road-crossroad", 0
+	case 3:
+		switch {
+		case !n:
+			return "city-kit-roads/road-intersection", 0
+		case !e:
+			return "city-kit-roads/road-intersection", 90
+		case !s:
+			return "city-kit-roads/road-intersection", 180
+		default:
+			return "city-kit-roads/road-intersection", 270
+		}
+	case 2:
+		switch {
+		case e && w:
+			return "city-kit-roads/road-straight", 0
+		case n && s:
+			return "city-kit-roads/road-straight", 90
+		case s && e:
+			return "city-kit-roads/road-bend", 0
+		case s && w:
+			return "city-kit-roads/road-bend", 90
+		case n && w:
+			return "city-kit-roads/road-bend", 180
+		default:
+			return "city-kit-roads/road-bend", 270
+		}
+	case 1:
+		switch {
+		case e:
+			return "city-kit-roads/road-end", 0
+		case s:
+			return "city-kit-roads/road-end", 90
+		case w:
+			return "city-kit-roads/road-end", 180
+		default:
+			return "city-kit-roads/road-end", 270
+		}
+	}
+	return "city-kit-roads/road-square", 0
+}

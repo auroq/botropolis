@@ -6,6 +6,7 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -67,6 +68,7 @@ type Game struct {
 	faces     *faces
 	saveState func(*city.Layout)
 	sprites   *sprites
+	kits      *kits
 
 	mu          sync.Mutex
 	pending     *state.Snapshot
@@ -79,6 +81,10 @@ type Game struct {
 	shotFrames int
 	shotErr    error
 	shotDone   bool
+	// script is the keys --keys asked for, pressed one per frame before
+	// the screenshot; scripted is this frame's.
+	script   []string
+	scripted ebiten.Key
 	// snap is a frame the p key asked for, saved on the next draw.
 	snap   string
 	help   bool
@@ -131,6 +137,14 @@ func (g *Game) Update() error {
 			g.shotFrames = 1
 		}
 	}
+	g.scripted = -1
+	if g.shotFrames > 0 && len(g.script) > 0 {
+		if key, ok := keyByName(g.script[0]); ok {
+			g.scripted = key
+		}
+		g.script = g.script[1:]
+		g.shotFrames = 1
+	}
 	if g.shotDone {
 		if g.shotErr != nil {
 			return g.shotErr
@@ -166,6 +180,22 @@ func (g *Game) Update() error {
 
 // capture writes the frame just drawn to the screenshot path. It waits for
 // the second frame after the first snapshot so the fit has settled.
+// just reports a key pressed this frame, by hand or by the script.
+func (g *Game) just(key ebiten.Key) bool {
+	return g.scripted == key || inpututil.IsKeyJustPressed(key)
+}
+
+// keyByName finds an Ebitengine key by its name, case-insensitively:
+// "equal", "b", "ArrowLeft".
+func keyByName(name string) (ebiten.Key, bool) {
+	for k := ebiten.Key(0); k <= ebiten.KeyMax; k++ {
+		if strings.EqualFold(k.String(), name) {
+			return k, true
+		}
+	}
+	return -1, false
+}
+
 func (g *Game) capture(screen *ebiten.Image) {
 	if g.snap != "" {
 		if err := writePNG(g.snap, frame(screen)); err != nil {

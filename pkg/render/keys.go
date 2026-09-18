@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/state"
@@ -52,7 +51,7 @@ const keyPanStep = 12.0
 
 // handleKeys answers the keyboard for one tick.
 func (g *Game) handleKeys() error {
-	just := inpututil.IsKeyJustPressed
+	just := g.just
 	if g.settingsOpen {
 		g.settingsOpen = g.settingsKeys()
 		return nil

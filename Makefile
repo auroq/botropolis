@@ -68,6 +68,11 @@ kits ::
 	$(LOG) "Fetching the Kenney kits into tools/kits"
 	@tools/fetch-kits
 
+sprites :: kits
+	$(LOG) "Cutting the kit atlases into pkg/assets/kits (tools/render-sprites)"
+	@blender -b --python tools/render-sprites/render.py -- atlas --out pkg/assets/kits 2>&1 | grep -E "WROTE|BUDGET|Traceback|Error" || true
+	@tools/shrink-pngs pkg/assets/kits/kits-z*.png
+
 kit-district :: kits
 	$(LOG) "Rendering one district from the Kenney kits (tools/render-sprites)"
 	@blender -b --python tools/render-sprites/render.py -- scene --out docs/screenshots/kit-district.png 2>&1 | grep -E "WROTE|Traceback|Error" || true

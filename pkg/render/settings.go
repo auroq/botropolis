@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/auroq/botropolis/pkg/city"
@@ -17,7 +16,7 @@ import (
 // settingsKeys answers the keyboard while the settings panel is open;
 // it reports whether the panel is still open.
 func (g *Game) settingsKeys() bool {
-	just := inpututil.IsKeyJustPressed
+	just := g.just
 	if just(ebiten.KeyEscape) || just(ebiten.KeyS) || just(ebiten.KeyQ) {
 		return false
 	}

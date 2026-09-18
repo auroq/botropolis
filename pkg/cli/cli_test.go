@@ -100,11 +100,13 @@ func (f *fakeTUI) Run(context.Context) error { f.runs++; return nil }
 type fakeCity struct {
 	runs       int
 	screenshot string
+	keys       []string
 }
 
 func (f *fakeCity) Run(cmd *cobra.Command) error {
 	f.runs++
 	f.screenshot = cli.Screenshot(cmd)
+	f.keys = cli.Keys(cmd)
 	return nil
 }
 
@@ -199,6 +201,15 @@ func TestRootCLI(t *testing.T) {
 
 			t.Run("it should ask for no screenshot", func(t *testing.T) {
 				assert.Empty(t, h.city.screenshot)
+			})
+		})
+
+		t.Run("and keys are given", func(t *testing.T) {
+			h := newHarness(&config.Config{})
+			require.NoError(t, h.run("city", "--screenshot", "out.png", "--keys", "equal,equal,b"))
+
+			t.Run("it should hand the keys to the city in order", func(t *testing.T) {
+				assert.Equal(t, []string{"equal", "equal", "b"}, h.city.keys)
 			})
 		})
 	})

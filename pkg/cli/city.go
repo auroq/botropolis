@@ -23,6 +23,21 @@ func Screenshot(cmd *cobra.Command) string {
 	return path
 }
 
+// KeysFlag names the flag that presses keys, one per frame, before a
+// screenshot is taken, so a zoomed or sidebar frame can be shot
+// without a hand on the keyboard.
+const KeysFlag = "keys"
+
+func AddKeysFlag(flags *pflag.FlagSet) {
+	flags.StringSlice(KeysFlag, nil, "keys to press before the screenshot, e.g. equal,equal,b")
+}
+
+// Keys is the list given with --keys, in order.
+func Keys(cmd *cobra.Command) []string {
+	keys, _ := cmd.Flags().GetStringSlice(KeysFlag)
+	return keys
+}
+
 func NewCityCLI(load Loader, services CityServices) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "city",
@@ -37,5 +52,6 @@ func NewCityCLI(load Loader, services CityServices) *cobra.Command {
 		},
 	}
 	AddScreenshotFlag(cmd.Flags())
+	AddKeysFlag(cmd.Flags())
 	return cmd
 }

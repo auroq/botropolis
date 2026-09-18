@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Re-encode PNGs losslessly at the highest deflate level, in place. The
+# atlases come out of Blender lightly compressed; this takes a fifth off.
+set -euo pipefail
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" || $# -eq 0 ]]; then
+	cat <<USAGE
+Usage: tools/shrink-pngs FILE.png [FILE.png ...]
+
+Rewrites each PNG in place with maximum lossless compression (ImageMagick).
+USAGE
+	exit 0
+fi
+
+for f in "$@"; do
+	before=$(stat -c %s "$f")
+	magick "$f" -define png:compression-level=9 -define png:compression-filter=5 -define png:compression-strategy=1 "$f.tmp.png"
+	mv "$f.tmp.png" "$f"
+	after=$(stat -c %s "$f")
+	echo "$f: $before -> $after"
+done

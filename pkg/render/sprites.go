@@ -58,20 +58,6 @@ type isoSprites struct {
 	roads                                map[string]*ebiten.Image
 }
 
-// road is a loose sprite from the roads pack, loaded on first use.
-func (s *isoSprites) road(name string) *ebiten.Image {
-	if img, ok := s.roads[name]; ok {
-		return img
-	}
-	img, err := assets.Image(assets.IsoRoads, name)
-	if err != nil {
-		s.roads[name] = nil
-		return nil
-	}
-	s.roads[name] = ebiten.NewImageFromImage(img)
-	return s.roads[name]
-}
-
 func loadIsoSprites() (*isoSprites, error) {
 	buildings, err := loadIsoAtlas(assets.IsoBuildings)
 	if err != nil {
