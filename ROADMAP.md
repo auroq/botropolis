@@ -108,7 +108,7 @@ Free tilt is the one thing this path cannot give — only the four fixed heading
 | --- | --- | --- |
 | Buildings, landmarks | [City Kit Commercial](https://kenney.nl/assets/city-kit-commercial), [Industrial](https://kenney.nl/assets/city-kit-industrial), [Suburban](https://kenney.nl/assets/city-kit-suburban) | Industrial has smokestacks, a water tower, silos and a cooling tower: the plant, the towers and the hall have native pieces |
 | Streets, avenues, plaza | [City Kit Roads](https://kenney.nl/assets/city-kit-roads) | |
-| Parks, greenbelt | [Nature Kit](https://kenney.nl/assets/nature-kit) | trees in rows, placed by the plan |
+| Parks, greenbelt | [City Kit Suburban](https://kenney.nl/assets/city-kit-suburban) trees | placed by the plan with seeded in-cell offsets; the Nature Kit was tried and dropped 2026-09-18 — its teal trees are taller than the buildings and off the palette |
 | Workers (main thread) | [Space Kit](https://kenney.nl/assets/space-kit) rovers | same author and palette; motion is a bob and a wheel spin from the pipeline |
 | Subagents in flight | our own drone, modelled in the pipeline (a body, two rotors, one accent light) | Factorio's logistic bot is exactly this; guarantees the palette and the state light with no third-party asset |
 | Traffic | [Car Kit](https://kenney.nl/assets/car-kit) | cars per road in proportion to traffic |
