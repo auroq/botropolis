@@ -239,27 +239,27 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
 
 ### Bugs, most important first
 
-1. **An idle background session reads as working.**
+~~1. **An idle background session reads as working.**~~ Fixed 2026-09-18 (`bafd43a`): the record's status wins over the tail.
    `botropolis city visualization` (bg, `claude agents` says `idle` for 3 h) shows `working` because Claude Code keeps writing
    bookkeeping records (`permission-mode`, `atis-latch`, `worktree-state`) to an idle transcript, so its mtime is minutes old
    and the tail heuristic never sees a hand-back.
    The session record's own `status` field (`busy` / `idle`) is the CLI's word and should win over the tail when both exist.
    Consequence: the session is hidden from Tab, the bar and the needs-you count, and the strip lies.
-2. **Empty sessions count as needs-you.**
+~~2. **Empty sessions count as needs-you.**~~ Fixed 2026-09-18 (`fcedca8`): the `empty` state, a vacant plot, never counted, pruned after an hour.
    Two bg sessions with no transcript at all (`3fe36032`, `a75745cb` — started, nothing typed) show as needs-you with `-` in every column,
    and the waybar line names one of them as who is first.
    A session with no conversation is a new state (`empty`), drawn as a plot without a building, never counted, and offered to `prune`
    once idle for an hour — this is the "lingering sessions" complaint that started the project, back in a new form.
-3. **CI is red: `TestRun/when_the_context_is_cancelled` fails in 3 of the last 6 runs** (never locally).
+~~3. **CI is red: `TestRun/when_the_context_is_cancelled` fails in 3 of the last 6 runs** (never locally).~~ Fixed 2026-09-18 (`14d3ebe`, `e73620c`): startup on its own clock; ten dispatched runs green at `e73620c`.
    `run` returns 1 when cancelled right after the socket appears — a startup/shutdown race, and a real one:
    `systemctl stop` during startup would exit non-zero and trip `Restart=on-failure`.
-4. **The timeline and "while you were away" live in the client.**
+~~4. **The timeline and "while you were away" live in the client.**~~ Fixed 2026-09-18 (`41ffd57`): the daemon keeps the log, `{"op":"events","since":…}` and `botropolis events` serve it, the away list covers a closed window.
    Close the window and the log is gone; away means "unfocused but open".
    The daemon sees every snapshot diff and hook event, so the log belongs there (`{"op":"events","since":…}`),
    and the client's away panel should cover the time the window was closed — which is exactly when you were away.
-5. **The sidebar covers the map instead of reserving width.**
+~~5. **The sidebar covers the map instead of reserving width.**~~ Fixed 2026-09-18 (`4523ecb`): chrome insets refit or slide the view, and survive the below-label-zoom fallback.
    With `b` open, the storage district sits under the panel; the scene reserves the strip and footer but not the sidebar.
-6. **Unknown cost shows `~$0.00`.**
+~~6. **Unknown cost shows `~$0.00`.**~~ Fixed 2026-09-18 (`73e13ea`, `1d6a787`): a known flag rides with the cost; unknown is a dash everywhere.
    The breakdown over the sample fixture shows 398.9M tokens at ~$0.00; the rule that applies to the context window applies here:
    no cost-state means `—`, never a number.
 7. **Tower labels overlap at fit.**
@@ -275,6 +275,10 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
 - **Phase 13 — Correctness.** Bugs 1–6 above, in that order.
   Exit: `status`, the bar and the strip agree with `claude agents --json` on every live session on this machine; CI green ten runs in a row;
   the daemon serves the event log and the away panel shows what happened while the window was closed.
+  Done 2026-09-18 (r111): one commit per bug plus bug 11; `status --direct` matches `claude agents --json` on all eight live sessions;
+  ten `workflow_dispatch` runs green at `e73620c`; `botropolis events` prints the daemon's log and the away panel opened on a cold start from a stale `seen`.
+  Screenshot: `docs/screenshots/r111-correctness.png` (sidebar open at fit, the map clear of it).
+  Awaiting Aria's validation checklist before phase 14.
 - **Phase 14 — Polish from the frames.** Bugs 7–10 and the `Later` items below that Aria approves.
   Exit: the fit view has no overlapping text, night reads at fit, and the `Later` list is empty or explicitly deferred.
 - **Phase 15 — Release.** Tag `v0.1.0` (the release workflow has never run) and a README hero shot taken with `h` — the chrome-free frame is the best view of the city.
