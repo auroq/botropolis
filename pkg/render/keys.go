@@ -39,7 +39,7 @@ var bindings = []ui.Key{
 	{Key: "p", Action: "save a screenshot"},
 	{Key: "/", Action: "search: the map dims what does not match"},
 	{Key: "?", Action: "this help"},
-	{Key: "q", Action: "quit (escape asks first)"},
+	{Key: "q", Action: "quit (asks; y or enter confirms)"},
 }
 
 var footerKeys = []ui.Key{
@@ -50,12 +50,12 @@ var footerKeys = []ui.Key{
 	{Key: "b", Action: "sidebar"},
 	{Key: "f", Action: "fit"},
 	{Key: "?", Action: "help"},
-	{Key: "q", Action: "quit (escape asks first)"},
+	{Key: "q", Action: "quit (asks; y or enter confirms)"},
 }
 
 const (
 	keyPanStep = 12.0
-	quitPrompt = "quit? escape again to confirm; any other key stays"
+	quitPrompt = "quit? y or enter to quit; any other key stays"
 )
 
 // handleKeys answers the keyboard for one tick.
@@ -93,29 +93,33 @@ func (g *Game) handleKeys() error {
 		g.settingsOpen = true
 		return nil
 	}
-	if just(ebiten.KeyEscape) {
-		if g.help {
-			g.help = false
+	if g.quit.armed(timeNow()) {
+		switch {
+		case just(ebiten.KeyY), just(ebiten.KeyEnter), just(ebiten.KeyKPEnter):
+			if g.quit.confirm(timeNow()) {
+				return g.leave()
+			}
+		case len(inpututil.AppendJustPressedKeys(nil)) > 0:
+			g.quit.cancel()
+			g.clearPrompt()
+			if just(ebiten.KeyEscape) || just(ebiten.KeyQ) {
+				return nil
+			}
+		default:
+			g.SetStatus(quitPrompt)
 			return nil
 		}
-		if g.quit.press(timeNow()) {
-			return g.leave()
-		}
-		g.SetStatus(quitPrompt)
+	} else {
+		g.clearPrompt()
+	}
+	if just(ebiten.KeyEscape) && g.help {
+		g.help = false
 		return nil
 	}
-	if g.quit.armed(timeNow()) && len(inpututil.AppendJustPressedKeys(nil)) > 0 {
-		g.quit.cancel()
-	}
-	if !g.quit.armed(timeNow()) {
-		g.mu.Lock()
-		if g.notice.Text(timeNow()) == quitPrompt {
-			g.notice.Clear()
-		}
-		g.mu.Unlock()
-	}
-	if just(ebiten.KeyQ) {
-		return g.leave()
+	if just(ebiten.KeyEscape) || just(ebiten.KeyQ) {
+		g.quit.ask(timeNow())
+		g.SetStatus(quitPrompt)
+		return nil
 	}
 	if (just(ebiten.KeySlash) && ebiten.IsKeyPressed(ebiten.KeyShift)) || just(ebiten.KeyF1) {
 		g.help = !g.help
@@ -229,4 +233,14 @@ func screenshotPath(now time.Time) string {
 func isDir(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
+}
+
+// clearPrompt takes the quit prompt off the footer once it is answered
+// or has run out; any other notice stays.
+func (g *Game) clearPrompt() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.notice.Text(timeNow()) == quitPrompt {
+		g.notice.Clear()
+	}
 }

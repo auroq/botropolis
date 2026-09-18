@@ -2,36 +2,39 @@ package render
 
 import "time"
 
-// ConfirmWithin is how long a first Escape waits for the second.
-const ConfirmWithin = 3 * time.Second
+// ConfirmWithin is how long a quit prompt waits for its answer.
+const ConfirmWithin = 10 * time.Second
 
-// confirm is a two-press guard: the first press arms it, a second
-// within the window confirms, anything else or the clock disarms it.
+// confirm is the guard on quitting: Escape or q asks, only y or Enter
+// within the window confirms, and anything else — Escape again, any
+// other key, or the clock — stands it down. Two Escapes never quit.
 type confirm struct {
-	armedAt time.Time
+	askedAt time.Time
 }
 
-// press reports whether this press confirms; otherwise it arms.
-func (c *confirm) press(now time.Time) bool {
-	if !c.armedAt.IsZero() && now.Sub(c.armedAt) <= ConfirmWithin {
-		c.armedAt = time.Time{}
-		return true
-	}
-	c.armedAt = now
-	return false
+func (c *confirm) ask(now time.Time) {
+	c.askedAt = now
+}
+
+// confirm reports whether an answer of yes arrives while the prompt is
+// up, and stands the prompt down either way.
+func (c *confirm) confirm(now time.Time) bool {
+	armed := c.armed(now)
+	c.askedAt = time.Time{}
+	return armed
 }
 
 func (c *confirm) cancel() {
-	c.armedAt = time.Time{}
+	c.askedAt = time.Time{}
 }
 
-// armed reports whether a first press is still waiting for its second.
+// armed reports whether the prompt is still waiting for an answer.
 func (c *confirm) armed(now time.Time) bool {
-	if c.armedAt.IsZero() {
+	if c.askedAt.IsZero() {
 		return false
 	}
-	if now.Sub(c.armedAt) > ConfirmWithin {
-		c.armedAt = time.Time{}
+	if now.Sub(c.askedAt) > ConfirmWithin {
+		c.askedAt = time.Time{}
 		return false
 	}
 	return true
