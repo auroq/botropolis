@@ -81,3 +81,8 @@ func (p Point) DistanceToSegment(a, b Point) float64 {
 	d := p.Sub(nearest)
 	return math.Hypot(d.X, d.Y)
 }
+
+// Size is the rect's width and height as a point.
+func (r Rect) Size() Point {
+	return Point{X: r.Width(), Y: r.Height()}
+}

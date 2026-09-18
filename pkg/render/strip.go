@@ -16,7 +16,7 @@ import (
 func (g *Game) strip(screen *ebiten.Image, width float64) float64 {
 	th := g.theme
 	strip := ui.LayoutStrip(th, ui.StripChips(g.scene.City().Summary()), width, g.faces.Measure)
-	g.panel(screen, city.RectAt(0, 0, width, strip.Height))
+	g.bar(screen, city.RectAt(0, 0, width, strip.Height), strip.Height)
 	for _, chip := range strip.Chips {
 		if chip.Tone != ui.ToneNone {
 			centre := chip.Dot.Center()
@@ -28,14 +28,6 @@ func (g *Game) strip(screen *ebiten.Image, width float64) float64 {
 	g.stripLayout = strip
 	g.mu.Unlock()
 	return strip.Height
-}
-
-// panel fills a chrome rectangle in the translucent panel colour with the
-// theme's hairline along its bottom edge.
-func (g *Game) panel(screen *ebiten.Image, r city.Rect) {
-	th := g.theme
-	vector.FillRect(screen, float32(r.Min.X), float32(r.Min.Y), float32(r.Width()), float32(r.Height()), th.Palette.Panel, false)
-	vector.FillRect(screen, float32(r.Min.X), float32(r.Max.Y-th.Hairline()), float32(r.Width()), float32(th.Hairline()), th.Palette.Hairline, false)
 }
 
 // stripHover is the state chip under the pointer, if any.

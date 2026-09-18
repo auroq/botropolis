@@ -8,6 +8,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/ui"
 )
 
 // The map view (below city.DetailZoom) is flat colour, the way Factorio's
@@ -17,9 +18,6 @@ const (
 	maxGroundTiles = 30_000
 	treeChance     = 160
 	grassVariants  = 64
-	minimapWidth   = 160.0
-	minimapHeight  = 96.0
-	minimapMargin  = 12.0
 )
 
 var (
@@ -33,8 +31,6 @@ var (
 	colorMapNeedsYou = colorNeedsYou
 	colorMapUnatt    = color.NRGBA{0x8a, 0x6c, 0xd8, 0xff}
 	colorMapParked   = color.NRGBA{0x44, 0x42, 0x48, 0xff}
-	colorLabelBack   = color.NRGBA{0x0a, 0x0c, 0x12, 0xb8}
-	colorMinimapBack = color.NRGBA{0x0a, 0x0c, 0x12, 0xd0}
 	colorMinimapView = color.NRGBA{0xff, 0xff, 0xff, 0xc0}
 	colorWater       = color.NRGBA{0x5a, 0xa8, 0xd0, 0xff}
 	colorWaterNight  = color.NRGBA{0x28, 0x48, 0x68, 0xff}
@@ -173,12 +169,11 @@ func (g *Game) stroke(screen *ebiten.Image, cam *city.Camera, r city.Rect, width
 	vector.StrokeRect(screen, float32(min.X), float32(min.Y), float32(max.X-min.X), float32(max.Y-min.Y), width, c, false)
 }
 
-// floorLabel writes fixed-size text on a dark pill so it reads on any ground.
+// floorLabel writes fixed-size text on a plate so it reads on any ground;
+// at is where the text starts, the plate wraps it.
 func (g *Game) floorLabel(screen *ebiten.Image, at city.Point, s string, c color.NRGBA) {
-	w, h := g.measure(s)
-	pad := g.theme.Px(3)
-	vector.FillRect(screen, float32(at.X-pad), float32(at.Y), float32(w+2*pad), float32(h), colorLabelBack, false)
-	g.label(screen, at, s, c)
+	pad := g.theme.Grid() / 2
+	g.plate(screen, ui.LayoutPlate(g.theme, s, city.Point{X: at.X - pad, Y: at.Y - g.theme.Grid()/4}, ui.Small, g.faces.Measure), s, c)
 }
 
 // blockColor is a building's map colour: the state alone, saturated enough
@@ -234,13 +229,9 @@ func (g *Game) shack(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
 
 // minimap draws the whole city in a corner with the viewport marked, only
 // when the viewport does not already show all of it.
-func (g *Game) minimap(screen *ebiten.Image, width, height float64) {
+func (g *Game) minimap(screen *ebiten.Image, box city.Rect) {
 	th := g.theme
-	if width < 3*th.Px(minimapWidth) {
-		return
-	}
-	box := city.RectAt(width-th.Px(minimapMargin+minimapWidth), height-g.footerReserve()-th.Px(minimapHeight), th.Px(minimapWidth), th.Px(minimapHeight))
-	m := g.scene.Minimap(box.Inset(th.Px(6)))
+	m := g.scene.Minimap(box.Inset(th.Grid()))
 	if m.Scale == 0 {
 		return
 	}
@@ -249,7 +240,7 @@ func (g *Game) minimap(screen *ebiten.Image, width, height float64) {
 	if m.View.Min.X <= all.Min.X && m.View.Min.Y <= all.Min.Y && m.View.Max.X >= all.Max.X && m.View.Max.Y >= all.Max.Y {
 		return
 	}
-	vector.FillRect(screen, float32(box.Min.X), float32(box.Min.Y), float32(box.Width()), float32(box.Height()), colorMinimapBack, false)
+	g.roundPanel(screen, box)
 	seconds := 0.0
 	for _, d := range c.Districts {
 		r := m.ProjectRect(d.Rect)

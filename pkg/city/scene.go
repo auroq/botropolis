@@ -28,6 +28,7 @@ type Action struct {
 type Scene struct {
 	forceNight bool
 	topChrome  float64
+	bottom     float64
 	layout     *Layout
 	camera     *Camera
 	city       *City
@@ -216,8 +217,14 @@ func (s *Scene) SetTopChrome(px float64) {
 	s.topChrome = px
 }
 
+// SetBottomChrome reserves screen room for chrome along the bottom, such
+// as the footer; the fit margin still applies when it is shorter.
+func (s *Scene) SetBottomChrome(px float64) {
+	s.bottom = px
+}
+
 func (s *Scene) Insets() Insets {
-	in := Insets{Bottom: FitFooter, Top: LabelHeight + s.topChrome}
+	in := Insets{Bottom: math.Max(FitFooter, s.bottom), Top: LabelHeight + s.topChrome}
 	if s.camera.Projection == Isometric {
 		// Isometric labels sit above their landmarks, inside the diamond's
 		// empty corners, so nothing is reserved at the sides.

@@ -1,7 +1,6 @@
 package render
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -22,12 +21,9 @@ import (
 )
 
 const (
-	windowTitle    = "Botropolis"
-	cardPadding    = 10.0
-	footerMargin   = 24.0
-	pulsePeriod    = 1.4
-	maxFooterLines = 4
-	titleChars     = 18
+	windowTitle = "Botropolis"
+	pulsePeriod = 1.4
+	titleChars  = 18
 )
 
 var (
@@ -269,20 +265,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	g.landmarks(screen, cam, labels)
 	g.chrome(screen, width, height)
-}
-
-// chrome is everything fixed to the window: strip, minimap, card, footer.
-func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
-	top := g.strip(screen, width)
-	g.scene.SetTopChrome(top)
-	g.minimap(screen, width, height)
-	x, y := ebiten.CursorPosition()
-	if st, ok := g.stripHover(city.Point{X: float64(x), Y: float64(y)}); ok {
-		g.card(screen, g.scene.City().StateCard(st), width, height, top)
-	} else if card, ok := g.scene.Card(); ok {
-		g.card(screen, card, width, height, top)
-	}
-	g.footer(screen, width, height)
 }
 
 // powerLineStrokes is the top-down view's power lines: plain strokes.
@@ -653,19 +635,6 @@ func (g *Game) lineHeight() float64 {
 	return h
 }
 
-// charWidth is the average advance at a size, for clipping and wrapping
-// text to a width before it is drawn.
-func (g *Game) charWidth(size ui.Size) float64 {
-	const sample = "abcdefghijklmnopqrstuvwxyz0123456789 ~/$%."
-	w, _ := g.faces.Measure(sample, size)
-	return w / float64(len(sample))
-}
-
-// footerReserve is the screen room kept clear at the bottom for the footer.
-func (g *Game) footerReserve() float64 {
-	return g.theme.Px(footerMargin) + g.lineHeight()*maxFooterLines
-}
-
 // label is an in-world label: small text straight onto the screen.
 func (g *Game) label(screen *ebiten.Image, at city.Point, s string, c color.NRGBA) {
 	g.text(screen, at, s, ui.Small, c)
@@ -674,62 +643,6 @@ func (g *Game) label(screen *ebiten.Image, at city.Point, s string, c color.NRGB
 func (g *Game) labelRight(screen *ebiten.Image, end city.Point, s string, c color.NRGBA) {
 	width, _ := g.measure(s)
 	g.label(screen, city.Point{X: end.X - width, Y: end.Y}, s, c)
-}
-
-func (g *Game) card(screen *ebiten.Image, card city.Card, screenWidth, screenHeight, top float64) {
-	th := g.theme
-	pad := th.Px(cardPadding)
-	margin := th.Px(12)
-	maxChars := int((screenWidth - 2*margin - 2*pad) / g.charWidth(ui.Body))
-	if maxChars < 8 {
-		maxChars = 8
-	}
-	title := format.Clip(card.Title, maxChars)
-	titleW, titleH := g.faces.Measure(title, ui.Title)
-	_, lineH := g.faces.Measure("", ui.Body)
-	lines := make([]string, 0, len(card.Lines))
-	maxLines := int((screenHeight - g.footerReserve() - 2*margin - 2*pad - titleH) / lineH)
-	for i, line := range card.Lines {
-		if maxLines > 0 && i >= maxLines {
-			break
-		}
-		lines = append(lines, format.Clip(line, maxChars))
-	}
-	width := titleW
-	for _, line := range lines {
-		if w, _ := g.faces.Measure(line, ui.Body); w > width {
-			width = w
-		}
-	}
-	width += 2 * pad
-	height := pad*2 + titleH + lineH*float64(len(lines))
-	x := math.Max(margin, screenWidth-width-margin)
-	y := top + margin
-	g.panel(screen, city.RectAt(x, y, width, height))
-	g.text(screen, city.Point{X: x + pad, Y: y + pad}, title, ui.Title, th.Palette.Text)
-	for i, line := range lines {
-		g.text(screen, city.Point{X: x + pad, Y: y + pad + titleH + lineH*float64(i)}, line, ui.Body, th.Palette.Dim)
-	}
-}
-
-func (g *Game) footer(screen *ebiten.Image, screenWidth, screenHeight float64) {
-	g.mu.Lock()
-	status := g.status
-	g.mu.Unlock()
-	if status == "" {
-		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click or enter to attach | tab next needs-you | d d to demolish | f to fit | n night | q quit",
-			len(g.scene.City().Buildings()))
-	}
-	margin := g.theme.Px(12)
-	lines := format.Wrap(status, int((screenWidth-2*margin)/g.charWidth(ui.Small)))
-	if len(lines) > maxFooterLines {
-		lines = lines[:maxFooterLines]
-	}
-	lineH := g.lineHeight()
-	for i, line := range lines {
-		y := screenHeight - g.theme.Px(footerMargin) - lineH*float64(len(lines)-1-i)
-		g.label(screen, city.Point{X: margin, Y: y}, line, colorDim)
-	}
 }
 
 // LayoutF sizes the frame in device pixels, so text and sprites are drawn

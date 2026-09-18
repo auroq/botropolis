@@ -533,6 +533,26 @@ func TestTopChrome(t *testing.T) {
 	})
 }
 
+func TestBottomChrome(t *testing.T) {
+	t.Run("when the window has a footer taller than the fit margin", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.SetBottomChrome(city.FitFooter + 30)
+
+		t.Run("it should reserve the footer at the bottom", func(t *testing.T) {
+			assert.InDelta(t, city.FitFooter+30, s.Insets().Bottom, 1e-9)
+		})
+	})
+
+	t.Run("when the footer is shorter than the fit margin", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.SetBottomChrome(10)
+
+		t.Run("it should keep the fit margin", func(t *testing.T) {
+			assert.InDelta(t, city.FitFooter, s.Insets().Bottom, 1e-9)
+		})
+	})
+}
+
 func TestMinimap(t *testing.T) {
 	t.Run("when the city is projected into a box", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
