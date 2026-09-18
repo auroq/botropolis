@@ -729,6 +729,36 @@ func TestCelebration(t *testing.T) {
 	})
 }
 
+func TestSceneEvents(t *testing.T) {
+	clock := time.Date(2026, 9, 18, 14, 0, 0, 0, time.UTC)
+	s := city.NewScene(city.NewLayout())
+	s.Resize(800, 600)
+	s.SetClock(func() time.Time { return clock }, time.UTC)
+	s.SetSnapshot(snapshot(session("a", cinders, state.Working)))
+	clock = clock.Add(time.Minute)
+	s.SetSnapshot(snapshot(session("a", cinders, state.NeedsYou)))
+	left := clock
+	clock = clock.Add(time.Minute)
+	errored := session("a", cinders, state.NeedsYou)
+	errored.APIErrors = 1
+	s.SetSnapshot(snapshot(errored))
+
+	t.Run("when snapshots have come and gone", func(t *testing.T) {
+		t.Run("it should log what happened, newest first", func(t *testing.T) {
+			events := s.Events()
+			require.Len(t, events, 2)
+			assert.Equal(t, city.EventError, events[0].Kind)
+			assert.Equal(t, city.EventNeedsYou, events[1].Kind)
+		})
+
+		t.Run("it should say what needed you since you left", func(t *testing.T) {
+			away := s.Away(left)
+			require.Len(t, away, 1)
+			assert.Equal(t, city.EventError, away[0].Kind)
+		})
+	})
+}
+
 func TestNamePlates(t *testing.T) {
 	t.Run("when a district has awake sessions", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))

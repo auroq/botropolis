@@ -88,13 +88,14 @@ type Scene struct {
 	// celebrating is when a session's count rose, for a one-shot show.
 	merged      map[string]int
 	celebrating map[string]time.Time
+	log         *Log
 }
 
 // CelebrateFor is how long a merge is shown off.
 const CelebrateFor = 2500 * time.Millisecond
 
 func NewScene(layout *Layout) *Scene {
-	return &Scene{layout: layout, camera: NewCamera(), city: &City{}, now: time.Now, location: time.Local}
+	return &Scene{layout: layout, camera: NewCamera(), city: &City{}, now: time.Now, location: time.Local, log: NewLog()}
 }
 
 // SetClock replaces the wall clock and its zone, for tests and for a
@@ -373,6 +374,7 @@ func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
 	s.snapshot = snapshot
 	s.city = Build(snapshot, s.layout)
 	s.noteMerges()
+	s.log.Observe(snapshot, s.now())
 	s.applyNight()
 	s.selected = s.reselect()
 	s.hover = Hit{}
@@ -594,6 +596,17 @@ func (s *Scene) Act(kind ActionKind) (Action, string) {
 		return Action{}, "unstarred " + name
 	}
 	return Action{}, ""
+}
+
+// Events is everything the map has seen happen, newest first.
+func (s *Scene) Events() []Event {
+	return s.log.Events()
+}
+
+// Away is what needed you or went wrong after a moment, newest first:
+// the list shown when the window comes back into focus.
+func (s *Scene) Away(since time.Time) []Event {
+	return s.log.Since(since, EventNeedsYou, EventError)
 }
 
 // noteMerges starts a celebration for every session whose merged-PR

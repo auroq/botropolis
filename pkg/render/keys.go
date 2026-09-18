@@ -32,6 +32,7 @@ var bindings = []ui.Key{
 	{Key: "[ ]", Action: "scrub the clock an hour"},
 	{Key: "s", Action: "settings"},
 	{Key: "x", Action: "power breakdown (also click the plant)"},
+	{Key: "t", Action: "timeline; enter jumps to the session"},
 	{Key: "b", Action: "sidebar"},
 	{Key: "h", Action: "hide the UI"},
 	{Key: "p", Action: "save a screenshot"},
@@ -61,6 +62,14 @@ func (g *Game) handleKeys() error {
 	}
 	if g.breakdown {
 		g.breakdown = g.breakdownKeys()
+		return nil
+	}
+	if g.timeline {
+		g.timeline = g.timelineKeys()
+		return nil
+	}
+	if just(ebiten.KeyT) {
+		g.timeline, g.away, g.cursor = true, nil, 0
 		return nil
 	}
 	if just(ebiten.KeyX) {

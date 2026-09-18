@@ -105,13 +105,22 @@ type Game struct {
 	breakdown       bool
 	window          city.Window
 	breakdownLayout ui.BreakdownPanel
-	dragging        bool
-	dragFrom        city.Point
-	started         time.Time
+
+	// timeline is the event list on t; away is the list shown when the
+	// window comes back into focus, or nil for the whole log.
+	timeline       bool
+	away           []city.Event
+	cursor         int
+	timelineLayout ui.Timeline
+	focused        bool
+	blurredAt      time.Time
+	dragging       bool
+	dragFrom       city.Point
+	started        time.Time
 }
 
 func NewGame(scene *city.Scene, actor Actor, theme ui.Theme, faces *faces, saveLayout func(*city.Layout), sprites *sprites) *Game {
-	return &Game{scene: scene, actor: actor, theme: theme, faces: faces, saveState: saveLayout, sprites: sprites, started: time.Now()}
+	return &Game{scene: scene, actor: actor, theme: theme, faces: faces, saveState: saveLayout, sprites: sprites, started: time.Now(), focused: true}
 }
 
 func (g *Game) Offer(snapshot state.Snapshot) {
@@ -158,6 +167,9 @@ func (g *Game) Update() error {
 
 	g.scene.SetInstant(g.reduced || g.screenshot != "")
 	g.scene.Animate(1.0 / 30)
+	if g.screenshot == "" {
+		g.watchFocus()
+	}
 	x, y := ebiten.CursorPosition()
 	cursor := city.Point{X: float64(x), Y: float64(y)}
 	g.scene.PointerMove(cursor)
@@ -166,7 +178,7 @@ func (g *Game) Update() error {
 		g.scene.Wheel(cursor, wheel)
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		if !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
+		if !g.clickTimeline(cursor) && !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
 			g.dragging, g.dragFrom = true, cursor
 		}
 	}
@@ -311,6 +323,9 @@ func (g *Game) overlay(screen *ebiten.Image, width, height float64) {
 	}
 	if g.breakdown {
 		g.drawBreakdown(screen, width, height)
+	}
+	if g.timeline {
+		g.drawTimeline(screen, width, height)
 	}
 }
 
