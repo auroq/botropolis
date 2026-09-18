@@ -66,6 +66,27 @@ func TestStripChips(t *testing.T) {
 		})
 	})
 
+	t.Run("when a daily budget is set", func(t *testing.T) {
+		cases := []struct {
+			cost float64
+			text string
+			tone ui.Tone
+		}{
+			{100, "~$100.00 of $250 24h", ui.ToneNone},
+			{210, "~$210.00 of $250 24h", ui.ToneNeedsYou},
+			{260, "~$260.00 of $250 24h", ui.ToneError},
+		}
+		for _, tc := range cases {
+			chips := ui.StripChips(city.Summary{Working: 1, CostUSD: tc.cost, BudgetUSD: 250})
+			chip, ok := findChip(chips, tc.text)
+			require.True(t, ok, chipTexts(chips))
+
+			t.Run(fmt.Sprintf("it should tone %q %s", tc.text, tc.tone), func(t *testing.T) {
+				assert.Equal(t, tc.tone, chip.Tone)
+			})
+		}
+	})
+
 	t.Run("when every state has sessions", func(t *testing.T) {
 		chips := ui.StripChips(city.Summary{Working: 2, Parked: 3, NeedsYou: 1, Unattended: 4})
 

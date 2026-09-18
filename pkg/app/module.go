@@ -174,6 +174,7 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		Keys:          cli.Keys(cmd),
 		Scale:         c.config.RenderScale,
 		ReducedMotion: c.config.ReducedMotion,
+		DailyBudget:   c.config.DailyBudget,
 		Settings:      settingsFor(c.config),
 		Apply: func(s ui.Setting) error {
 			key, value := settingValue(s)

@@ -266,3 +266,28 @@ func TestSave(t *testing.T) {
 		})
 	})
 }
+
+func TestDailyBudgetKey(t *testing.T) {
+	t.Run("when nothing sets a budget", func(t *testing.T) {
+		v := config.NewViper()
+		cfg, err := config.New(v)
+		require.NoError(t, err)
+
+		t.Run("it should have none", func(t *testing.T) {
+			assert.Zero(t, cfg.DailyBudget)
+		})
+	})
+
+	t.Run("when the flag sets one", func(t *testing.T) {
+		v := config.NewViper()
+		flags := pflag.NewFlagSet("t", pflag.ContinueOnError)
+		config.BindFlags(v, flags)
+		require.NoError(t, flags.Parse([]string{"--daily_budget_usd", "250"}))
+		cfg, err := config.New(v)
+		require.NoError(t, err)
+
+		t.Run("it should say 250", func(t *testing.T) {
+			assert.Equal(t, 250.0, cfg.DailyBudget)
+		})
+	})
+}

@@ -34,6 +34,9 @@ type Options struct {
 	Scale float64
 	// ReducedMotion stops every animation and keeps the colours.
 	ReducedMotion bool
+	// DailyBudget is the daily spend in USD the strip and plant measure
+	// against; 0 for none.
+	DailyBudget float64
 	// Settings is the in-app settings panel's rows; Apply persists a change.
 	Settings ui.Settings
 	Apply    func(ui.Setting) error
@@ -42,6 +45,7 @@ type Options struct {
 func Run(ctx context.Context, opts Options) error {
 	scene := city.NewScene(opts.Layout)
 	scene.SetProjection(opts.Projection)
+	scene.SetBudget(opts.DailyBudget)
 	width, height := opts.Width, opts.Height
 	if width <= 0 || height <= 0 {
 		width, height = defaultWidth, defaultHeight

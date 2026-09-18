@@ -90,6 +90,7 @@ type Scene struct {
 	celebrating map[string]time.Time
 	log         *Log
 	filter      Filter
+	budget      float64
 }
 
 // CelebrateFor is how long a merge is shown off.
@@ -374,6 +375,7 @@ func (s *Scene) Insets() Insets {
 func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
 	s.snapshot = snapshot
 	s.city = Build(snapshot, s.layout)
+	s.city.Plant.BudgetUSD = s.budget
 	s.noteMerges()
 	s.log.Observe(snapshot, s.now())
 	s.applyNight()
@@ -597,6 +599,15 @@ func (s *Scene) Act(kind ActionKind) (Action, string) {
 		return Action{}, "unstarred " + name
 	}
 	return Action{}, ""
+}
+
+// SetBudget is the daily spend to measure the strip and the plant
+// against; it lands on the next snapshot and this one.
+func (s *Scene) SetBudget(usd float64) {
+	s.budget = usd
+	if s.city != nil {
+		s.city.Plant.BudgetUSD = usd
+	}
 }
 
 // Events is everything the map has seen happen, newest first.

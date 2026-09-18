@@ -49,8 +49,9 @@ const (
 )
 
 type Plant struct {
-	Rect  Rect
-	Power state.Power
+	Rect      Rect
+	Power     state.Power
+	BudgetUSD float64
 }
 
 type Tower struct {
@@ -250,10 +251,15 @@ func (c *City) Beams() []Beam {
 func (p Plant) Card() Card {
 	lines := []string{
 		fmt.Sprintf("cost     ~$%.2f in 24h (pro-rated)", p.Power.CostUSD),
+	}
+	if p.BudgetUSD > 0 {
+		lines = append(lines, fmt.Sprintf("budget   $%.0f/day, %s used", p.BudgetUSD, format.Percent(100*p.Power.CostUSD/p.BudgetUSD)))
+	}
+	lines = append(lines,
 		fmt.Sprintf("fresh    %s tokens", format.Tokens(float64(p.Power.Fresh))),
 		fmt.Sprintf("cached   %s tokens", format.Tokens(float64(p.Power.Cached))),
 		fmt.Sprintf("hit rate %s of prompt tokens from cache", format.Percent(100*p.Power.HitRatio())),
-	}
+	)
 	models := make([]string, 0, len(p.Power.ByModel))
 	for model := range p.Power.ByModel {
 		models = append(models, model)

@@ -354,6 +354,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	g.isoPlaza(screen, cam, c)
 	g.fountain(screen, cam, c)
 	g.powerLines(screen, c, cam, hover, seconds)
+	g.camps(screen, c, cam)
 	var items []drawable
 	for _, l := range c.Lamps {
 		l := l
@@ -630,6 +631,34 @@ func pointAlong(path []city.Point, dist float64) (city.Point, city.Point) {
 		dist -= seg
 	}
 	return path[0], city.Point{X: 1}
+}
+
+// camps ties each team's members to their lead with a dashed line in
+// the accent, so a crew reads as one across districts.
+func (g *Game) camps(screen *ebiten.Image, c *city.City, cam *city.Camera) {
+	for _, camp := range c.Camps {
+		if camp.Lead == nil {
+			continue
+		}
+		from := cam.WorldToScreen(camp.Lead.Rect.Center())
+		for _, m := range camp.Members {
+			to := cam.WorldToScreen(m.Rect.Center())
+			dashed(screen, from, to, math.Max(1, 1.5*cam.Zoom), 6*cam.Zoom, g.theme.Palette.Accent)
+		}
+	}
+}
+
+// dashed strokes a line as dashes.
+func dashed(screen *ebiten.Image, a, b city.Point, width, dash float64, col color.NRGBA) {
+	length := math.Hypot(b.X-a.X, b.Y-a.Y)
+	if length == 0 || dash <= 0 {
+		return
+	}
+	ux, uy := (b.X-a.X)/length, (b.Y-a.Y)/length
+	for d := 0.0; d < length; d += 2 * dash {
+		end := math.Min(length, d+dash)
+		vector.StrokeLine(screen, float32(a.X+ux*d), float32(a.Y+uy*d), float32(a.X+ux*end), float32(a.Y+uy*end), float32(width), col, true)
+	}
 }
 
 // celebrate is the one-shot show for a merge: a green ring swelling

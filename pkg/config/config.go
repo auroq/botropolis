@@ -25,6 +25,7 @@ const (
 	KeyProjection    = "projection"
 	KeyRenderScale   = "render_scale"
 	KeyReducedMotion = "reduced_motion"
+	KeyDailyBudget   = "daily_budget_usd"
 
 	DefaultParkedDays = 7
 )
@@ -43,6 +44,7 @@ type Config struct {
 	Projection    string
 	RenderScale   float64
 	ReducedMotion bool
+	DailyBudget   float64
 	File          string
 }
 
@@ -59,6 +61,7 @@ func NewViper() *viper.Viper {
 	v.SetDefault(KeyProjection, DefaultProjection)
 	v.SetDefault(KeyRenderScale, 0.0)
 	v.SetDefault(KeyReducedMotion, false)
+	v.SetDefault(KeyDailyBudget, 0.0)
 	v.SetConfigName(configName)
 	v.AddConfigPath(filepath.Join(configHome(), appDir))
 	return v
@@ -71,12 +74,14 @@ func BindFlags(v *viper.Viper, flags *pflag.FlagSet) {
 	flags.String(KeyProjection, DefaultProjection, "how the city is drawn: iso or top")
 	flags.Float64(KeyRenderScale, 0, "chrome and pixel scale (default: follow the display)")
 	flags.Bool(KeyReducedMotion, false, "stop every animation and keep the colours")
+	flags.Float64(KeyDailyBudget, 0, "a daily spend to measure the strip and the plant against, in USD (0 for none)")
 	_ = v.BindPFlag(KeyHome, flags.Lookup(KeyHome))
 	_ = v.BindPFlag(KeySocket, flags.Lookup(KeySocket))
 	_ = v.BindPFlag(KeyParkedDays, flags.Lookup(KeyParkedDays))
 	_ = v.BindPFlag(KeyProjection, flags.Lookup(KeyProjection))
 	_ = v.BindPFlag(KeyRenderScale, flags.Lookup(KeyRenderScale))
 	_ = v.BindPFlag(KeyReducedMotion, flags.Lookup(KeyReducedMotion))
+	_ = v.BindPFlag(KeyDailyBudget, flags.Lookup(KeyDailyBudget))
 }
 
 func New(v *viper.Viper) (*Config, error) {
@@ -98,6 +103,7 @@ func New(v *viper.Viper) (*Config, error) {
 		Projection:    v.GetString(KeyProjection),
 		RenderScale:   v.GetFloat64(KeyRenderScale),
 		ReducedMotion: v.GetBool(KeyReducedMotion),
+		DailyBudget:   v.GetFloat64(KeyDailyBudget),
 		File:          v.ConfigFileUsed(),
 	}
 	if cfg.Home == "" {

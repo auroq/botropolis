@@ -22,6 +22,17 @@ type Summary struct {
 	PRs        int
 	MCPCalls   int
 	Errors     int
+	// BudgetUSD is the daily target from config, 0 for none.
+	BudgetUSD float64
+}
+
+// BudgetShare is how much of the daily budget the last 24 h spent, or 0
+// when there is no budget.
+func (s Summary) BudgetShare() float64 {
+	if s.BudgetUSD <= 0 {
+		return 0
+	}
+	return s.CostUSD / s.BudgetUSD
 }
 
 // Live is every session that is not parked.
@@ -52,6 +63,7 @@ func (c *City) Summary() Summary {
 	}
 	s.CostUSD = c.Plant.Power.CostUSD
 	s.HitRatio = c.Plant.Power.HitRatio()
+	s.BudgetUSD = c.Plant.BudgetUSD
 	for _, t := range c.Towers {
 		s.MCPCalls += t.Server.Calls
 	}

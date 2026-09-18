@@ -285,6 +285,20 @@ The transcript's `pr` action records give each PR a state; a merged PR's flag tu
 the first time the map sees the merge, never on start-up.
 API errors keep their smoke.
 
+## Beyond parity
+
+Roadmap phase 11, 2026-09-18.
+Each session carries a week of usage by unix hour and the snapshot carries the teams, merged through the harness.
+`City.Breakdown` adds the spend up over the last hour, day or week by model, project and session
+(each session's lifetime cost pro-rated by the window's share of its tokens, an estimate shown as one);
+`Series` gives tokens per hour for the city, a district or a session, drawn as sparklines under the cards and in the plant's panel,
+which opens on the plant or `x`.
+`city.Log` turns the stream of snapshots into events by what changed between one and the next; `t` lists them newest first and jumps,
+and when the window comes back into focus the same panel shows what needed you or went wrong meanwhile.
+`/` filters by title, project, branch, state or model and the map dims what does not match.
+A team is a camp: its lead's building tied to its members' with dashed lines, from the rosters and the sessions' own team names, with a card and a line on each member's card.
+`daily_budget_usd` measures the strip's cost chip and the plant's card against a daily target, accent-toned from 80 % and error-toned beyond it.
+
 ## Open questions
 
 All settled; the decisions are in [ROADMAP.md](ROADMAP.md) §5 and §3.

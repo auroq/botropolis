@@ -85,6 +85,7 @@ type City struct {
 	// belt strip, the trees and lamps, and the map's edge.
 	Plaza    Rect
 	Fountain Rect
+	Camps    []*Camp
 	Parks    []Park
 	Trees    []Cell
 	Lamps    []Cell
@@ -223,6 +224,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	city.placeRoads(snapshot.Roads)
 	city.placeRiver()
 	city.placeStreets()
+	city.placeCamps(snapshot.Teams)
 	return city
 }
 
@@ -428,6 +430,13 @@ func (b *Building) Card(now time.Time) Card {
 	}
 	if s.Note != "" {
 		lines = append(lines, "note     "+s.Note)
+	}
+	if s.Team != "" {
+		role := "lead"
+		if s.Agent != "" {
+			role = s.Agent
+		}
+		lines = append(lines, "team     "+s.Team+" ("+role+")")
 	}
 	lines = append(lines, "age      "+format.Age(now.Sub(s.StartedAt)))
 	return Card{Title: title, Lines: lines, Series: b.Series(LastDay, now)}

@@ -30,7 +30,7 @@ func StripChips(s city.Summary) []Chip {
 	chips = append(chips,
 		Chip{Text: format.Tokens(s.FreshPerH) + "/h fresh"},
 		Chip{Text: format.Tokens(s.CachedPerH) + "/h cached"},
-		Chip{Text: fmt.Sprintf("~$%.2f 24h", s.CostUSD)},
+		costChip(s),
 		Chip{Text: "hit " + format.Percent(100*s.HitRatio)},
 	)
 	if s.Subagents > 0 {
@@ -44,6 +44,23 @@ func StripChips(s city.Summary) []Chip {
 		chips = append(chips, Chip{Text: fmt.Sprintf("%d errors", s.Errors), Tone: ToneError})
 	}
 	return chips
+}
+
+// costChip is the 24 h cost, measured against the daily budget when
+// there is one: plain under 80 % of it, accent-toned up to it, error
+// beyond.
+func costChip(s city.Summary) Chip {
+	if s.BudgetUSD <= 0 {
+		return Chip{Text: fmt.Sprintf("~$%.2f 24h", s.CostUSD)}
+	}
+	chip := Chip{Text: fmt.Sprintf("~$%.2f of $%.0f 24h", s.CostUSD, s.BudgetUSD)}
+	switch share := s.BudgetShare(); {
+	case share >= 1:
+		chip.Tone = ToneError
+	case share >= 0.8:
+		chip.Tone = ToneNeedsYou
+	}
+	return chip
 }
 
 // PlacedChip is a chip with everything the renderer needs to draw it and

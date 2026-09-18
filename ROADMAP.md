@@ -182,6 +182,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - Daily budget: a target in config, shown on the strip and the plant.
 - "While you were away": the needs-you and error events since the window last had focus, shown on focus.
 - **Done when** each item has a hover datum and a test, per DESIGN.md's first principle.
+- Done 2026-09-18 (r87–r92); see DESIGN.md "Beyond parity".
 
 ### 12 — Ship
 
