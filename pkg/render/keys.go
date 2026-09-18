@@ -30,6 +30,7 @@ var bindings = []ui.Key{
 	{Key: "0", Action: "reset the view"},
 	{Key: "n", Action: "force night"},
 	{Key: "s", Action: "settings"},
+	{Key: "b", Action: "sidebar"},
 	{Key: "h", Action: "hide the UI"},
 	{Key: "p", Action: "save a screenshot"},
 	{Key: "?", Action: "this help"},
@@ -41,6 +42,7 @@ var footerKeys = []ui.Key{
 	{Key: "wheel", Action: "zoom"},
 	{Key: "click", Action: "attach"},
 	{Key: "tab", Action: "next needs-you"},
+	{Key: "b", Action: "sidebar"},
 	{Key: "f", Action: "fit"},
 	{Key: "?", Action: "help"},
 	{Key: "q", Action: "quit"},
@@ -74,6 +76,9 @@ func (g *Game) handleKeys() error {
 	}
 	if just(ebiten.KeyH) {
 		g.hidden = !g.hidden
+	}
+	if just(ebiten.KeyB) {
+		g.sidebar = !g.sidebar
 	}
 	if just(ebiten.KeyP) {
 		g.snap = screenshotPath(time.Now())

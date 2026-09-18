@@ -41,6 +41,7 @@ type Scene struct {
 	forceNight bool
 	topChrome  float64
 	bottom     float64
+	left       float64
 	layout     *Layout
 	camera     *Camera
 	city       *City
@@ -254,8 +255,14 @@ func (s *Scene) SetBottomChrome(px float64) {
 	s.bottom = px
 }
 
+// SetLeftChrome reserves screen room for chrome down the left, such as
+// the sidebar.
+func (s *Scene) SetLeftChrome(px float64) {
+	s.left = px
+}
+
 func (s *Scene) Insets() Insets {
-	in := Insets{Bottom: math.Max(FitFooter, s.bottom), Top: LabelHeight + s.topChrome}
+	in := Insets{Bottom: math.Max(FitFooter, s.bottom), Top: LabelHeight + s.topChrome, Left: s.left}
 	if s.camera.Projection == Isometric {
 		// Isometric labels sit above their landmarks, inside the diamond's
 		// empty corners, so nothing is reserved at the sides.
@@ -263,7 +270,7 @@ func (s *Scene) Insets() Insets {
 		return in
 	}
 	if len(s.city.Towers) > 0 {
-		in.Left = s.city.TowerLabelWidth()
+		in.Left += s.city.TowerLabelWidth()
 	}
 	if s.city.Library.Rect.Area() > 0 {
 		in.Right = LibraryLabelWidth
@@ -454,6 +461,30 @@ func (s *Scene) Act(kind ActionKind) (Action, string) {
 		return Action{}, "unstarred " + name
 	}
 	return Action{}, ""
+}
+
+// Select picks a session by id and centres on it; false when it is not
+// on the map.
+func (s *Scene) Select(id string) bool {
+	for _, b := range s.city.Buildings() {
+		if b.Session.ID == id {
+			s.selected = b
+			s.CenterOn(b.Rect.Center())
+			return true
+		}
+	}
+	return false
+}
+
+// CenterOnProject centres the camera on a project's district.
+func (s *Scene) CenterOnProject(root string) bool {
+	for _, d := range s.city.Districts {
+		if d.Root == root {
+			s.CenterOn(d.Rect.Center())
+			return true
+		}
+	}
+	return false
 }
 
 // Unhide puts a hidden project back on the map.

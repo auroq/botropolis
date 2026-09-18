@@ -46,6 +46,13 @@ func TestLayoutButtons(t *testing.T) {
 			assert.Equal(t, "stop", hit.Label.Text)
 		})
 
+		t.Run("it should wrap onto a second row when the width runs out", func(t *testing.T) {
+			rows := ui.LayoutButtonRows(th, []string{"attach", "stop", "reveal folder"}, city.Point{X: 0, Y: 0}, 140, measure7)
+			require.Len(t, rows, 3)
+			assert.Equal(t, 0.0, rows[2].Rect.Min.X)
+			assert.Equal(t, 16+8+8.0, rows[2].Rect.Min.Y)
+		})
+
 		t.Run("it should find nothing beside the row", func(t *testing.T) {
 			_, ok := ui.HitButton(row, city.Point{X: 0, Y: 0})
 			assert.False(t, ok)

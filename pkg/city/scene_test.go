@@ -615,6 +615,45 @@ func TestSelectionActions(t *testing.T) {
 	})
 }
 
+func TestSelectByID(t *testing.T) {
+	t.Run("when a session is selected by id", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		before := s.Camera().Offset
+		found := s.Select("b")
+
+		t.Run("it should find it", func(t *testing.T) {
+			assert.True(t, found)
+		})
+
+		t.Run("it should select it", func(t *testing.T) {
+			require.NotNil(t, s.Selected())
+			assert.Equal(t, "b", s.Selected().Session.ID)
+		})
+
+		t.Run("it should move the camera to it", func(t *testing.T) {
+			assert.NotEqual(t, before, s.Camera().Offset)
+		})
+	})
+
+	t.Run("when the id is not on the map", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+
+		t.Run("it should say so and keep the selection", func(t *testing.T) {
+			assert.False(t, s.Select("zzz"))
+			assert.Nil(t, s.Selected())
+		})
+	})
+
+	t.Run("when the sidebar takes the left edge", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.SetLeftChrome(288)
+
+		t.Run("it should add it to the left inset", func(t *testing.T) {
+			assert.InDelta(t, 288, s.Insets().Left, 1e-9)
+		})
+	})
+}
+
 func TestNamePlates(t *testing.T) {
 	t.Run("when a district has awake sessions", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))

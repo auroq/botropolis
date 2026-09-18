@@ -92,9 +92,12 @@ type Game struct {
 	// pinned is the selection's card as last drawn, for clicks on it.
 	pinned      ui.Card
 	pinnedKinds []city.ActionKind
-	dragging    bool
-	dragFrom    city.Point
-	started     time.Time
+
+	sidebar       bool
+	sidebarLayout ui.Sidebar
+	dragging      bool
+	dragFrom      city.Point
+	started       time.Time
 }
 
 func NewGame(scene *city.Scene, actor Actor, theme ui.Theme, faces *faces, saveLayout func(*city.Layout), sprites *sprites) *Game {
@@ -143,7 +146,7 @@ func (g *Game) Update() error {
 		g.scene.Wheel(cursor, wheel)
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		if !g.clickCard(cursor) && !g.stripClick(cursor) {
+		if !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
 			g.dragging, g.dragFrom = true, cursor
 		}
 	}

@@ -40,11 +40,14 @@ func LayoutCard(th Theme, card city.Card, bounds city.Rect, measure Measure) Car
 		c.Lines = append(c.Lines, Text{Text: line, At: city.Point{X: pad, Y: pad + titleH + lineH*float64(i)}, Size: Body})
 	}
 	if len(card.Actions) > 0 {
-		row := LayoutButtons(th, card.Actions, city.Point{X: pad, Y: c.Rect.Max.Y - pad + th.Grid()}, measure)
-		last := row[len(row)-1].Rect
-		c.Rect.Max.Y = last.Max.Y + pad
-		if last.Max.X+pad > c.Rect.Max.X {
-			c.Rect.Max.X = last.Max.X + pad
+		row := LayoutButtonRows(th, card.Actions, city.Point{X: pad, Y: c.Rect.Max.Y - pad + th.Grid()}, maxWidth, measure)
+		for _, b := range row {
+			if b.Rect.Max.Y+pad > c.Rect.Max.Y {
+				c.Rect.Max.Y = b.Rect.Max.Y + pad
+			}
+			if b.Rect.Max.X+pad > c.Rect.Max.X {
+				c.Rect.Max.X = b.Rect.Max.X + pad
+			}
 		}
 		c.Buttons = row
 	}

@@ -29,7 +29,14 @@ func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
 	bounds := city.RectAt(0, top, width, height-top-footer.Rect.Height())
 	g.pinned = ui.Card{}
 	g.pinnedKinds = nil
-	if card, b, ok := g.scene.SelectedCard(); ok {
+	if g.sidebar {
+		g.drawSidebar(screen, top, height-footer.Rect.Height())
+		g.scene.SetLeftChrome(ui.SidebarWidth(th))
+		bounds.Min.X = ui.SidebarWidth(th)
+	} else {
+		g.scene.SetLeftChrome(0)
+	}
+	if card, b, ok := g.scene.SelectedCard(); ok && !g.sidebar {
 		beside := g.buildingOnScreen(b)
 		pinned := ui.LayoutCard(th, card, bounds, g.faces.Measure).PinTo(beside, bounds, th.Grid())
 		g.card(screen, pinned)
