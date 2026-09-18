@@ -79,9 +79,13 @@ type Game struct {
 	shotFrames int
 	shotErr    error
 	shotDone   bool
-	dragging   bool
-	dragFrom   city.Point
-	started    time.Time
+	// snap is a frame the p key asked for, saved on the next draw.
+	snap     string
+	help     bool
+	hidden   bool
+	dragging bool
+	dragFrom city.Point
+	started  time.Time
 }
 
 func NewGame(scene *city.Scene, actor Actor, theme ui.Theme, faces *faces, saveLayout func(*city.Layout), sprites *sprites) *Game {
@@ -142,54 +146,23 @@ func (g *Game) Update() error {
 		wasDrag := math.Hypot(cursor.X-g.dragFrom.X, cursor.Y-g.dragFrom.Y) > 3
 		g.dragging = false
 		if !wasDrag {
-			if action := g.scene.Click(cursor); action.Kind != city.ActionNone && g.actor != nil {
-				if err := g.actor.Do(action); err != nil {
-					g.SetStatus(err.Error())
-				}
-			}
+			g.act(g.scene.Click(cursor))
 		}
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) || inpututil.IsKeyJustPressed(ebiten.KeyQ) {
-		if g.saveState != nil {
-			g.saveState(g.scene.Layout())
-		}
-		return ebiten.Termination
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
-		g.scene.Fit()
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
-		g.jump(state.NeedsYou)
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-		if action := g.scene.Activate(); action.Kind != city.ActionNone && g.actor != nil {
-			if err := g.actor.Do(action); err != nil {
-				g.SetStatus(err.Error())
-			}
-		}
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyN) {
-		if g.scene.ToggleNight() {
-			g.SetStatus("night: forced on (n to release)")
-		} else {
-			g.SetStatus("")
-		}
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyD) || inpututil.IsKeyJustPressed(ebiten.KeyDelete) {
-		action, note := g.scene.Demolish(time.Now())
-		g.SetStatus(note)
-		if action.Kind != city.ActionNone && g.actor != nil {
-			if err := g.actor.Do(action); err != nil {
-				g.SetStatus(err.Error())
-			}
-		}
-	}
-	return nil
+	return g.handleKeys()
 }
 
 // capture writes the frame just drawn to the screenshot path. It waits for
 // the second frame after the first snapshot so the fit has settled.
 func (g *Game) capture(screen *ebiten.Image) {
+	if g.snap != "" {
+		if err := writePNG(g.snap, frame(screen)); err != nil {
+			g.SetStatus(err.Error())
+		} else {
+			g.SetStatus("saved " + g.snap)
+		}
+		g.snap = ""
+	}
 	if g.screenshot == "" || g.shotFrames == 0 || g.shotDone {
 		return
 	}
@@ -197,11 +170,15 @@ func (g *Game) capture(screen *ebiten.Image) {
 	if g.shotFrames < 3 {
 		return
 	}
+	g.shotErr = writePNG(g.screenshot, frame(screen))
+	g.shotDone = true
+}
+
+func frame(screen *ebiten.Image) image.Image {
 	b := screen.Bounds()
 	img := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
 	screen.ReadPixels(img.Pix)
-	g.shotErr = writePNG(g.screenshot, img)
-	g.shotDone = true
+	return img
 }
 
 func writePNG(path string, img image.Image) error {
@@ -222,7 +199,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	cam := g.scene.Camera()
 	hover := g.scene.Hover()
 	selected := g.scene.Selected()
-	labels := g.scene.LabelsVisible()
+	labels := g.labelsVisible()
 	detailed := g.scene.Detailed()
 	bounds := screen.Bounds()
 	width, height := float64(bounds.Dx()), float64(bounds.Dy())
@@ -230,7 +207,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	if cam.Projection == city.Isometric {
 		g.drawIso(screen, c, cam, hover, selected, width, height, seconds)
-		g.chrome(screen, width, height)
+		g.overlay(screen, width, height)
 		return
 	}
 
@@ -248,14 +225,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.district(screen, cam, d, hover.District == d, c.Night, detailed)
 	}
 	for _, d := range c.Districts {
-		if g.scene.DistrictLabelVisible(d) {
+		if g.districtLabelVisible(d) {
 			g.floorLabel(screen, g.districtLabelAt(d), d.Name, colorText)
 		}
 		for _, b := range d.Buildings {
 			g.building(screen, cam, b, b == selected, detailed, seconds)
 		}
 	}
-	if g.scene.TitlesVisible() {
+	if g.titlesVisible() {
 		for _, b := range c.Buildings() {
 			if b.BoardedUp && hover.Building != b {
 				continue
@@ -264,7 +241,26 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 	g.landmarks(screen, cam, labels)
+	g.overlay(screen, width, height)
+}
+
+// overlay is the chrome and, over it, the help; h hides the lot.
+func (g *Game) overlay(screen *ebiten.Image, width, height float64) {
+	if g.hidden {
+		g.scene.SetTopChrome(0)
+		g.scene.SetBottomChrome(0)
+		return
+	}
 	g.chrome(screen, width, height)
+	if g.help {
+		g.drawHelp(screen, width, height)
+	}
+}
+
+func (g *Game) labelsVisible() bool { return !g.hidden && g.scene.LabelsVisible() }
+func (g *Game) titlesVisible() bool { return !g.hidden && g.scene.TitlesVisible() }
+func (g *Game) districtLabelVisible(d *city.District) bool {
+	return !g.hidden && g.scene.DistrictLabelVisible(d)
 }
 
 // powerLineStrokes is the top-down view's power lines: plain strokes.

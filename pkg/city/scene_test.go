@@ -533,6 +533,17 @@ func TestTopChrome(t *testing.T) {
 	})
 }
 
+func TestSceneSize(t *testing.T) {
+	t.Run("when the scene is resized", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.Resize(640, 480)
+
+		t.Run("it should report the new size", func(t *testing.T) {
+			assert.Equal(t, city.Point{X: 640, Y: 480}, s.Size())
+		})
+	})
+}
+
 func TestBottomChrome(t *testing.T) {
 	t.Run("when the window has a footer taller than the fit margin", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))

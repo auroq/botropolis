@@ -79,6 +79,11 @@ func (s *Scene) Selected() *Building {
 	return s.selected
 }
 
+// Size is the screen the scene is laid out for.
+func (s *Scene) Size() Point {
+	return Point{X: s.width, Y: s.height}
+}
+
 func (s *Scene) Resize(width, height float64) {
 	if width == s.width && height == s.height {
 		return

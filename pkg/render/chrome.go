@@ -10,17 +10,7 @@ import (
 	"github.com/auroq/botropolis/pkg/ui"
 )
 
-// keys is the key row the footer shows when nothing else needs saying.
-var keys = []ui.Key{
-	{Key: "drag", Action: "pan"},
-	{Key: "wheel", Action: "zoom"},
-	{Key: "click", Action: "attach"},
-	{Key: "tab", Action: "next needs-you"},
-	{Key: "d d", Action: "demolish"},
-	{Key: "f", Action: "fit"},
-	{Key: "n", Action: "night"},
-	{Key: "q", Action: "quit"},
-}
+var colorScrim = color.NRGBA{0x00, 0x00, 0x00, 0x80}
 
 // chrome is everything fixed to the window: strip, minimap, card, footer.
 func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
@@ -28,7 +18,7 @@ func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
 	g.mu.Lock()
 	status := g.status
 	g.mu.Unlock()
-	footer := ui.LayoutFooter(th, width, height, status, keys, g.faces.Measure)
+	footer := ui.LayoutFooter(th, width, height, status, footerKeys, g.faces.Measure)
 	top := g.strip(screen, width)
 	g.scene.SetTopChrome(top)
 	g.scene.SetBottomChrome(footer.Rect.Height())
@@ -55,16 +45,30 @@ func (g *Game) card(screen *ebiten.Image, c ui.Card) {
 }
 
 func (g *Game) footer(screen *ebiten.Image, f ui.Footer) {
-	th := g.theme
 	g.bar(screen, f.Rect, f.Rect.Min.Y)
 	for _, line := range f.Lines {
-		g.run(screen, line, th.Palette.Dim)
+		g.run(screen, line, g.theme.Palette.Dim)
 	}
-	for _, k := range f.Keys {
+	g.keyRow(screen, f.Keys, f.Size)
+}
+
+// keyRow draws key chips with their actions beside them.
+func (g *Game) keyRow(screen *ebiten.Image, keys []ui.PlacedKey, size ui.Size) {
+	th := g.theme
+	for _, k := range keys {
 		g.roundRect(screen, k.Chip, th.Radius()/2, th.Palette.Hairline)
-		g.text(screen, k.KeyAt, k.Key.Key, f.Size, th.Palette.Text)
-		g.text(screen, k.LabelAt, k.Action, f.Size, th.Palette.Dim)
+		g.text(screen, k.KeyAt, k.Key.Key, size, th.Palette.Text)
+		g.text(screen, k.LabelAt, k.Action, size, th.Palette.Dim)
 	}
+}
+
+// drawHelp dims the city and lists every binding in the middle.
+func (g *Game) drawHelp(screen *ebiten.Image, width, height float64) {
+	vector.FillRect(screen, 0, 0, float32(width), float32(height), colorScrim, false)
+	h := ui.LayoutHelp(g.theme, width, height, "Keys", bindings, g.faces.Measure)
+	g.roundPanel(screen, h.Rect)
+	g.run(screen, h.Title, g.theme.Palette.Text)
+	g.keyRow(screen, h.Rows, ui.Small)
 }
 
 // run draws one placed text run.

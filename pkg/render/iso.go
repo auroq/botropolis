@@ -479,7 +479,7 @@ func (g *Game) isoTitle(screen *ebiten.Image, cam *city.Camera, b *city.Building
 // every building and landmark painted back to front.
 func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, selected *city.Building, width, height float64, seconds float64) {
 	detailed := g.scene.Detailed()
-	labels := g.scene.LabelsVisible()
+	labels := g.labelsVisible()
 	g.isoGround(screen, cam, c, width, height)
 	g.streets(screen, c, cam, hover, labels)
 	g.beams(screen, c, cam, hover)
@@ -545,11 +545,11 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		g.nightLights(screen, cam, c)
 	}
 	for _, d := range c.Districts {
-		if g.scene.DistrictLabelVisible(d) {
+		if g.districtLabelVisible(d) {
 			g.floorLabel(screen, g.districtLabelAt(d), d.Name, colorText)
 		}
 	}
-	if g.scene.TitlesVisible() {
+	if g.titlesVisible() {
 		for _, b := range c.Buildings() {
 			if b.BoardedUp && hover.Building != b {
 				continue
