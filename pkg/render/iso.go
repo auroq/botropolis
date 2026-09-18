@@ -136,7 +136,7 @@ func (g *Game) fountain(screen *ebiten.Image, cam *city.Camera, c *city.City) {
 func (g *Game) lamp(screen *ebiten.Image, cam *city.Camera, cell city.Cell, night bool) {
 	r := g.kit(screen, cam, kitLamp, 0, cell.Center(), nil)
 	if night && r.Area() > 0 {
-		glow(screen, city.Point{X: r.Min.X + r.Width()*0.5, Y: r.Min.Y + r.Height()*0.12}, 7*cam.Zoom, colorLampGlow)
+		glow(screen, city.Point{X: r.Min.X + r.Width()*0.5, Y: r.Min.Y + r.Height()*0.12}, lit(7*cam.Zoom, minLampGlow), boost(colorLampGlow, cam.Zoom))
 	}
 }
 
@@ -814,6 +814,34 @@ var (
 	colorPlantGlow  = color.NRGBA{0xf0, 0xb4, 0x4c, 0x40}
 )
 
+// At fit a lamp is a pixel and a window a fraction of one, so every
+// light keeps a floor in screen pixels and gets brighter the further
+// out the view is: what matters at fit is which lights are on, not
+// their size.
+const (
+	minLampGlow   = 3.0
+	minWindowGlow = 2.5
+	minPlantGlow  = 14.0
+	glowBoostZoom = 0.6
+	glowBoostMax  = 2.5
+)
+
+// lit is a glow radius with a floor in pixels.
+func lit(radius, floor float64) float64 {
+	return math.Max(radius, floor)
+}
+
+// boost brightens a light's alpha as the view zooms out past
+// glowBoostZoom, up to glowBoostMax times.
+func boost(c color.NRGBA, zoom float64) color.NRGBA {
+	if zoom >= glowBoostZoom {
+		return c
+	}
+	k := math.Min(glowBoostMax, glowBoostZoom/zoom)
+	c.A = uint8(math.Min(255, float64(c.A)*k))
+	return c
+}
+
 func (g *Game) nightLights(screen *ebiten.Image, cam *city.Camera, c *city.City) {
 	for _, b := range c.Buildings() {
 		if !b.Lit || b.BoardedUp {
@@ -825,15 +853,15 @@ func (g *Game) nightLights(screen *ebiten.Image, cam *city.Camera, c *city.City)
 		storeys := max(1, int(h/(38*cam.Zoom)))
 		for i := 0; i < storeys; i++ {
 			y := foot.Y - h*0.15 - (h*0.7)*(float64(i)+0.5)/float64(storeys)
-			glow(screen, city.Point{X: foot.X - w*0.2, Y: y}, w*0.16, colorWindowGlow)
-			glow(screen, city.Point{X: foot.X + w*0.2, Y: y}, w*0.16, colorWindowGlow)
-			glow(screen, city.Point{X: foot.X, Y: y}, w*0.1, colorWindowCore)
+			glow(screen, city.Point{X: foot.X - w*0.2, Y: y}, lit(w*0.16, minWindowGlow), boost(colorWindowGlow, cam.Zoom))
+			glow(screen, city.Point{X: foot.X + w*0.2, Y: y}, lit(w*0.16, minWindowGlow), boost(colorWindowGlow, cam.Zoom))
+			glow(screen, city.Point{X: foot.X, Y: y}, lit(w*0.1, minWindowGlow*0.6), boost(colorWindowCore, cam.Zoom))
 		}
 	}
 	if c.Plant.Rect.Area() > 0 {
 		foot := cam.WorldToScreen(c.Plant.Rect.Center())
 		size := g.kitSize(cam, kitPlant)
-		glow(screen, city.Point{X: foot.X, Y: foot.Y - float64(size.Y)*0.6}, float64(size.X)*0.22, colorPlantGlow)
+		glow(screen, city.Point{X: foot.X, Y: foot.Y - float64(size.Y)*0.6}, lit(float64(size.X)*0.22, minPlantGlow), boost(colorPlantGlow, cam.Zoom))
 	}
 }
 
