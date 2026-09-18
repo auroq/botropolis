@@ -168,7 +168,7 @@ func (m *Model) demolish(now time.Time) Action {
 
 func (m *Model) Lines(width int) []string {
 	now := m.snapshot.At
-	lines := []string{fmt.Sprintf("  %-10s %-14s %-40s %-5s %-8s %-8s %s", "STATE", "PROJECT", "TITLE", "CTX", "FRESH/H", "CACHED/H", "AGE")}
+	lines := []string{fmt.Sprintf("  %-10s %-24s %-14s %-40s %-5s %-8s %-8s %s", "STATE", "DOING", "PROJECT", "TITLE", "CTX", "FRESH/H", "CACHED/H", "AGE")}
 	for i, s := range m.rows {
 		marker := "  "
 		if i == m.cursor {
@@ -178,7 +178,7 @@ func (m *Model) Lines(width int) []string {
 		if len(title) > 40 {
 			title = title[:39] + "…"
 		}
-		line := fmt.Sprintf("%s%-10s %-14s %-40s %-5s %-8s %-8s %s", marker, s.State, clip(filepath.Base(s.CWD), 14), title,
+		line := fmt.Sprintf("%s%-10s %-24s %-14s %-40s %-5s %-8s %-8s %s", marker, s.State, clip(format.Dash(s.Doing()), 24), clip(filepath.Base(s.CWD), 14), title,
 			format.Percent(s.ContextPercent), format.Tokens(s.FreshTokensPerHour), format.Tokens(s.CacheReadPerHour), format.Age(now.Sub(s.StartedAt)))
 		lines = append(lines, line)
 	}

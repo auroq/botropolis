@@ -164,6 +164,16 @@ func TestModel(t *testing.T) {
 			assert.Contains(t, lines[1], "1h00m")
 		})
 
+		t.Run("it should say what a working session is doing", func(t *testing.T) {
+			busy := session("c", state.Working, 0)
+			busy.Tool, busy.Subject = "Edit", busy.CWD+"/pkg/queue/queue.go"
+			assert.Contains(t, model(busy).Lines(0)[1], "Edit pkg/queue/queue.go")
+		})
+
+		t.Run("it should dash the column for an idle session", func(t *testing.T) {
+			assert.Contains(t, lines[1], "needs-you  -  ")
+		})
+
 		t.Run("and a width is given", func(t *testing.T) {
 			for _, l := range m.Lines(30) {
 				assert.LessOrEqual(t, len(l), 30)
