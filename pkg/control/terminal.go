@@ -7,6 +7,11 @@ import (
 
 var knownTerminals = []string{"foot", "kitty", "alacritty", "wezterm", "gnome-terminal", "konsole", "xterm"}
 
+// KnownTerminals is the list tried when nothing names a terminal.
+func KnownTerminals() []string {
+	return append([]string(nil), knownTerminals...)
+}
+
 var terminalPrefix = map[string][]string{
 	"foot":           {},
 	"kitty":          {},

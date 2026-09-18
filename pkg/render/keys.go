@@ -28,6 +28,7 @@ var bindings = []ui.Key{
 	{Key: "f", Action: "fit"},
 	{Key: "0", Action: "reset the view"},
 	{Key: "n", Action: "force night"},
+	{Key: "s", Action: "settings"},
 	{Key: "h", Action: "hide the UI"},
 	{Key: "p", Action: "save a screenshot"},
 	{Key: "?", Action: "this help"},
@@ -49,6 +50,14 @@ const keyPanStep = 12.0
 // handleKeys answers the keyboard for one tick.
 func (g *Game) handleKeys() error {
 	just := inpututil.IsKeyJustPressed
+	if g.settingsOpen {
+		g.settingsOpen = g.settingsKeys()
+		return nil
+	}
+	if just(ebiten.KeyS) {
+		g.settingsOpen = true
+		return nil
+	}
 	if just(ebiten.KeyEscape) {
 		if g.help {
 			g.help = false

@@ -197,3 +197,72 @@ func TestRenderScaleKey(t *testing.T) {
 		})
 	})
 }
+
+func TestReducedMotionKey(t *testing.T) {
+	t.Run("when nothing sets reduced motion", func(t *testing.T) {
+		v := config.NewViper()
+		cfg, err := config.New(v)
+		require.NoError(t, err)
+
+		t.Run("it should leave motion on", func(t *testing.T) {
+			assert.False(t, cfg.ReducedMotion)
+		})
+	})
+
+	t.Run("when the flag asks for reduced motion", func(t *testing.T) {
+		v := config.NewViper()
+		flags := pflag.NewFlagSet("t", pflag.ContinueOnError)
+		config.BindFlags(v, flags)
+		require.NoError(t, flags.Parse([]string{"--reduced_motion"}))
+		cfg, err := config.New(v)
+		require.NoError(t, err)
+
+		t.Run("it should say so", func(t *testing.T) {
+			assert.True(t, cfg.ReducedMotion)
+		})
+	})
+}
+
+func TestSave(t *testing.T) {
+	t.Run("when a value is saved with no config file yet", func(t *testing.T) {
+		configHome := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", configHome)
+		path := filepath.Join(configHome, "botropolis", "config.toml")
+		require.NoError(t, config.Save("", config.KeyProjection, "top"))
+		cfg, err := config.New(config.NewViper())
+		require.NoError(t, err)
+
+		t.Run("it should create the file under the config home", func(t *testing.T) {
+			assert.FileExists(t, path)
+		})
+
+		t.Run("it should read back the value", func(t *testing.T) {
+			assert.Equal(t, "top", cfg.Projection)
+		})
+	})
+
+	t.Run("when a value is saved beside existing keys", func(t *testing.T) {
+		configHome := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", configHome)
+		path := filepath.Join(configHome, "botropolis", "config.toml")
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+		require.NoError(t, os.WriteFile(path, []byte("terminal = \"kitty\"\n"), 0o600))
+		require.NoError(t, config.Save(path, config.KeyParkedDays, 14))
+		cfg, err := config.New(config.NewViper())
+		require.NoError(t, err)
+
+		t.Run("it should keep the existing key", func(t *testing.T) {
+			assert.Equal(t, "kitty", cfg.Terminal)
+		})
+
+		t.Run("it should hold the new value", func(t *testing.T) {
+			assert.Equal(t, 14, cfg.ParkedDays)
+		})
+
+		t.Run("it should not write defaults for other keys", func(t *testing.T) {
+			data, err := os.ReadFile(path)
+			require.NoError(t, err)
+			assert.NotContains(t, string(data), "hook_command")
+		})
+	})
+}

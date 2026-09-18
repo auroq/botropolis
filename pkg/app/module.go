@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -20,6 +22,7 @@ import (
 	"github.com/auroq/botropolis/pkg/render"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/pkg/tui"
+	"github.com/auroq/botropolis/pkg/ui"
 )
 
 type cliParams struct {
@@ -148,7 +151,8 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		fmt.Fprintf(cmd.ErrOrStderr(), "botropolis: %v; starting from an empty layout\n", err)
 		layout = city.NewLayout()
 	}
-	sessions := commands.NewSessions(c.config.Home, control.Default(c.config.Terminal))
+	actor := &liveActor{home: c.config.Home}
+	actor.terminal.Store(c.config.Terminal)
 	feed := commands.Feed{
 		Socket:  c.config.Socket,
 		Source:  c.services.source(c.config),
@@ -161,12 +165,92 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		return fmt.Errorf("unknown projection %q: use iso or top", c.config.Projection)
 	}
 	return render.Run(cmd.Context(), render.Options{
-		Layout:     layout,
-		LayoutPath: layoutPath,
-		Actor:      commands.Actor{Sessions: sessions},
-		Feed:       feed.Run,
-		Projection: projection,
-		Screenshot: cli.Screenshot(cmd),
-		Scale:      c.config.RenderScale,
+		Layout:        layout,
+		LayoutPath:    layoutPath,
+		Actor:         actor,
+		Feed:          feed.Run,
+		Projection:    projection,
+		Screenshot:    cli.Screenshot(cmd),
+		Scale:         c.config.RenderScale,
+		ReducedMotion: c.config.ReducedMotion,
+		Settings:      settingsFor(c.config),
+		Apply: func(s ui.Setting) error {
+			key, value := settingValue(s)
+			if key == config.KeyTerminal {
+				actor.terminal.Store(value.(string))
+			}
+			return config.Save(c.config.File, key, value)
+		},
 	})
+}
+
+// liveActor builds its control on every action so a terminal chosen in
+// the settings panel is used by the next attach.
+type liveActor struct {
+	home     string
+	terminal atomic.Value
+}
+
+func (a *liveActor) Do(action city.Action) error {
+	terminal, _ := a.terminal.Load().(string)
+	sessions := commands.NewSessions(a.home, control.Default(terminal))
+	return commands.Actor{Sessions: sessions}.Do(action)
+}
+
+const autoValue = "auto"
+
+// settingsFor is the settings panel's rows from the loaded config.
+func settingsFor(cfg *config.Config) ui.Settings {
+	onOff := "off"
+	if cfg.ReducedMotion {
+		onOff = "on"
+	}
+	scale := autoValue
+	if cfg.RenderScale > 0 {
+		scale = strconv.FormatFloat(cfg.RenderScale, 'g', -1, 64)
+	}
+	terminal := cfg.Terminal
+	if terminal == "" {
+		terminal = autoValue
+	}
+	return ui.NewSettings([]ui.Setting{
+		{Key: config.KeyReducedMotion, Label: "reduced motion", Options: []string{"off", "on"}, Value: onOff},
+		{Key: config.KeyRenderScale, Label: "render scale", Options: withValue([]string{autoValue, "1", "1.25", "1.5", "2"}, scale), Value: scale},
+		{Key: config.KeyProjection, Label: "projection", Options: []string{"iso", "top"}, Value: cfg.Projection},
+		{Key: config.KeyParkedDays, Label: "parked days", Options: withValue([]string{"0", "1", "3", "7", "14", "30", "90"}, strconv.Itoa(cfg.ParkedDays)), Value: strconv.Itoa(cfg.ParkedDays)},
+		{Key: config.KeyTerminal, Label: "terminal", Options: withValue(append([]string{autoValue}, control.KnownTerminals()...), terminal), Value: terminal},
+	})
+}
+
+// withValue keeps a value that is not among the options at the end of
+// the cycle, so the panel can show it without dropping it.
+func withValue(options []string, value string) []string {
+	for _, o := range options {
+		if o == value {
+			return options
+		}
+	}
+	return append(options, value)
+}
+
+// settingValue is the config value a panel row stands for.
+func settingValue(s ui.Setting) (string, any) {
+	switch s.Key {
+	case config.KeyReducedMotion:
+		return s.Key, s.Value == "on"
+	case config.KeyRenderScale:
+		if s.Value == autoValue {
+			return s.Key, 0.0
+		}
+		f, _ := strconv.ParseFloat(s.Value, 64)
+		return s.Key, f
+	case config.KeyParkedDays:
+		n, _ := strconv.Atoi(s.Value)
+		return s.Key, n
+	case config.KeyTerminal:
+		if s.Value == autoValue {
+			return s.Key, ""
+		}
+	}
+	return s.Key, s.Value
 }

@@ -113,7 +113,7 @@ func TestStripChips(t *testing.T) {
 }
 
 func measure7(s string, _ ui.Size) (float64, float64) {
-	return float64(len(s)) * 7, 16
+	return float64(len([]rune(s))) * 7, 16
 }
 
 func TestLayoutStrip(t *testing.T) {

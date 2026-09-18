@@ -16,14 +16,15 @@ const (
 	appDir     = "botropolis"
 	configName = "config"
 
-	KeyHome        = "home"
-	KeySocket      = "socket"
-	KeyTerminal    = "terminal"
-	KeyHookCommand = "hook_command"
-	KeyParkedDays  = "parked_days"
-	KeyCodexHome   = "codex_home"
-	KeyProjection  = "projection"
-	KeyRenderScale = "render_scale"
+	KeyHome          = "home"
+	KeySocket        = "socket"
+	KeyTerminal      = "terminal"
+	KeyHookCommand   = "hook_command"
+	KeyParkedDays    = "parked_days"
+	KeyCodexHome     = "codex_home"
+	KeyProjection    = "projection"
+	KeyRenderScale   = "render_scale"
+	KeyReducedMotion = "reduced_motion"
 
 	DefaultParkedDays = 7
 )
@@ -31,17 +32,18 @@ const (
 const DefaultProjection = "iso"
 
 type Config struct {
-	Home        string
-	HomeSet     bool
-	Socket      string
-	SocketSet   bool
-	Terminal    string
-	HookCommand string
-	ParkedDays  int
-	CodexHome   string
-	Projection  string
-	RenderScale float64
-	File        string
+	Home          string
+	HomeSet       bool
+	Socket        string
+	SocketSet     bool
+	Terminal      string
+	HookCommand   string
+	ParkedDays    int
+	CodexHome     string
+	Projection    string
+	RenderScale   float64
+	ReducedMotion bool
+	File          string
 }
 
 func NewViper() *viper.Viper {
@@ -56,6 +58,7 @@ func NewViper() *viper.Viper {
 	v.SetDefault(KeyCodexHome, "")
 	v.SetDefault(KeyProjection, DefaultProjection)
 	v.SetDefault(KeyRenderScale, 0.0)
+	v.SetDefault(KeyReducedMotion, false)
 	v.SetConfigName(configName)
 	v.AddConfigPath(filepath.Join(configHome(), appDir))
 	return v
@@ -67,11 +70,13 @@ func BindFlags(v *viper.Viper, flags *pflag.FlagSet) {
 	flags.Int(KeyParkedDays, DefaultParkedDays, "how many days of parked sessions to catalogue (0 disables)")
 	flags.String(KeyProjection, DefaultProjection, "how the city is drawn: iso or top")
 	flags.Float64(KeyRenderScale, 0, "chrome and pixel scale (default: follow the display)")
+	flags.Bool(KeyReducedMotion, false, "stop every animation and keep the colours")
 	_ = v.BindPFlag(KeyHome, flags.Lookup(KeyHome))
 	_ = v.BindPFlag(KeySocket, flags.Lookup(KeySocket))
 	_ = v.BindPFlag(KeyParkedDays, flags.Lookup(KeyParkedDays))
 	_ = v.BindPFlag(KeyProjection, flags.Lookup(KeyProjection))
 	_ = v.BindPFlag(KeyRenderScale, flags.Lookup(KeyRenderScale))
+	_ = v.BindPFlag(KeyReducedMotion, flags.Lookup(KeyReducedMotion))
 }
 
 func New(v *viper.Viper) (*Config, error) {
@@ -82,17 +87,18 @@ func New(v *viper.Viper) (*Config, error) {
 		}
 	}
 	cfg := &Config{
-		Home:        v.GetString(KeyHome),
-		HomeSet:     v.GetString(KeyHome) != "",
-		Socket:      v.GetString(KeySocket),
-		SocketSet:   v.GetString(KeySocket) != "",
-		Terminal:    v.GetString(KeyTerminal),
-		HookCommand: v.GetString(KeyHookCommand),
-		ParkedDays:  v.GetInt(KeyParkedDays),
-		CodexHome:   v.GetString(KeyCodexHome),
-		Projection:  v.GetString(KeyProjection),
-		RenderScale: v.GetFloat64(KeyRenderScale),
-		File:        v.ConfigFileUsed(),
+		Home:          v.GetString(KeyHome),
+		HomeSet:       v.GetString(KeyHome) != "",
+		Socket:        v.GetString(KeySocket),
+		SocketSet:     v.GetString(KeySocket) != "",
+		Terminal:      v.GetString(KeyTerminal),
+		HookCommand:   v.GetString(KeyHookCommand),
+		ParkedDays:    v.GetInt(KeyParkedDays),
+		CodexHome:     v.GetString(KeyCodexHome),
+		Projection:    v.GetString(KeyProjection),
+		RenderScale:   v.GetFloat64(KeyRenderScale),
+		ReducedMotion: v.GetBool(KeyReducedMotion),
+		File:          v.ConfigFileUsed(),
 	}
 	if cfg.Home == "" {
 		home, err := os.UserHomeDir()
@@ -108,6 +114,32 @@ func New(v *viper.Viper) (*Config, error) {
 		cfg.CodexHome = filepath.Join(cfg.Home, ".codex")
 	}
 	return cfg, nil
+}
+
+// DefaultFile is where settings are written when no config file was read.
+func DefaultFile() string {
+	return filepath.Join(configHome(), appDir, configName+".toml")
+}
+
+// Save writes one key into the config file at path (or the default file
+// when path is empty), keeping whatever else the file holds and never
+// spelling out defaults.
+func Save(path, key string, value any) error {
+	if path == "" {
+		path = DefaultFile()
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	raw := viper.New()
+	raw.SetConfigFile(path)
+	if err := raw.ReadInConfig(); err != nil {
+		if _, missing := err.(*os.PathError); !missing && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	raw.Set(key, value)
+	return raw.WriteConfigAs(path)
 }
 
 func configHome() string {

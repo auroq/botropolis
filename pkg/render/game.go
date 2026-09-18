@@ -80,12 +80,17 @@ type Game struct {
 	shotErr    error
 	shotDone   bool
 	// snap is a frame the p key asked for, saved on the next draw.
-	snap     string
-	help     bool
-	hidden   bool
-	dragging bool
-	dragFrom city.Point
-	started  time.Time
+	snap   string
+	help   bool
+	hidden bool
+
+	settings     ui.Settings
+	settingsOpen bool
+	reduced      bool
+	apply        func(ui.Setting) error
+	dragging     bool
+	dragFrom     city.Point
+	started      time.Time
 }
 
 func NewGame(scene *city.Scene, actor Actor, theme ui.Theme, faces *faces, saveLayout func(*city.Layout), sprites *sprites) *Game {
@@ -203,7 +208,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	detailed := g.scene.Detailed()
 	bounds := screen.Bounds()
 	width, height := float64(bounds.Dx()), float64(bounds.Dy())
-	seconds := time.Since(g.started).Seconds()
+	seconds := g.clock()
 
 	if cam.Projection == city.Isometric {
 		g.drawIso(screen, c, cam, hover, selected, width, height, seconds)
@@ -255,6 +260,18 @@ func (g *Game) overlay(screen *ebiten.Image, width, height float64) {
 	if g.help {
 		g.drawHelp(screen, width, height)
 	}
+	if g.settingsOpen {
+		g.drawSettings(screen, width, height)
+	}
+}
+
+// clock is the animation time; with reduced motion it stands still at
+// the point where the needs-you pulse is at full colour.
+func (g *Game) clock() float64 {
+	if g.reduced {
+		return pulsePeriod / 4
+	}
+	return time.Since(g.started).Seconds()
 }
 
 func (g *Game) labelsVisible() bool { return !g.hidden && g.scene.LabelsVisible() }

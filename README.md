@@ -78,7 +78,9 @@ botropolis status                           # the table, via the daemon
 `packaging/botropolis.bash` makes a plain `claude` in a shell start in the background and attach.
 
 Settings come from flags, then `BOTROPOLIS_HOME`, `BOTROPOLIS_SOCKET`, `BOTROPOLIS_TERMINAL`, `BOTROPOLIS_PARKED_DAYS`, `BOTROPOLIS_CODEX_HOME`,
-then `~/.config/botropolis/config.{toml,yaml,json}` (`home`, `socket`, `terminal`, `hook_command`, `parked_days`, `codex_home`, `projection`, `render_scale`).
+then `~/.config/botropolis/config.{toml,yaml,json}` (`home`, `socket`, `terminal`, `hook_command`, `parked_days`, `codex_home`, `projection`, `render_scale`, `reduced_motion`)..
+`s` in the city opens a settings panel for the same keys and writes the file back;
+`?` lists every key.
 
 A waybar module, for example:
 

@@ -30,6 +30,11 @@ type Options struct {
 	Screenshot string
 	// Scale is the chrome and pixel scale; 0 follows the display.
 	Scale float64
+	// ReducedMotion stops every animation and keeps the colours.
+	ReducedMotion bool
+	// Settings is the in-app settings panel's rows; Apply persists a change.
+	Settings ui.Settings
+	Apply    func(ui.Setting) error
 }
 
 func Run(ctx context.Context, opts Options) error {
@@ -61,6 +66,9 @@ func Run(ctx context.Context, opts Options) error {
 	}
 	game := NewGame(scene, opts.Actor, theme, faces, save, sprites)
 	game.screenshot = opts.Screenshot
+	game.reduced = opts.ReducedMotion
+	game.settings = opts.Settings
+	game.apply = opts.Apply
 
 	feedCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
