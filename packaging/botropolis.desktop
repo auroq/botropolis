@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Botropolis
+GenericName=Claude Code sessions as a city
+Comment=Every Claude Code session on this machine, drawn as a city
+Exec=botropolis
+Icon=botropolis
+Terminal=false
+Categories=Development;Utility;
+Keywords=claude;sessions;city;agents;
+StartupWMClass=Botropolis

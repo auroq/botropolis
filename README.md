@@ -51,6 +51,7 @@ botropolis status                           # the table, via the daemon
 
 `botropolis city --screenshot city.png` renders one frame and exits;
 `--headless` runs it on a virtual display (xvfb-run) so no window opens, `--keys n,n,x` presses keys first, and `--record dir --seconds 24` writes frames for a GIF (`make gif`).
+The package also installs `botropolis.desktop`, so the city is in your launcher (`i3-dmenu-desktop`, rofi's drun) under "Botropolis".
 `botropolis install-hooks --remove` takes the hook out again.
 `botropolis status --direct` skips the daemon.
 `botropolis` opens the city and `botropolis --tui` the terminal table; `botropolis new <dir> [prompt]`, `attach <id>`, `stop <id>`, `resume <session-id>`, `rm <id>` and `prune` wrap the `claude` CLI;
