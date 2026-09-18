@@ -206,6 +206,19 @@ above it, buildings are stacked from the pack's ground floors, storeys and roofs
 Parked sessions sit in a compact yard of sheds so the live sessions own the plot.
 Labels are fixed-size and sit on the floor or above the kerb, never over what they name.
 
+## Chrome
+
+Started 2026-09-18 with the roadmap's phase 7.
+`pkg/ui` is the chrome's layout model: theme tokens (one palette with one accent and the six state tones, an 8 px grid, one radius, a 1 px hairline, four type sizes at 12/14/16/20)
+and pure layouts such as the resource strip, each a function of the theme, the data and a text-measuring callback, unit-tested without a window.
+`pkg/render` draws them.
+Text is Inter (variable TTF, OFL, embedded from `pkg/assets/fonts`) through `text/v2`;
+the bitmap font is gone.
+The frame is laid out in device pixels (`LayoutF` times the display's scale factor),
+so nothing is upscaled after the fact;
+`render_scale` overrides the factor, which is how the acceptance screenshots get a reproducible 1× and 2×.
+The daemon links none of this: `pkg/ui`, `pkg/assets` and Ebitengine stay out of `botropolisd`'s dependency graph.
+
 ## Open questions
 
 - Should a session that was started the old way (foreground `claude`) get a "convert to background" affordance,

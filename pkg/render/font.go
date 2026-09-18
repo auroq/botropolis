@@ -1,10 +1,50 @@
 package render
 
 import (
-	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
+	"bytes"
+
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
+
+	"github.com/auroq/botropolis/pkg/assets/fonts"
+	"github.com/auroq/botropolis/pkg/ui"
 )
 
-func basicFont() font.Face {
-	return basicfont.Face7x13
+// faces is the embedded vector face at each of the theme's four sizes,
+// already scaled to the display.
+type faces struct {
+	source *text.GoTextFaceSource
+	by     map[ui.Size]*text.GoTextFace
+}
+
+func newFaces(th ui.Theme) (*faces, error) {
+	data, err := fonts.Inter()
+	if err != nil {
+		return nil, err
+	}
+	source, err := text.NewGoTextFaceSource(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	f := &faces{source: source, by: map[ui.Size]*text.GoTextFace{}}
+	for _, size := range []ui.Size{ui.Small, ui.Body, ui.Title, ui.Display} {
+		f.by[size] = &text.GoTextFace{Source: source, Size: th.Pt(size)}
+	}
+	return f, nil
+}
+
+func (f *faces) Face(size ui.Size) *text.GoTextFace {
+	return f.by[size]
+}
+
+// Measure is the width and line height of s at a size; it satisfies
+// ui.Measure so the layouts can size themselves.
+func (f *faces) Measure(s string, size ui.Size) (float64, float64) {
+	face := f.Face(size)
+	m := face.Metrics()
+	height := m.HAscent + m.HDescent
+	if s == "" {
+		return 0, height
+	}
+	w, _ := text.Measure(s, face, height)
+	return w, height
 }

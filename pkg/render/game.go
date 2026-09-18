@@ -7,7 +7,6 @@ import (
 	"image/png"
 	"math"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -19,17 +18,16 @@ import (
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/state"
+	"github.com/auroq/botropolis/pkg/ui"
 )
 
 const (
 	windowTitle    = "Botropolis"
 	cardPadding    = 10.0
-	lineHeight     = 16.0
-	charWidth      = 7.0
+	footerMargin   = 24.0
 	pulsePeriod    = 1.4
 	maxFooterLines = 4
 	titleChars     = 18
-	footerReserve  = 24.0 + lineHeight*maxFooterLines
 )
 
 var (
@@ -52,14 +50,13 @@ var (
 	colorGaugeHigh  = color.NRGBA{0xe8, 0x6c, 0x4c, 0xff}
 	colorBuilding   = color.NRGBA{0x2c, 0x33, 0x44, 0xff}
 	colorLit        = color.NRGBA{0x3d, 0x5a, 0x80, 0xff}
-	colorNeedsYou   = color.NRGBA{0xe8, 0xa0, 0x3c, 0xff}
+	colorNeedsYou   = ui.DefaultPalette.NeedsYou
 	colorUnattended = color.NRGBA{0x5b, 0x48, 0x8a, 0xff}
 	colorBoarded    = color.NRGBA{0x30, 0x30, 0x34, 0xff}
 	colorFill       = color.NRGBA{0x6c, 0xa8, 0xd8, 0xdd}
 	colorCrane      = color.NRGBA{0xd8, 0xd0, 0x8c, 0xff}
-	colorText       = color.NRGBA{0xd8, 0xdd, 0xe6, 0xff}
-	colorDim        = color.NRGBA{0x8a, 0x93, 0xa5, 0xff}
-	colorCard       = color.NRGBA{0x0c, 0x0e, 0x14, 0xf2}
+	colorText       = ui.DefaultPalette.Text
+	colorDim        = ui.DefaultPalette.Dim
 	colorSelected   = color.NRGBA{0xff, 0xff, 0xff, 0xff}
 )
 
@@ -70,15 +67,16 @@ type Actor interface {
 type Game struct {
 	scene     *city.Scene
 	actor     Actor
-	face      text.Face
+	theme     ui.Theme
+	faces     *faces
 	saveState func(*city.Layout)
 	sprites   *sprites
 
-	mu         sync.Mutex
-	pending    *state.Snapshot
-	status     string
-	shownTitle string
-	stripHits  []stripHit
+	mu          sync.Mutex
+	pending     *state.Snapshot
+	status      string
+	shownTitle  string
+	stripLayout ui.Strip
 
 	// screenshot mode: frames drawn since the first snapshot, and the result.
 	screenshot string
@@ -90,8 +88,8 @@ type Game struct {
 	started    time.Time
 }
 
-func NewGame(scene *city.Scene, actor Actor, face text.Face, saveLayout func(*city.Layout), sprites *sprites) *Game {
-	return &Game{scene: scene, actor: actor, face: face, saveState: saveLayout, sprites: sprites, started: time.Now()}
+func NewGame(scene *city.Scene, actor Actor, theme ui.Theme, faces *faces, saveLayout func(*city.Layout), sprites *sprites) *Game {
+	return &Game{scene: scene, actor: actor, theme: theme, faces: faces, saveState: saveLayout, sprites: sprites, started: time.Now()}
 }
 
 func (g *Game) Offer(snapshot state.Snapshot) {
@@ -255,7 +253,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	for _, d := range c.Districts {
 		if g.scene.DistrictLabelVisible(d) {
-			g.floorLabel(screen, g.scene.DistrictLabelAt(d, lineHeight, float64(len(d.Name))*charWidth), d.Name, colorText)
+			g.floorLabel(screen, g.districtLabelAt(d), d.Name, colorText)
 		}
 		for _, b := range d.Buildings {
 			g.building(screen, cam, b, b == selected, detailed, seconds)
@@ -308,7 +306,7 @@ func (g *Game) roadLines(screen *ebiten.Image, c *city.City, cam *city.Camera, h
 		}
 		if labels {
 			mid := city.Point{X: (road.A.X + road.B.X) / 2, Y: (road.A.Y + road.B.Y) / 2}
-			g.floorLabel(screen, cam.WorldToScreen(mid).Add(city.Point{X: 4, Y: -14}), road.Label(), colorDim)
+			g.floorLabel(screen, cam.WorldToScreen(mid).Add(city.Point{X: g.theme.Px(4), Y: -g.lineHeight() + g.theme.Px(2)}), road.Label(), colorDim)
 		}
 	}
 }
@@ -323,15 +321,21 @@ func (g *Game) beams(screen *ebiten.Image, c *city.City, cam *city.Camera, hover
 }
 
 func formatTitle(title string) string {
-	return ascii(format.Clip(title, titleChars))
+	return format.Clip(title, titleChars)
 }
 
 // title writes a building's name under it at a fixed size.
 func (g *Game) title(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
 	name := formatTitle(b.Card(g.scene.City().Time).Title)
-	w := float64(len(name)) * charWidth
-	at := cam.WorldToScreen(city.Point{X: b.Rect.Center().X, Y: b.Rect.Max.Y}).Add(city.Point{X: -w / 2, Y: 4})
+	w, _ := g.measure(name)
+	at := cam.WorldToScreen(city.Point{X: b.Rect.Center().X, Y: b.Rect.Max.Y}).Add(city.Point{X: -w / 2, Y: g.theme.Px(4)})
 	g.floorLabel(screen, at, name, colorText)
+}
+
+// districtLabelAt is where a district's name plate sits for this face.
+func (g *Game) districtLabelAt(d *city.District) city.Point {
+	w, h := g.measure(d.Name)
+	return g.scene.DistrictLabelAt(d, h, w)
 }
 
 func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building, selected, detailed bool, seconds float64) {
@@ -525,7 +529,7 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, labels bool) {
 			g.rect(screen, cam, core, pulse(colorPlantCore, time.Since(g.started).Seconds()*0.5))
 		}
 		if labels {
-			g.label(screen, cam.WorldToScreen(c.Plant.Rect.Min).Add(city.Point{X: 4, Y: -14}), "power plant", colorDim)
+			g.label(screen, cam.WorldToScreen(c.Plant.Rect.Min).Add(city.Point{X: g.theme.Px(4), Y: -g.lineHeight()}), "power plant", colorDim)
 		}
 	}
 	for _, t := range c.Towers {
@@ -549,7 +553,7 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, labels bool) {
 			g.rect(screen, cam, t.Rect, fill)
 		}
 		if labels {
-			g.labelRight(screen, cam.WorldToScreen(city.Point{X: t.Rect.Min.X, Y: t.Rect.Center().Y}).Add(city.Point{X: -8, Y: -7}), t.Server.Name, colorDim)
+			g.labelRight(screen, cam.WorldToScreen(city.Point{X: t.Rect.Min.X, Y: t.Rect.Center().Y}).Add(city.Point{X: -g.theme.Px(8), Y: -g.lineHeight() / 2}), t.Server.Name, colorDim)
 		}
 	}
 	if c.Library.Rect.Area() > 0 {
@@ -573,7 +577,7 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, labels bool) {
 			}
 		}
 		if labels {
-			g.label(screen, cam.WorldToScreen(c.Library.Rect.Min).Add(city.Point{X: 0, Y: -14}), "library", colorDim)
+			g.label(screen, cam.WorldToScreen(c.Library.Rect.Min).Add(city.Point{X: 0, Y: -g.lineHeight()}), "library", colorDim)
 		}
 	}
 	if c.Hall.Rect.Area() > 0 {
@@ -592,7 +596,7 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, labels bool) {
 			g.rect(screen, cam, c.Hall.Rect, colorLibrary)
 		}
 		if labels {
-			g.label(screen, cam.WorldToScreen(c.Hall.Rect.Min).Add(city.Point{X: 0, Y: -14}), "city hall", colorDim)
+			g.label(screen, cam.WorldToScreen(c.Hall.Rect.Min).Add(city.Point{X: 0, Y: -g.lineHeight()}), "city hall", colorDim)
 		}
 	}
 }
@@ -628,52 +632,83 @@ func (g *Game) outline(screen *ebiten.Image, cam *city.Camera, r city.Rect, c co
 	vector.StrokeRect(screen, float32(min.X), float32(min.Y), float32(max.X-min.X), float32(max.Y-min.Y), 2, c, false)
 }
 
-// ascii swaps the one glyph the bitmap font lacks.
-func ascii(s string) string {
-	return strings.ReplaceAll(s, "…", "..")
-}
-
-func (g *Game) label(screen *ebiten.Image, at city.Point, s string, c color.NRGBA) {
-	s = ascii(s)
+// text draws s with its top-left corner at a screen point, in one of the
+// theme's four sizes.
+func (g *Game) text(screen *ebiten.Image, at city.Point, s string, size ui.Size, c color.NRGBA) {
 	op := &text.DrawOptions{}
 	op.GeoM.Translate(at.X, at.Y)
 	op.ColorScale.ScaleWithColor(c)
-	text.Draw(screen, s, g.face, op)
+	text.Draw(screen, s, g.faces.Face(size), op)
+}
+
+// measure is the size of an in-world label, which is always set small.
+func (g *Game) measure(s string) (float64, float64) {
+	return g.faces.Measure(s, ui.Small)
+}
+
+// lineHeight is the height of one small line, the unit in-world labels
+// and the footer stack by.
+func (g *Game) lineHeight() float64 {
+	_, h := g.measure("")
+	return h
+}
+
+// charWidth is the average advance at a size, for clipping and wrapping
+// text to a width before it is drawn.
+func (g *Game) charWidth(size ui.Size) float64 {
+	const sample = "abcdefghijklmnopqrstuvwxyz0123456789 ~/$%."
+	w, _ := g.faces.Measure(sample, size)
+	return w / float64(len(sample))
+}
+
+// footerReserve is the screen room kept clear at the bottom for the footer.
+func (g *Game) footerReserve() float64 {
+	return g.theme.Px(footerMargin) + g.lineHeight()*maxFooterLines
+}
+
+// label is an in-world label: small text straight onto the screen.
+func (g *Game) label(screen *ebiten.Image, at city.Point, s string, c color.NRGBA) {
+	g.text(screen, at, s, ui.Small, c)
 }
 
 func (g *Game) labelRight(screen *ebiten.Image, end city.Point, s string, c color.NRGBA) {
-	width, _ := text.Measure(s, g.face, 0)
+	width, _ := g.measure(s)
 	g.label(screen, city.Point{X: end.X - width, Y: end.Y}, s, c)
 }
 
 func (g *Game) card(screen *ebiten.Image, card city.Card, screenWidth, screenHeight, top float64) {
-	maxChars := int((screenWidth - 24 - 2*cardPadding) / charWidth)
+	th := g.theme
+	pad := th.Px(cardPadding)
+	margin := th.Px(12)
+	maxChars := int((screenWidth - 2*margin - 2*pad) / g.charWidth(ui.Body))
 	if maxChars < 8 {
 		maxChars = 8
 	}
 	title := format.Clip(card.Title, maxChars)
+	titleW, titleH := g.faces.Measure(title, ui.Title)
+	_, lineH := g.faces.Measure("", ui.Body)
 	lines := make([]string, 0, len(card.Lines))
-	maxLines := int((screenHeight-footerReserve-24-2*cardPadding)/lineHeight) - 1
+	maxLines := int((screenHeight - g.footerReserve() - 2*margin - 2*pad - titleH) / lineH)
 	for i, line := range card.Lines {
 		if maxLines > 0 && i >= maxLines {
 			break
 		}
 		lines = append(lines, format.Clip(line, maxChars))
 	}
-	width := float64(len(title)) * charWidth
+	width := titleW
 	for _, line := range lines {
-		if w := float64(len(line)) * charWidth; w > width {
+		if w, _ := g.faces.Measure(line, ui.Body); w > width {
 			width = w
 		}
 	}
-	width += 2 * cardPadding
-	height := cardPadding*2 + lineHeight*float64(len(lines)+1)
-	x := math.Max(12, screenWidth-width-12)
-	y := top + 12
-	vector.FillRect(screen, float32(x), float32(y), float32(width), float32(height), colorCard, false)
-	g.label(screen, city.Point{X: x + cardPadding, Y: y + cardPadding}, title, colorText)
+	width += 2 * pad
+	height := pad*2 + titleH + lineH*float64(len(lines))
+	x := math.Max(margin, screenWidth-width-margin)
+	y := top + margin
+	g.panel(screen, city.RectAt(x, y, width, height))
+	g.text(screen, city.Point{X: x + pad, Y: y + pad}, title, ui.Title, th.Palette.Text)
 	for i, line := range lines {
-		g.label(screen, city.Point{X: x + cardPadding, Y: y + cardPadding + lineHeight*float64(i+1)}, line, colorDim)
+		g.text(screen, city.Point{X: x + pad, Y: y + pad + titleH + lineH*float64(i)}, line, ui.Body, th.Palette.Dim)
 	}
 }
 
@@ -685,19 +720,30 @@ func (g *Game) footer(screen *ebiten.Image, screenWidth, screenHeight float64) {
 		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click or enter to attach | tab next needs-you | d d to demolish | f to fit | n night | q quit",
 			len(g.scene.City().Buildings()))
 	}
-	lines := format.Wrap(status, int((screenWidth-24)/charWidth))
+	margin := g.theme.Px(12)
+	lines := format.Wrap(status, int((screenWidth-2*margin)/g.charWidth(ui.Small)))
 	if len(lines) > maxFooterLines {
 		lines = lines[:maxFooterLines]
 	}
+	lineH := g.lineHeight()
 	for i, line := range lines {
-		y := screenHeight - 24 - lineHeight*float64(len(lines)-1-i)
-		g.label(screen, city.Point{X: 12, Y: y}, line, colorDim)
+		y := screenHeight - g.theme.Px(footerMargin) - lineH*float64(len(lines)-1-i)
+		g.label(screen, city.Point{X: margin, Y: y}, line, colorDim)
 	}
 }
 
-func (g *Game) Layout(width, height int) (int, int) {
-	g.scene.Resize(float64(width), float64(height))
+// LayoutF sizes the frame in device pixels, so text and sprites are drawn
+// at the display's own resolution instead of being scaled up afterwards.
+func (g *Game) LayoutF(outsideWidth, outsideHeight float64) (float64, float64) {
+	width, height := outsideWidth*g.theme.Scale, outsideHeight*g.theme.Scale
+	g.scene.Resize(width, height)
 	return width, height
+}
+
+// Layout is never called while LayoutF exists; it satisfies ebiten.Game.
+func (g *Game) Layout(width, height int) (int, int) {
+	w, h := g.LayoutF(float64(width), float64(height))
+	return int(w), int(h)
 }
 
 func gaugeColor(fill float64) color.NRGBA {

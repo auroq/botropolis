@@ -470,9 +470,9 @@ func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, 
 
 func (g *Game) isoTitle(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
 	name := formatTitle(b.Card(g.scene.City().Time).Title)
-	wText := float64(len(name)) * charWidth
+	wText, _ := g.measure(name)
 	top, w := footprint(cam, b.Rect)
-	g.floorLabel(screen, city.Point{X: top.X - wText/2, Y: top.Y + w/2 + 6}, name, colorText)
+	g.floorLabel(screen, city.Point{X: top.X - wText/2, Y: top.Y + w/2 + g.theme.Px(6)}, name, colorText)
 }
 
 // drawIso is the isometric frame: ground, lines, district floors, then
@@ -546,7 +546,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	for _, d := range c.Districts {
 		if g.scene.DistrictLabelVisible(d) {
-			g.floorLabel(screen, g.scene.DistrictLabelAt(d, lineHeight, float64(len(d.Name))*charWidth), d.Name, colorText)
+			g.floorLabel(screen, g.districtLabelAt(d), d.Name, colorText)
 		}
 	}
 	if g.scene.TitlesVisible() {
@@ -565,7 +565,8 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city.City, hover city.Hit) {
 	above := func(r city.Rect, s string, storeys int) {
 		top, _ := footprint(cam, r)
-		g.floorLabel(screen, city.Point{X: top.X - float64(len(s))*charWidth/2, Y: stackRoofTop(cam, r, storeys) - lineHeight - 4}, s, colorDim)
+		wText, h := g.measure(s)
+		g.floorLabel(screen, city.Point{X: top.X - wText/2, Y: stackRoofTop(cam, r, storeys) - h - g.theme.Px(4)}, s, colorDim)
 	}
 	if c.Plant.Rect.Area() > 0 {
 		above(c.Plant.Rect, "power plant", 3)
@@ -580,7 +581,8 @@ func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city
 		}
 		top, w := footprint(cam, t.Rect)
 		name := t.Server.Name
-		g.floorLabel(screen, city.Point{X: top.X - w/2 - float64(len(name))*charWidth - 8, Y: top.Y + w/4 - lineHeight/2}, name, colorDim)
+		wText, h := g.measure(name)
+		g.floorLabel(screen, city.Point{X: top.X - w/2 - wText - g.theme.Px(8), Y: top.Y + w/4 - h/2}, name, colorDim)
 	}
 	if c.Library.Rect.Area() > 0 {
 		above(c.Library.Rect, "library", 2)
@@ -691,7 +693,7 @@ func (g *Game) streetSigns(screen *ebiten.Image, c *city.City, cam *city.Camera,
 		}
 		if labels {
 			mid := street.Path[len(street.Path)/2]
-			g.floorLabel(screen, cam.WorldToScreen(mid).Add(city.Point{X: 6, Y: -lineHeight - 6}), street.Road.Label(), colorDim)
+			g.floorLabel(screen, cam.WorldToScreen(mid).Add(city.Point{X: g.theme.Px(6), Y: -g.lineHeight() - g.theme.Px(6)}), street.Road.Label(), colorDim)
 		}
 	}
 }

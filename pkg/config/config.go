@@ -23,6 +23,7 @@ const (
 	KeyParkedDays  = "parked_days"
 	KeyCodexHome   = "codex_home"
 	KeyProjection  = "projection"
+	KeyRenderScale = "render_scale"
 
 	DefaultParkedDays = 7
 )
@@ -39,6 +40,7 @@ type Config struct {
 	ParkedDays  int
 	CodexHome   string
 	Projection  string
+	RenderScale float64
 	File        string
 }
 
@@ -53,6 +55,7 @@ func NewViper() *viper.Viper {
 	v.SetDefault(KeyParkedDays, DefaultParkedDays)
 	v.SetDefault(KeyCodexHome, "")
 	v.SetDefault(KeyProjection, DefaultProjection)
+	v.SetDefault(KeyRenderScale, 0.0)
 	v.SetConfigName(configName)
 	v.AddConfigPath(filepath.Join(configHome(), appDir))
 	return v
@@ -63,10 +66,12 @@ func BindFlags(v *viper.Viper, flags *pflag.FlagSet) {
 	flags.String(KeySocket, "", "daemon socket (default: $XDG_RUNTIME_DIR/botropolis/botropolis.sock)")
 	flags.Int(KeyParkedDays, DefaultParkedDays, "how many days of parked sessions to catalogue (0 disables)")
 	flags.String(KeyProjection, DefaultProjection, "how the city is drawn: iso or top")
+	flags.Float64(KeyRenderScale, 0, "chrome and pixel scale (default: follow the display)")
 	_ = v.BindPFlag(KeyHome, flags.Lookup(KeyHome))
 	_ = v.BindPFlag(KeySocket, flags.Lookup(KeySocket))
 	_ = v.BindPFlag(KeyParkedDays, flags.Lookup(KeyParkedDays))
 	_ = v.BindPFlag(KeyProjection, flags.Lookup(KeyProjection))
+	_ = v.BindPFlag(KeyRenderScale, flags.Lookup(KeyRenderScale))
 }
 
 func New(v *viper.Viper) (*Config, error) {
@@ -86,6 +91,7 @@ func New(v *viper.Viper) (*Config, error) {
 		ParkedDays:  v.GetInt(KeyParkedDays),
 		CodexHome:   v.GetString(KeyCodexHome),
 		Projection:  v.GetString(KeyProjection),
+		RenderScale: v.GetFloat64(KeyRenderScale),
 		File:        v.ConfigFileUsed(),
 	}
 	if cfg.Home == "" {

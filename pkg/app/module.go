@@ -167,5 +167,6 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		Feed:       feed.Run,
 		Projection: projection,
 		Screenshot: cli.Screenshot(cmd),
+		Scale:      c.config.RenderScale,
 	})
 }

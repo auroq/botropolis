@@ -175,8 +175,9 @@ func (g *Game) stroke(screen *ebiten.Image, cam *city.Camera, r city.Rect, width
 
 // floorLabel writes fixed-size text on a dark pill so it reads on any ground.
 func (g *Game) floorLabel(screen *ebiten.Image, at city.Point, s string, c color.NRGBA) {
-	w := float64(len(s)) * charWidth
-	vector.FillRect(screen, float32(at.X-3), float32(at.Y-1), float32(w+6), float32(lineHeight), colorLabelBack, false)
+	w, h := g.measure(s)
+	pad := g.theme.Px(3)
+	vector.FillRect(screen, float32(at.X-pad), float32(at.Y), float32(w+2*pad), float32(h), colorLabelBack, false)
 	g.label(screen, at, s, c)
 }
 
@@ -234,11 +235,12 @@ func (g *Game) shack(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
 // minimap draws the whole city in a corner with the viewport marked, only
 // when the viewport does not already show all of it.
 func (g *Game) minimap(screen *ebiten.Image, width, height float64) {
-	if width < 3*minimapWidth {
+	th := g.theme
+	if width < 3*th.Px(minimapWidth) {
 		return
 	}
-	box := city.RectAt(width-minimapMargin-minimapWidth, height-footerReserve-minimapHeight, minimapWidth, minimapHeight)
-	m := g.scene.Minimap(box.Inset(6))
+	box := city.RectAt(width-th.Px(minimapMargin+minimapWidth), height-g.footerReserve()-th.Px(minimapHeight), th.Px(minimapWidth), th.Px(minimapHeight))
+	m := g.scene.Minimap(box.Inset(th.Px(6)))
 	if m.Scale == 0 {
 		return
 	}

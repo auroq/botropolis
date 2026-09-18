@@ -214,3 +214,9 @@ Each is either bot-crossing's setting rather than a feature, or a cost the footp
 7 → 8 → 9 → 10 → 11 → 12.
 The UI foundation comes first because every later phase draws chrome; the plan comes before the art because the art has to be cut for the plan's cells;
 parity waits for both so the sidebar and cards are built once, on the final toolkit.
+
+## Later
+
+Things noticed while building that are not in a phase; each is a question for Aria, not a plan.
+
+- The strip leads with "working" while the window title leads with "need you"; the two could agree.

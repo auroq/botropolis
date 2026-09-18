@@ -78,7 +78,7 @@ botropolis status                           # the table, via the daemon
 `packaging/botropolis.bash` makes a plain `claude` in a shell start in the background and attach.
 
 Settings come from flags, then `BOTROPOLIS_HOME`, `BOTROPOLIS_SOCKET`, `BOTROPOLIS_TERMINAL`, `BOTROPOLIS_PARKED_DAYS`, `BOTROPOLIS_CODEX_HOME`,
-then `~/.config/botropolis/config.{toml,yaml,json}` (`home`, `socket`, `terminal`, `hook_command`, `parked_days`, `codex_home`).
+then `~/.config/botropolis/config.{toml,yaml,json}` (`home`, `socket`, `terminal`, `hook_command`, `parked_days`, `codex_home`, `projection`, `render_scale`).
 
 A waybar module, for example:
 
@@ -96,6 +96,11 @@ At night — whenever something runs unattended — the map dims and every build
 A river and a pond sit in the outskirts as background; they mean nothing.
 Thank you, Kenney; see [`pkg/assets/kenney/README.md`](pkg/assets/kenney/README.md) for the packs, versions and terms,
 and [support the studio](https://kenney.nl/donate) if the work helps you too.
+
+The chrome is set in [Inter](https://rsms.me/inter/) by Rasmus Andersson, embedded from `pkg/assets/fonts` under the SIL Open Font License 1.1
+(the licence text ships beside the face).
+It is drawn through Ebitengine's `text/v2` at four sizes and scaled to the display,
+or to `render_scale` (`--render_scale 2` for a 2× frame) when set.
 
 ## Tools
 

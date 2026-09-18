@@ -172,3 +172,28 @@ func TestProjectionKey(t *testing.T) {
 		})
 	})
 }
+
+func TestRenderScaleKey(t *testing.T) {
+	t.Run("when nothing sets the render scale", func(t *testing.T) {
+		v := config.NewViper()
+		cfg, err := config.New(v)
+		require.NoError(t, err)
+
+		t.Run("it should leave it to the display", func(t *testing.T) {
+			assert.Zero(t, cfg.RenderScale)
+		})
+	})
+
+	t.Run("when the flag asks for 2x", func(t *testing.T) {
+		v := config.NewViper()
+		flags := pflag.NewFlagSet("t", pflag.ContinueOnError)
+		config.BindFlags(v, flags)
+		require.NoError(t, flags.Parse([]string{"--render_scale", "2"}))
+		cfg, err := config.New(v)
+		require.NoError(t, err)
+
+		t.Run("it should say 2", func(t *testing.T) {
+			assert.Equal(t, 2.0, cfg.RenderScale)
+		})
+	})
+}

@@ -5,10 +5,10 @@ import (
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/state"
+	"github.com/auroq/botropolis/pkg/ui"
 )
 
 const (
@@ -28,6 +28,8 @@ type Options struct {
 	Projection city.Projection
 	// Screenshot, when set, renders one frame to this PNG and exits.
 	Screenshot string
+	// Scale is the chrome and pixel scale; 0 follows the display.
+	Scale float64
 }
 
 func Run(ctx context.Context, opts Options) error {
@@ -37,9 +39,17 @@ func Run(ctx context.Context, opts Options) error {
 	if width <= 0 || height <= 0 {
 		width, height = defaultWidth, defaultHeight
 	}
-	scene.Resize(float64(width), float64(height))
+	scale := opts.Scale
+	if scale <= 0 {
+		scale = ebiten.Monitor().DeviceScaleFactor()
+	}
+	theme := ui.NewTheme(scale)
+	scene.Resize(float64(width)*theme.Scale, float64(height)*theme.Scale)
 
-	face := text.NewGoXFace(basicFont())
+	faces, err := newFaces(theme)
+	if err != nil {
+		return err
+	}
 	save := func(l *city.Layout) {
 		if opts.LayoutPath != "" {
 			_ = l.Save(opts.LayoutPath)
@@ -49,7 +59,7 @@ func Run(ctx context.Context, opts Options) error {
 	if loadErr != nil {
 		return loadErr
 	}
-	game := NewGame(scene, opts.Actor, face, save, sprites)
+	game := NewGame(scene, opts.Actor, theme, faces, save, sprites)
 	game.screenshot = opts.Screenshot
 
 	feedCtx, cancel := context.WithCancel(ctx)
@@ -67,7 +77,7 @@ func Run(ctx context.Context, opts Options) error {
 	ebiten.SetWindowSize(width, height)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetTPS(30)
-	err := ebiten.RunGameWithOptions(game, &ebiten.RunGameOptions{
+	err = ebiten.RunGameWithOptions(game, &ebiten.RunGameOptions{
 		X11ClassName:    x11Class,
 		X11InstanceName: x11Instance,
 	})
