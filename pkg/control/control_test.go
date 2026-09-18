@@ -19,6 +19,7 @@ type call struct {
 type fakeRunner struct {
 	runs    []call
 	starts  []call
+	feeds   []feed
 	stdout  string
 	agents  string
 	failure error
@@ -35,6 +36,16 @@ func (f *fakeRunner) Run(_ context.Context, dir string, name string, args ...str
 func (f *fakeRunner) Start(dir string, name string, args ...string) error {
 	f.starts = append(f.starts, call{dir, append([]string{name}, args...)})
 	return f.failure
+}
+
+func (f *fakeRunner) Feed(_ context.Context, input string, name string, args ...string) error {
+	f.feeds = append(f.feeds, feed{input, append([]string{name}, args...)})
+	return f.failure
+}
+
+type feed struct {
+	input string
+	argv  []string
 }
 
 const (
@@ -210,6 +221,45 @@ func TestAgents(t *testing.T) {
 
 		t.Run("it should return an error", func(t *testing.T) {
 			assert.Error(t, err)
+		})
+	})
+}
+
+func TestRevealAndCopy(t *testing.T) {
+	t.Run("when a directory is revealed", func(t *testing.T) {
+		runner := &fakeRunner{}
+		err := newControl(runner).Reveal(dir)
+		require.NoError(t, err)
+
+		t.Run("it should open it with xdg-open", func(t *testing.T) {
+			require.Len(t, runner.starts, 1)
+			assert.Equal(t, []string{"xdg-open", dir}, runner.starts[0].argv)
+		})
+	})
+
+	t.Run("when nothing is given to reveal", func(t *testing.T) {
+		t.Run("it should refuse", func(t *testing.T) {
+			assert.Error(t, newControl(&fakeRunner{}).Reveal(""))
+		})
+	})
+
+	t.Run("when a path is copied and xclip is on the path", func(t *testing.T) {
+		runner := &fakeRunner{}
+		c := control.New(runner, env(nil), func(name string) bool { return name == "xclip" })
+		require.NoError(t, c.Copy(context.Background(), dir))
+
+		t.Run("it should feed the path to xclip", func(t *testing.T) {
+			require.Len(t, runner.feeds, 1)
+			assert.Equal(t, dir, runner.feeds[0].input)
+			assert.Equal(t, []string{"xclip", "-selection", "clipboard"}, runner.feeds[0].argv)
+		})
+	})
+
+	t.Run("when no clipboard tool is on the path", func(t *testing.T) {
+		c := control.New(&fakeRunner{}, env(nil), func(string) bool { return false })
+
+		t.Run("it should say which to install", func(t *testing.T) {
+			assert.ErrorContains(t, c.Copy(context.Background(), dir), "clipboard")
 		})
 	})
 }

@@ -18,6 +18,8 @@ type Controller interface {
 	Remove(ctx context.Context, id string) error
 	Resume(ctx context.Context, dir, sessionID string) (string, error)
 	Agents(ctx context.Context, all bool) ([]control.Agent, error)
+	Reveal(dir string) error
+	Copy(ctx context.Context, text string) error
 }
 
 type Pruned struct {
@@ -89,6 +91,14 @@ func (s *Sessions) Attach(id string) error {
 
 func (s *Sessions) Stop(ctx context.Context, id string) error {
 	return s.ctl.Stop(ctx, id)
+}
+
+func (s *Sessions) Reveal(dir string) error {
+	return s.ctl.Reveal(dir)
+}
+
+func (s *Sessions) Copy(ctx context.Context, text string) error {
+	return s.ctl.Copy(ctx, text)
 }
 
 func (s *Sessions) Remove(ctx context.Context, id string) error {

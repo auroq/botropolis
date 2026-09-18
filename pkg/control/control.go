@@ -23,6 +23,8 @@ var (
 type Runner interface {
 	Run(ctx context.Context, dir string, name string, args ...string) (string, error)
 	Start(dir string, name string, args ...string) error
+	// Feed runs a command with input on its stdin.
+	Feed(ctx context.Context, input string, name string, args ...string) error
 }
 
 type Control struct {
@@ -133,6 +135,31 @@ func (c *Control) Attach(id string) error {
 	return c.runner.Start("", argv[0], argv[1:]...)
 }
 
+// Reveal opens a directory in the desktop's file manager.
+func (c *Control) Reveal(dir string) error {
+	if dir == "" {
+		return errors.New("nothing to reveal")
+	}
+	return c.runner.Start("", "xdg-open", dir)
+}
+
+// clipboards are the tools tried, first on PATH wins.
+var clipboards = [][]string{
+	{"wl-copy"},
+	{"xclip", "-selection", "clipboard"},
+	{"xsel", "--clipboard", "--input"},
+}
+
+// Copy puts text on the clipboard through whichever tool is installed.
+func (c *Control) Copy(ctx context.Context, text string) error {
+	for _, tool := range clipboards {
+		if c.onPath(tool[0]) {
+			return c.runner.Feed(ctx, text, tool[0], tool[1:]...)
+		}
+	}
+	return errors.New("no clipboard tool found: install wl-clipboard, xclip or xsel")
+}
+
 func (c *Control) Stop(ctx context.Context, id string) error {
 	return c.simple(ctx, "stop", id)
 }
@@ -161,6 +188,15 @@ func JobID(id string) (string, error) {
 }
 
 type execRunner struct{}
+
+func (execRunner) Feed(ctx context.Context, input string, name string, args ...string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdin = strings.NewReader(input)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%s: %w: %s", name, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
 
 func (execRunner) Run(ctx context.Context, dir string, name string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, name, args...)

@@ -106,6 +106,26 @@ func TestActor(t *testing.T) {
 		})
 	})
 
+	t.Run("when a card's actions are used", func(t *testing.T) {
+		cases := []struct {
+			action city.Action
+			call   string
+		}{
+			{city.Action{Kind: city.ActionStop, SessionID: "0898d7e4"}, "stop 0898d7e4"},
+			{city.Action{Kind: city.ActionNew, Dir: cwd}, "new " + cwd + " "},
+			{city.Action{Kind: city.ActionReveal, Dir: cwd}, "reveal " + cwd},
+			{city.Action{Kind: city.ActionCopyPath, Dir: cwd}, "copy " + cwd},
+		}
+		for _, tc := range cases {
+			t.Run("it should "+tc.call, func(t *testing.T) {
+				ctl := &fakeController{id: "0898d7e4"}
+				actor := commands.Actor{Sessions: commands.NewSessions(t.TempDir(), ctl)}
+				require.NoError(t, actor.Do(tc.action))
+				assert.Equal(t, tc.call, ctl.calls[0])
+			})
+		}
+	})
+
 	t.Run("when nothing was clicked", func(t *testing.T) {
 		ctl := &fakeController{}
 		actor := commands.Actor{Sessions: commands.NewSessions(t.TempDir(), ctl)}

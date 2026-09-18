@@ -27,12 +27,56 @@ func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
 	}
 	x, y := ebiten.CursorPosition()
 	bounds := city.RectAt(0, top, width, height-top-footer.Rect.Height())
+	g.pinned = ui.Card{}
+	g.pinnedKinds = nil
+	if card, b, ok := g.scene.SelectedCard(); ok {
+		beside := g.buildingOnScreen(b)
+		pinned := ui.LayoutCard(th, card, bounds, g.faces.Measure).PinTo(beside, bounds, th.Grid())
+		g.card(screen, pinned)
+		g.pinned = pinned
+		g.pinnedKinds = g.scene.Actions()
+	}
 	if st, ok := g.stripHover(city.Point{X: float64(x), Y: float64(y)}); ok {
 		g.card(screen, ui.LayoutCard(th, g.scene.City().StateCard(st), bounds, g.faces.Measure))
-	} else if card, ok := g.scene.Card(); ok {
-		g.card(screen, ui.LayoutCard(th, card, bounds, g.faces.Measure))
+	} else if hover := g.scene.Hover(); hover.Building == nil || hover.Building != g.scene.Selected() {
+		if card, ok := g.scene.Card(); ok {
+			g.card(screen, ui.LayoutCard(th, card, bounds, g.faces.Measure))
+		}
 	}
 	g.footer(screen, footer)
+}
+
+// buildingOnScreen is the screen rect a building's footprint covers, in
+// either projection, for pinning its card beside it.
+func (g *Game) buildingOnScreen(b *city.Building) city.Rect {
+	cam := g.scene.Camera()
+	corners := []city.Point{b.Rect.Min, {X: b.Rect.Max.X, Y: b.Rect.Min.Y}, b.Rect.Max, {X: b.Rect.Min.X, Y: b.Rect.Max.Y}}
+	r := city.Rect{Min: cam.WorldToScreen(corners[0]), Max: cam.WorldToScreen(corners[0])}
+	for _, c := range corners[1:] {
+		r = r.Union(city.Rect{Min: cam.WorldToScreen(c), Max: cam.WorldToScreen(c)})
+	}
+	return r
+}
+
+// clickCard is a click on the pinned card: a button runs its action and
+// the click stops there; anywhere else on the card is swallowed too.
+func (g *Game) clickCard(at city.Point) bool {
+	if g.pinned.Rect.Area() == 0 || !g.pinned.Rect.Contains(at) {
+		return false
+	}
+	if btn, ok := ui.HitButton(g.pinned.Buttons, at); ok {
+		for i, kind := range g.pinnedKinds {
+			if i < len(g.pinned.Buttons) && g.pinned.Buttons[i].Label.Text == btn.Label.Text {
+				action, note := g.scene.Act(kind)
+				if note != "" {
+					g.SetStatus(note)
+				}
+				g.act(action)
+				break
+			}
+		}
+	}
+	return true
 }
 
 func (g *Game) card(screen *ebiten.Image, c ui.Card) {
@@ -41,6 +85,10 @@ func (g *Game) card(screen *ebiten.Image, c ui.Card) {
 	g.run(screen, c.Title, th.Palette.Text)
 	for _, line := range c.Lines {
 		g.run(screen, line, th.Palette.Dim)
+	}
+	for _, b := range c.Buttons {
+		g.roundRect(screen, b.Rect, th.Radius()/2, th.Palette.Hairline)
+		g.run(screen, b.Label, th.Palette.Accent)
 	}
 }
 

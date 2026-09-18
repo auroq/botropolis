@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/auroq/botropolis/pkg/plan"
 	"github.com/auroq/botropolis/pkg/state"
@@ -27,10 +28,51 @@ type Layout struct {
 	Version   int                        `json:"version"`
 	Districts map[string]*districtLayout `json:"districts"`
 	Plan      *plan.Memory               `json:"plan,omitempty"`
+	// Hidden and Starred are map-only marks on projects, never written
+	// anywhere near ~/.claude.
+	Hidden  map[string]bool `json:"hidden,omitempty"`
+	Starred map[string]bool `json:"starred,omitempty"`
 }
 
 func NewLayout() *Layout {
 	return &Layout{Version: layoutVersion, Districts: map[string]*districtLayout{}, Plan: plan.NewMemory()}
+}
+
+func (l *Layout) IsHidden(root string) bool  { return l.Hidden[root] }
+func (l *Layout) IsStarred(root string) bool { return l.Starred[root] }
+
+// SetHidden hides or shows a project on the map.
+func (l *Layout) SetHidden(root string, hidden bool) {
+	if l.Hidden == nil {
+		l.Hidden = map[string]bool{}
+	}
+	if hidden {
+		l.Hidden[root] = true
+	} else {
+		delete(l.Hidden, root)
+	}
+}
+
+// SetStarred marks or unmarks a project.
+func (l *Layout) SetStarred(root string, starred bool) {
+	if l.Starred == nil {
+		l.Starred = map[string]bool{}
+	}
+	if starred {
+		l.Starred[root] = true
+	} else {
+		delete(l.Starred, root)
+	}
+}
+
+// HiddenRoots is every hidden project, sorted.
+func (l *Layout) HiddenRoots() []string {
+	roots := make([]string, 0, len(l.Hidden))
+	for root := range l.Hidden {
+		roots = append(roots, root)
+	}
+	sort.Strings(roots)
+	return roots
 }
 
 func LayoutPath() string {

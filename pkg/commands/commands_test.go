@@ -62,6 +62,16 @@ func (f *fakeController) Remove(_ context.Context, id string) error {
 	return f.failure
 }
 
+func (f *fakeController) Reveal(dir string) error {
+	f.calls = append(f.calls, "reveal "+dir)
+	return f.failure
+}
+
+func (f *fakeController) Copy(_ context.Context, text string) error {
+	f.calls = append(f.calls, "copy "+text)
+	return f.failure
+}
+
 func (f *fakeController) Resume(_ context.Context, dir, sessionID string) (string, error) {
 	f.calls = append(f.calls, "resume "+dir+" "+sessionID)
 	return f.id, f.failure

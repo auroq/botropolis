@@ -2,6 +2,7 @@ package city
 
 import (
 	"math"
+	"path/filepath"
 	"time"
 
 	"github.com/auroq/botropolis/pkg/state"
@@ -16,16 +17,27 @@ const (
 	ActionAttach   ActionKind = "attach"
 	ActionResume   ActionKind = "resume"
 	ActionDemolish ActionKind = "demolish"
+	ActionStop     ActionKind = "stop"
+	ActionNew      ActionKind = "new session here"
+	ActionReveal   ActionKind = "reveal folder"
+	ActionCopyPath ActionKind = "copy path"
+	ActionHide     ActionKind = "hide project"
+	ActionStar     ActionKind = "star"
+	ActionUnstar   ActionKind = "unstar"
 )
 
 const DemolishArmFor = 3 * time.Second
 
+// Action is something the actor does through the claude CLI; Dir is the
+// project directory for the actions that need one.
 type Action struct {
 	Kind      ActionKind
 	SessionID string
+	Dir       string
 }
 
 type Scene struct {
+	snapshot   state.Snapshot
 	forceNight bool
 	topChrome  float64
 	bottom     float64
@@ -154,10 +166,24 @@ func (s *Scene) TitlesVisible() bool {
 	return s.camera.Zoom >= TitleZoom
 }
 
-// DistrictLabelVisible reports whether the district is wide enough on
-// screen for its name.
+// DistrictLabelVisible reports whether the district's name plate shows:
+// it must be wide enough on screen, and the district must have something
+// happening in it, be hovered, or hold the selection.
 func (s *Scene) DistrictLabelVisible(d *District) bool {
-	return d.Rect.Width()*s.camera.Zoom >= DistrictLabelMinWidth
+	if d.Rect.Width()*s.camera.Zoom < DistrictLabelMinWidth {
+		return false
+	}
+	if d.Busy() || s.hover.District == d {
+		return true
+	}
+	if s.selected != nil {
+		for _, b := range d.Buildings {
+			if b == s.selected {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // DistrictLabelAt is where the district's name goes on screen: on the
@@ -246,6 +272,7 @@ func (s *Scene) Insets() Insets {
 }
 
 func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
+	s.snapshot = snapshot
 	s.city = Build(snapshot, s.layout)
 	s.applyNight()
 	s.selected = s.reselect()
@@ -369,6 +396,99 @@ func (s *Scene) Click(screen Point) Action {
 	s.hover = hit
 	s.selected = hit.Building
 	return s.Activate()
+}
+
+// Actions is what the selection's card offers, in order: the way in
+// first, then the session, then the project.
+func (s *Scene) Actions() []ActionKind {
+	if s.selected == nil {
+		return nil
+	}
+	root := ProjectRoot(s.selected.Session.CWD)
+	var kinds []ActionKind
+	if s.selected.Session.State == state.Parked {
+		kinds = append(kinds, ActionResume)
+	} else {
+		kinds = append(kinds, ActionAttach, ActionStop)
+	}
+	kinds = append(kinds, ActionNew, ActionReveal, ActionCopyPath, ActionHide)
+	if s.layout.IsStarred(root) {
+		kinds = append(kinds, ActionUnstar)
+	} else {
+		kinds = append(kinds, ActionStar)
+	}
+	return kinds
+}
+
+// Act performs one of the selection's actions: the map-only ones (hide,
+// star) here, the rest as an Action for the actor. The note says what
+// happened.
+func (s *Scene) Act(kind ActionKind) (Action, string) {
+	if s.selected == nil {
+		return Action{}, "select a building first"
+	}
+	b := s.selected
+	root := ProjectRoot(b.Session.CWD)
+	name := filepath.Base(root)
+	switch kind {
+	case ActionAttach, ActionResume:
+		return s.Activate(), ""
+	case ActionStop:
+		return Action{Kind: ActionStop, SessionID: b.Session.ID}, "stopping " + b.Card(s.city.Time).Title
+	case ActionNew:
+		return Action{Kind: ActionNew, Dir: b.Session.CWD}, "new session in " + b.Session.CWD
+	case ActionReveal:
+		return Action{Kind: ActionReveal, Dir: b.Session.CWD}, "revealed " + b.Session.CWD
+	case ActionCopyPath:
+		return Action{Kind: ActionCopyPath, Dir: b.Session.CWD}, "copied " + b.Session.CWD
+	case ActionHide:
+		s.layout.SetHidden(root, true)
+		s.selected = nil
+		s.SetSnapshot(s.snapshot)
+		return Action{}, "hid " + name + " (unhide it from the sidebar)"
+	case ActionStar:
+		s.layout.SetStarred(root, true)
+		return Action{}, "starred " + name
+	case ActionUnstar:
+		s.layout.SetStarred(root, false)
+		return Action{}, "unstarred " + name
+	}
+	return Action{}, ""
+}
+
+// Unhide puts a hidden project back on the map.
+func (s *Scene) Unhide(root string) {
+	s.layout.SetHidden(root, false)
+	s.SetSnapshot(s.snapshot)
+}
+
+// NewHere is the c key: a new session in the selected building's
+// directory, else the hovered district's root.
+func (s *Scene) NewHere() (Action, string) {
+	dir := ""
+	switch {
+	case s.selected != nil:
+		dir = s.selected.Session.CWD
+	case s.hover.District != nil && !s.hover.District.Storage:
+		dir = s.hover.District.Root
+	}
+	if dir == "" {
+		return Action{}, "select a building or hover a district first"
+	}
+	return Action{Kind: ActionNew, Dir: dir}, "new session in " + dir
+}
+
+// SelectedCard is the selection's card with its actions, for pinning
+// beside the building.
+func (s *Scene) SelectedCard() (Card, *Building, bool) {
+	if s.selected == nil {
+		return Card{}, nil, false
+	}
+	card := s.selected.Card(s.city.Time)
+	for _, kind := range s.Actions() {
+		card.Actions = append(card.Actions, string(kind))
+	}
+	return card, s.selected, true
 }
 
 // Activate is what a click or Enter does to the selected building: attach

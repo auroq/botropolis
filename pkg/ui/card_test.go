@@ -44,6 +44,49 @@ func TestLayoutCard(t *testing.T) {
 		})
 	})
 
+	t.Run("when a card has actions", func(t *testing.T) {
+		acted := city.Card{Title: "t", Lines: []string{"one"}, Actions: []string{"attach", "stop"}}
+		plain := ui.LayoutCard(th, city.Card{Title: "t", Lines: []string{"one"}}, city.RectAt(0, 0, 800, 600), measure7)
+		c := ui.LayoutCard(th, acted, city.RectAt(0, 0, 800, 600), measure7)
+
+		t.Run("it should lay one button per action", func(t *testing.T) {
+			require.Len(t, c.Buttons, 2)
+			assert.Equal(t, "stop", c.Buttons[1].Label.Text)
+		})
+
+		t.Run("it should put the row under the lines", func(t *testing.T) {
+			assert.Greater(t, c.Buttons[0].Rect.Min.Y, c.Lines[0].At.Y)
+		})
+
+		t.Run("it should grow to hold the row", func(t *testing.T) {
+			assert.Equal(t, plain.Rect.Height()+8+24, c.Rect.Height())
+		})
+
+		t.Run("it should widen to the row when the row is wider", func(t *testing.T) {
+			assert.Equal(t, c.Buttons[1].Rect.Max.X+16, c.Rect.Max.X)
+		})
+	})
+
+	t.Run("when a card is pinned beside a building", func(t *testing.T) {
+		c := ui.LayoutCard(th, card, city.RectAt(0, 0, 800, 600), measure7)
+		beside := city.RectAt(100, 100, 40, 40)
+
+		t.Run("it should sit to the right with a gap", func(t *testing.T) {
+			p := c.PinTo(beside, city.RectAt(0, 0, 800, 600), 8)
+			assert.Equal(t, city.Point{X: 148, Y: 100}, p.Rect.Min)
+		})
+
+		t.Run("it should flip to the left at the right edge", func(t *testing.T) {
+			p := c.PinTo(city.RectAt(760, 100, 40, 40), city.RectAt(0, 0, 800, 600), 8)
+			assert.Equal(t, 760-8.0, p.Rect.Max.X)
+		})
+
+		t.Run("it should stay above the bottom edge", func(t *testing.T) {
+			p := c.PinTo(city.RectAt(100, 590, 40, 40), city.RectAt(0, 0, 800, 600), 8)
+			assert.Equal(t, 600.0, p.Rect.Max.Y)
+		})
+	})
+
 	t.Run("when a line is wider than the window", func(t *testing.T) {
 		wide := city.Card{Title: "t", Lines: []string{"0123456789012345678901234567890123456789"}}
 		c := ui.LayoutCard(th, wide, city.RectAt(0, 0, 200, 400), measure7)

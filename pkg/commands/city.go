@@ -84,6 +84,15 @@ func (a Actor) Do(action city.Action) error {
 		return err
 	case city.ActionDemolish:
 		return a.Sessions.Remove(context.Background(), action.SessionID)
+	case city.ActionStop:
+		return a.Sessions.Stop(context.Background(), action.SessionID)
+	case city.ActionNew:
+		_, err := a.Sessions.New(context.Background(), action.Dir, "")
+		return err
+	case city.ActionReveal:
+		return a.Sessions.Reveal(action.Dir)
+	case city.ActionCopyPath:
+		return a.Sessions.Copy(context.Background(), action.Dir)
 	}
 	return nil
 }

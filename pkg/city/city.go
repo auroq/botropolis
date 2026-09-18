@@ -140,8 +140,9 @@ func (c *City) Near(p Point, tolerance float64) Hit {
 }
 
 type Card struct {
-	Title string
-	Lines []string
+	Title   string
+	Lines   []string
+	Actions []string
 }
 
 func ProjectRoot(cwd string) string {
@@ -160,6 +161,9 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	parked := map[string][]state.Session{}
 	for _, s := range snapshot.Sessions {
 		root := ProjectRoot(s.CWD)
+		if layout.IsHidden(root) {
+			continue
+		}
 		if s.State == state.Parked {
 			parked[root] = append(parked[root], s)
 			continue
@@ -175,7 +179,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	})
 
 	city := &City{Time: snapshot.At}
-	if len(snapshot.Sessions) == 0 {
+	if len(byRoot)+len(parked) == 0 {
 		city.placeLandmarks(snapshot)
 		return city
 	}
@@ -406,6 +410,17 @@ func (b *Building) Card(now time.Time) Card {
 	}
 	lines = append(lines, "age      "+format.Age(now.Sub(s.StartedAt)))
 	return Card{Title: title, Lines: lines}
+}
+
+// Busy reports whether anything in the district is awake: the rule for
+// showing its name plate without a hover.
+func (d *District) Busy() bool {
+	for _, b := range d.Buildings {
+		if b.Lit {
+			return true
+		}
+	}
+	return false
 }
 
 func (d *District) Card() Card {

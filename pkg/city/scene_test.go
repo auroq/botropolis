@@ -477,6 +477,173 @@ func TestActivate(t *testing.T) {
 	})
 }
 
+func TestSelectionActions(t *testing.T) {
+	t.Run("when a live building is selected", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.NeedsYou))
+		require.NotNil(t, s.JumpTo(state.NeedsYou))
+
+		t.Run("it should offer the way in, the session, then the project", func(t *testing.T) {
+			assert.Equal(t, []city.ActionKind{city.ActionAttach, city.ActionStop, city.ActionNew, city.ActionReveal, city.ActionCopyPath, city.ActionHide, city.ActionStar}, s.Actions())
+		})
+
+		t.Run("it should ask to stop it by id", func(t *testing.T) {
+			action, _ := s.Act(city.ActionStop)
+			assert.Equal(t, city.Action{Kind: city.ActionStop, SessionID: "a"}, action)
+		})
+
+		t.Run("it should start a new session in its directory", func(t *testing.T) {
+			action, _ := s.Act(city.ActionNew)
+			assert.Equal(t, city.Action{Kind: city.ActionNew, Dir: cinders}, action)
+		})
+
+		t.Run("it should reveal its directory", func(t *testing.T) {
+			action, _ := s.Act(city.ActionReveal)
+			assert.Equal(t, city.Action{Kind: city.ActionReveal, Dir: cinders}, action)
+		})
+
+		t.Run("it should copy its directory", func(t *testing.T) {
+			action, note := s.Act(city.ActionCopyPath)
+			assert.Equal(t, city.Action{Kind: city.ActionCopyPath, Dir: cinders}, action)
+			assert.Equal(t, "copied "+cinders, note)
+		})
+
+		t.Run("it should put the actions on the selection's card", func(t *testing.T) {
+			card, b, ok := s.SelectedCard()
+			require.True(t, ok)
+			assert.Equal(t, "a", b.Session.ID)
+			assert.Equal(t, "attach", card.Actions[0])
+		})
+	})
+
+	t.Run("when a parked building is selected", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Parked))
+		require.NotNil(t, s.JumpTo(state.Parked))
+
+		t.Run("it should offer resume and no stop", func(t *testing.T) {
+			kinds := s.Actions()
+			assert.Equal(t, city.ActionResume, kinds[0])
+			assert.NotContains(t, kinds, city.ActionStop)
+		})
+	})
+
+	t.Run("when a project is starred", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		require.NotNil(t, s.JumpTo(state.Working))
+		_, note := s.Act(city.ActionStar)
+
+		t.Run("it should say so", func(t *testing.T) {
+			assert.Equal(t, "starred cinders", note)
+		})
+
+		t.Run("it should remember it in the layout", func(t *testing.T) {
+			assert.True(t, s.Layout().IsStarred(cinders))
+		})
+
+		t.Run("it should offer unstar next", func(t *testing.T) {
+			assert.Contains(t, s.Actions(), city.ActionUnstar)
+		})
+
+		t.Run("and it is unstarred", func(t *testing.T) {
+			s.Act(city.ActionUnstar)
+
+			t.Run("it should forget it", func(t *testing.T) {
+				assert.False(t, s.Layout().IsStarred(cinders))
+			})
+		})
+	})
+
+	t.Run("when a project is hidden", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		s.Click(s.Camera().WorldToScreen(s.City().Districts[1].Buildings[0].Rect.Center()))
+		require.NotNil(t, s.Selected())
+		_, note := s.Act(city.ActionHide)
+
+		t.Run("it should drop its district from the city", func(t *testing.T) {
+			require.Len(t, s.City().Districts, 1)
+			assert.Equal(t, "botropolis", s.City().Districts[0].Name)
+		})
+
+		t.Run("it should say how to get it back", func(t *testing.T) {
+			assert.Contains(t, note, "hid cinders")
+		})
+
+		t.Run("it should remember it in the layout", func(t *testing.T) {
+			assert.Equal(t, []string{cinders}, s.Layout().HiddenRoots())
+		})
+
+		t.Run("it should clear the selection", func(t *testing.T) {
+			assert.Nil(t, s.Selected())
+		})
+
+		t.Run("and it is unhidden", func(t *testing.T) {
+			s.Unhide(cinders)
+
+			t.Run("it should come back", func(t *testing.T) {
+				assert.Len(t, s.City().Districts, 2)
+			})
+		})
+	})
+
+	t.Run("when c is pressed with a building selected", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		require.NotNil(t, s.JumpTo(state.Working))
+		action, _ := s.NewHere()
+
+		t.Run("it should start a session in that directory", func(t *testing.T) {
+			assert.Equal(t, city.Action{Kind: city.ActionNew, Dir: cinders}, action)
+		})
+	})
+
+	t.Run("when c is pressed over a district with nothing selected", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.PointerMove(s.Camera().WorldToScreen(s.City().Districts[0].Rect.Min.Add(city.Point{X: 2, Y: 2})))
+		action, _ := s.NewHere()
+
+		t.Run("it should start a session in the district's root", func(t *testing.T) {
+			assert.Equal(t, city.Action{Kind: city.ActionNew, Dir: cinders}, action)
+		})
+	})
+
+	t.Run("when c is pressed over nothing", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		action, note := s.NewHere()
+
+		t.Run("it should do nothing and say why", func(t *testing.T) {
+			assert.Equal(t, city.Action{}, action)
+			assert.Contains(t, note, "select")
+		})
+	})
+}
+
+func TestNamePlates(t *testing.T) {
+	t.Run("when a district has awake sessions", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.Wheel(s.Size().Scale(0.5), 3)
+
+		t.Run("it should show its plate", func(t *testing.T) {
+			assert.True(t, s.DistrictLabelVisible(s.City().Districts[0]))
+		})
+	})
+
+	t.Run("when storage holds only parked sessions", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working), session("b", cinders, state.Parked))
+		s.Wheel(s.Size().Scale(0.5), 3)
+		storage := storageOf(t, s.City())
+
+		t.Run("it should hide its plate", func(t *testing.T) {
+			assert.False(t, s.DistrictLabelVisible(storage))
+		})
+
+		t.Run("and it is hovered", func(t *testing.T) {
+			s.PointerMove(s.Camera().WorldToScreen(storage.Rect.Min.Add(city.Point{X: 2, Y: 2})))
+
+			t.Run("it should show its plate", func(t *testing.T) {
+				assert.True(t, s.DistrictLabelVisible(storage))
+			})
+		})
+	})
+}
+
 func TestWaterCard(t *testing.T) {
 	t.Run("when the pointer rests on the river", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))

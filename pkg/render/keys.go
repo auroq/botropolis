@@ -24,6 +24,7 @@ var bindings = []ui.Key{
 	{Key: "click", Action: "attach"},
 	{Key: "enter", Action: "attach the selection"},
 	{Key: "tab", Action: "next needs-you"},
+	{Key: "c", Action: "new session here"},
 	{Key: "d d", Action: "demolish the selection"},
 	{Key: "f", Action: "fit"},
 	{Key: "0", Action: "reset the view"},
@@ -85,6 +86,11 @@ func (g *Game) handleKeys() error {
 	}
 	if just(ebiten.KeyEnter) {
 		g.act(g.scene.Activate())
+	}
+	if just(ebiten.KeyC) {
+		action, note := g.scene.NewHere()
+		g.SetStatus(note)
+		g.act(action)
 	}
 	if just(ebiten.KeyN) {
 		if g.scene.ToggleNight() {
