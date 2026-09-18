@@ -58,6 +58,25 @@ func TestSummary(t *testing.T) {
 		}
 	})
 
+	t.Run("when the needs-you chip is hovered", func(t *testing.T) {
+		a := session("a", cinders, state.NeedsYou)
+		a.Tool, a.Subject = "Bash", "make test"
+		card := city.Build(snapshot(a, session("b", botropolis, state.Working)), city.NewLayout()).StateCard(state.NeedsYou)
+
+		t.Run("it should list the sessions in that state with what they are doing", func(t *testing.T) {
+			assert.Equal(t, "needs-you", card.Title)
+			assert.Equal(t, []string{"Fix the CI queue  Bash make test"}, card.Lines)
+		})
+	})
+
+	t.Run("when a chip for an empty state is hovered", func(t *testing.T) {
+		card := city.Build(snapshot(session("a", cinders, state.Working)), city.NewLayout()).StateCard(state.Parked)
+
+		t.Run("it should say none", func(t *testing.T) {
+			assert.Equal(t, []string{"none"}, card.Lines)
+		})
+	})
+
 	t.Run("when the city is empty", func(t *testing.T) {
 		t.Run("it should be all zero", func(t *testing.T) {
 			assert.Equal(t, city.Summary{}, city.Build(state.Snapshot{}, city.NewLayout()).Summary())

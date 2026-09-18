@@ -102,6 +102,19 @@ func (g *Game) strip(screen *ebiten.Image, width float64) float64 {
 	return stripHeight
 }
 
+// stripHover is the state chip under the pointer, if any.
+func (g *Game) stripHover(at city.Point) (state.State, bool) {
+	g.mu.Lock()
+	hits := g.stripHits
+	g.mu.Unlock()
+	for _, h := range hits {
+		if h.rect.Contains(at) {
+			return h.state, true
+		}
+	}
+	return "", false
+}
+
 // stripClick jumps to the next building of the state whose chip was
 // clicked, and says so.
 func (g *Game) stripClick(at city.Point) bool {

@@ -68,3 +68,42 @@ func (s Summary) Headline() string {
 	}
 	return "quiet"
 }
+
+// StateCard lists the sessions in a state, for hovering a strip chip.
+func (c *City) StateCard(st state.State) Card {
+	var lines []string
+	for _, b := range c.Buildings() {
+		if b.Session.State != st {
+			continue
+		}
+		line := b.Card(c.Time).Title
+		if doing := b.Session.Doing(); doing != "" {
+			line += "  " + doing
+		}
+		lines = append(lines, line)
+		if len(lines) == maxStateCardLines {
+			lines = append(lines, fmt.Sprintf("... and %d more", c.Summary().count(st)-maxStateCardLines))
+			break
+		}
+	}
+	if len(lines) == 0 {
+		lines = []string{"none"}
+	}
+	return Card{Title: string(st), Lines: lines}
+}
+
+const maxStateCardLines = 12
+
+func (s Summary) count(st state.State) int {
+	switch st {
+	case state.Working:
+		return s.Working
+	case state.NeedsYou:
+		return s.NeedsYou
+	case state.Unattended:
+		return s.Unattended
+	case state.Parked:
+		return s.Parked
+	}
+	return 0
+}

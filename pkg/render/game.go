@@ -230,7 +230,10 @@ func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
 	top := g.strip(screen, width)
 	g.scene.SetTopChrome(top)
 	g.minimap(screen, width, height)
-	if card, ok := g.scene.Card(); ok {
+	x, y := ebiten.CursorPosition()
+	if st, ok := g.stripHover(city.Point{X: float64(x), Y: float64(y)}); ok {
+		g.card(screen, g.scene.City().StateCard(st), width, height, top)
+	} else if card, ok := g.scene.Card(); ok {
 		g.card(screen, card, width, height, top)
 	}
 	g.footer(screen, width, height)
