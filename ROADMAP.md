@@ -224,4 +224,9 @@ parity waits for both so the sidebar and cards are built once, on the final tool
 
 Things noticed while building that are not in a phase; each is a question for Aria, not a plan.
 
-- (none open)
+- **Train Kit as the token line.** Phase 9 kept poles and sparks; the train (one per model, wagons per thousand tokens) is still the better picture of flow. Cut it, or drop the kit from §3?
+- **Watercraft Kit.** Not cut; the river is a strip. Boats only if the river is worth animating; otherwise drop the kit from §3.
+- **Container colour means nothing.** The storage yard's green/red/blue containers are kit variants. Colour by project (the yard becomes legible without hovering) or all parked-slate?
+- **Tower labels overlap on the ridge.** Apply the phase 10 plate rule to towers: name on hover, or only while in use.
+- **The park belt reads as a hedge.** One tree sprite in a grid; a second variant and a seeded in-cell offset placed by the plan would read as a park.
+- **The plant's amber band is the kit's.** Amber is needs-you; tint the plant's band to the plant's own tone so the one colour keeps its meaning.
