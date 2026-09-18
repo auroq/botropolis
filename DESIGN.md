@@ -203,7 +203,7 @@ The map is isometric by default (Kenney's isometric packs; `--projection top` ke
 Isometric 2:1 is an affine projection, so `pkg/city` keeps rectangles and only the renderer sees diamonds.
 Below a detail zoom the map view draws flat state-coloured blocks, the way Factorio's chart replaces sprites with map colours;
 above it, buildings are stacked from the pack's ground floors, storeys and roofs.
-Parked sessions sit in a compact yard of sheds so the live sessions own the plot.
+Parked sessions used to sit in a yard inside each district; since the plan (below) they sit in one storage district.
 Labels are fixed-size and sit on the floor or above the kerb, never over what they name.
 
 ## Chrome
@@ -232,6 +232,20 @@ The settings panel edits `reduced_motion`, `render_scale`, `projection`, `parked
 and writes the one key back through `config.Save`, which never spells out defaults.
 The acceptance test shoots the sample city at 1× and 2× with no daemon and checks the frame doubles,
 the first strip dot is a state tone at both scales, and the bars are dark with ground between them.
+
+## City plan
+
+Phase 8 of the roadmap, 2026-09-18.
+`pkg/plan` is a pure function from the live districts' sizes in cells, the tower count and the storage rows to where everything goes:
+a plaza at slot (0,0), rings of slots around it whose columns and rows are sized to the largest block in them so the avenues run straight,
+a district's slot remembered in `layout.json` while it stays live and replaced from the innermost ring when another took it,
+unused slots as park blocks, a two-cell park belt, a telecom ridge along the north, storage along the south, the river down the east edge.
+Every avenue exists whether or not a road's traffic is routed along it; a lamp stands at every crossing; a tree stands on every park cell;
+the fountain is the plaza's centre cell.
+`pkg/city` converts cells to pixels, routes each road's traffic along the avenues from kerb to kerb (a road between neighbours runs the shared avenue),
+puts the plant, hall and library on the plaza and one shed per parked session in storage, grouped by project.
+The lake, the hashed river and the per-cell hashed grass, dirt and trees are gone; beyond the plan's edge there is nothing,
+and the camera clamps so the plan stays under the middle of the window.
 
 ## Open questions
 

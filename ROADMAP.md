@@ -145,6 +145,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - Streets as a full grid; traffic on a street is the road's data; empty streets carry no cars.
 - Fit frames the bounds; minimap draws the plan.
 - **Done when** the fit view has no empty field, every decoration can be pointed at in `pkg/plan`, and mullet's parked sessions are in the storage district.
+- Done 2026-09-18 (r74–r76); see DESIGN.md "City plan".
 
 ### 9 — Art pipeline and art pass
 

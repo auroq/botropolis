@@ -86,8 +86,15 @@ func TestCityScreenshot(t *testing.T) {
 			assert.True(t, isDark(nrgba(one.At(2, h-2))), nrgba(one.At(2, h-2)))
 		})
 
-		t.Run("it should leave the ground showing between them", func(t *testing.T) {
-			assert.True(t, isGreen(nrgba(one.At(w/2, 40))), nrgba(one.At(w/2, 40)))
+		t.Run("it should show green ground somewhere between them", func(t *testing.T) {
+			found := false
+			for y := 40; y < h-40; y++ {
+				if isGreen(nrgba(one.At(w/2, y))) {
+					found = true
+					break
+				}
+			}
+			assert.True(t, found)
 		})
 	})
 }

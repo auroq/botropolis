@@ -78,7 +78,7 @@ botropolis status                           # the table, via the daemon
 `packaging/botropolis.bash` makes a plain `claude` in a shell start in the background and attach.
 
 Settings come from flags, then `BOTROPOLIS_HOME`, `BOTROPOLIS_SOCKET`, `BOTROPOLIS_TERMINAL`, `BOTROPOLIS_PARKED_DAYS`, `BOTROPOLIS_CODEX_HOME`,
-then `~/.config/botropolis/config.{toml,yaml,json}` (`home`, `socket`, `terminal`, `hook_command`, `parked_days`, `codex_home`, `projection`, `render_scale`, `reduced_motion`)..
+then `~/.config/botropolis/config.{toml,yaml,json}` (`home`, `socket`, `terminal`, `hook_command`, `parked_days`, `codex_home`, `projection`, `render_scale`, `reduced_motion`).
 `s` in the city opens a settings panel for the same keys and writes the file back;
 `?` lists every key.
 
@@ -95,7 +95,10 @@ Roads, and Tiny Town, Tiny Factory and Roguelike Modern City for the top-down vi
 A resource strip along the top keeps the city-wide tallies in view: sessions by state, token rates, cost and cache hit rate over 24 h, MCP calls, PRs, errors.
 Streets between districts are autotiled from the road pack with cars for traffic (one per street, up to three with traffic; never faster); power lines run on poles with sparks for token flow; context fill is the number of storeys.
 At night — whenever something runs unattended — the map dims and every building with a session awake in it shows lit windows.
-A river and a pond sit in the outskirts as background; they mean nothing.
+The map is a city plan: a plaza in the middle with the plant, hall, library and a fountain,
+live projects on the ring of blocks around it, one storage district along the south for every parked session grouped by project,
+towers on a ridge along the north, park blocks wherever no project is, a belt of park round the lot and the river as the east edge.
+Every tree and lamp is where the plan put it.
 Thank you, Kenney; see [`pkg/assets/kenney/README.md`](pkg/assets/kenney/README.md) for the packs, versions and terms,
 and [support the studio](https://kenney.nl/donate) if the work helps you too.
 
