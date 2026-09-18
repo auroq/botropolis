@@ -20,6 +20,9 @@ type Status string
 const (
 	StatusBusy Status = "busy"
 	StatusIdle Status = "idle"
+	// StatusShell is a session running a shell command; the CLI counts it
+	// as busy, and so does the map: only idle means idle.
+	StatusShell Status = "shell"
 )
 
 type SessionRecord struct {

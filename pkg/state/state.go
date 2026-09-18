@@ -564,10 +564,11 @@ func PowerSince(transcripts []claude.Transcript, since time.Time) Power {
 
 // derive picks a live session's state. The record's own status is the
 // CLI's word and wins over the transcript tail: an idle session needs you
-// (or is waiting on its own watch), a busy one is working unless it is
-// blocked in a question only you can answer. A session with no
-// conversation yet is empty unless the CLI says it is busy. The tail alone
-// decides for a record that carries no status.
+// (or is waiting on its own watch), and any other word — busy, shell, or
+// one this build has never seen — is a session doing something, unless
+// it is blocked in a question only you can answer. A session with no
+// conversation yet is empty unless the CLI says it is busy. The tail
+// alone decides for a record that carries no status.
 func derive(r claude.SessionRecord, turn claude.Turn, hasConversation, isAlive, isAttached bool) State {
 	if !isAlive {
 		return Parked
@@ -581,7 +582,8 @@ func derive(r claude.SessionRecord, turn claude.Turn, hasConversation, isAlive, 
 			return Waiting
 		}
 		return NeedsYou
-	case claude.StatusBusy:
+	case "":
+	default:
 		if turn == claude.TurnNeedsInput {
 			return NeedsYou
 		}

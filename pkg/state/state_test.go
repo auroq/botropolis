@@ -764,6 +764,26 @@ func TestRecordStatus(t *testing.T) {
 		})
 	})
 
+	t.Run("when the record says shell while the tail awaits the user", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindInteractive, claude.StatusShell)},
+			[]claude.Transcript{transcript(sidA, claude.TurnAwaitingUser)}, nil, alive)[0]
+
+		t.Run("it should be working", func(t *testing.T) {
+			assert.Equal(t, state.Working, session.State)
+		})
+	})
+
+	t.Run("when the record says a word this build has never seen while the tail awaits the user", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindInteractive, "compacting")},
+			[]claude.Transcript{transcript(sidA, claude.TurnAwaitingUser)}, nil, alive)[0]
+
+		t.Run("it should be working, since only idle means idle", func(t *testing.T) {
+			assert.Equal(t, state.Working, session.State)
+		})
+	})
+
 	t.Run("when the record has no status while the tail awaits the user", func(t *testing.T) {
 		session := build(t,
 			[]claude.SessionRecord{record(sidA, claude.KindBackground, "")},
