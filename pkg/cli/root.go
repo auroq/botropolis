@@ -24,6 +24,8 @@ func NewRootCLI(v *viper.Viper, subcommands ...*cobra.Command) *cobra.Command {
 	root.Flags().Bool("tui", false, "open the terminal table instead of the city")
 	AddScreenshotFlag(root.Flags())
 	AddKeysFlag(root.Flags())
+	AddRecordFlags(root.Flags())
+	AddHeadlessFlag(root.Flags())
 	byName := map[string]*cobra.Command{}
 	for _, sub := range subcommands {
 		byName[sub.Name()] = sub

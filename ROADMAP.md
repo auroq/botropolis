@@ -190,6 +190,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - README with screenshots from `docs/screenshots/`, a 30-second GIF, and the shell helper up front.
 - Wayland check (Ebitengine via GLFW/X11 under XWayland today); note it.
 - First-run: `botropolis doctor` reports daemon, hooks, terminal, harnesses.
+- Done 2026-09-18 (r93–r94) except publishing, which is Aria's call; see DESIGN.md "Ship". `--headless` was added for screenshots and recordings that never open a window.
 
 ## 5. DESIGN.md's open questions, answered
 

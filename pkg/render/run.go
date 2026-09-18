@@ -30,6 +30,11 @@ type Options struct {
 	// Keys are pressed first, one per frame.
 	Screenshot string
 	Keys       []string
+	// Record, when set, writes a frame every tenth of a second into the
+	// directory for RecordSeconds, pressing Keys two seconds apart, then
+	// exits.
+	Record        string
+	RecordSeconds float64
 	// Scale is the chrome and pixel scale; 0 follows the display.
 	Scale float64
 	// ReducedMotion stops every animation and keeps the colours.
@@ -78,6 +83,8 @@ func Run(ctx context.Context, opts Options) error {
 	game.kits = kitSprites
 	game.screenshot = opts.Screenshot
 	game.script = opts.Keys
+	game.record = opts.Record
+	game.recordFrames = int(opts.RecordSeconds * 30)
 	game.reduced = opts.ReducedMotion
 	game.settings = opts.Settings
 	game.apply = opts.Apply

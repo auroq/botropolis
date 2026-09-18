@@ -1,0 +1,33 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Build dependencies for Ebitengine
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev libasound2-dev pkg-config
+      - name: Build
+        run: |
+          mkdir -p dist
+          for bin in botropolis botropolisd botropolis-hook; do
+            go build -trimpath -ldflags "-X github.com/auroq/botropolis/pkg/version.Version=${GITHUB_REF_NAME}" -o "dist/${bin}" "./cmd/${bin}"
+          done
+          tar -C dist -czf "botropolis-${GITHUB_REF_NAME}-linux-amd64.tar.gz" botropolis botropolisd botropolis-hook
+      - name: Test
+        run: go test ./cmd/... ./pkg/...
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: botropolis-*.tar.gz
+          generate_release_notes: true

@@ -32,6 +32,41 @@ func AddKeysFlag(flags *pflag.FlagSet) {
 	flags.StringSlice(KeysFlag, nil, "keys to press before the screenshot, e.g. equal,equal,b")
 }
 
+// RecordFlag names the flag that writes a frame every tenth of a
+// second into a directory for --seconds, pressing --keys a couple of
+// seconds apart, then exits: the raw material for a GIF.
+const (
+	RecordFlag  = "record"
+	SecondsFlag = "seconds"
+)
+
+func AddRecordFlags(flags *pflag.FlagSet) {
+	flags.String(RecordFlag, "", "write frames into this directory for --seconds, then exit")
+	flags.Float64(SecondsFlag, 20, "how long to record with --record")
+}
+
+// Record is the directory given with --record and how long to record.
+func Record(cmd *cobra.Command) (string, float64) {
+	dir, _ := cmd.Flags().GetString(RecordFlag)
+	seconds, _ := cmd.Flags().GetFloat64(SecondsFlag)
+	return dir, seconds
+}
+
+// HeadlessFlag names the flag that runs the city on a virtual X display
+// (xvfb-run) so no window opens: for screenshots, recordings and tests
+// while someone is using the desktop.
+const HeadlessFlag = "headless"
+
+func AddHeadlessFlag(flags *pflag.FlagSet) {
+	flags.Bool(HeadlessFlag, false, "run on a virtual display (xvfb-run) so no window opens")
+}
+
+// Headless reports whether --headless was asked for.
+func Headless(cmd *cobra.Command) bool {
+	headless, _ := cmd.Flags().GetBool(HeadlessFlag)
+	return headless
+}
+
 // Keys is the list given with --keys, in order.
 func Keys(cmd *cobra.Command) []string {
 	keys, _ := cmd.Flags().GetStringSlice(KeysFlag)
@@ -53,5 +88,7 @@ func NewCityCLI(load Loader, services CityServices) *cobra.Command {
 	}
 	AddScreenshotFlag(cmd.Flags())
 	AddKeysFlag(cmd.Flags())
+	AddRecordFlags(cmd.Flags())
+	AddHeadlessFlag(cmd.Flags())
 	return cmd
 }

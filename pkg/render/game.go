@@ -1,11 +1,13 @@
 package render
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -85,6 +87,11 @@ type Game struct {
 	// the screenshot; scripted is this frame's.
 	script   []string
 	scripted ebiten.Key
+	// record is the directory --record writes into, recordFrames how
+	// many ticks to run and recorded how many have gone by.
+	record       string
+	recordFrames int
+	recorded     int
 	// snap is a frame the p key asked for, saved on the next draw.
 	snap   string
 	help   bool
@@ -152,12 +159,23 @@ func (g *Game) Update() error {
 			g.shownTitle = title
 			ebiten.SetWindowTitle(title)
 		}
-		if g.screenshot != "" && g.shotFrames == 0 {
+		if (g.screenshot != "" || g.record != "") && g.shotFrames == 0 {
 			g.shotFrames = 1
 		}
 	}
 	g.scripted, g.scriptedRune = -1, 0
-	if g.shotFrames > 0 && len(g.script) > 0 {
+	if g.record != "" && g.shotFrames > 0 {
+		// A key every two seconds, then run the clock out.
+		if len(g.script) > 0 && g.recorded%60 == 30 {
+			if key, ok := keyByName(g.script[0]); ok {
+				g.scripted = key
+			}
+			if r := []rune(g.script[0]); len(r) == 1 && g.searching {
+				g.scriptedRune = r[0]
+			}
+			g.script = g.script[1:]
+		}
+	} else if g.shotFrames > 0 && len(g.script) > 0 {
 		if key, ok := keyByName(g.script[0]); ok {
 			g.scripted = key
 		}
@@ -227,6 +245,19 @@ func keyByName(name string) (ebiten.Key, bool) {
 }
 
 func (g *Game) capture(screen *ebiten.Image) {
+	if g.record != "" && g.shotFrames > 0 && !g.shotDone {
+		if g.recorded%3 == 0 {
+			if err := writePNG(filepath.Join(g.record, fmt.Sprintf("frame-%05d.png", g.recorded/3)), frame(screen)); err != nil {
+				g.shotErr, g.shotDone = err, true
+				return
+			}
+		}
+		g.recorded++
+		if g.recorded >= g.recordFrames {
+			g.shotDone = true
+		}
+		return
+	}
 	if g.snap != "" {
 		if err := writePNG(g.snap, frame(screen)); err != nil {
 			g.SetStatus(err.Error())

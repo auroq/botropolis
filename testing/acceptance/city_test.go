@@ -24,7 +24,7 @@ func shoot(t *testing.T, home, scale string) image.Image {
 	socket := filepath.Join(t.TempDir(), "none.sock")
 	// n twice forces day, so the ground is the daytime green whatever the
 	// fixture's sessions are doing.
-	out, err := exec.Command(botropolis, "city", "--screenshot", path, "--render_scale", scale, "--home", home, "--socket", socket, "--keys", "n,n").CombinedOutput()
+	out, err := exec.Command(botropolis, "city", "--headless", "--screenshot", path, "--render_scale", scale, "--home", home, "--socket", socket, "--keys", "n,n").CombinedOutput()
 	require.NoError(t, err, string(out))
 	f, err := os.Open(path)
 	require.NoError(t, err)
@@ -70,8 +70,8 @@ func isGround(c color.NRGBA) bool {
 }
 
 func TestCityScreenshot(t *testing.T) {
-	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
-		t.Skip("no display to open the city on")
+	if _, err := exec.LookPath("xvfb-run"); err != nil {
+		t.Skip("no xvfb-run to open the city on a virtual display")
 	}
 	home := helpers.LiveFixtureHome(t, "sample")
 

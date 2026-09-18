@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -163,7 +164,34 @@ type cityRunner struct {
 	config   *config.Config
 }
 
+// headlessEnv marks the re-executed child so it does not re-exec again.
+const headlessEnv = "BOTROPOLIS_HEADLESS_CHILD"
+
+// runHeadless re-runs this same command under xvfb-run, on a virtual X
+// display of the window's size, with the desktop's displays hidden from
+// it, so no window opens.
+func runHeadless(cmd *cobra.Command) error {
+	xvfb, err := exec.LookPath("xvfb-run")
+	if err != nil {
+		return fmt.Errorf("--headless needs xvfb-run (package xorg-server-xvfb on Arch, xvfb on Debian): %w", err)
+	}
+	args := append([]string{"-a", "-s", "-screen 0 1100x760x24", os.Args[0]}, os.Args[1:]...)
+	child := exec.CommandContext(cmd.Context(), xvfb, args...)
+	child.Stdout, child.Stderr, child.Stdin = cmd.OutOrStdout(), cmd.ErrOrStderr(), os.Stdin
+	var env []string
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "DISPLAY=") && !strings.HasPrefix(kv, "WAYLAND_DISPLAY=") {
+			env = append(env, kv)
+		}
+	}
+	child.Env = append(env, headlessEnv+"=1")
+	return child.Run()
+}
+
 func (c *cityRunner) Run(cmd *cobra.Command) error {
+	if cli.Headless(cmd) && os.Getenv(headlessEnv) == "" {
+		return runHeadless(cmd)
+	}
 	layoutPath := city.LayoutPath()
 	layout, err := city.LoadLayout(layoutPath)
 	if err != nil {
@@ -183,6 +211,7 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 	if !ok {
 		return fmt.Errorf("unknown projection %q: use iso or top", c.config.Projection)
 	}
+	recordDir, recordSeconds := cli.Record(cmd)
 	return render.Run(cmd.Context(), render.Options{
 		Layout:        layout,
 		LayoutPath:    layoutPath,
@@ -191,6 +220,8 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		Projection:    projection,
 		Screenshot:    cli.Screenshot(cmd),
 		Keys:          cli.Keys(cmd),
+		Record:        recordDir,
+		RecordSeconds: recordSeconds,
 		Scale:         c.config.RenderScale,
 		ReducedMotion: c.config.ReducedMotion,
 		DailyBudget:   c.config.DailyBudget,

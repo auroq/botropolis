@@ -7,59 +7,36 @@ Sessions live in Claude Code's own background daemon; Botropolis starts them, op
 
 See [DESIGN.md](DESIGN.md) for the design and the plan, and [docs/usage-profile.md](docs/usage-profile.md) for the numbers it is built around.
 
-## Status
+![The city at r92: a plaza with the plant, hall and library, districts on the ring, storage along the south, the tower ridge and the river](docs/screenshots/r92-beyond-parity.png)
 
-Milestone 1: the read model.
-`botropolis status` prints one row per live session straight from `~/.claude`:
-state, project, title, branch, model, context used, fresh and cache-read tokens per hour, subagents in flight, and age.
-Milestone 6: satellites.
-`botropolis bar` prints one line for waybar (JSON) or any text bar (`--format text`, `--watch` to stream);
-`botropolis notify` (unit `botropolis-notify.service`) sends a desktop notification when a session starts needing you;
-`botropolis --tui` (or `botropolis tui`) is the live table in your terminal with attach, stop, resume and demolish keys.
-Harnesses sit behind `harness.Snapshotter`: Claude Code is the first, and a Codex CLI adapter reads `~/.codex/sessions` rollouts
-(fixture-tested only — there is no Codex on this machine yet).
+![Thirty seconds of the city](docs/botropolis.gif)
 
-Milestone 5: parked sessions are catalogued from transcripts with no live record (`parked_days`, default 7) and drawn boarded up;
-the power plant sums the last 24 h of `cost-state` per model and runs lines to every lit building (fresh warm and thick, cached cool and thin);
-one radio tower per MCP server (configured or merely used) with beams to the sessions that called it;
-the library ranks skills; the city hall carries Claude Code's own `stats-cache.json` rollup (lifetime totals, busiest hour, model mix);
-roads run between districts whose sessions message each other or edit each other's files, signed with the traffic;
-buildings fly a flag per PR and smoke per API error; it is night while anything runs unattended.
-Hover a building for what its worker is doing right now (tool and file), context with compaction history, the subagents in flight by name, PRs, errors and the last hook note.
-`d d` on a selected building demolishes it (`claude rm`); `botropolis prune [--older-than 168h] [--dry-run]` removes parked background jobs.
-`botropolis status --all` lists parked sessions in the table.
-
-Milestone 4: `botropolis` with no arguments (or `botropolis city`) opens the city:
-one district per project, one building per session, fill level for context used,
-orange and pulsing for needs-you, cranes for subagents in flight, boarded up for parked.
-Drag to pan, wheel to zoom, click a building to attach it, `tab` (or a click on a state chip in the strip) to jump to the next session in that state and `enter` to attach it, `f` to fit, `n` to force night (to see the lights), `q` to quit.
-`botropolis city --screenshot city.png` renders one frame at the window's size and exits, for sharing.
-The layout is sticky, in `~/.local/state/botropolis/layout.json`.
-The window is built for tiling: it fits the city to whatever size the window manager gives it, refits on resize until you pan or zoom (`f` refits),
-and wraps the footer and clamps the hover card at narrow or short sizes.
-It sets `WM_CLASS` to `botropolis`, so if you would rather float it under i3:
+## Start here
 
 ```
-for_window [class="Botropolis"] floating enable, resize set 1100 760
+systemctl --user enable --now botropolisd   # the daemon: inotify on ~/.claude plus hook pushes, a unix socket
+botropolis install-hooks                    # botropolis-hook into ~/.claude/settings.json (backup kept)
+botropolis doctor                           # the daemon, the hooks, a terminal, the claude CLI, the display
+source /usr/share/botropolis/botropolis.bash  # and in ~/.bashrc: a plain `claude` now starts in the background and attaches
+botropolis                                  # the city
 ```
 
-Milestone 3: `botropolis new/attach/stop/resume/rm` wrap the `claude` CLI.
+The shell helper is the one line that changes how you work: every session becomes a `claude --bg` job you can close, reopen, park and wake from the map,
+and the terminal is only ever a view of it.
 
-Milestone 2: `botropolisd` watches `~/.claude` with inotify and serves snapshots over a unix socket;
-`botropolis-hook` forwards Claude Code hook events to it in single-digit milliseconds;
-`status` asks the daemon first and scans directly when it is down.
-No map yet.
+## What you see
 
-```
-$ botropolis status
-STATE      PROJECT     TITLE                     BRANCH              MODEL              CTX  FRESH/H  CACHED/H  SUBS  AGE
-working    botropolis  scaffold milestone setup  main                claude-opus-5[1m]  29%  152k     8.9M      0/0   4h54m
-needs-you  cinders     pr-reviews-cli-migration  feat/cli-pr-review  claude-opus-5[1m]  73%  316k     24.5M     0/4   10h05m
-```
+One district per project, one building per session, and every object stands for one datum you can read by hovering it:
+a building's height is its context window used, its beacon is its state (needs-you amber, working blue, unattended violet, parked slate),
+a rover works at the door while it is mid-turn, a drone circles the roof for each subagent in flight, a flag per PR (green once merged), smoke per API error.
+The plant on the plaza is the API — click it for the breakdown by model, project and session over an hour, a day or a week;
+the towers on the ridge are MCP servers; the library ranks skills; the city hall carries Claude Code's own rollup.
+Avenues carry traffic between projects whose sessions message each other or edit each other's files; parked sessions are containers in the storage yard.
+The strip along the top is the city's tallies; the sidebar (`b`) is the same thing as a list.
 
-`pkg/claude` reads session records, transcripts (metadata, deduplicated usage, cost, whose turn it is), subagents,
-`stats-cache.json`, and the MCP config.
-`pkg/state` joins them by session id, probes the pid and the background job's pty socket (so an attached `claude --bg` counts as working, not unattended), and derives the state.
+Keys: drag to pan, wheel to zoom, `r` to turn, `f` or `0` to fit, `tab` for the next session that needs you, `enter` to attach it,
+`c` for a new session here, `d d` to demolish, `b` sidebar, `x` breakdown, `t` timeline, `/` search, `s` settings, `n` night/day/live, `[` `]` scrub the clock,
+`h` hide the UI, `p` save a frame, `?` all of them.
 
 ## Running it
 
@@ -72,6 +49,8 @@ botropolis install-hooks                    # registers botropolis-hook in ~/.cl
 botropolis status                           # the table, via the daemon
 ```
 
+`botropolis city --screenshot city.png` renders one frame and exits;
+`--headless` runs it on a virtual display (xvfb-run) so no window opens, `--keys n,n,x` presses keys first, and `--record dir --seconds 24` writes frames for a GIF (`make gif`).
 `botropolis install-hooks --remove` takes the hook out again.
 `botropolis status --direct` skips the daemon.
 `botropolis` opens the city and `botropolis --tui` the terminal table; `botropolis new <dir> [prompt]`, `attach <id>`, `stop <id>`, `resume <session-id>`, `rm <id>` and `prune` wrap the `claude` CLI;

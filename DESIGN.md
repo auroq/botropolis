@@ -299,6 +299,18 @@ and when the window comes back into focus the same panel shows what needed you o
 A team is a camp: its lead's building tied to its members' with dashed lines, from the rosters and the sessions' own team names, with a card and a line on each member's card.
 `daily_budget_usd` measures the strip's cost chip and the plant's card against a daily target, accent-toned from 80 % and error-toned beyond it.
 
+## Ship
+
+Roadmap phase 12, 2026-09-18.
+`botropolis doctor` checks the daemon, the hooks, a terminal, the `claude` CLI, the harness homes and the display, with the command to run for anything short of ok;
+a Wayland session is noted as XWayland, which is how Ebitengine (GLFW/X11) runs there today.
+`--headless` re-runs the city under `xvfb-run` on a 1100×760 virtual display with the desktop's displays hidden from it, so screenshots, `--keys` and `--record` never open a window;
+the acceptance test shoots that way and skips only when there is no `xvfb-run`.
+`--record dir --seconds n` writes ten frames a second and presses `--keys` two seconds apart; `make gif` turns twenty-four seconds of that into `docs/botropolis.gif` through ffmpeg.
+The README leads with the latest screenshot, the GIF, the four commands of a first run and the shell helper.
+A tag `v*` runs `.github/workflows/release.yml`, which builds the three binaries on Ubuntu, tests, and attaches a tarball to a GitHub release with generated notes;
+the local `botropolis-git` package stays local until Aria decides to publish it.
+
 ## Open questions
 
 All settled; the decisions are in [ROADMAP.md](ROADMAP.md) §5 and §3.

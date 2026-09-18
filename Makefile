@@ -64,6 +64,13 @@ analyze ::
 	$(LOG) "Analyzing ~/.claude history"
 	@python3 tools/analyze-history.py
 
+gif ::
+	$(LOG) "Recording docs/botropolis.gif headlessly (24 s, one key every two seconds)"
+	@rm -rf dist/frames && mkdir -p dist/frames
+	@bin/botropolis city --headless --record dist/frames --seconds 24 --keys n,n,equal,equal,tab,r,r,b,b,x,escape,t,escape,slash,m,a,r,q,enter,f
+	@ffmpeg -loglevel error -y -framerate 10 -i dist/frames/frame-%05d.png -vf "fps=8,scale=880:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=160[p];[s1][p]paletteuse=dither=bayer:bayer_scale=4" docs/botropolis.gif
+	@ls -la docs/botropolis.gif | awk '{print $$5 " bytes"}'
+
 kits ::
 	$(LOG) "Fetching the Kenney kits into tools/kits"
 	@tools/fetch-kits
