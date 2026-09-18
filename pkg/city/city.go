@@ -444,7 +444,7 @@ func (b *Building) Card(now time.Time) Card {
 		}
 		lines = append(lines, "team     "+s.Team+" ("+role+")")
 	}
-	lines = append(lines, "age      "+format.Age(now.Sub(s.StartedAt)))
+	lines = append(lines, "age      "+format.Age(now.Sub(s.StartedAt))+", idle "+format.Age(now.Sub(s.LastActivity)))
 	return Card{Title: title, Lines: lines, Series: b.Series(LastDay, now)}
 }
 

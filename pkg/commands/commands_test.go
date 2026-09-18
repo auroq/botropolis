@@ -87,7 +87,7 @@ func TestStatus(t *testing.T) {
 	snapshot := state.Snapshot{At: now, Sessions: []state.Session{{
 		ID: sid, State: state.NeedsYou, Tool: "Bash", CWD: cwd, Title: "Fix the CI queue", Branch: "main",
 		Model: "claude-opus-5[1m]", ContextPercent: 25, FreshTokensPerHour: 152_000, CacheReadPerHour: 8_900_000,
-		Subagents: 4, SubagentsInFlight: 1, StartedAt: now.Add(-5*time.Hour - 6*time.Minute),
+		Subagents: 4, SubagentsInFlight: 1, StartedAt: now.Add(-5*time.Hour - 6*time.Minute), LastActivity: now.Add(-6 * time.Minute),
 	}}}
 
 	t.Run("when the source has one session", func(t *testing.T) {
@@ -104,8 +104,12 @@ func TestStatus(t *testing.T) {
 			assert.Len(t, lines, 2)
 		})
 
-		t.Run("it should render every column", func(t *testing.T) {
-			assert.Regexp(t, `^needs-you\s+Bash\s+cinders\s+Fix the CI queue\s+main\s+claude-opus-5\[1m\]\s+25%\s+152k\s+8\.9M\s+1/4\s+5h06m$`, lines[1])
+		t.Run("it should render every column, ending with how long the session has been idle", func(t *testing.T) {
+			assert.Regexp(t, `^needs-you\s+Bash\s+cinders\s+Fix the CI queue\s+main\s+claude-opus-5\[1m\]\s+25%\s+152k\s+8\.9M\s+1/4\s+6m$`, lines[1])
+		})
+
+		t.Run("it should head the last column IDLE", func(t *testing.T) {
+			assert.Regexp(t, `IDLE$`, lines[0])
 		})
 	})
 

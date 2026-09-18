@@ -146,7 +146,7 @@ func TestModel(t *testing.T) {
 	})
 
 	t.Run("when rendered", func(t *testing.T) {
-		m := model(session("a", state.NeedsYou, 0), session("b", state.Working, 0))
+		m := model(session("a", state.NeedsYou, 6*time.Minute), session("b", state.Working, 0))
 		lines := m.Lines(0)
 
 		t.Run("it should print a header and one line per row", func(t *testing.T) {
@@ -159,9 +159,10 @@ func TestModel(t *testing.T) {
 			assert.True(t, strings.HasPrefix(lines[2], "  working"))
 		})
 
-		t.Run("it should use the table's formatters", func(t *testing.T) {
+		t.Run("it should use the table's formatters, idle time last", func(t *testing.T) {
 			assert.Contains(t, lines[1], "25%")
-			assert.Contains(t, lines[1], "1h00m")
+			assert.True(t, strings.HasSuffix(lines[1], " 6m"), lines[1])
+			assert.True(t, strings.HasSuffix(lines[0], "IDLE"), lines[0])
 		})
 
 		t.Run("it should say what a working session is doing", func(t *testing.T) {
