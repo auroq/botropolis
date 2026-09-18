@@ -44,6 +44,7 @@ func TestTerminalCommand(t *testing.T) {
 			{"gnome-terminal", []string{"gnome-terminal", "--", "claude", "attach", "0898d7e4"}},
 			{"konsole", []string{"konsole", "-e", "claude", "attach", "0898d7e4"}},
 			{"xterm", []string{"xterm", "-e", "claude", "attach", "0898d7e4"}},
+			{"terminator", []string{"terminator", "-x", "claude", "attach", "0898d7e4"}},
 			{"/usr/bin/st", []string{"/usr/bin/st", "-e", "claude", "attach", "0898d7e4"}},
 		}
 		for _, c := range cases {

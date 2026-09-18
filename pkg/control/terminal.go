@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-var knownTerminals = []string{"foot", "kitty", "alacritty", "wezterm", "gnome-terminal", "konsole", "xterm"}
+var knownTerminals = []string{"foot", "kitty", "alacritty", "wezterm", "gnome-terminal", "konsole", "terminator", "xterm"}
 
 // KnownTerminals is the list tried when nothing names a terminal.
 func KnownTerminals() []string {
@@ -20,6 +20,8 @@ var terminalPrefix = map[string][]string{
 	"gnome-terminal": {"--"},
 	"konsole":        {"-e"},
 	"xterm":          {"-e"},
+	// terminator's -e takes one string; -x takes the rest of argv.
+	"terminator": {"-x"},
 }
 
 func TerminalCommand(getenv func(string) string, onPath func(string) bool, command []string) ([]string, error) {

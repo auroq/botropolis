@@ -190,7 +190,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - README with screenshots from `docs/screenshots/`, a 30-second GIF, and the shell helper up front.
 - Wayland check (Ebitengine via GLFW/X11 under XWayland today); note it.
 - First-run: `botropolis doctor` reports daemon, hooks, terminal, harnesses.
-- Done 2026-09-18 (r93–r94) except publishing, which is Aria's call; see DESIGN.md "Ship". `--headless` was added for screenshots and recordings that never open a window.
+- Done 2026-09-18 (r93–r95) except publishing, which is Aria's call; see DESIGN.md "Ship". `--headless` was added for screenshots and recordings that never open a window.
 
 ## 5. DESIGN.md's open questions, answered
 
@@ -231,5 +231,4 @@ Things noticed while building that are not in a phase; each is a question for Ar
 - **Container colour means nothing.** The storage yard's green/red/blue containers are kit variants. Colour by project (the yard becomes legible without hovering) or all parked-slate?
 - **Tower labels overlap on the ridge.** Apply the phase 10 plate rule to towers: name on hover, or only while in use.
 - **The park belt reads as a hedge.** One tree sprite in a grid; a second variant and a seeded in-cell offset placed by the plan would read as a park.
-- **Terminator is not a known terminal.** Its `-e` takes one string and `-x` takes the rest of argv, so the `-e` fallback breaks `claude attach <id>`; add it to `knownTerminals` with `{"-x"}` (Aria's config carries `terminal = "terminator -x"` meanwhile).
 - **The plant's amber band is the kit's.** Amber is needs-you; tint the plant's band to the plant's own tone so the one colour keeps its meaning.
