@@ -549,14 +549,28 @@ func PowerSince(transcripts []claude.Transcript, since time.Time) Power {
 	return power
 }
 
+// derive picks a live session's state. The record's own status is the
+// CLI's word and wins over the transcript tail: an idle session needs you
+// (or is waiting on its own watch), a busy one is working unless it is
+// blocked in a question only you can answer. The tail alone decides for a
+// record that carries no status.
 func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive, isAttached bool) State {
 	if !isAlive {
 		return Parked
 	}
-	if !hasTranscript || turn == claude.TurnUnknown {
-		if r.Status == claude.StatusIdle {
+	switch r.Status {
+	case claude.StatusIdle:
+		if turn == claude.TurnWaiting {
+			return Waiting
+		}
+		return NeedsYou
+	case claude.StatusBusy:
+		if turn == claude.TurnNeedsInput {
 			return NeedsYou
 		}
+		return busy(r, isAttached)
+	}
+	if !hasTranscript {
 		return Working
 	}
 	switch turn {
@@ -565,6 +579,10 @@ func derive(r claude.SessionRecord, turn claude.Turn, hasTranscript, isAlive, is
 	case claude.TurnWaiting:
 		return Waiting
 	}
+	return busy(r, isAttached)
+}
+
+func busy(r claude.SessionRecord, isAttached bool) State {
 	if r.Kind == claude.KindBackground && !isAttached {
 		return Unattended
 	}

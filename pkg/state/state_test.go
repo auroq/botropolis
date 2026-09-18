@@ -686,3 +686,65 @@ func TestSessionDoing(t *testing.T) {
 		})
 	})
 }
+
+func TestRecordStatus(t *testing.T) {
+	t.Run("when the record says idle while the tail says mid-turn", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusIdle)},
+			[]claude.Transcript{transcript(sidA, claude.TurnWorking)}, nil, alive)[0]
+
+		t.Run("it should need you", func(t *testing.T) {
+			assert.Equal(t, state.NeedsYou, session.State)
+		})
+	})
+
+	t.Run("when the record says idle while the tail is waiting on its watch", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusIdle)},
+			[]claude.Transcript{transcript(sidA, claude.TurnWaiting)}, nil, alive)[0]
+
+		t.Run("it should be waiting", func(t *testing.T) {
+			assert.Equal(t, state.Waiting, session.State)
+		})
+	})
+
+	t.Run("when an interactive record says busy while the tail awaits the user", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindInteractive, claude.StatusBusy)},
+			[]claude.Transcript{transcript(sidA, claude.TurnAwaitingUser)}, nil, alive)[0]
+
+		t.Run("it should be working", func(t *testing.T) {
+			assert.Equal(t, state.Working, session.State)
+		})
+	})
+
+	t.Run("when a background record says busy while the tail awaits the user with no terminal attached", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusBusy)},
+			[]claude.Transcript{transcript(sidA, claude.TurnAwaitingUser)}, nil, alive)[0]
+
+		t.Run("it should be unattended", func(t *testing.T) {
+			assert.Equal(t, state.Unattended, session.State)
+		})
+	})
+
+	t.Run("when the record says busy while the tail needs input", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusBusy)},
+			[]claude.Transcript{transcript(sidA, claude.TurnNeedsInput)}, nil, alive)[0]
+
+		t.Run("it should need you", func(t *testing.T) {
+			assert.Equal(t, state.NeedsYou, session.State)
+		})
+	})
+
+	t.Run("when the record has no status while the tail awaits the user", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, "")},
+			[]claude.Transcript{transcript(sidA, claude.TurnAwaitingUser)}, nil, alive)[0]
+
+		t.Run("it should need you", func(t *testing.T) {
+			assert.Equal(t, state.NeedsYou, session.State)
+		})
+	})
+}

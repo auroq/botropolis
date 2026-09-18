@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/testing/helpers"
 	"github.com/stretchr/testify/assert"
@@ -64,7 +65,7 @@ func TestLoader(t *testing.T) {
 			})
 
 			t.Run("it should reflect the new tail", func(t *testing.T) {
-				assert.Equal(t, state.Working, sessionByID(t, snapshot, sidA).State)
+				assert.Equal(t, claude.TurnWorking, sessionByID(t, snapshot, sidA).Turn)
 			})
 		})
 	})

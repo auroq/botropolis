@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,17 @@ const (
 		`"message":{"id":"msg_01","model":"claude-opus-5[1m]","role":"assistant","stop_reason":"end_turn",` +
 		`"content":[{"type":"text","text":"hello"}],"usage":{"input_tokens":2,"output_tokens":5,"cache_read_input_tokens":100000}}}
 {"type":"ai-title","aiTitle":"Fix the CI queue","sessionId":"` + sidA + `"}
+`
+	bookkeepingTail = `{"type":"system","subtype":"compact_boundary","isSidechain":false,"timestamp":"2026-09-16T20:01:32.136Z","sessionId":"` + sidA + `","content":"Conversation compacted"}
+{"type":"user","isSidechain":false,"isMeta":true,"timestamp":"2026-09-16T20:01:32.112Z","sessionId":"` + sidA + `","message":{"role":"user","content":"<summary>"}}
+{"type":"user","isSidechain":false,"timestamp":"2026-09-16T20:01:32.234Z","sessionId":"` + sidA + `","message":{"role":"user","content":"carry on"}}
+{"type":"attachment","sessionId":"` + sidA + `","timestamp":"2026-09-16T20:01:32.240Z","attachment":{"type":"skill_listing"}}
+{"type":"last-prompt","sessionId":"` + sidA + `","lastPrompt":"carry on"}
+{"type":"agent-name","sessionId":"` + sidA + `","agentName":"record name"}
+{"type":"mode","sessionId":"` + sidA + `","mode":"default"}
+{"type":"permission-mode","sessionId":"` + sidA + `","permissionMode":"default"}
+{"type":"atis-latch","sessionId":"` + sidA + `","atis":true}
+{"type":"worktree-state","sessionId":"` + sidA + `","worktreeSession":null}
 `
 )
 
@@ -65,6 +77,25 @@ func TestLoad(t *testing.T) {
 		})
 	})
 
+	t.Run("when an idle background record's transcript ends in fresh bookkeeping after a prompt with no hand-back", func(t *testing.T) {
+		home := writeHome(t, 4242)
+		rewrite(t, filepath.Join(home, ".claude", "sessions", "4242.json"),
+			`"kind":"interactive"`, `"kind":"bg","jobId":"0898d7e4"`)
+		appendFile(t, filepath.Join(home, ".claude", "projects", "-home-avesta-workspaces-github-mCedar-cinders", sidA+".jsonl"), bookkeepingTail)
+
+		snapshot, err := state.Load(home, alive, now)
+		require.NoError(t, err)
+		require.Len(t, snapshot.Sessions, 1)
+
+		t.Run("it should need you", func(t *testing.T) {
+			assert.Equal(t, state.NeedsYou, snapshot.Sessions[0].State)
+		})
+
+		t.Run("it should keep the tail's turn for the card", func(t *testing.T) {
+			assert.Equal(t, claude.TurnWorking, snapshot.Sessions[0].Turn)
+		})
+	})
+
 	t.Run("when a background job's pty socket has a client connected", func(t *testing.T) {
 		home := writeHome(t, 4242)
 		sock := listenAndDial(t)
@@ -73,6 +104,7 @@ func TestLoad(t *testing.T) {
 			[]byte(`{"workers":{"0898d7e4":{"sessionId":"`+sidA+`","ptySock":"`+sock+`"}}}`), 0o600))
 		rewrite(t, filepath.Join(home, ".claude", "sessions", "4242.json"),
 			`"kind":"interactive"`, `"kind":"bg","jobId":"0898d7e4"`)
+		rewrite(t, filepath.Join(home, ".claude", "sessions", "4242.json"), `"status":"idle"`, `"status":"busy"`)
 		rewrite(t, filepath.Join(home, ".claude", "projects", "-home-avesta-workspaces-github-mCedar-cinders", sidA+".jsonl"),
 			`"stop_reason":"end_turn"`, `"stop_reason":"tool_use"`)
 
@@ -145,6 +177,15 @@ func listenAndDial(t *testing.T) string {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = client.Close() })
 	return sock
+}
+
+func appendFile(t *testing.T, path, lines string) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o600)
+	require.NoError(t, err)
+	_, err = f.WriteString(lines)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
 }
 
 func rewrite(t *testing.T, path, old, replacement string) {

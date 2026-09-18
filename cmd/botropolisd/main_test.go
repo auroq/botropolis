@@ -112,7 +112,7 @@ func TestRun(t *testing.T) {
 					}
 					defer func() { _ = client.Close() }()
 					snapshot, err := client.Snapshot()
-					return err == nil && len(snapshot.Sessions) == 1 && snapshot.Sessions[0].State == "working"
+					return err == nil && len(snapshot.Sessions) == 1 && snapshot.Sessions[0].Turn == "working"
 				}, 3*time.Second, 20*time.Millisecond)
 			})
 		})

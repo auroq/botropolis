@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/daemon"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/testing/helpers"
@@ -50,10 +51,10 @@ func TestWatch(t *testing.T) {
 		watch(t, d)
 		home.AppendTranscript(sid, cwd, helpers.UserPrompt(sid, cwd, stamp(time.Minute)))
 
-		t.Run("it should re-read it and update the state", func(t *testing.T) {
+		t.Run("it should re-read it and update the tail", func(t *testing.T) {
 			assert.Eventually(t, func() bool {
 				s, _ := session(d, sid)
-				return s.State == state.Working
+				return s.Turn == claude.TurnWorking
 			}, settle, tick)
 		})
 	})
