@@ -8,35 +8,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsoStoreys(t *testing.T) {
-	cases := map[float64]int{0: 1, 0.1: 1, 0.34: 2, 0.5: 3, 0.84: 4, 1: 4}
-	for fill, want := range cases {
-		t.Run("when the context fill is "+formatFill(fill), func(t *testing.T) {
-			t.Run("it should stand the right number of storeys", func(t *testing.T) {
-				assert.Equal(t, want, isoStoreys(fill))
-			})
-		})
-	}
-}
-
-func formatFill(f float64) string {
-	return string(rune('0'+int(f*10))) + "0%"
-}
-
-func TestCarDirection(t *testing.T) {
+func TestCarTurn(t *testing.T) {
 	cases := map[string]struct {
 		d    city.Point
-		want string
+		want int
 	}{
-		"along +x": {city.Point{X: 1}, "SE"},
-		"along -x": {city.Point{X: -1}, "NW"},
-		"along +y": {city.Point{Y: 1}, "SW"},
-		"along -y": {city.Point{Y: -1}, "NE"},
+		"along +y": {city.Point{Y: 1}, 0},
+		"along -y": {city.Point{Y: -1}, 180},
+		"along +x": {city.Point{X: 1}, 270},
+		"along -x": {city.Point{X: -1}, 90},
 	}
 	for name, c := range cases {
 		t.Run("when a car drives "+name, func(t *testing.T) {
-			t.Run("it should face the pack's diagonal for that axis", func(t *testing.T) {
-				assert.Equal(t, c.want, carDirection(c.d))
+			t.Run("it should turn the kit's car to face that way", func(t *testing.T) {
+				assert.Equal(t, c.want, carTurn(c.d))
 			})
 		})
 	}
@@ -137,21 +122,6 @@ func TestFootprintAndBlock(t *testing.T) {
 	t.Run("when a building is parked", func(t *testing.T) {
 		t.Run("it should be the parked colour whatever the time", func(t *testing.T) {
 			assert.Equal(t, colorMapParked, blockColor(&city.Building{BoardedUp: true}, math.Pi))
-		})
-	})
-}
-
-func TestStackRoofTop(t *testing.T) {
-	cam := city.NewCamera()
-	cam.Projection = city.Isometric
-	r := city.RectAt(0, 0, city.BuildingSize, city.BuildingSize)
-
-	t.Run("when a stack gains a storey", func(t *testing.T) {
-		one, two, three := stackRoofTop(cam, r, 1), stackRoofTop(cam, r, 2), stackRoofTop(cam, r, 3)
-
-		t.Run("it should rise by a storey's pitch each time", func(t *testing.T) {
-			assert.Less(t, two, one)
-			assert.InDelta(t, isoStoreyPitch, two-three, 1e-9)
 		})
 	})
 }

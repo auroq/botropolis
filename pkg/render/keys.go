@@ -27,7 +27,8 @@ var bindings = []ui.Key{
 	{Key: "d d", Action: "demolish the selection"},
 	{Key: "f", Action: "fit"},
 	{Key: "0", Action: "reset the view"},
-	{Key: "n", Action: "force night"},
+	{Key: "r", Action: "turn the camera"},
+	{Key: "n", Action: "night, day, auto"},
 	{Key: "s", Action: "settings"},
 	{Key: "b", Action: "sidebar"},
 	{Key: "h", Action: "hide the UI"},
@@ -91,15 +92,21 @@ func (g *Game) handleKeys() error {
 	if just(ebiten.KeyEnter) {
 		g.act(g.scene.Activate())
 	}
+	if just(ebiten.KeyR) {
+		g.SetStatus(fmt.Sprintf("heading %d°", g.scene.Turn()))
+	}
 	if just(ebiten.KeyC) {
 		action, note := g.scene.NewHere()
 		g.SetStatus(note)
 		g.act(action)
 	}
 	if just(ebiten.KeyN) {
-		if g.scene.ToggleNight() {
-			g.SetStatus("night: forced on (n to release)")
-		} else {
+		switch g.scene.CycleLight() {
+		case city.LightNight:
+			g.SetStatus("light: night (n again for day)")
+		case city.LightDay:
+			g.SetStatus("light: day (n again to follow the sessions)")
+		default:
 			g.SetStatus("")
 		}
 	}

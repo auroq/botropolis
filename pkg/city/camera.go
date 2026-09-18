@@ -34,25 +34,106 @@ func (c *Camera) Pan(delta Point) {
 }
 
 func (c *Camera) WorldToScreen(p Point) Point {
-	return c.Projection.Apply(p).Add(c.Offset).Scale(c.Zoom)
+	return c.Project(p).Add(c.Offset).Scale(c.Zoom)
 }
 
 func (c *Camera) ScreenToWorld(p Point) Point {
-	return c.Projection.Invert(p.Scale(1 / c.Zoom).Sub(c.Offset))
+	return c.Unproject(p.Scale(1 / c.Zoom).Sub(c.Offset))
+}
+
+// turn spins a world point a quarter turn per 90 degrees of heading
+// about the origin, so the same map can be looked at from four sides.
+func (c *Camera) turn(p Point) Point {
+	switch ((c.Heading/90)%4 + 4) % 4 {
+	case 1:
+		return Point{X: -p.Y, Y: p.X}
+	case 2:
+		return Point{X: -p.X, Y: -p.Y}
+	case 3:
+		return Point{X: p.Y, Y: -p.X}
+	}
+	return p
+}
+
+func (c *Camera) unturn(p Point) Point {
+	switch ((c.Heading/90)%4 + 4) % 4 {
+	case 1:
+		return Point{X: p.Y, Y: -p.X}
+	case 2:
+		return Point{X: -p.X, Y: -p.Y}
+	case 3:
+		return Point{X: -p.Y, Y: p.X}
+	}
+	return p
+}
+
+// Project takes a world point onto the map plane as the camera faces it.
+func (c *Camera) Project(p Point) Point {
+	return c.Projection.Apply(c.turn(p))
+}
+
+// Unproject takes a map-plane point back to the world.
+func (c *Camera) Unproject(m Point) Point {
+	return c.unturn(c.Projection.Invert(m))
+}
+
+// Corners is a world rectangle's outline on the map plane as the camera
+// faces it, in the rectangle's own corner order.
+func (c *Camera) Corners(r Rect) [4]Point {
+	return [4]Point{
+		c.Project(r.Min),
+		c.Project(Point{X: r.Max.X, Y: r.Min.Y}),
+		c.Project(r.Max),
+		c.Project(Point{X: r.Min.X, Y: r.Max.Y}),
+	}
+}
+
+// Bounds is the map-plane box around a projected world rectangle.
+func (c *Camera) Bounds(r Rect) Rect {
+	corners := c.Corners(r)
+	out := Rect{Min: corners[0], Max: corners[0]}
+	for _, p := range corners[1:] {
+		out.Min.X = math.Min(out.Min.X, p.X)
+		out.Min.Y = math.Min(out.Min.Y, p.Y)
+		out.Max.X = math.Max(out.Max.X, p.X)
+		out.Max.Y = math.Max(out.Max.Y, p.Y)
+	}
+	return out
+}
+
+// Depth orders what is drawn back to front for this heading: the
+// larger, the nearer the viewer.
+func (c *Camera) Depth(p Point) float64 {
+	t := c.turn(p)
+	return t.X + t.Y
+}
+
+// Turn faces the camera a quarter turn on, keeping the world point under
+// a screen point where it is.
+func (c *Camera) Turn(quarters int, pivot Point) {
+	world := c.ScreenToWorld(pivot)
+	c.Heading = ((c.Heading+90*quarters)%360 + 360) % 360
+	c.Offset = pivot.Scale(1 / c.Zoom).Sub(c.Project(world))
 }
 
 // ZoomAt steps the zoom up (factor > 1) or down the ladder, keeping the
 // world point under the cursor where it is.
 func (c *Camera) ZoomAt(cursor Point, factor float64) {
-	before := c.ScreenToWorld(cursor)
 	if factor > 1 {
-		c.Zoom = stepAbove(c.Zoom)
+		c.SetZoomAt(cursor, stepAbove(c.Zoom))
 	} else {
-		c.Zoom = stepBelow(c.Zoom)
+		c.SetZoomAt(cursor, stepBelow(c.Zoom))
 	}
+}
+
+// SetZoomAt sets the zoom, keeping the world point under the cursor
+// where it is.
+func (c *Camera) SetZoomAt(cursor Point, zoom float64) {
+	before := c.ScreenToWorld(cursor)
+	c.Zoom = zoom
 	after := c.ScreenToWorld(cursor)
 	// Offset lives on the map plane, so the world shift is projected first.
-	c.Offset = c.Offset.Add(c.Projection.Apply(after).Sub(c.Projection.Apply(before)))
+	c.Offset = c.Offset.Add(c.Project(after).Sub(c.Project(before)))
 }
 
 const zoomEpsilon = 1e-9
@@ -98,7 +179,7 @@ type Insets struct {
 }
 
 func (c *Camera) FitWithInsets(bounds Rect, width, height float64, in Insets) {
-	bounds = c.Projection.Bounds(bounds)
+	bounds = c.Bounds(bounds)
 	if bounds.Width() <= 0 || bounds.Height() <= 0 || width <= 0 || height <= 0 {
 		return
 	}

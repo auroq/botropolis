@@ -27,9 +27,9 @@ var (
 	kitLibrary  = "city-kit-commercial/building-l"
 	kitTower    = "city-kit-industrial/water-tower"
 	kitLamp     = "city-kit-roads/light-square"
-	kitParkTree = "nature-kit/tree_default"
-	kitBeltTree = "nature-kit/tree_pineTallA"
-	kitOakTree  = "nature-kit/tree_oak"
+	kitCars     = []string{"car-kit/sedan", "car-kit/van", "car-kit/taxi", "car-kit/suv", "car-kit/hatchback-sports", "car-kit/delivery"}
+	kitParkTree = "city-kit-suburban/tree-small"
+	kitBeltTree = "city-kit-suburban/tree-large"
 )
 
 func hashID(id string) uint32 {

@@ -90,16 +90,14 @@ A waybar module, for example:
 
 ## Thanks
 
-The city is drawn with tiles by [Kenney](https://kenney.nl) — the isometric Buildings, City, Landscape and Vehicles packs,
-Roads, and Tiny Town, Tiny Factory and Roguelike Modern City for the top-down view (`--projection top`), all CC0.
-A resource strip along the top keeps the city-wide tallies in view: sessions by state, token rates, cost and cache hit rate over 24 h, MCP calls, PRs, errors.
-Streets between districts are autotiled from the road pack with cars for traffic (one per street, up to three with traffic; never faster); power lines run on poles with sparks for token flow; context fill is the number of storeys.
-At night — whenever something runs unattended — the map dims and every building with a session awake in it shows lit windows.
-The map is a city plan: a plaza in the middle with the plant, hall, library and a fountain,
-live projects on the ring of blocks around it, one storage district along the south for every parked session grouped by project,
-towers on a ridge along the north, park blocks wherever no project is, a belt of park round the lot and the river as the east edge.
-Every tree and lamp is where the plan put it.
-Thank you, Kenney; see [`pkg/assets/kenney/README.md`](pkg/assets/kenney/README.md) for the packs, versions and terms,
+The city is drawn from [Kenney](https://kenney.nl)'s 3D kits — City Kit Commercial, Roads, Industrial and Suburban, and the Car Kit, all CC0 —
+pre-rendered once in Blender by `tools/render-sprites` into the atlases under `pkg/assets/kits/` (four headings, two zoom levels),
+the way Factorio ships its sprites: the runtime only ever draws 2D.
+A session's building grows with its context window; a parked session is a shipping container in the storage district;
+the plant, city hall and library stand on the plaza; avenues, lamps and trees are placed by the city plan.
+`r` turns the camera a quarter at a time.
+The 16 px Tiny Town, Tiny Factory and Roguelike Modern City packs remain behind `--projection top`.
+Thank you, Kenney; see [`pkg/assets/kenney/README.md`](pkg/assets/kenney/README.md) and [`pkg/assets/kits/README.md`](pkg/assets/kits/README.md) for the packs, versions and terms,
 and [support the studio](https://kenney.nl/donate) if the work helps you too.
 
 The chrome is set in [Inter](https://rsms.me/inter/) by Rasmus Andersson, embedded from `pkg/assets/fonts` under the SIL Open Font License 1.1

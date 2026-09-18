@@ -152,6 +152,8 @@ func (g *Game) Update() error {
 		return ebiten.Termination
 	}
 
+	g.scene.SetInstant(g.reduced || g.screenshot != "")
+	g.scene.Animate(1.0 / 30)
 	x, y := ebiten.CursorPosition()
 	cursor := city.Point{X: float64(x), Y: float64(y)}
 	g.scene.PointerMove(cursor)
@@ -717,7 +719,7 @@ func gaugeColor(fill float64) color.NRGBA {
 }
 
 func pulse(c color.NRGBA, seconds float64) color.NRGBA {
-	t := 0.55 + 0.45*math.Sin(2*math.Pi*seconds/pulsePeriod)
+	t := 0.72 + 0.28*math.Sin(2*math.Pi*seconds/pulsePeriod)
 	scale := func(v uint8) uint8 { return uint8(math.Round(float64(v) * t)) }
 	return color.NRGBA{scale(c.R), scale(c.G), scale(c.B), c.A}
 }

@@ -8,8 +8,6 @@ import (
 	"github.com/auroq/botropolis/pkg/state"
 )
 
-const wheelZoomStep = 1.2
-
 type ActionKind string
 
 const (
@@ -36,22 +34,47 @@ type Action struct {
 	Dir       string
 }
 
+// Light is how the scene decides night: from the sessions, or forced
+// either way.
+type Light int
+
+const (
+	LightAuto Light = iota
+	LightNight
+	LightDay
+)
+
+func (l Light) String() string {
+	switch l {
+	case LightNight:
+		return "night"
+	case LightDay:
+		return "day"
+	}
+	return "auto"
+}
+
 type Scene struct {
-	snapshot   state.Snapshot
-	forceNight bool
-	topChrome  float64
-	bottom     float64
-	left       float64
-	layout     *Layout
-	camera     *Camera
-	city       *City
-	hover      Hit
-	selected   *Building
-	width      float64
-	height     float64
-	touched    bool
-	armed      string
-	armedAt    time.Time
+	snapshot  state.Snapshot
+	light     Light
+	topChrome float64
+	bottom    float64
+	left      float64
+	layout    *Layout
+	camera    *Camera
+	city      *City
+	hover     Hit
+	selected  *Building
+	width     float64
+	height    float64
+	touched   bool
+	armed     string
+	armedAt   time.Time
+	// zoomTarget is where the wheel is taking the zoom; Animate eases the
+	// camera there about zoomAnchor, or Instant snaps it.
+	zoomTarget float64
+	zoomAnchor Point
+	instant    bool
 }
 
 func NewScene(layout *Layout) *Scene {
@@ -64,15 +87,28 @@ func (s *Scene) City() *City {
 
 // ToggleNight forces night on or off regardless of what is running, to
 // see the city lit; the next snapshot keeps the override.
-func (s *Scene) ToggleNight() bool {
-	s.forceNight = !s.forceNight
+// CycleLight steps the light auto → night → day → auto and says where
+// it landed.
+func (s *Scene) CycleLight() Light {
+	s.light = (s.light + 1) % 3
 	s.applyNight()
-	return s.forceNight
+	return s.light
+}
+
+// ToggleNight is the old n key: on the first press the city is night.
+func (s *Scene) ToggleNight() bool {
+	return s.CycleLight() == LightNight
 }
 
 func (s *Scene) applyNight() {
-	if s.forceNight && s.city != nil {
+	if s.city == nil {
+		return
+	}
+	switch s.light {
+	case LightNight:
 		s.city.Night = true
+	case LightDay:
+		s.city.Night = false
 	}
 }
 
@@ -106,6 +142,7 @@ func (s *Scene) Resize(width, height float64) {
 }
 
 func (s *Scene) Fit() {
+	s.zoomTarget = 0
 	s.touched = false
 	s.fit()
 }
@@ -132,9 +169,11 @@ func (s *Scene) LabelsVisible() bool {
 const (
 	// DetailZoom is where sprites take over from the map view's flat blocks.
 	DetailZoom = 0.75
-	// IsoDetailZoom is the same for the isometric view, whose tiles are
+	// IsoDetailZoom is the same for the isometric view, whose kit sprites
+	// hold up much further out, so the fit view already shows them; below
+	// it the map view's flat blocks take over. Its tiles are
 	// 132 px wide and so read at half the zoom.
-	IsoDetailZoom = 0.5
+	IsoDetailZoom = 0.2
 	// TitleZoom is where each building gets its title written under it.
 	TitleZoom = 1.5
 	// DistrictLabelMinWidth is the narrowest a district may be on screen
@@ -214,7 +253,7 @@ type Minimap struct {
 }
 
 func (s *Scene) Minimap(box Rect) Minimap {
-	bounds := s.camera.Projection.Bounds(s.city.Extent())
+	bounds := s.camera.Bounds(s.city.Extent())
 	if bounds.Width() <= 0 || bounds.Height() <= 0 {
 		return Minimap{Box: box}
 	}
@@ -332,19 +371,58 @@ func (s *Scene) Pan(delta Point) {
 	s.clamp()
 }
 
+// Wheel steps the zoom target up or down the ladder about the cursor;
+// the camera eases there over the next ticks, or jumps when motion is
+// reduced.
 func (s *Scene) Wheel(cursor Point, amount float64) {
 	if amount == 0 {
 		return
 	}
 	s.touched = true
-	s.camera.ZoomAt(cursor, math.Pow(wheelZoomStep, amount))
+	target := s.camera.Zoom
+	if s.zoomTarget > 0 {
+		target = s.zoomTarget
+	}
+	steps := int(math.Abs(amount) + 0.5)
+	for i := 0; i < steps; i++ {
+		if amount > 0 {
+			target = stepAbove(target)
+		} else {
+			target = stepBelow(target)
+		}
+	}
+	s.zoomTarget, s.zoomAnchor = target, cursor
+	if s.instant {
+		s.Animate(1)
+	}
+}
+
+// SetInstant makes every zoom jump instead of ease, for reduced motion.
+func (s *Scene) SetInstant(instant bool) {
+	s.instant = instant
+}
+
+// Animate moves the camera toward its zoom target, dt seconds on: most
+// of the way each tick, and all the way once it is close.
+func (s *Scene) Animate(dt float64) {
+	if s.zoomTarget <= 0 || s.zoomTarget == s.camera.Zoom {
+		return
+	}
+	zoom := s.camera.Zoom + (s.zoomTarget-s.camera.Zoom)*math.Min(1, dt*zoomEase)
+	if math.Abs(s.zoomTarget-zoom) < 0.002*s.zoomTarget {
+		zoom = s.zoomTarget
+	}
+	s.camera.SetZoomAt(s.zoomAnchor, zoom)
 	s.clamp()
 }
+
+// zoomEase is the fraction of the remaining zoom covered per second.
+const zoomEase = 12.0
 
 // clamp keeps the map under the middle of the window: the camera can
 // reach the edge but never leave the plan for the void beyond it.
 func (s *Scene) clamp() {
-	plane := s.camera.Projection.Bounds(s.city.Extent())
+	plane := s.camera.Bounds(s.city.Extent())
 	if plane.Area() == 0 {
 		return
 	}
@@ -395,7 +473,7 @@ func (s *Scene) CenterOn(world Point) {
 	}
 	in := s.Insets()
 	target := Point{X: in.Left + (s.width-in.Left-in.Right)/2, Y: in.Top + (s.height-in.Top-in.Bottom)/2}
-	s.camera.Offset = target.Scale(1 / s.camera.Zoom).Sub(s.camera.Projection.Apply(world))
+	s.camera.Offset = target.Scale(1 / s.camera.Zoom).Sub(s.camera.Project(world))
 }
 
 func (s *Scene) Click(screen Point) Action {
@@ -485,6 +563,14 @@ func (s *Scene) CenterOnProject(root string) bool {
 		}
 	}
 	return false
+}
+
+// Turn faces the camera a quarter turn on about the middle of the window.
+func (s *Scene) Turn() int {
+	s.touched = true
+	s.camera.Turn(1, s.Size().Scale(0.5))
+	s.clamp()
+	return s.camera.Heading
 }
 
 // Unhide puts a hidden project back on the map.

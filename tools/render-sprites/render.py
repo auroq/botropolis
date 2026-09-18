@@ -51,8 +51,13 @@ PIECES = {
     "city-kit-roads": ["road-straight", "road-bend", "road-crossroad", "road-intersection", "road-end", "road-square",
                        "light-square", "light-curved", "electricity-pole", "electricity-wires", "traffic-light", "construction-cone"],
     "city-kit-suburban": ["tree-large", "tree-small"],
-    "nature-kit": ["tree_pineTallA", "tree_pineRoundA", "tree_default", "tree_oak", "tree_cone"],
+    "car-kit": ["sedan", "van", "taxi", "suv", "hatchback-sports", "truck", "delivery"],
 }
+
+# Kits that are not modelled at one unit per cell are scaled on import:
+# the Car Kit is in metres, a sedan 2.5 long, and a car on the map is a
+# third of a cell.
+SCALE = {"car-kit": 0.12}
 
 GRASS = (0.22, 0.33, 0.17, 1)
 PLAZA = (0.54, 0.53, 0.49, 1)
@@ -97,6 +102,9 @@ def piece(kits, kit, name, at, turn=0.0):
             o.parent = root
     root.location = Vector((at[0], at[1], at[2] if len(at) > 2 else 0))
     root.rotation_euler = (0, 0, math.radians(turn))
+    k = SCALE.get(kit, 1.0)
+    root.scale = (k, k, k)
+    bpy.context.view_layer.update()
     return root
 
 

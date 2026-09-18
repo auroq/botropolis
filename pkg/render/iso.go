@@ -8,7 +8,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
-	"github.com/auroq/botropolis/pkg/assets"
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/pkg/ui"
@@ -17,44 +16,13 @@ import (
 // Kenney's isometric building pack stacks: a 132 px ground floor with a
 // plinth, 99 px upper storeys and a 99 px roof on top. These are the sprite
 // names and the pixel offsets that make the pieces meet at zoom 1.
-const (
-	isoGrass       = "landscapeTiles_067.png"
-	isoTreeScale   = 1.8 // the road pack's trees are small; scaled to read as trees
-	isoFloorWork   = "buildingTiles_116.png"
-	isoFloorNeeds  = "buildingTiles_030.png"
-	isoFloorUnatt  = "buildingTiles_003.png"
-	isoFloorIdle   = "buildingTiles_003.png"
-	isoShed        = "buildingTiles_056.png"
-	isoStorey      = "buildingTiles_048.png"
-	isoRoof        = "buildingTiles_057.png"
-	isoRoofNeeds   = "buildingTiles_060.png"
-	isoPlant       = "buildingTiles_092.png"
-	isoPlantStorey = "buildingTiles_052.png"
-	isoRoofDome    = "buildingTiles_105.png"
-	isoRoofFlat    = "buildingTiles_120.png"
-	isoTower       = "buildingTiles_085.png"
-	isoLibrary     = "buildingTiles_123.png"
-	isoHall        = "buildingTiles_114.png"
-	isoPlinthLift  = 82.0 // ground tile bottom to first storey bottom
-	isoStoreyPitch = 40.0 // a storey's walls: each storey sits this much above the last
-	isoRoofSeat    = 50.0 // the roof's bottom edge sits this far below the top of the piece under it
-	maxIsoCells    = 24_000
-	maxStoreys     = 4
-)
 
-var (
-	colorIsoNight = color.NRGBA{0x2a, 0x33, 0x2a, 0xff}
-)
-
-// isoStoreys is how tall a building stands for its context fill.
-func isoStoreys(fill float64) int {
-	return 1 + min(maxStoreys-1, int(math.Round(fill*(maxStoreys-1))))
-}
+var ()
 
 // poly fills a world rectangle as its projected outline.
 func (g *Game) poly(screen *ebiten.Image, cam *city.Camera, r city.Rect, c color.NRGBA) {
 	var path vector.Path
-	for i, corner := range cam.Projection.Corners(r) {
+	for i, corner := range cam.Corners(r) {
 		p := corner.Add(cam.Offset).Scale(cam.Zoom)
 		if i == 0 {
 			path.MoveTo(float32(p.X), float32(p.Y))
@@ -70,7 +38,7 @@ func (g *Game) poly(screen *ebiten.Image, cam *city.Camera, r city.Rect, c color
 
 func (g *Game) polyStroke(screen *ebiten.Image, cam *city.Camera, r city.Rect, width float32, c color.NRGBA) {
 	var path vector.Path
-	for i, corner := range cam.Projection.Corners(r) {
+	for i, corner := range cam.Corners(r) {
 		p := corner.Add(cam.Offset).Scale(cam.Zoom)
 		if i == 0 {
 			path.MoveTo(float32(p.X), float32(p.Y))
@@ -103,9 +71,16 @@ func (g *Game) drawSprite(screen *ebiten.Image, img *ebiten.Image, at city.Point
 // footprint is the projected diamond of a world rect: its top corner and
 // its width on screen.
 func footprint(cam *city.Camera, r city.Rect) (top city.Point, width float64) {
-	c := cam.Projection.Corners(r)
+	c := cam.Corners(r)
 	top = cam.WorldToScreen(r.Min)
-	width = (c[1].X - c[3].X) * cam.Zoom
+	minX, maxX := c[0].X, c[0].X
+	for _, p := range c {
+		minX, maxX = math.Min(minX, p.X), math.Max(maxX, p.X)
+		if sp := cam.WorldToScreen(cam.Unproject(p)); sp.Y < top.Y {
+			top = sp
+		}
+	}
+	width = (maxX - minX) * cam.Zoom
 	return top, width
 }
 
@@ -122,7 +97,7 @@ func (g *Game) isoGround(screen *ebiten.Image, cam *city.Camera, c *city.City, w
 	}
 	grass, water := colorKitGrass, colorKitWater
 	if c.Night {
-		grass, water = colorIsoNight, colorWaterNight
+		grass, water = ui.DefaultPalette.GroundNight, colorWaterNight
 	}
 	g.poly(screen, cam, bounds, grass)
 	for _, rc := range c.RiverCells {
@@ -321,19 +296,6 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	}
 }
 
-// stackRoofTop is where a stack's roof ends up on screen, from the same
-// offsets isoStack draws with, so labels can sit above the roof.
-func stackRoofTop(cam *city.Camera, r city.Rect, storeys int) float64 {
-	top, w := footprint(cam, r)
-	scale := w / assets.IsoTileWidth
-	bottom := top.Y + w/2 + 33*scale
-	pieceTop := bottom - 127*scale
-	if storeys >= 2 {
-		pieceTop = bottom - (167+40*float64(storeys-2))*scale
-	}
-	return pieceTop - 10*scale
-}
-
 // isoLandmark draws a kit piece standing on a world rect's centre.
 func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, name string, tint *ebiten.ColorScale) {
 	if g.kits == nil {
@@ -367,39 +329,39 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	var items []drawable
 	for _, l := range c.Lamps {
 		l := l
-		items = append(items, drawable{depth: l.Center().X + l.Center().Y, draw: func() {
+		items = append(items, drawable{depth: cam.Depth(l.Center()), draw: func() {
 			g.lamp(screen, cam, l, c.Night)
 		}})
 	}
 	for _, d := range c.Districts {
 		for _, b := range d.Buildings {
 			b := b
-			items = append(items, drawable{depth: b.Rect.Max.X + b.Rect.Max.Y, draw: func() {
+			items = append(items, drawable{depth: cam.Depth(b.Rect.Max), draw: func() {
 				g.isoBuilding(screen, cam, b, b == selected, detailed, seconds)
 			}})
 		}
 	}
 	for _, car := range g.cars(c, seconds) {
 		car := car
-		items = append(items, drawable{depth: car.at.X + car.at.Y, draw: func() {
+		items = append(items, drawable{depth: cam.Depth(car.at), draw: func() {
 			g.drawCar(screen, cam, car)
 		}})
 	}
 	if c.Plant.Rect.Area() > 0 {
-		items = append(items, drawable{depth: c.Plant.Rect.Max.X + c.Plant.Rect.Max.Y, draw: func() {
+		items = append(items, drawable{depth: cam.Depth(c.Plant.Rect.Max), draw: func() {
 			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, nil)
 			g.kit(screen, cam, kitStack, 0, city.Point{X: c.Plant.Rect.Max.X - city.Tile, Y: c.Plant.Rect.Max.Y - city.Tile}, nil)
 		}})
 	}
 	for _, t := range c.Trees {
 		t := t
-		items = append(items, drawable{depth: t.Center().X + t.Center().Y, draw: func() {
+		items = append(items, drawable{depth: cam.Depth(t.Center()), draw: func() {
 			g.isoTree(screen, cam, t, nil)
 		}})
 	}
 	for _, t := range c.Towers {
 		t := t
-		items = append(items, drawable{depth: t.Rect.Max.X + t.Rect.Max.Y, draw: func() {
+		items = append(items, drawable{depth: cam.Depth(t.Rect.Max), draw: func() {
 			tint := &ebiten.ColorScale{}
 			if t.Server.Calls == 0 {
 				tint.SetR(0.6)
@@ -414,12 +376,12 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		}})
 	}
 	if c.Library.Rect.Area() > 0 {
-		items = append(items, drawable{depth: c.Library.Rect.Max.X + c.Library.Rect.Max.Y, draw: func() {
+		items = append(items, drawable{depth: cam.Depth(c.Library.Rect.Max), draw: func() {
 			g.isoLandmark(screen, cam, c.Library.Rect, kitLibrary, nil)
 		}})
 	}
 	if c.Hall.Rect.Area() > 0 {
-		items = append(items, drawable{depth: c.Hall.Rect.Max.X + c.Hall.Rect.Max.Y, draw: func() {
+		items = append(items, drawable{depth: cam.Depth(c.Hall.Rect.Max), draw: func() {
 			g.isoLandmark(screen, cam, c.Hall.Rect, kitHall, nil)
 		}})
 	}
@@ -581,17 +543,14 @@ func (g *Game) streetSigns(screen *ebiten.Image, c *city.City, cam *city.Camera,
 // Traffic: a few cars per road, more with more traffic, driving the
 // street's path kerb to kerb and back.
 const (
-	carSpeed    = 60.0 // world units per second
-	maxCars     = 3
-	carPackFrac = float64(assets.IsoTileWidth) / assets.IsoRoadTileWidth
+	carSpeed = 60.0 // world units per second
+	maxCars  = 3
 )
-
-var carModels = []string{"taxi", "carRed1", "carGreen1", "carSilver2", "carBlue1", "police"}
 
 type car struct {
 	at    city.Point
 	model string
-	dir   string
+	turn  int
 }
 
 func (g *Game) cars(c *city.City, seconds float64) []car {
@@ -616,7 +575,7 @@ func (g *Game) cars(c *city.City, seconds float64) []car {
 			if !forward {
 				dir = city.Point{X: -dir.X, Y: -dir.Y}
 			}
-			out = append(out, car{at: at, model: carModels[(i*maxCars+k)%len(carModels)], dir: carDirection(dir)})
+			out = append(out, car{at: at, model: kitCars[(i*maxCars+k)%len(kitCars)], turn: carTurn(dir)})
 		}
 	}
 	return out
@@ -645,31 +604,23 @@ func pointAlong(path []city.Point, dist float64) (city.Point, city.Point) {
 	return path[0], city.Point{X: 1}
 }
 
-// carDirection names the vehicle sprite for a world direction: the pack's
-// compass has the grid axes on its diagonals.
-func carDirection(d city.Point) string {
+// carTurn is a kit car's turn for the way it drives: the kit's cars are
+// modelled nose along +y, so that is turn 0.
+func carTurn(d city.Point) int {
 	switch {
-	case math.Abs(d.X) >= math.Abs(d.Y) && d.X > 0:
-		return "SE"
-	case math.Abs(d.X) >= math.Abs(d.Y):
-		return "NW"
-	case d.Y > 0:
-		return "SW"
+	case math.Abs(d.Y) >= math.Abs(d.X) && d.Y >= 0:
+		return 0
+	case math.Abs(d.Y) >= math.Abs(d.X):
+		return 180
+	case d.X >= 0:
+		return 270
 	default:
-		return "NE"
+		return 90
 	}
 }
 
 func (g *Game) drawCar(screen *ebiten.Image, cam *city.Camera, car car) {
-	img := g.sprites.iso.vehicles.sprite(car.model + "_" + car.dir + ".png")
-	if img == nil {
-		return
-	}
-	scale := cam.Zoom * carPackFrac
-	w := float64(img.Bounds().Dx()) * scale
-	h := float64(img.Bounds().Dy()) * scale
-	p := cam.WorldToScreen(car.at)
-	g.drawSprite(screen, img, city.Point{X: p.X - w/2, Y: p.Y - h*0.75}, scale, nil)
+	g.kit(screen, cam, car.model, car.turn, car.at, nil)
 }
 
 // Night: the wash dims everything, then every building with a session

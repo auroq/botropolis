@@ -22,7 +22,9 @@ func shoot(t *testing.T, home, scale string) image.Image {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "city-"+scale+"x.png")
 	socket := filepath.Join(t.TempDir(), "none.sock")
-	out, err := exec.Command(botropolis, "city", "--screenshot", path, "--render_scale", scale, "--home", home, "--socket", socket).CombinedOutput()
+	// n twice forces day, so the ground is the daytime green whatever the
+	// fixture's sessions are doing.
+	out, err := exec.Command(botropolis, "city", "--screenshot", path, "--render_scale", scale, "--home", home, "--socket", socket, "--keys", "n,n").CombinedOutput()
 	require.NoError(t, err, string(out))
 	f, err := os.Open(path)
 	require.NoError(t, err)
@@ -51,8 +53,8 @@ func isDark(c color.NRGBA) bool {
 	return c.R < 0x40 && c.G < 0x40 && c.B < 0x40
 }
 
-func isGreen(c color.NRGBA) bool {
-	return c.G > c.R && c.G > c.B
+func isGround(c color.NRGBA) bool {
+	return c == ui.DefaultPalette.Ground
 }
 
 func TestCityScreenshot(t *testing.T) {
@@ -90,12 +92,14 @@ func TestCityScreenshot(t *testing.T) {
 			assert.True(t, isDark(nrgba(one.At(2, h-2))), nrgba(one.At(2, h-2)))
 		})
 
-		t.Run("it should show green ground somewhere between them", func(t *testing.T) {
+		t.Run("it should show the ground somewhere between them", func(t *testing.T) {
 			found := false
-			for y := 40; y < h-40; y++ {
-				if isGreen(nrgba(one.At(w/2, y))) {
-					found = true
-					break
+			for y := 40; y < h-40 && !found; y++ {
+				for x := w / 4; x < 3*w/4; x += 8 {
+					if isGround(nrgba(one.At(x, y))) {
+						found = true
+						break
+					}
 				}
 			}
 			assert.True(t, found)

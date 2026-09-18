@@ -92,6 +92,11 @@ type Palette struct {
 	Parked     color.NRGBA
 	Error      color.NRGBA
 	Merged     color.NRGBA
+
+	// Ground is the map's grass by day and by night: the green the kit
+	// sprites were lit against, and its dusk.
+	Ground      color.NRGBA
+	GroundNight color.NRGBA
 }
 
 var amber = color.NRGBA{0xe8, 0xa0, 0x3c, 0xff}
@@ -109,6 +114,9 @@ var DefaultPalette = Palette{
 	Parked:     color.NRGBA{0x6b, 0x72, 0x80, 0xff},
 	Error:      color.NRGBA{0xe0, 0x50, 0x50, 0xff},
 	Merged:     color.NRGBA{0x4c, 0xc0, 0x7a, 0xff},
+
+	Ground:      color.NRGBA{0x82, 0x9c, 0x6e, 0xff},
+	GroundNight: color.NRGBA{0x2a, 0x36, 0x30, 0xff},
 }
 
 const (

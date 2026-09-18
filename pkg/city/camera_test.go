@@ -214,3 +214,65 @@ func TestIsometricCamera(t *testing.T) {
 		})
 	})
 }
+
+func TestCameraHeading(t *testing.T) {
+	t.Run("when the camera is turned a quarter", func(t *testing.T) {
+		cam := city.NewCamera()
+		cam.Projection = city.Isometric
+		cam.Zoom = 2
+		cam.Offset = city.Point{X: 300, Y: 200}
+		pivot := city.Point{X: 400, Y: 300}
+		under := cam.ScreenToWorld(pivot)
+		cam.Turn(1, pivot)
+
+		t.Run("it should face 90 degrees", func(t *testing.T) {
+			assert.Equal(t, 90, cam.Heading)
+		})
+
+		t.Run("it should keep the world point under the pivot", func(t *testing.T) {
+			after := cam.ScreenToWorld(pivot)
+			assert.InDelta(t, under.X, after.X, 1e-6)
+			assert.InDelta(t, under.Y, after.Y, 1e-6)
+		})
+
+		t.Run("it should round trip a point through the turned projection", func(t *testing.T) {
+			p := city.Point{X: 123, Y: 45}
+			back := cam.ScreenToWorld(cam.WorldToScreen(p))
+			assert.InDelta(t, p.X, back.X, 1e-6)
+			assert.InDelta(t, p.Y, back.Y, 1e-6)
+		})
+
+		t.Run("it should order depth by the turned axes", func(t *testing.T) {
+			// At heading 90 the world's -y side is nearest.
+			assert.Greater(t, cam.Depth(city.Point{X: 0, Y: -100}), cam.Depth(city.Point{X: 0, Y: 100}))
+		})
+	})
+
+	t.Run("when the camera turns four quarters", func(t *testing.T) {
+		cam := city.NewCamera()
+		cam.Projection = city.Isometric
+		before := *cam
+		for i := 0; i < 4; i++ {
+			cam.Turn(1, city.Point{X: 100, Y: 100})
+		}
+
+		t.Run("it should face home again", func(t *testing.T) {
+			assert.Equal(t, 0, cam.Heading)
+		})
+
+		t.Run("it should be back where it started", func(t *testing.T) {
+			assert.InDelta(t, before.Offset.X, cam.Offset.X, 1e-6)
+			assert.InDelta(t, before.Offset.Y, cam.Offset.Y, 1e-6)
+		})
+	})
+
+	t.Run("when the camera faces home", func(t *testing.T) {
+		cam := city.NewCamera()
+		cam.Projection = city.Isometric
+
+		t.Run("it should project as the plain projection does", func(t *testing.T) {
+			p := city.Point{X: 48, Y: 96}
+			assert.Equal(t, city.Isometric.Apply(p), cam.Project(p))
+		})
+	})
+}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/auroq/botropolis/pkg/assets"
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/ui"
 )
 
 // kitAtlas is one zoom level of the pre-rendered kit pieces on the GPU.
@@ -56,7 +57,7 @@ func (k *kits) pick(zoom float64) *kitAtlas {
 // Colours of the kit render's ground, so the flat ground under the
 // sprites matches the light they were cut under.
 var (
-	colorKitGrass    = color.NRGBA{0x82, 0x9c, 0x6e, 0xff}
+	colorKitGrass    = ui.DefaultPalette.Ground
 	colorKitFloor    = color.NRGBA{0xc2, 0xc0, 0xb8, 0xff}
 	colorKitFloorHi  = color.NRGBA{0xd4, 0xd2, 0xca, 0xff}
 	colorKitConcrete = color.NRGBA{0xb3, 0xb3, 0xb6, 0xff}

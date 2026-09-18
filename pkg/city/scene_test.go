@@ -173,15 +173,32 @@ func TestScene(t *testing.T) {
 		before := s.Camera().Zoom
 		s.Wheel(city.Point{X: 400, Y: 300}, -1)
 
-		t.Run("it should zoom out", func(t *testing.T) {
+		t.Run("it should not be there yet after one tick", func(t *testing.T) {
+			s.Animate(1.0 / 30)
+			assert.Greater(t, s.Camera().Zoom, city.ZoomSteps[3])
 			assert.Less(t, s.Camera().Zoom, before)
+		})
+
+		t.Run("it should have zoomed out after a second", func(t *testing.T) {
+			s.Animate(1)
+			assert.InDelta(t, city.ZoomSteps[3], s.Camera().Zoom, 1e-9)
 		})
 
 		t.Run("and turned back", func(t *testing.T) {
 			s.Wheel(city.Point{X: 400, Y: 300}, 1)
+			s.Animate(1)
 
 			t.Run("it should return to where it was", func(t *testing.T) {
 				assert.InDelta(t, before, s.Camera().Zoom, 1e-9)
+			})
+		})
+
+		t.Run("and motion is reduced", func(t *testing.T) {
+			s.SetInstant(true)
+			s.Wheel(city.Point{X: 400, Y: 300}, -1)
+
+			t.Run("it should jump at once", func(t *testing.T) {
+				assert.InDelta(t, city.ZoomSteps[3], s.Camera().Zoom, 1e-9)
 			})
 		})
 	})
@@ -658,6 +675,7 @@ func TestNamePlates(t *testing.T) {
 	t.Run("when a district has awake sessions", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))
 		s.Wheel(s.Size().Scale(0.5), 3)
+		s.Animate(1)
 
 		t.Run("it should show its plate", func(t *testing.T) {
 			assert.True(t, s.DistrictLabelVisible(s.City().Districts[0]))
@@ -667,6 +685,7 @@ func TestNamePlates(t *testing.T) {
 	t.Run("when storage holds only parked sessions", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working), session("b", cinders, state.Parked))
 		s.Wheel(s.Size().Scale(0.5), 3)
+		s.Animate(1)
 		storage := storageOf(t, s.City())
 
 		t.Run("it should hide its plate", func(t *testing.T) {
@@ -727,14 +746,14 @@ func TestWaterCard(t *testing.T) {
 	})
 }
 
-func TestToggleNight(t *testing.T) {
-	t.Run("when nothing runs unattended and night is toggled", func(t *testing.T) {
+func TestCycleLight(t *testing.T) {
+	t.Run("when nothing runs unattended and the light is cycled", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))
 		require.False(t, s.City().Night)
-		on := s.ToggleNight()
+		first := s.CycleLight()
 
 		t.Run("it should be night", func(t *testing.T) {
-			assert.True(t, on)
+			assert.Equal(t, city.LightNight, first)
 			assert.True(t, s.City().Night)
 		})
 
@@ -746,13 +765,34 @@ func TestToggleNight(t *testing.T) {
 			})
 		})
 
-		t.Run("and it is toggled again", func(t *testing.T) {
-			s.ToggleNight()
+		t.Run("and it is cycled again", func(t *testing.T) {
+			second := s.CycleLight()
+
+			t.Run("it should be day", func(t *testing.T) {
+				assert.Equal(t, city.LightDay, second)
+				assert.False(t, s.City().Night)
+			})
+		})
+
+		t.Run("and once more", func(t *testing.T) {
+			third := s.CycleLight()
 			s.SetSnapshot(snapshot(session("a", cinders, state.Working)))
 
 			t.Run("it should follow the sessions again", func(t *testing.T) {
+				assert.Equal(t, city.LightAuto, third)
 				assert.False(t, s.City().Night)
 			})
+		})
+	})
+
+	t.Run("when a session runs unattended and day is forced", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Unattended))
+		require.True(t, s.City().Night)
+		s.CycleLight()
+		s.CycleLight()
+
+		t.Run("it should be day regardless", func(t *testing.T) {
+			assert.False(t, s.City().Night)
 		})
 	})
 }
