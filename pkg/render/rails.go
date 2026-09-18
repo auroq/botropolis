@@ -27,12 +27,20 @@ var (
 )
 
 // isoRails draws the loop: sleepers across the line, then two rails
-// either side of it, projected like everything else on the ground.
+// either side of it, projected like everything else on the ground. All
+// the sleepers go down in one stroke and all the rail in another, so a
+// loop of a hundred cells is two draws, not four hundred.
 func (g *Game) isoRails(screen *ebiten.Image, cam *city.Camera, c *city.City) {
 	if len(c.Rails) < 2 {
 		return
 	}
 	width := float32(math.Max(1, 1.2*cam.Zoom))
+	var sleepers, rails vector.Path
+	seg := func(path *vector.Path, a, b city.Point) {
+		p, q := cam.WorldToScreen(a), cam.WorldToScreen(b)
+		path.MoveTo(float32(p.X), float32(p.Y))
+		path.LineTo(float32(q.X), float32(q.Y))
+	}
 	for i := 1; i < len(c.Rails); i++ {
 		a, b := c.Rails[i-1], c.Rails[i]
 		dx, dy := b.X-a.X, b.Y-a.Y
@@ -44,16 +52,18 @@ func (g *Game) isoRails(screen *ebiten.Image, cam *city.Camera, c *city.City) {
 		nx, ny := -uy*railGauge/2, ux*railGauge/2
 		for d := sleeperStep / 2; d < length; d += sleeperStep {
 			p := city.Point{X: a.X + ux*d, Y: a.Y + uy*d}
-			g.groundLine(screen, cam, city.Point{X: p.X + nx*1.6, Y: p.Y + ny*1.6}, city.Point{X: p.X - nx*1.6, Y: p.Y - ny*1.6}, width*1.6, colorSleeper)
+			seg(&sleepers, city.Point{X: p.X + nx*1.6, Y: p.Y + ny*1.6}, city.Point{X: p.X - nx*1.6, Y: p.Y - ny*1.6})
 		}
-		g.groundLine(screen, cam, city.Point{X: a.X + nx, Y: a.Y + ny}, city.Point{X: b.X + nx, Y: b.Y + ny}, width, colorRail)
-		g.groundLine(screen, cam, city.Point{X: a.X - nx, Y: a.Y - ny}, city.Point{X: b.X - nx, Y: b.Y - ny}, width, colorRail)
+		seg(&rails, city.Point{X: a.X + nx, Y: a.Y + ny}, city.Point{X: b.X + nx, Y: b.Y + ny})
+		seg(&rails, city.Point{X: a.X - nx, Y: a.Y - ny}, city.Point{X: b.X - nx, Y: b.Y - ny})
 	}
-}
-
-func (g *Game) groundLine(screen *ebiten.Image, cam *city.Camera, a, b city.Point, width float32, c color.NRGBA) {
-	p, q := cam.WorldToScreen(a), cam.WorldToScreen(b)
-	vector.StrokeLine(screen, float32(p.X), float32(p.Y), float32(q.X), float32(q.Y), width, c, true)
+	stroke := func(path *vector.Path, w float32, col color.NRGBA) {
+		op := &vector.DrawPathOptions{AntiAlias: true}
+		op.ColorScale.ScaleWithColor(col)
+		vector.StrokePath(screen, path, &vector.StrokeOptions{Width: w}, op)
+	}
+	stroke(&sleepers, width*1.6, colorSleeper)
+	stroke(&rails, width, colorRail)
 }
 
 // carriage is one piece of a train on the loop this frame.

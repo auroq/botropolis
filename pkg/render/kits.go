@@ -91,6 +91,37 @@ func (g *Game) kit(screen *ebiten.Image, cam *city.Camera, name string, turn int
 	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
 }
 
+// kitRising draws a piece standing on a world point at a fraction of its
+// height, growing from its foot: a building rising as its session
+// arrives. At 1 it is kit.
+func (g *Game) kitRising(screen *ebiten.Image, cam *city.Camera, name string, at city.Point, tint *ebiten.ColorScale, rise float64) city.Rect {
+	if rise >= 1 || g.kits == nil {
+		return g.kit(screen, cam, name, 0, at, tint)
+	}
+	atlas := g.kits.pick(cam.Zoom)
+	if atlas == nil {
+		return city.Rect{}
+	}
+	sprite, ok := atlas.Sprite(name, cam.Heading)
+	if !ok || sprite.Page >= len(atlas.pages) {
+		return city.Rect{}
+	}
+	scale := cam.Zoom / atlas.Zoom
+	foot := cam.WorldToScreen(at)
+	img := atlas.pages[sprite.Page].SubImage(sprite.Rect).(*ebiten.Image)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(-float64(sprite.Anchor.X), -float64(sprite.Anchor.Y))
+	op.GeoM.Scale(scale, scale*rise)
+	op.GeoM.Translate(foot.X, foot.Y)
+	if tint != nil {
+		op.ColorScale = *tint
+	}
+	op.Filter = ebiten.FilterLinear
+	screen.DrawImage(img, op)
+	h := float64(sprite.Rect.Dy()) * scale * rise
+	return city.RectAt(foot.X-float64(sprite.Anchor.X)*scale, foot.Y-float64(sprite.Anchor.Y)*scale*rise, float64(sprite.Rect.Dx())*scale, h)
+}
+
 // kitAt draws a piece with its ground origin on a screen point, for
 // things that hover or bob rather than stand on a cell.
 func (g *Game) kitAt(screen *ebiten.Image, cam *city.Camera, name string, turn int, foot city.Point, tint *ebiten.ColorScale) {

@@ -34,7 +34,11 @@ var (
 	kitBeltTree = "city-kit-suburban/tree-large"
 	// The ledger's trains: a locomotive and container wagons in one of
 	// three liveries, matched to city.ContainerHues.
-	kitLocos  = []string{"train-kit/train-diesel-a", "train-kit/train-diesel-b", "train-kit/train-diesel-c"}
+	kitLocos = []string{"train-kit/train-diesel-a", "train-kit/train-diesel-b", "train-kit/train-diesel-c"}
+	// The tugs on the river: one brings a session in, the other takes
+	// one away.
+	kitTugIn  = "watercraft-kit/boat-tug-a"
+	kitTugOut = "watercraft-kit/boat-tug-b"
 	kitWagons = []string{"train-kit/train-carriage-container-red", "train-kit/train-carriage-container-blue", "train-kit/train-carriage-container-green"}
 )
 

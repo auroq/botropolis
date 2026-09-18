@@ -89,6 +89,10 @@ type Scene struct {
 	// celebrating is when a session's count rose, for a one-shot show.
 	merged      map[string]int
 	celebrating map[string]time.Time
+	// known is the last snapshot's live sessions by id and voyages the
+	// tugs on the river for those that came or went since.
+	known       map[string]state.Session
+	voyages     []*Voyage
 	log         *events.Log
 	filter      Filter
 	budget      float64
@@ -418,6 +422,7 @@ func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
 	s.city = Build(snapshot, s.layout)
 	s.city.Plant.BudgetUSD = s.budget
 	s.noteMerges()
+	s.noteVoyages(snapshot, s.now())
 	s.applyNight()
 	s.selected = s.reselect()
 	s.hover = Hit{}
@@ -832,6 +837,8 @@ func (s *Scene) Card() (Card, bool) {
 		return s.hover.Line.Card(), true
 	case s.hover.Train != nil:
 		return s.hover.Train.Card(), true
+	case s.hover.Voyage != nil:
+		return s.hover.Voyage.Card(), true
 	case s.hover.Landmark == LandmarkWater:
 		return Card{Title: "river", Lines: []string{"the map's edge on this side"}}, true
 	case s.hover.Landmark == LandmarkPark && s.hover.Park != nil:

@@ -1210,3 +1210,102 @@ func TestLandmarkLabels(t *testing.T) {
 		})
 	})
 }
+
+func TestVoyages(t *testing.T) {
+	clock := time.Date(2026, 9, 18, 14, 0, 0, 0, time.UTC)
+	newScene := func() *city.Scene {
+		s := city.NewScene(city.NewLayout())
+		s.Resize(800, 600)
+		s.SetClock(func() time.Time { return clock }, time.UTC)
+		return s
+	}
+
+	t.Run("when the first snapshot lands", func(t *testing.T) {
+		s := newScene()
+		s.SetSnapshot(snapshot(session("a", cinders, state.Working)))
+
+		t.Run("it should start no voyage", func(t *testing.T) {
+			assert.Empty(t, s.Voyages())
+		})
+
+		t.Run("it should have every building risen", func(t *testing.T) {
+			assert.InDelta(t, 1, s.Rising("a"), 1e-9)
+		})
+	})
+
+	t.Run("when a live session appears afterwards", func(t *testing.T) {
+		s := newScene()
+		s.SetSnapshot(snapshot(session("a", cinders, state.Working)))
+		clock = clock.Add(time.Minute)
+		s.SetSnapshot(snapshot(session("a", cinders, state.Working), session("b", cinders, state.Working)))
+		voyages := s.Voyages()
+		require.Len(t, voyages, 1)
+		v := voyages[0]
+		river := s.City().RiverCells
+
+		t.Run("it should sail an arrival for the new session", func(t *testing.T) {
+			assert.Equal(t, city.Arrival, v.Kind)
+			assert.Equal(t, "b", v.SessionID)
+		})
+
+		t.Run("it should start at the river's north end", func(t *testing.T) {
+			assert.Equal(t, river[0].Cell.Center(), v.From)
+		})
+
+		t.Run("it should dock beside the session's district", func(t *testing.T) {
+			d := s.City().Districts[0]
+			assert.InDelta(t, river[0].Cell.Center().X, v.To.X, 1e-9)
+			assert.InDelta(t, d.Rect.Center().Y, v.To.Y, 1e-9)
+		})
+
+		t.Run("it should hold the building down until it docks", func(t *testing.T) {
+			assert.Zero(t, s.Rising("b"))
+			assert.InDelta(t, 1, s.Rising("a"), 1e-9)
+		})
+
+		t.Run("and it has sailed its time", func(t *testing.T) {
+			clock = clock.Add(city.SailFor + city.RiseFor/2)
+
+			t.Run("it should be rising", func(t *testing.T) {
+				r := s.Rising("b")
+				assert.Greater(t, r, 0.0)
+				assert.Less(t, r, 1.0)
+			})
+
+			t.Run("and it has risen", func(t *testing.T) {
+				clock = clock.Add(city.RiseFor)
+
+				t.Run("it should stand and the voyage be over", func(t *testing.T) {
+					assert.InDelta(t, 1, s.Rising("b"), 1e-9)
+					assert.Empty(t, s.Voyages())
+				})
+			})
+		})
+	})
+
+	t.Run("when a live session disappears", func(t *testing.T) {
+		s := newScene()
+		gone := session("b", botropolis, state.Working)
+		gone.Title = "Symbol meaning"
+		s.SetSnapshot(snapshot(session("a", cinders, state.Working), gone))
+		clock = clock.Add(time.Minute)
+		s.SetSnapshot(snapshot(session("a", cinders, state.Working)))
+		voyages := s.Voyages()
+		require.Len(t, voyages, 1)
+		v := voyages[0]
+		river := s.City().RiverCells
+
+		t.Run("it should sail a departure carrying the title", func(t *testing.T) {
+			assert.Equal(t, city.Departure, v.Kind)
+			assert.Equal(t, "Symbol meaning", v.Title)
+		})
+
+		t.Run("it should leave downriver", func(t *testing.T) {
+			assert.Equal(t, river[len(river)-1].Cell.Center(), v.To)
+		})
+
+		t.Run("it should be named on its card", func(t *testing.T) {
+			assert.Equal(t, "leaving: Symbol meaning", v.Card().Title)
+		})
+	})
+}

@@ -249,7 +249,8 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		}
 		return
 	}
-	if b.Vacant {
+	rise := g.scene.Rising(b.Session.ID)
+	if b.Vacant || rise <= 0 {
 		g.vacantPlot(screen, cam, b, selected)
 		return
 	}
@@ -268,7 +269,7 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		tint.SetG(0.8)
 		tint.SetB(1)
 	}
-	r := g.kit(screen, cam, buildingPiece(b), 0, b.Rect.Center(), tint)
+	r := g.kitRising(screen, cam, buildingPiece(b), b.Rect.Center(), tint, rise)
 	g.noteHit(r, city.Hit{Building: b, District: g.scene.City().DistrictOf(b)})
 	if r.Area() == 0 || g.scene.Dimmed(b) {
 		return
@@ -475,6 +476,12 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 				g.isoBuilding(screen, cam, b, b == selected, detailed, seconds)
 			}})
 		}
+	}
+	for _, v := range g.scene.Voyages() {
+		v := v
+		items = append(items, drawable{depth: cam.Depth(v.At(g.scene.Clock())), draw: func() {
+			g.drawVoyage(screen, cam, v, seconds)
+		}})
 	}
 	for _, k := range g.carriages(c, seconds) {
 		k := k

@@ -124,6 +124,7 @@ type Hit struct {
 	Line     *PowerLine
 	Park     *Park
 	Train    *Train
+	Voyage   *Voyage
 }
 
 // Near is the road, beam or power line within tolerance of p, nearest
