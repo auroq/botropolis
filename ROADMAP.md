@@ -150,7 +150,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 ### 9 — Art pipeline and art pass
 
 - First step: render one district through the pipeline and put it beside `docs/screenshots/r64-fit.png`; the rest of the pass waits on that comparison.
-  Done 2026-09-18: `make kit-district` renders `docs/screenshots/r81-kit-district.png` from the Commercial, Roads and Industrial kits; awaiting Aria's comparison.
+  Done 2026-09-18: `make kit-district` renders `docs/screenshots/r80-kit-district.png` from the Commercial, Roads and Industrial kits; awaiting Aria's comparison.
 - `tools/render-sprites`: Blender headless script renders each kit piece (and the modelled drone) at four headings and N zoom levels into atlases with a JSON manifest,
   with a size budget per atlas; `make sprites` regenerates; atlases committed with the packs' licences.
 - Building recipes per state and fill (ground floor, storeys, roof) from the city kits; landmark recipes from Industrial;
