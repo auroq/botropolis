@@ -122,6 +122,8 @@ type Game struct {
 	focused        bool
 	blurredAt      time.Time
 
+	// quit is the two-press guard on Escape.
+	quit confirm
 	// searching is the box on /; query is the filter it holds;
 	// scriptedRune is a typed character from --keys.
 	searching    bool

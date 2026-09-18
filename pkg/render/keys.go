@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/state"
@@ -38,7 +39,7 @@ var bindings = []ui.Key{
 	{Key: "p", Action: "save a screenshot"},
 	{Key: "/", Action: "search: the map dims what does not match"},
 	{Key: "?", Action: "this help"},
-	{Key: "q", Action: "quit"},
+	{Key: "q", Action: "quit (escape asks first)"},
 }
 
 var footerKeys = []ui.Key{
@@ -49,10 +50,13 @@ var footerKeys = []ui.Key{
 	{Key: "b", Action: "sidebar"},
 	{Key: "f", Action: "fit"},
 	{Key: "?", Action: "help"},
-	{Key: "q", Action: "quit"},
+	{Key: "q", Action: "quit (escape asks first)"},
 }
 
-const keyPanStep = 12.0
+const (
+	keyPanStep = 12.0
+	quitPrompt = "quit? escape again to confirm; any other key stays"
+)
 
 // handleKeys answers the keyboard for one tick.
 func (g *Game) handleKeys() error {
@@ -94,10 +98,25 @@ func (g *Game) handleKeys() error {
 			g.help = false
 			return nil
 		}
-		return g.quit()
+		if g.quit.press(timeNow()) {
+			return g.leave()
+		}
+		g.SetStatus(quitPrompt)
+		return nil
+	}
+	if g.quit.armed(timeNow()) && len(inpututil.AppendJustPressedKeys(nil)) > 0 {
+		g.quit.cancel()
+	}
+	if !g.quit.armed(timeNow()) {
+		g.mu.Lock()
+		prompting := g.status == quitPrompt
+		g.mu.Unlock()
+		if prompting {
+			g.SetStatus("")
+		}
 	}
 	if just(ebiten.KeyQ) {
-		return g.quit()
+		return g.leave()
 	}
 	if (just(ebiten.KeySlash) && ebiten.IsKeyPressed(ebiten.KeyShift)) || just(ebiten.KeyF1) {
 		g.help = !g.help
@@ -178,7 +197,7 @@ func (g *Game) handleKeys() error {
 	return nil
 }
 
-func (g *Game) quit() error {
+func (g *Game) leave() error {
 	if g.saveState != nil {
 		g.saveState(g.scene.Layout())
 	}
