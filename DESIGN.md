@@ -261,9 +261,15 @@ The atlas mode, headings and zoom levels wait on the comparison with `r64-fit.pn
 
 ## Open questions
 
-- Should a session that was started the old way (foreground `claude`) get a "convert to background" affordance,
-  or is "parked when you quit, resumed in the background when you click" enough?
-- ~~Where does cost live: derived from public per-model pricing, or left as tokens only?~~
+All settled; the decisions are in [ROADMAP.md](ROADMAP.md) §5 and §3.
+The history of each is kept here because it explains code that still exists.
+
+- **Foreground-started sessions.**
+  Settled 2026-09-18: no "convert to background" affordance.
+  The shell helper is sourced, so new sessions start in the background,
+  and there is no CLI to background a running foreground session anyway (the CLI's own dialog is mid-turn only).
+  Parked-when-you-quit, resumed-in-the-background-when-you-click is the behaviour.
+- **Cost and the context window.**
   Settled 2026-09-17: the CLI writes `cost-state` records into the transcript with `totalCostUSD`
   and a per-model token and cost breakdown,
   so the read model takes the last one as-is and never prices tokens itself.
@@ -271,31 +277,27 @@ The atlas mode, headings and zoom levels wait on the comparison with `r64-fit.pn
   a context that was ever larger than 200k proves 1M (context cannot exceed the window);
   otherwise 200k is trusted only for the opus/sonnet/haiku families and anything else shows no percentage rather than a guess
   (a session that switched to `claude-fable-5-1` mid-way was reading 463% before this rule).
-  Note that one API message is written as several `assistant` records (one per content block, `apiBlockIndex`)
+  One API message is written as several `assistant` records (one per content block, `apiBlockIndex`)
   that repeat the same `usage`, so token totals must be deduplicated by `message.id`.
-- How much of `teams/` and `tasks/` is worth drawing in the first pass?
-  `teams/` is read for roads (member cwds route `SendMessage` traffic between districts).
-  `tasks/` and `plans/` are still not drawn: on this machine every `tasks/session-*` directory is empty
+- **`teams/`, `tasks/` and `plans/`.**
+  `teams/` is read for roads (member cwds route `SendMessage` traffic between districts); a teams camp is ROADMAP phase 11.
+  `tasks/` and `plans/` are not drawn: on this machine every `tasks/session-*` directory is empty
   and plans are slug-named files with no session link, so there is nothing to attach them to.
-- The Codex adapter (milestone 6) is built from Codex CLI's documented rollout format
-  (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` with `session_meta`, `turn_context`, `response_item` and `event_msg` lines)
-  and is tested against a constructed fixture only, because there is no `~/.codex` on this machine.
-  It proves the seam — `harness.Snapshotter`, merged by `harness.Multi` — not the format;
-  the first real rollout should be turned into a fixture before trusting it.
-- Sprites: done on 2026-09-17 with three Kenney CC0 packs (Tiny Town, Tiny Factory, Roguelike Modern City),
-  embedded from `pkg/assets/kenney/` with their licence files and credited in the README.
-  Later that day Aria chose the isometric view, built from Kenney's Isometric Buildings, City, Landscape, Vehicles and Roads packs
-  (see "View" above); the 16 px packs remain behind `--projection top`.
-  The note below records why they were held back until then.
-- Sprites: the milestone 5 plan says Kenney CC0 city and isometric packs.
-  Milestone 5 shipped procedural shapes instead (roofs, lit window grids, flags, smoke, towers, a pulsing plant)
-  because vendoring tens of megabytes of third-party assets into the repo is Aria's call, not the agent's,
-  and the license text should be checked and committed alongside them.
-  When that call is made, `pkg/render` is the only package that changes.
-- Parked sessions are catalogued now (milestone 5); the note below records how that was decided.
-- Where do parked sessions come from?
-  The incremental loader (milestone 2) reads a transcript only when a live record points at it,
-  so the daemon's snapshot holds live sessions only and the city has no boarded-up buildings yet.
-  Options for milestone 4: a slow background catalogue pass over `projects/*/*.jsonl` (head-read, cached by mtime),
-  or seeding from `projects/<slug>/sessions-index.json` where it exists (15 of 44 projects on this machine)
-  and falling back to the head-read for the rest.
+- **Harnesses.**
+  Settled 2026-09-18: Claude Code only; there is no `~/.codex` or `~/.cursor` on this machine.
+  The Codex adapter stays as the proof of the `harness.Snapshotter` seam, tested against a constructed fixture
+  built from Codex CLI's documented rollout format
+  (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` with `session_meta`, `turn_context`, `response_item` and `event_msg` lines);
+  it is not trusted against the real format and a Cursor adapter is not planned.
+- **Sprites.**
+  Settled 2026-09-18 in ROADMAP §3: Kenney City Kits, Nature Kit, Space Kit, Car, Train and Watercraft kits,
+  pre-rendered from Blender to atlases by `tools/render-sprites`; workers are bots.
+  Before that: milestone 5 shipped procedural shapes (vendoring third-party assets was Aria's call),
+  then on 2026-09-17 three 16 px Kenney packs (Tiny Town, Tiny Factory, Roguelike Modern City),
+  then the same day Kenney's 2D isometric packs for the isometric view.
+  Those remain in `pkg/assets/kenney/` until the rendered atlases replace them; the 16 px packs stay behind `--projection top`.
+- **Parked sessions.**
+  Settled in milestone 5: catalogued by a head-and-tail window read over `projects/*/*.jsonl`, cached by size and mtime,
+  aged by `parked_days`.
+  `sessions-index.json` was tried as a seed and rejected (cinders: 28 transcripts on disk, 4 indexed).
+  Since ROADMAP phase 8 they live in one storage district on the plan.
