@@ -169,6 +169,8 @@ Each milestone ends with tests green, `make lint` and `make format` clean, and a
   Re-met at r48 after the city hall, file-touch roads and line cards pushed it to 21.4 MB: 18.2 MB RSS (7.9 MB anonymous, 8.5 MB file-backed).
   The live heap after a scan is about 1 MB; the rest was scan garbage the scavenger had not returned yet,
   so the daemon now calls `debug.FreeOSMemory` after every rescan (hook events never rescan, so the 6 ms path is untouched).
+  Checked again on 2026-09-18 after the hourly usage buckets and the isometric city: 14.7 MB RSS (4.8 MB anonymous) with 75 sessions;
+  `botropolis-hook` (cobra+viper, 12 MB on disk) starts, parses and delivers in 2.6 ms median, so its dependencies are not worth trimming.
   The catalogue had pushed an unsplit r35 daemon to 36 MB.
 
 ### 3 — Control
@@ -219,6 +221,9 @@ Labels are fixed-size and sit on the floor or above the kerb, never over what th
   Note that one API message is written as several `assistant` records (one per content block, `apiBlockIndex`)
   that repeat the same `usage`, so token totals must be deduplicated by `message.id`.
 - How much of `teams/` and `tasks/` is worth drawing in the first pass?
+  `teams/` is read for roads (member cwds route `SendMessage` traffic between districts).
+  `tasks/` and `plans/` are still not drawn: on this machine every `tasks/session-*` directory is empty
+  and plans are slug-named files with no session link, so there is nothing to attach them to.
 - The Codex adapter (milestone 6) is built from Codex CLI's documented rollout format
   (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` with `session_meta`, `turn_context`, `response_item` and `event_msg` lines)
   and is tested against a constructed fixture only, because there is no `~/.codex` on this machine.
@@ -226,6 +231,8 @@ Labels are fixed-size and sit on the floor or above the kerb, never over what th
   the first real rollout should be turned into a fixture before trusting it.
 - Sprites: done on 2026-09-17 with three Kenney CC0 packs (Tiny Town, Tiny Factory, Roguelike Modern City),
   embedded from `pkg/assets/kenney/` with their licence files and credited in the README.
+  Later that day Aria chose the isometric view, built from Kenney's Isometric Buildings, City, Landscape, Vehicles and Roads packs
+  (see "View" above); the 16 px packs remain behind `--projection top`.
   The note below records why they were held back until then.
 - Sprites: the milestone 5 plan says Kenney CC0 city and isometric packs.
   Milestone 5 shipped procedural shapes instead (roofs, lit window grids, flags, smoke, towers, a pulsing plant)
