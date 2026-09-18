@@ -111,6 +111,10 @@ func TestReadTranscriptUsage(t *testing.T) {
 			assert.InDelta(t, 8.652295, transcript.Cost.TotalUSD, 1e-9)
 		})
 
+		t.Run("it should know the cost", func(t *testing.T) {
+			assert.True(t, transcript.Cost.Known)
+		})
+
 		t.Run("it should report each model's cost", func(t *testing.T) {
 			assert.InDelta(t, 8.64966, transcript.Cost.Models["claude-opus-5[1m]"].USD, 1e-9)
 		})
@@ -144,6 +148,14 @@ func TestReadTranscriptUsage(t *testing.T) {
 
 		t.Run("it should report the last timestamp", func(t *testing.T) {
 			assert.Equal(t, time.Date(2026, time.September, 16, 19, 51, 10, 0, time.UTC), transcript.LastAt)
+		})
+	})
+
+	t.Run("when the file holds no cost-state record", func(t *testing.T) {
+		transcript := readTranscript(t, userLine, assistantWithUsage(first))
+
+		t.Run("it should not know the cost", func(t *testing.T) {
+			assert.False(t, transcript.Cost.Known)
 		})
 	})
 

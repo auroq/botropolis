@@ -249,10 +249,12 @@ func (c *City) Beams() []Beam {
 }
 
 func (p Plant) Card() Card {
-	lines := []string{
-		fmt.Sprintf("cost     ~$%.2f in 24h (pro-rated)", p.Power.CostUSD),
+	cost := "cost     " + format.USD(p.Power.CostUSD, p.Power.CostKnown) + " in 24h (pro-rated)"
+	if !p.Power.CostKnown {
+		cost = "cost     " + format.Unknown + " in 24h (no cost-state in any transcript)"
 	}
-	if p.BudgetUSD > 0 {
+	lines := []string{cost}
+	if p.BudgetUSD > 0 && p.Power.CostKnown {
 		lines = append(lines, fmt.Sprintf("budget   $%.0f/day, %s used", p.BudgetUSD, format.Percent(100*p.Power.CostUSD/p.BudgetUSD)))
 	}
 	lines = append(lines,

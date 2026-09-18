@@ -12,11 +12,22 @@ import (
 
 func someBreakdown() city.Breakdown {
 	return city.Breakdown{
-		Window: city.LastDay, Tokens: 350, CostUSD: 0.35,
-		ByModel:   []city.Share{{Key: "claude-opus-5", Tokens: 300, CostUSD: 0.3}, {Key: "claude-sonnet-5", Tokens: 50, CostUSD: 0.05}},
-		ByProject: []city.Share{{Key: "cinders", Tokens: 350, CostUSD: 0.35}},
-		BySession: []city.Share{{Key: "a", Tokens: 300, CostUSD: 0.3}, {Key: "b", Tokens: 50, CostUSD: 0.05}},
+		Window: city.LastDay, Tokens: 350, CostUSD: 0.35, CostKnown: true,
+		ByModel:   []city.Share{{Key: "claude-opus-5", Tokens: 300, CostUSD: 0.3, CostKnown: true}, {Key: "claude-sonnet-5", Tokens: 50, CostUSD: 0.05, CostKnown: true}},
+		ByProject: []city.Share{{Key: "cinders", Tokens: 350, CostUSD: 0.35, CostKnown: true}},
+		BySession: []city.Share{{Key: "a", Tokens: 300, CostUSD: 0.3, CostKnown: true}, {Key: "b", Tokens: 50, CostUSD: 0.05, CostKnown: true}},
 	}
+}
+
+func unpricedBreakdown() city.Breakdown {
+	b := someBreakdown()
+	b.CostUSD, b.CostKnown = 0, false
+	for _, col := range [][]city.Share{b.ByModel, b.ByProject, b.BySession} {
+		for i := range col {
+			col[i].CostUSD, col[i].CostKnown = 0, false
+		}
+	}
+	return b
 }
 
 func TestLayoutBreakdown(t *testing.T) {
@@ -54,6 +65,18 @@ func TestLayoutBreakdown(t *testing.T) {
 			require.Len(t, p.Columns[0].Rows, 2)
 			assert.Equal(t, "claude-opus-5", p.Columns[0].Rows[0].Label.Text)
 			assert.Equal(t, "300 · ~$0.30", p.Columns[0].Rows[0].Value.Text)
+		})
+
+		t.Run("and the cost is unknown", func(t *testing.T) {
+			p := ui.LayoutBreakdown(th, 900, 700, unpricedBreakdown(), series, nil, measure7)
+
+			t.Run("it should title it with a dash for the cost", func(t *testing.T) {
+				assert.Equal(t, "Power: 350 tokens, \u2014 in 24 h", p.Title.Text)
+			})
+
+			t.Run("it should list each share with a dash for the cost", func(t *testing.T) {
+				assert.Equal(t, "300 \u00b7 \u2014", p.Columns[0].Rows[0].Value.Text)
+			})
 		})
 
 		t.Run("it should name a session by its title", func(t *testing.T) {

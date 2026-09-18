@@ -44,6 +44,9 @@ type ModelCost struct {
 type Cost struct {
 	TotalUSD float64
 	Models   map[string]ModelCost
+	// Known is whether a cost-state record was seen at all; without one
+	// the cost is unknown, not zero.
+	Known bool
 }
 
 type PR struct {
@@ -450,7 +453,7 @@ func repositoryOf(url string) string {
 }
 
 func (s *transcriptScan) applyCost(rec transcriptLineJSON) {
-	cost := Cost{TotalUSD: rec.TotalCostUSD, Models: map[string]ModelCost{}}
+	cost := Cost{TotalUSD: rec.TotalCostUSD, Models: map[string]ModelCost{}, Known: true}
 	for model, mu := range rec.ModelUsage {
 		cost.Models[model] = mu.modelCost()
 	}

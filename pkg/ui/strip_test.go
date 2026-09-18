@@ -31,7 +31,7 @@ func findChip(chips []ui.Chip, text string) (ui.Chip, bool) {
 
 func TestStripChips(t *testing.T) {
 	t.Run("when the summary is quiet", func(t *testing.T) {
-		chips := ui.StripChips(city.Summary{Working: 2, Parked: 5, FreshPerH: 1500, CachedPerH: 20000, CostUSD: 1.5, HitRatio: 0.9, MCPCalls: 3})
+		chips := ui.StripChips(city.Summary{Working: 2, Parked: 5, FreshPerH: 1500, CachedPerH: 20000, CostUSD: 1.5, CostKnown: true, HitRatio: 0.9, MCPCalls: 3})
 
 		t.Run("it should lead with the working chip", func(t *testing.T) {
 			assert.Equal(t, "2 working", chips[0].Text)
@@ -77,12 +77,34 @@ func TestStripChips(t *testing.T) {
 			{260, "~$260.00 of $250 24h", ui.ToneError},
 		}
 		for _, tc := range cases {
-			chips := ui.StripChips(city.Summary{Working: 1, CostUSD: tc.cost, BudgetUSD: 250})
+			chips := ui.StripChips(city.Summary{Working: 1, CostUSD: tc.cost, CostKnown: true, BudgetUSD: 250})
 			chip, ok := findChip(chips, tc.text)
 			require.True(t, ok, chipTexts(chips))
 
 			t.Run(fmt.Sprintf("it should tone %q %s", tc.text, tc.tone), func(t *testing.T) {
 				assert.Equal(t, tc.tone, chip.Tone)
+			})
+		}
+	})
+
+	t.Run("when the cost is unknown", func(t *testing.T) {
+		cases := []struct {
+			name   string
+			budget float64
+			text   string
+		}{
+			{"with no budget", 0, "$\u2014 24h"},
+			{"with a budget", 250, "$\u2014 of $250 24h"},
+		}
+		for _, tc := range cases {
+			t.Run("and "+tc.name, func(t *testing.T) {
+				chips := ui.StripChips(city.Summary{Working: 1, CostUSD: 0, BudgetUSD: tc.budget})
+				chip, ok := findChip(chips, tc.text)
+				require.True(t, ok, chipTexts(chips))
+
+				t.Run("it should show a dash with no tone", func(t *testing.T) {
+					assert.Equal(t, ui.ToneNone, chip.Tone)
+				})
 			})
 		}
 	})

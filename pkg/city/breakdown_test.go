@@ -25,6 +25,7 @@ func spender(id, cwd, model string, hours map[int]int64) state.Session {
 	}
 	s.Usage = claude.Usage{Output: total}
 	s.CostUSD = float64(total) / 1000
+	s.CostKnown = true
 	return s
 }
 
@@ -57,8 +58,8 @@ func TestBreakdown(t *testing.T) {
 
 		t.Run("it should split by model, most first", func(t *testing.T) {
 			require.Len(t, b.ByModel, 2)
-			assert.Equal(t, city.Share{Key: "claude-opus-5", Tokens: 300, CostUSD: 0.3}, b.ByModel[0])
-			assert.Equal(t, city.Share{Key: "claude-sonnet-5", Tokens: 50, CostUSD: 0.05}, b.ByModel[1])
+			assert.Equal(t, city.Share{Key: "claude-opus-5", Tokens: 300, CostUSD: 0.3, CostKnown: true}, b.ByModel[0])
+			assert.Equal(t, city.Share{Key: "claude-sonnet-5", Tokens: 50, CostUSD: 0.05, CostKnown: true}, b.ByModel[1])
 		})
 
 		t.Run("it should split by project", func(t *testing.T) {
@@ -77,6 +78,21 @@ func TestBreakdown(t *testing.T) {
 		t.Run("it should reach the older session too", func(t *testing.T) {
 			assert.Equal(t, int64(1750), b.Tokens)
 			assert.Len(t, b.ByProject, 2)
+		})
+	})
+
+	t.Run("when no session carries a cost", func(t *testing.T) {
+		unpriced := spender("a", cinders, "claude-opus-5", map[int]int64{0: 100})
+		unpriced.CostUSD, unpriced.CostKnown = 0, false
+		b := build(t, city.NewLayout(), unpriced).Breakdown(city.LastDay)
+
+		t.Run("it should not know the cost", func(t *testing.T) {
+			assert.False(t, b.CostKnown)
+		})
+
+		t.Run("it should not know any share's cost", func(t *testing.T) {
+			require.Len(t, b.ByModel, 1)
+			assert.False(t, b.ByModel[0].CostKnown)
 		})
 	})
 

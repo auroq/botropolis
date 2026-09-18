@@ -26,6 +26,7 @@ func TestSummary(t *testing.T) {
 
 		t.Run("it should carry the plant's cost and hit ratio", func(t *testing.T) {
 			assert.InDelta(t, 12.5, s.CostUSD, 1e-9)
+			assert.True(t, s.CostKnown)
 			assert.InDelta(t, snap.Power.HitRatio(), s.HitRatio, 1e-9)
 		})
 

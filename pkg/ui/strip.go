@@ -50,10 +50,17 @@ func StripChips(s city.Summary) []Chip {
 // there is one: plain under 80 % of it, accent-toned up to it, error
 // beyond.
 func costChip(s city.Summary) Chip {
-	if s.BudgetUSD <= 0 {
-		return Chip{Text: fmt.Sprintf("~$%.2f 24h", s.CostUSD)}
+	cost := format.USD(s.CostUSD, s.CostKnown)
+	if !s.CostKnown {
+		cost = "$" + format.Unknown
 	}
-	chip := Chip{Text: fmt.Sprintf("~$%.2f of $%.0f 24h", s.CostUSD, s.BudgetUSD)}
+	if s.BudgetUSD <= 0 {
+		return Chip{Text: cost + " 24h"}
+	}
+	chip := Chip{Text: fmt.Sprintf("%s of $%.0f 24h", cost, s.BudgetUSD)}
+	if !s.CostKnown {
+		return chip
+	}
 	switch share := s.BudgetShare(); {
 	case share >= 1:
 		chip.Tone = ToneError

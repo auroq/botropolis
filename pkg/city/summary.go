@@ -18,6 +18,7 @@ type Summary struct {
 	FreshPerH  float64
 	CachedPerH float64
 	CostUSD    float64
+	CostKnown  bool
 	HitRatio   float64
 	Subagents  int
 	PRs        int
@@ -65,6 +66,7 @@ func (c *City) Summary() Summary {
 		s.PRs += len(b.Session.PRs)
 	}
 	s.CostUSD = c.Plant.Power.CostUSD
+	s.CostKnown = c.Plant.Power.CostKnown
 	s.HitRatio = c.Plant.Power.HitRatio()
 	s.BudgetUSD = c.Plant.BudgetUSD
 	for _, t := range c.Towers {

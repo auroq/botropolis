@@ -12,6 +12,18 @@ func Dash(s string) string {
 	return s
 }
 
+// Unknown is what stands in for a number nothing reported.
+const Unknown = "\u2014"
+
+// USD is a cost estimate to the cent, or a dash when no cost-state was
+// ever seen: an unknown cost is never a number.
+func USD(usd float64, known bool) string {
+	if !known {
+		return Unknown
+	}
+	return fmt.Sprintf("~$%.2f", usd)
+}
+
 func Percent(p float64) string {
 	if p == 0 {
 		return "-"

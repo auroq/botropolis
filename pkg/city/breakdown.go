@@ -44,6 +44,8 @@ type Share struct {
 	Key     string
 	Tokens  int64
 	CostUSD float64
+	// CostKnown is whether any session in the share carried a cost.
+	CostKnown bool
 }
 
 // Breakdown is what the city spent in a window, three ways.
@@ -51,6 +53,7 @@ type Breakdown struct {
 	Window    Window
 	Tokens    int64
 	CostUSD   float64
+	CostKnown bool
 	ByModel   []Share
 	ByProject []Share
 	BySession []Share
@@ -80,7 +83,7 @@ func windowUsage(s *Building, w Window, at time.Time) int64 {
 func (c *City) Breakdown(w Window) Breakdown {
 	b := Breakdown{Window: w}
 	byModel, byProject, bySession := map[string]*Share{}, map[string]*Share{}, map[string]*Share{}
-	add := func(m map[string]*Share, key string, tok int64, usd float64) {
+	add := func(m map[string]*Share, key string, tok int64, usd float64, known bool) {
 		if key == "" {
 			key = "-"
 		}
@@ -91,6 +94,7 @@ func (c *City) Breakdown(w Window) Breakdown {
 		}
 		share.Tokens += tok
 		share.CostUSD += usd
+		share.CostKnown = share.CostKnown || known
 	}
 	for _, bld := range c.Buildings() {
 		tok := windowUsage(bld, w, c.Time)
@@ -101,11 +105,13 @@ func (c *City) Breakdown(w Window) Breakdown {
 		if all := tokens(bld.Session.Usage); all > 0 {
 			usd = bld.Session.CostUSD * float64(tok) / float64(all)
 		}
+		known := bld.Session.CostKnown
 		b.Tokens += tok
 		b.CostUSD += usd
-		add(byModel, bld.Session.Model, tok, usd)
-		add(byProject, filepath.Base(ProjectRoot(bld.Session.CWD)), tok, usd)
-		add(bySession, bld.Session.ID, tok, usd)
+		b.CostKnown = b.CostKnown || known
+		add(byModel, bld.Session.Model, tok, usd, known)
+		add(byProject, filepath.Base(ProjectRoot(bld.Session.CWD)), tok, usd, known)
+		add(bySession, bld.Session.ID, tok, usd, known)
 	}
 	b.ByModel, b.ByProject, b.BySession = shares(byModel), shares(byProject), shares(bySession)
 	return b

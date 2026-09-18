@@ -77,7 +77,7 @@ func TestPlantBudget(t *testing.T) {
 		s := city.NewScene(city.NewLayout())
 		s.Resize(800, 600)
 		snap := snapshot(session("a", cinders, state.Working))
-		snap.Power.CostUSD = 50
+		snap.Power.CostUSD, snap.Power.CostKnown = 50, true
 		s.SetSnapshot(snap)
 		s.SetBudget(250)
 

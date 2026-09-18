@@ -58,6 +58,7 @@ type Session struct {
 	FreshTokensPerHour float64        `json:"freshTokensPerHour"`
 	CacheReadPerHour   float64        `json:"cacheReadPerHour"`
 	CostUSD            float64        `json:"costUSD"`
+	CostKnown          bool           `json:"costKnown"`
 	Subagents          int            `json:"subagents"`
 	SubagentsInFlight  int            `json:"subagentsInFlight"`
 	Team               string         `json:"team,omitempty"`
@@ -96,8 +97,11 @@ type Power struct {
 	Since   time.Time               `json:"since"`
 	ByModel map[string]claude.Usage `json:"byModel"`
 	CostUSD float64                 `json:"costUSD"`
-	Fresh   int64                   `json:"fresh"`
-	Cached  int64                   `json:"cached"`
+	// CostKnown is whether any transcript in the window carried a
+	// cost-state record; without one CostUSD is unknown, not zero.
+	CostKnown bool  `json:"costKnown"`
+	Fresh     int64 `json:"fresh"`
+	Cached    int64 `json:"cached"`
 }
 
 const PowerWindow = 24 * time.Hour
@@ -213,6 +217,7 @@ func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript boo
 		}
 		s.Usage = t.Usage
 		s.CostUSD = t.Cost.TotalUSD
+		s.CostKnown = t.Cost.Known
 		if !t.LastAt.IsZero() {
 			s.LastActivity = t.LastAt
 		}
@@ -258,6 +263,7 @@ func parkedSession(t claude.Transcript) Session {
 		LastActivity: t.LastAt,
 		Usage:        t.Usage,
 		CostUSD:      t.Cost.TotalUSD,
+		CostKnown:    t.Cost.Known,
 	}
 	if t.ModelID != "" {
 		s.Model = t.ModelID
@@ -549,6 +555,7 @@ func PowerSince(transcripts []claude.Transcript, since time.Time) Power {
 		if all := lifetime.Context() + lifetime.Output; all > 0 {
 			power.CostUSD += lifetimeUSD * float64(window.Context()+window.Output) / float64(all)
 		}
+		power.CostKnown = power.CostKnown || t.Cost.Known
 		power.Fresh += window.Input + window.Output + window.CacheCreate
 		power.Cached += window.CacheRead
 	}

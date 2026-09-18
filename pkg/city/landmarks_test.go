@@ -27,7 +27,7 @@ func richSnapshot() state.Snapshot {
 			{Name: "datadog-mcp", Type: "http", Configured: true},
 		},
 		Skills: []state.Skill{{Name: "amberPylon:umberEstuary", Calls: 3, Sessions: 2}, {Name: "git-worktrees", Calls: 1, Sessions: 1}},
-		Power: state.Power{Since: now.Add(-24 * time.Hour), CostUSD: 12.5, Fresh: 30_000, Cached: 900_000,
+		Power: state.Power{Since: now.Add(-24 * time.Hour), CostUSD: 12.5, CostKnown: true, Fresh: 30_000, Cached: 900_000,
 			ByModel: map[string]claude.Usage{"claude-opus-5[1m]": {Output: 20_000}}},
 		Stats: &claude.Stats{
 			LastComputed:   now.Add(-48 * time.Hour).Format("2006-01-02"),
@@ -185,6 +185,23 @@ func TestLandmarks(t *testing.T) {
 
 		t.Run("it should give off smoke", func(t *testing.T) {
 			assert.Equal(t, 2, a.Smoke)
+		})
+	})
+
+	t.Run("when the plant's cost is unknown", func(t *testing.T) {
+		unpriced := c.Plant
+		unpriced.Power.CostUSD, unpriced.Power.CostKnown = 0, false
+		unpriced.BudgetUSD = 50
+		card := unpriced.Card()
+
+		t.Run("it should show a dash and say why", func(t *testing.T) {
+			assert.Contains(t, card.Lines, "cost     \u2014 in 24h (no cost-state in any transcript)")
+		})
+
+		t.Run("it should not measure a budget it cannot", func(t *testing.T) {
+			for _, line := range card.Lines {
+				assert.NotContains(t, line, "budget")
+			}
 		})
 	})
 

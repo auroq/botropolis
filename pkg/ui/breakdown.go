@@ -45,7 +45,7 @@ func LayoutBreakdown(th Theme, width, height float64, b city.Breakdown, series [
 	_, titleH := measure("", Title)
 	colW := 30 * grid
 	w := pad + 3*colW + 2*grid + pad
-	title := fmt.Sprintf("Power: %s tokens, ~$%.2f in %s", format.Tokens(float64(b.Tokens)), b.CostUSD, b.Window)
+	title := fmt.Sprintf("Power: %s tokens, %s in %s", format.Tokens(float64(b.Tokens)), format.USD(b.CostUSD, b.CostKnown), b.Window)
 	rowStep := bodyH + grid/2
 	rows := 0
 	for _, col := range [][]city.Share{b.ByModel, b.ByProject, b.BySession} {
@@ -75,7 +75,7 @@ func LayoutBreakdown(th Theme, width, height float64, b city.Breakdown, series [
 					label = t
 				}
 			}
-			value := fmt.Sprintf("%s · ~$%.2f", format.Tokens(float64(share.Tokens)), share.CostUSD)
+			value := fmt.Sprintf("%s · %s", format.Tokens(float64(share.Tokens)), format.USD(share.CostUSD, share.CostKnown))
 			vw, _ := measure(value, Small)
 			col.Rows = append(col.Rows, BreakdownRow{
 				Label: Text{Text: clipTo(label, colW-vw-grid, Small, measure), At: city.Point{X: x, Y: ry}, Size: Small},
