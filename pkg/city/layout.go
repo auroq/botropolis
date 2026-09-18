@@ -25,6 +25,23 @@ type districtLayout struct {
 type Layout struct {
 	Version   int                        `json:"version"`
 	Districts map[string]*districtLayout `json:"districts"`
+	River     *riverLayout               `json:"river,omitempty"`
+}
+
+// riverLayout pins the river's course: which side of the city it runs
+// on and the seed its wander is hashed from, so a new district does not
+// move it.
+type riverLayout struct {
+	Seed  uint32 `json:"seed"`
+	Below bool   `json:"below"`
+}
+
+// river returns the pinned course, choosing one from the seed on first use.
+func (l *Layout) river(seed uint32) riverLayout {
+	if l.River == nil {
+		l.River = &riverLayout{Seed: seed, Below: seed&1 == 1}
+	}
+	return *l.River
 }
 
 func NewLayout() *Layout {

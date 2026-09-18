@@ -6,8 +6,8 @@ import "sort"
 // terms), clear of the river; streets route around it. Background, like
 // the river.
 const (
-	lakeCols   = 3
-	lakeRows   = 2
+	lakeCols   = 4
+	lakeRows   = 3
 	lakeOffset = 1 // cells between the city's bounds and the water
 )
 

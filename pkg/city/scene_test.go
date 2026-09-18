@@ -376,6 +376,63 @@ func TestSceneProjection(t *testing.T) {
 	})
 }
 
+func TestJumpTo(t *testing.T) {
+	t.Run("when two sessions need you and one is working", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.NeedsYou), session("b", botropolis, state.NeedsYou), session("c", "/p/c", state.Working))
+		first := s.JumpTo(state.NeedsYou)
+		require.NotNil(t, first)
+
+		t.Run("it should select a building that needs you", func(t *testing.T) {
+			assert.Equal(t, state.NeedsYou, first.Session.State)
+			assert.Equal(t, first, s.Selected())
+		})
+
+		t.Run("it should centre that building in the view", func(t *testing.T) {
+			p := s.Camera().WorldToScreen(first.Rect.Center())
+			in := s.Insets()
+			assert.InDelta(t, in.Left+(800-in.Left-in.Right)/2, p.X, 1e-6)
+			assert.InDelta(t, in.Top+(600-in.Top-in.Bottom)/2, p.Y, 1e-6)
+		})
+
+		t.Run("it should be close enough to see sprites", func(t *testing.T) {
+			assert.True(t, s.Detailed())
+		})
+
+		t.Run("and it jumps again", func(t *testing.T) {
+			second := s.JumpTo(state.NeedsYou)
+
+			t.Run("it should move on to the other one", func(t *testing.T) {
+				assert.NotEqual(t, first, second)
+				assert.Equal(t, state.NeedsYou, second.Session.State)
+			})
+
+			t.Run("and again", func(t *testing.T) {
+				t.Run("it should wrap round", func(t *testing.T) {
+					assert.Equal(t, first, s.JumpTo(state.NeedsYou))
+				})
+			})
+		})
+
+		t.Run("and the window is resized after a jump", func(t *testing.T) {
+			offset := s.Camera().Offset
+			s.Resize(1024, 768)
+
+			t.Run("it should not refit over the user's position", func(t *testing.T) {
+				assert.Equal(t, offset, s.Camera().Offset)
+			})
+		})
+	})
+
+	t.Run("when nothing is in the state", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+
+		t.Run("it should go nowhere", func(t *testing.T) {
+			assert.Nil(t, s.JumpTo(state.NeedsYou))
+			assert.Nil(t, s.Selected())
+		})
+	})
+}
+
 func TestToggleNight(t *testing.T) {
 	t.Run("when nothing runs unattended and night is toggled", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))

@@ -51,6 +51,23 @@ func TestRiver(t *testing.T) {
 		})
 	})
 
+	t.Run("when a district is added after the river is laid", func(t *testing.T) {
+		layout := city.NewLayout()
+		before := city.Build(snapshot(session("a", cinders, state.Working), session("b", botropolis, state.Working)), layout)
+		require.NotEmpty(t, before.RiverCells)
+		above := before.RiverCells[0].Cell.Row < 0
+		after := city.Build(snapshot(session("a", cinders, state.Working), session("b", botropolis, state.Working), session("c", "/p/c", state.Working)), layout)
+		require.NotEmpty(t, after.RiverCells)
+
+		t.Run("it should keep the river on the same side of the city", func(t *testing.T) {
+			assert.Equal(t, above, after.RiverCells[0].Cell.Row < 0)
+		})
+
+		t.Run("it should remember the course in the layout", func(t *testing.T) {
+			require.NotNil(t, layout.River)
+		})
+	})
+
 	t.Run("when the city is empty", func(t *testing.T) {
 		t.Run("it should have no river", func(t *testing.T) {
 			assert.Empty(t, city.Build(state.Snapshot{}, city.NewLayout()).RiverCells)

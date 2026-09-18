@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 
 func TestStatus(t *testing.T) {
 	t.Run("when a user runs status against the sample fixture", func(t *testing.T) {
-		home := helpers.FixtureHome(t, "sample")
+		home := helpers.LiveFixtureHome(t, "sample")
 		out, err := exec.Command(botropolis, "status", "--home", home).CombinedOutput()
 		require.NoError(t, err, string(out))
 		lines := strings.Split(strings.TrimSpace(string(out)), "\n")

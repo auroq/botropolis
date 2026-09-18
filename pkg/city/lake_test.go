@@ -12,7 +12,7 @@ import (
 func TestLake(t *testing.T) {
 	t.Run("when a city is built", func(t *testing.T) {
 		c := city.Build(snapshot(session("a", cinders, state.Working), session("b", botropolis, state.Working)), city.NewLayout())
-		require.Len(t, c.LakeCells, 6)
+		require.Len(t, c.LakeCells, 12)
 
 		t.Run("it should lie just beyond the city's west corner", func(t *testing.T) {
 			b := c.Bounds()
@@ -35,7 +35,7 @@ func TestLake(t *testing.T) {
 				}
 			}
 			assert.Equal(t, 4, corners)
-			assert.Equal(t, 2, edges)
+			assert.Equal(t, 6, edges)
 		})
 
 		t.Run("it should never share a cell with the river", func(t *testing.T) {

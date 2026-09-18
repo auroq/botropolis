@@ -15,7 +15,7 @@ type RiverCell struct {
 	Mask int
 }
 
-func (c *City) placeRiver() {
+func (c *City) placeRiver(layout *Layout) {
 	c.RiverCells = nil
 	if len(c.Districts) == 0 {
 		return
@@ -31,9 +31,10 @@ func (c *City) placeRiver() {
 	cityMin, cityMax := cellOf(city.Min), cellOf(city.Max)
 	// Enter from the west at the row the hash picks, then walk east,
 	// drifting a row now and then and sliding along anything in the way.
-	seed := hash2(minCell.Col, minCell.Row)
+	pinned := layout.river(hash2(minCell.Col, minCell.Row))
+	seed := pinned.Seed
 	var row int
-	if seed&1 == 0 {
+	if !pinned.Below {
 		row = minCell.Row + int(seed%uint32(max(1, cityMin.Row-minCell.Row)))
 	} else {
 		row = cityMax.Row + 1 + int(seed%uint32(max(1, maxCell.Row-cityMax.Row)))

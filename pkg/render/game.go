@@ -71,12 +71,13 @@ type Game struct {
 	saveState func(*city.Layout)
 	sprites   *sprites
 
-	mu       sync.Mutex
-	pending  *state.Snapshot
-	status   string
-	dragging bool
-	dragFrom city.Point
-	started  time.Time
+	mu        sync.Mutex
+	pending   *state.Snapshot
+	status    string
+	stripHits []stripHit
+	dragging  bool
+	dragFrom  city.Point
+	started   time.Time
 }
 
 func NewGame(scene *city.Scene, actor Actor, face text.Face, saveLayout func(*city.Layout), sprites *sprites) *Game {
@@ -112,13 +113,15 @@ func (g *Game) Update() error {
 		g.scene.Wheel(cursor, wheel)
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		g.dragging, g.dragFrom = true, cursor
+		if !g.stripClick(cursor) {
+			g.dragging, g.dragFrom = true, cursor
+		}
 	}
 	if g.dragging && ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.scene.Pan(cursor.Sub(g.dragFrom))
 		g.dragFrom = cursor
 	}
-	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && g.dragging {
 		wasDrag := math.Hypot(cursor.X-g.dragFrom.X, cursor.Y-g.dragFrom.Y) > 3
 		g.dragging = false
 		if !wasDrag {
@@ -137,6 +140,9 @@ func (g *Game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
 		g.scene.Fit()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		g.jump(state.NeedsYou)
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyN) {
 		if g.scene.ToggleNight() {
@@ -613,7 +619,7 @@ func (g *Game) footer(screen *ebiten.Image, screenWidth, screenHeight float64) {
 	status := g.status
 	g.mu.Unlock()
 	if status == "" {
-		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click to attach | d d to demolish | f to fit | n for night | q to quit",
+		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click to attach | tab next needs-you | d d to demolish | f to fit | n night | q quit",
 			len(g.scene.City().Buildings()))
 	}
 	lines := format.Wrap(status, int((screenWidth-24)/charWidth))

@@ -147,7 +147,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	layout.PlaceDistricts(city.Districts)
 	city.placeLandmarks(snapshot)
 	city.placeRoads(snapshot.Roads)
-	city.placeRiver()
+	city.placeRiver(layout)
 	city.placeLake()
 	city.placeStreets()
 	return city

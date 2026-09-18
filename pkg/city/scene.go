@@ -278,6 +278,51 @@ func (s *Scene) Wheel(cursor Point, amount float64) {
 	s.camera.ZoomAt(cursor, math.Pow(wheelZoomStep, amount))
 }
 
+// JumpTo selects the next building in the given state after the current
+// selection, in district order, and centres the camera on it at the
+// current zoom (or the detail zoom, if the map is further out than that,
+// so the building can be seen). It returns nil when no building is in
+// that state.
+func (s *Scene) JumpTo(st state.State) *Building {
+	var candidates []*Building
+	for _, b := range s.city.Buildings() {
+		if b.Session.State == st {
+			candidates = append(candidates, b)
+		}
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	next := candidates[0]
+	if s.selected != nil {
+		for i, b := range candidates {
+			if b == s.selected {
+				next = candidates[(i+1)%len(candidates)]
+				break
+			}
+		}
+	}
+	s.selected = next
+	s.CenterOn(next.Rect.Center())
+	return next
+}
+
+// CenterOn pans the camera so a world point sits in the middle of the
+// view, between the chrome, zooming in to the detail zoom if needed.
+func (s *Scene) CenterOn(world Point) {
+	s.touched = true
+	if !s.Detailed() {
+		if s.camera.Projection == Isometric {
+			s.camera.Zoom = IsoDetailZoom
+		} else {
+			s.camera.Zoom = DetailZoom
+		}
+	}
+	in := s.Insets()
+	target := Point{X: in.Left + (s.width-in.Left-in.Right)/2, Y: in.Top + (s.height-in.Top-in.Bottom)/2}
+	s.camera.Offset = target.Scale(1 / s.camera.Zoom).Sub(s.camera.Projection.Apply(world))
+}
+
 func (s *Scene) Click(screen Point) Action {
 	hit := s.city.At(s.camera.ScreenToWorld(screen))
 	s.hover = hit

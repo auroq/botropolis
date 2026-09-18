@@ -3,9 +3,13 @@ package helpers
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type FixtureManifest struct {
@@ -48,4 +52,59 @@ func fixtureDir(t *testing.T, name string) string {
 		t.Fatal("cannot locate the helpers package on disk")
 	}
 	return filepath.Join(filepath.Dir(file), "fixtures", name)
+}
+
+// LiveFixtureHome copies a fixture home into a temp dir and points every
+// live session record at a child process of the test, so liveness does
+// not depend on whichever real sessions were running when the fixture
+// was generated. The children die with the test.
+func LiveFixtureHome(t *testing.T, name string) string {
+	t.Helper()
+	src := FixtureHome(t, name)
+	home := t.TempDir()
+	require.NoError(t, copyTree(src, home))
+	sessions := filepath.Join(home, ".claude", "sessions")
+	entries, err := os.ReadDir(sessions)
+	require.NoError(t, err)
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
+			continue
+		}
+		path := filepath.Join(sessions, e.Name())
+		data, err := os.ReadFile(path)
+		require.NoError(t, err)
+		var record map[string]any
+		require.NoError(t, json.Unmarshal(data, &record))
+		child := exec.Command("sleep", "600")
+		require.NoError(t, child.Start())
+		t.Cleanup(func() { _ = child.Process.Kill(); _, _ = child.Process.Wait() })
+		record["pid"] = child.Process.Pid
+		delete(record, "procStart")
+		out, err := json.Marshal(record)
+		require.NoError(t, err)
+		require.NoError(t, os.Remove(path))
+		require.NoError(t, os.WriteFile(filepath.Join(sessions, strconv.Itoa(child.Process.Pid)+".json"), out, 0o600))
+	}
+	return home
+}
+
+func copyTree(src, dst string) error {
+	return filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o700)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0o600)
+	})
 }
