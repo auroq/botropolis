@@ -2,6 +2,7 @@ package city
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/auroq/botropolis/pkg/state"
 )
@@ -57,16 +58,35 @@ func (c *City) Summary() Summary {
 	return s
 }
 
-// Headline is the one-line form for a window title or a bar: what needs
-// you first, then what is running.
-func (s Summary) Headline() string {
-	switch {
-	case s.NeedsYou > 0:
-		return fmt.Sprintf("%d need you · %d working", s.NeedsYou, s.Working+s.Unattended)
-	case s.Working+s.Unattended > 0:
-		return fmt.Sprintf("%d working", s.Working+s.Unattended)
+// Counts is the tally by state, for anything that walks state.Order.
+func (s Summary) Counts() map[state.State]int {
+	return map[state.State]int{
+		state.NeedsYou:   s.NeedsYou,
+		state.Working:    s.Working,
+		state.Unattended: s.Unattended,
+		state.Parked:     s.Parked,
 	}
-	return "quiet"
+}
+
+// Headline is the one-line form for a window title: the live states by
+// urgency, zero counts left out.
+func (s Summary) Headline() string {
+	var parts []string
+	for _, c := range state.Nonzero(s.Counts(), state.Live) {
+		parts = append(parts, CountLabel(c))
+	}
+	if len(parts) == 0 {
+		return "quiet"
+	}
+	return strings.Join(parts, " · ")
+}
+
+// CountLabel is a state count as prose: "2 need you", "1 working".
+func CountLabel(c state.Count) string {
+	if c.State == state.NeedsYou {
+		return fmt.Sprintf("%d need you", c.N)
+	}
+	return fmt.Sprintf("%d %s", c.N, c.State)
 }
 
 // StateCard lists the sessions in a state, for hovering a strip chip.
@@ -82,7 +102,7 @@ func (c *City) StateCard(st state.State) Card {
 		}
 		lines = append(lines, line)
 		if len(lines) == maxStateCardLines {
-			lines = append(lines, fmt.Sprintf("... and %d more", c.Summary().count(st)-maxStateCardLines))
+			lines = append(lines, fmt.Sprintf("... and %d more", c.Summary().Counts()[st]-maxStateCardLines))
 			break
 		}
 	}
@@ -93,17 +113,3 @@ func (c *City) StateCard(st state.State) Card {
 }
 
 const maxStateCardLines = 12
-
-func (s Summary) count(st state.State) int {
-	switch st {
-	case state.Working:
-		return s.Working
-	case state.NeedsYou:
-		return s.NeedsYou
-	case state.Unattended:
-		return s.Unattended
-	case state.Parked:
-		return s.Parked
-	}
-	return 0
-}

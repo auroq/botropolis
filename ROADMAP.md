@@ -219,4 +219,4 @@ parity waits for both so the sidebar and cards are built once, on the final tool
 
 Things noticed while building that are not in a phase; each is a question for Aria, not a plan.
 
-- The strip leads with "working" while the window title leads with "need you"; the two could agree.
+- (none open)

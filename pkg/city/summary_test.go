@@ -45,8 +45,9 @@ func TestSummary(t *testing.T) {
 			s    city.Summary
 			want string
 		}{
-			"with sessions needing you": {city.Summary{NeedsYou: 2, Working: 1, Unattended: 1}, "2 need you · 2 working"},
+			"with sessions needing you": {city.Summary{NeedsYou: 2, Working: 1, Unattended: 1}, "2 need you · 1 working · 1 unattended"},
 			"with only work running":    {city.Summary{Working: 3}, "3 working"},
+			"with only unattended work": {city.Summary{Unattended: 1, Parked: 2}, "1 unattended"},
 			"with nothing live":         {city.Summary{Parked: 9}, "quiet"},
 		}
 		for name, c := range cases {

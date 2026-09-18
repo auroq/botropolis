@@ -29,8 +29,6 @@ type Action struct {
 	SessionID string
 }
 
-var stateOrder = map[state.State]int{state.NeedsYou: 0, state.Working: 1, state.Unattended: 2, state.Parked: 3}
-
 type Model struct {
 	snapshot state.Snapshot
 	rows     []state.Session
@@ -69,8 +67,8 @@ func (m *Model) rebuild() {
 		m.rows = append(m.rows, s)
 	}
 	sort.SliceStable(m.rows, func(i, j int) bool {
-		if stateOrder[m.rows[i].State] != stateOrder[m.rows[j].State] {
-			return stateOrder[m.rows[i].State] < stateOrder[m.rows[j].State]
+		if state.Rank(m.rows[i].State) != state.Rank(m.rows[j].State) {
+			return state.Rank(m.rows[i].State) < state.Rank(m.rows[j].State)
 		}
 		return m.rows[i].LastActivity.After(m.rows[j].LastActivity)
 	})

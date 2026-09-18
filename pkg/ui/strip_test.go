@@ -66,6 +66,22 @@ func TestStripChips(t *testing.T) {
 		})
 	})
 
+	t.Run("when every state has sessions", func(t *testing.T) {
+		chips := ui.StripChips(city.Summary{Working: 2, Parked: 3, NeedsYou: 1, Unattended: 4})
+
+		t.Run("it should lead with needs-you and run down the urgency order", func(t *testing.T) {
+			assert.Equal(t, []string{"1 need you", "2 working", "4 unattended", "3 parked"}, chipTexts(chips)[:4])
+		})
+	})
+
+	t.Run("when nothing is working", func(t *testing.T) {
+		chips := ui.StripChips(city.Summary{NeedsYou: 1, Parked: 3})
+
+		t.Run("it should drop the working chip and keep the slot order", func(t *testing.T) {
+			assert.Equal(t, []string{"1 need you", "3 parked"}, chipTexts(chips)[:2])
+		})
+	})
+
 	t.Run("when the summary has something to point at", func(t *testing.T) {
 		cases := []struct {
 			summary city.Summary

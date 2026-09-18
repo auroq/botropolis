@@ -218,6 +218,10 @@ The frame is laid out in device pixels (`LayoutF` times the display's scale fact
 so nothing is upscaled after the fact;
 `render_scale` overrides the factor, which is how the acceptance screenshots get a reproducible 1× and 2×.
 The daemon links none of this: `pkg/ui`, `pkg/assets` and Ebitengine stay out of `botropolisd`'s dependency graph.
+States are listed by urgency everywhere — needs-you, working, unattended, parked, then the resource numbers —
+from `state.Order` alone;
+the strip, the window title, the bar and the TUI rows walk it,
+and a zero count drops out without moving the others.
 
 ## Open questions
 

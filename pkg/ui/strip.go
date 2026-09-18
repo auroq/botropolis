@@ -20,18 +20,14 @@ type Chip struct {
 	State state.State
 }
 
-// StripChips is the summary as a row of chips, in the order the eye
-// expects them: sessions by state, then tokens and cost, then the rest.
+// StripChips is the summary as a row of chips: sessions by state in
+// state.Order with zero counts left out, then tokens and cost, then the rest.
 func StripChips(s city.Summary) []Chip {
-	chips := []Chip{{fmt.Sprintf("%d working", s.Working), ToneWorking, state.Working}}
-	if s.NeedsYou > 0 {
-		chips = append(chips, Chip{fmt.Sprintf("%d need you", s.NeedsYou), ToneNeedsYou, state.NeedsYou})
-	}
-	if s.Unattended > 0 {
-		chips = append(chips, Chip{fmt.Sprintf("%d unattended", s.Unattended), ToneUnattended, state.Unattended})
+	var chips []Chip
+	for _, c := range state.Nonzero(s.Counts()) {
+		chips = append(chips, Chip{city.CountLabel(c), StateTone(c.State), c.State})
 	}
 	chips = append(chips,
-		Chip{fmt.Sprintf("%d parked", s.Parked), ToneParked, state.Parked},
 		Chip{Text: format.Tokens(s.FreshPerH) + "/h fresh"},
 		Chip{Text: format.Tokens(s.CachedPerH) + "/h cached"},
 		Chip{Text: fmt.Sprintf("~$%.2f 24h", s.CostUSD)},

@@ -79,10 +79,8 @@ func Summarize(snapshot state.Snapshot) BarLine {
 	}
 	sort.Strings(needs)
 	var parts []string
-	for _, st := range []state.State{state.NeedsYou, state.Working, state.Unattended} {
-		if n := counts[st]; n > 0 {
-			parts = append(parts, fmt.Sprintf("%d %s", n, st))
-		}
+	for _, c := range state.Nonzero(counts, state.Live) {
+		parts = append(parts, fmt.Sprintf("%d %s", c.N, c.State))
 	}
 	line := BarLine{Text: strings.Join(parts, " · "), Percentage: int(math.Min(100, math.Max(0, busiest)) + 0.5)}
 	switch {
