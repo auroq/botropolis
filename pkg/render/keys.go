@@ -31,6 +31,7 @@ var bindings = []ui.Key{
 	{Key: "n", Action: "night, day, auto"},
 	{Key: "[ ]", Action: "scrub the clock an hour"},
 	{Key: "s", Action: "settings"},
+	{Key: "x", Action: "power breakdown (also click the plant)"},
 	{Key: "b", Action: "sidebar"},
 	{Key: "h", Action: "hide the UI"},
 	{Key: "p", Action: "save a screenshot"},
@@ -56,6 +57,14 @@ func (g *Game) handleKeys() error {
 	just := g.just
 	if g.settingsOpen {
 		g.settingsOpen = g.settingsKeys()
+		return nil
+	}
+	if g.breakdown {
+		g.breakdown = g.breakdownKeys()
+		return nil
+	}
+	if just(ebiten.KeyX) {
+		g.breakdown, g.window = true, city.LastDay
 		return nil
 	}
 	if just(ebiten.KeyS) {

@@ -101,9 +101,13 @@ type Game struct {
 
 	sidebar       bool
 	sidebarLayout ui.Sidebar
-	dragging      bool
-	dragFrom      city.Point
-	started       time.Time
+
+	breakdown       bool
+	window          city.Window
+	breakdownLayout ui.BreakdownPanel
+	dragging        bool
+	dragFrom        city.Point
+	started         time.Time
 }
 
 func NewGame(scene *city.Scene, actor Actor, theme ui.Theme, faces *faces, saveLayout func(*city.Layout), sprites *sprites) *Game {
@@ -162,7 +166,7 @@ func (g *Game) Update() error {
 		g.scene.Wheel(cursor, wheel)
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		if !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
+		if !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
 			g.dragging, g.dragFrom = true, cursor
 		}
 	}
@@ -174,6 +178,9 @@ func (g *Game) Update() error {
 		wasDrag := math.Hypot(cursor.X-g.dragFrom.X, cursor.Y-g.dragFrom.Y) > 3
 		g.dragging = false
 		if !wasDrag {
+			if g.scene.Hover().Landmark == city.LandmarkPlant {
+				g.breakdown, g.window = true, city.LastDay
+			}
 			g.act(g.scene.Click(cursor))
 		}
 	}
@@ -302,10 +309,16 @@ func (g *Game) overlay(screen *ebiten.Image, width, height float64) {
 	if g.settingsOpen {
 		g.drawSettings(screen, width, height)
 	}
+	if g.breakdown {
+		g.drawBreakdown(screen, width, height)
+	}
 }
 
 // clock is the animation time; with reduced motion it stands still at
 // the point where the needs-you pulse is at full colour.
+// timeNow is the wall clock, one seam for the keys that stamp files.
+var timeNow = time.Now
+
 func (g *Game) clock() float64 {
 	if g.reduced {
 		return pulsePeriod / 4

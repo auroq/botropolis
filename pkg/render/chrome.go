@@ -93,10 +93,31 @@ func (g *Game) card(screen *ebiten.Image, c ui.Card) {
 	for _, line := range c.Lines {
 		g.run(screen, line, th.Palette.Dim)
 	}
+	g.sparkline(screen, c.Spark)
 	for _, b := range c.Buttons {
 		g.roundRect(screen, b.Rect, th.Radius()/2, th.Palette.Hairline)
 		g.run(screen, b.Label, th.Palette.Accent)
 	}
+}
+
+// sparkline strokes a series in the accent with its last point marked.
+func (g *Game) sparkline(screen *ebiten.Image, sp ui.Sparkline) {
+	if len(sp.Points) == 0 {
+		return
+	}
+	th := g.theme
+	vector.FillRect(screen, float32(sp.Box.Min.X), float32(sp.Box.Max.Y-th.Hairline()), float32(sp.Box.Width()), float32(th.Hairline()), th.Palette.Hairline, false)
+	if len(sp.Points) > 1 {
+		var path vector.Path
+		path.MoveTo(float32(sp.Points[0].X), float32(sp.Points[0].Y))
+		for _, p := range sp.Points[1:] {
+			path.LineTo(float32(p.X), float32(p.Y))
+		}
+		op := &vector.DrawPathOptions{AntiAlias: true}
+		op.ColorScale.ScaleWithColor(th.Palette.Accent)
+		vector.StrokePath(screen, &path, &vector.StrokeOptions{Width: float32(th.Px(1.5))}, op)
+	}
+	vector.FillCircle(screen, float32(sp.Last.X), float32(sp.Last.Y), float32(th.Px(2.5)), th.Palette.Accent, true)
 }
 
 func (g *Game) footer(screen *ebiten.Image, f ui.Footer) {

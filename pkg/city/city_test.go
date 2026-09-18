@@ -349,6 +349,10 @@ func TestHoverCard(t *testing.T) {
 		t.Run("it should show the subagents in flight", func(t *testing.T) {
 			assert.Contains(t, card.Lines, "subs     1 of 4 in flight")
 		})
+
+		t.Run("it should carry the day's tokens per hour for a sparkline", func(t *testing.T) {
+			assert.Len(t, card.Series, 24)
+		})
 	})
 
 	t.Run("when a district is hovered", func(t *testing.T) {

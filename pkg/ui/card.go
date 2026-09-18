@@ -10,6 +10,7 @@ type Card struct {
 	Rect    city.Rect
 	Title   Text
 	Lines   []Text
+	Spark   Sparkline
 	Buttons []Button
 }
 
@@ -38,6 +39,11 @@ func LayoutCard(th Theme, card city.Card, bounds city.Rect, measure Measure) Car
 	c.Title = Text{Text: title, At: city.Point{X: pad, Y: pad}, Size: Title}
 	for i, line := range lines {
 		c.Lines = append(c.Lines, Text{Text: line, At: city.Point{X: pad, Y: pad + titleH + lineH*float64(i)}, Size: Body})
+	}
+	if len(card.Series) > 0 {
+		box := city.RectAt(pad, c.Rect.Max.Y-pad+th.Grid(), c.Rect.Width()-2*pad, sparkGrids*th.Grid())
+		c.Spark = LayoutSparkline(th, card.Series, box)
+		c.Rect.Max.Y = box.Max.Y + pad
 	}
 	if len(card.Actions) > 0 {
 		row := LayoutButtonRows(th, card.Actions, city.Point{X: pad, Y: c.Rect.Max.Y - pad + th.Grid()}, maxWidth, measure)
@@ -86,6 +92,12 @@ func (c Card) MoveTo(at city.Point) Card {
 	}
 	for _, b := range c.Buttons {
 		moved.Buttons = append(moved.Buttons, Button{Rect: city.Rect{Min: b.Rect.Min.Add(by), Max: b.Rect.Max.Add(by)}, Label: b.Label.moved(by)})
+	}
+	if len(c.Spark.Points) > 0 {
+		moved.Spark = Sparkline{Box: city.Rect{Min: c.Spark.Box.Min.Add(by), Max: c.Spark.Box.Max.Add(by)}, Last: c.Spark.Last.Add(by), Peak: c.Spark.Peak}
+		for _, p := range c.Spark.Points {
+			moved.Spark.Points = append(moved.Spark.Points, p.Add(by))
+		}
 	}
 	return moved
 }

@@ -49,6 +49,18 @@ func isTone(c color.NRGBA) bool {
 	return false
 }
 
+// darkBand is how many rows down from the top the strip's dark panel
+// runs at the left edge.
+func darkBand(img image.Image) int {
+	h := img.Bounds().Dy()
+	for y := 0; y < h; y++ {
+		if !isDark(nrgba(img.At(2, y))) {
+			return y
+		}
+	}
+	return h
+}
+
 func isDark(c color.NRGBA) bool {
 	return c.R < 0x40 && c.G < 0x40 && c.B < 0x40
 }
@@ -68,12 +80,11 @@ func TestCityScreenshot(t *testing.T) {
 		two := shoot(t, home, "2")
 		w, h := one.Bounds().Dx(), one.Bounds().Dy()
 
-		t.Run("it should render far more pixels at 2x", func(t *testing.T) {
-			// The window manager may tile the two windows differently, so
-			// the frames need not double exactly; the chrome checks below
-			// pin the scale.
-			assert.Greater(t, two.Bounds().Dx(), 3*w/2)
-			assert.Greater(t, two.Bounds().Dy(), 3*h/2)
+		t.Run("it should draw the strip twice as tall at 2x", func(t *testing.T) {
+			// The window manager may tile the two windows to any size, so
+			// the frames are compared by the strip's height, which only
+			// the scale sets.
+			assert.InDelta(t, 2*darkBand(one), darkBand(two), 2)
 		})
 
 		t.Run("it should draw the strip's first dot in a state tone", func(t *testing.T) {

@@ -58,6 +58,7 @@ type District struct {
 	// grouped by project.
 	Storage bool
 	Groups  []StorageGroup
+	at      time.Time
 }
 
 type roadNote struct {
@@ -145,6 +146,8 @@ type Card struct {
 	Title   string
 	Lines   []string
 	Actions []string
+	// Series, when set, is drawn as a sparkline under the lines.
+	Series []float64
 }
 
 func ProjectRoot(cwd string) string {
@@ -199,6 +202,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	city.bounds = cellRect(p.Bounds)
 	for _, d := range city.Districts {
 		d.placeOn(cellRect(p.Blocks[d.Root]))
+		d.at = snapshot.At
 	}
 	if storage != nil {
 		storage.placeOn(cellRect(p.Storage))
@@ -426,7 +430,7 @@ func (b *Building) Card(now time.Time) Card {
 		lines = append(lines, "note     "+s.Note)
 	}
 	lines = append(lines, "age      "+format.Age(now.Sub(s.StartedAt)))
-	return Card{Title: title, Lines: lines}
+	return Card{Title: title, Lines: lines, Series: b.Series(LastDay, now)}
 }
 
 // Busy reports whether anything in the district is awake: the rule for
@@ -473,5 +477,5 @@ func (d *District) Card() Card {
 		}
 		lines = append(lines, "roads    "+strings.Join(parts, ", "))
 	}
-	return Card{Title: d.Name, Lines: lines}
+	return Card{Title: d.Name, Lines: lines, Series: d.Series(LastDay, d.at)}
 }
