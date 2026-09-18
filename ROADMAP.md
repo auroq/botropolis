@@ -134,6 +134,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - Settings: in-app panel (`s`) backed by the same viper config; `reduced_motion`, `render_scale`, `projection`, `parked_days`, `terminal`.
 - Help overlay (`?`), hide UI (`h`), screenshot (`p`), reset (`0`), keyboard pan and zoom.
 - **Done when** no bitmap-font text remains in chrome, and a 1× and a 2× screenshot are pixel-checked by the acceptance test.
+- Done 2026-09-18 (r68–r73); see DESIGN.md "Chrome".
 
 ### 8 — City plan
 

@@ -223,6 +223,16 @@ from `state.Order` alone;
 the strip, the window title, the bar and the TUI rows walk it,
 and a zero count drops out without moving the others.
 
+Phase 7 finished the same day.
+`pkg/ui` holds the strip, the plate (every in-world label sits on one), the card, the footer with its key row, the minimap's box,
+the help overlay, the settings panel and its model, and a button row for the cards to come;
+each is a pure layout with its own tests.
+Keys: `?` help, `h` hide the UI, `p` save a frame to `~/Pictures` from the game's own buffer, `0` and `f` fit, arrows pan, `+`/`-` zoom, `s` settings.
+The settings panel edits `reduced_motion`, `render_scale`, `projection`, `parked_days` and `terminal` live where it can
+and writes the one key back through `config.Save`, which never spells out defaults.
+The acceptance test shoots the sample city at 1× and 2× with no daemon and checks the frame doubles,
+the first strip dot is a state tone at both scales, and the bars are dark with ground between them.
+
 ## Open questions
 
 - Should a session that was started the old way (foreground `claude`) get a "convert to background" affordance,
