@@ -112,7 +112,9 @@ Free tilt is the one thing this path cannot give — only the four fixed heading
 | Workers (main thread) | [Space Kit](https://kenney.nl/assets/space-kit) rovers | same author and palette; motion is a bob and a wheel spin from the pipeline |
 | Subagents in flight | our own drone, modelled in the pipeline (a body, two rotors, one accent light) | Factorio's logistic bot is exactly this; guarantees the palette and the state light with no third-party asset |
 | Traffic | [Car Kit](https://kenney.nl/assets/car-kit) | cars per road in proportion to traffic |
-| Token flow | [Train Kit](https://kenney.nl/assets/train-kit) | a rail line from the plant instead of power poles: a train per model, wagons per thousand tokens; poles stay as the fallback |
+| Spend (the ledger) | [Train Kit](https://kenney.nl/assets/train-kit) | a rail line from the plant to each district: a train per model, wagons per thousand tokens over the breakdown window; decided 2026-09-18 |
+| Live rate and telemetry (the current) | power poles and wires, as built | sparks at tokens/min as today; **no wire means the daemon has seen no hook events for that session and is reading files** — the one datum nothing showed |
+| Tower names | signage on the building | short names horizontal on the face, long names vertical up the side, or a billboard on the roof, like a company name on an office block; never a floating plate |
 | River | [Watercraft Kit](https://kenney.nl/assets/watercraft-kit) | only if the river survives the plan |
 | Held in reserve | [Quaternius Animated Robot Pack](https://quaternius.com/packs/animatedrobot.html) (CC0) | a rigged robot with walk and idle clips, if the workers ever want personality rather than machinery |
 
@@ -274,8 +276,8 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   the daemon serves the event log and the away panel shows what happened while the window was closed.
 - **Phase 14 — Polish from the frames.** Bugs 7–10 and the `Later` items below that Aria approves.
   Exit: the fit view has no overlapping text, night reads at fit, and the `Later` list is empty or explicitly deferred.
-- **Phase 15 — Release.** Tag `v0.1.0` (the release workflow has never run), publish `botropolis-git` to the AUR if Aria decides to,
-  and a README hero shot taken with `h` — the chrome-free frame is the best view of the city.
+- **Phase 15 — Release.** Tag `v0.1.0` (the release workflow has never run) and a README hero shot taken with `h` — the chrome-free frame is the best view of the city.
+  AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
 
 ### Worth knowing, not bugs
 
@@ -301,9 +303,9 @@ Install `r96`, restart the daemon, enable notify, then:
 
 Things noticed while building that are not in a phase; each is a question for Aria, not a plan.
 
-- **Train Kit as the token line.** Phase 9 kept poles and sparks; the train (one per model, wagons per thousand tokens) is still the better picture of flow. Cut it, or drop the kit from §3?
+- ~~Train Kit as the token line~~ Decided 2026-09-18: cut it in phase 14 as the ledger, and the wires keep the live rate and gain the telemetry meaning (§3).
 - **Watercraft Kit.** Not cut; the river is a strip. Boats only if the river is worth animating; otherwise drop the kit from §3.
-- **Container colour means nothing.** The storage yard's green/red/blue containers are kit variants. Colour by project (the yard becomes legible without hovering) or all parked-slate?
-- **Tower labels overlap on the ridge.** Apply the phase 10 plate rule to towers: name on hover, or only while in use.
+- ~~Container colour means nothing~~ Decided 2026-09-18: colour by project (phase 14).
+- ~~Tower labels overlap on the ridge~~ Decided 2026-09-18: names go on the tower itself as signage (§3), and the plate appears only on hover (phase 14).
 - **The park belt reads as a hedge.** One tree sprite in a grid; a second variant and a seeded in-cell offset placed by the plan would read as a park.
 - **The plant's amber band is the kit's.** Amber is needs-you; tint the plant's band to the plant's own tone so the one colour keeps its meaning.
