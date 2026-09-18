@@ -311,6 +311,25 @@ func TestParkedSessions(t *testing.T) {
 		})
 	})
 
+	t.Run("when a parked transcript has hourly buckets going back a fortnight", func(t *testing.T) {
+		tr := transcript(sidA, claude.TurnAwaitingUser)
+		tr.Hourly = map[int64]claude.Usage{}
+		for h := int64(0); h < 14*24; h++ {
+			tr.Hourly[now.Unix()/3600-h] = claude.Usage{Output: 1}
+		}
+		sessions := state.Build(state.Sources{Parked: []claude.Transcript{tr}}, alive, now)
+		require.Len(t, sessions, 1)
+
+		t.Run("it should carry only the newest week of them", func(t *testing.T) {
+			assert.Len(t, sessions[0].Hourly, state.HourlyKeep)
+		})
+
+		t.Run("it should keep the newest bucket", func(t *testing.T) {
+			_, ok := sessions[0].Hourly[now.Unix()/3600]
+			assert.True(t, ok)
+		})
+	})
+
 	t.Run("when a parked transcript is a partial read that names its model id", func(t *testing.T) {
 		s := parked(true, "claude-opus-5[1m]", nil)
 

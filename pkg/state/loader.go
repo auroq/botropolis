@@ -150,6 +150,7 @@ func (l *Loader) Load(now time.Time) (Snapshot, error) {
 	snapshot.Servers = Servers(snapshot.Sessions, src.MCP)
 	snapshot.Skills = Skills(snapshot.Sessions)
 	snapshot.Roads = Roads(snapshot.Sessions, src.Teams)
+	snapshot.Teams = src.Teams
 	snapshot.Power = PowerSince(append(append([]claude.Transcript{}, src.Transcripts...), src.Parked...), now.Add(-PowerWindow))
 	return snapshot, nil
 }

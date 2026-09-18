@@ -22,6 +22,7 @@ type Snapshot struct {
 	Servers  []Server             `json:"servers"`
 	Skills   []Skill              `json:"skills"`
 	Roads    []Road               `json:"roads"`
+	Teams    []claude.Team        `json:"teams,omitempty"`
 	Power    Power                `json:"power"`
 	Stats    *claude.Stats        `json:"stats,omitempty"`
 	Skipped  []claude.SkippedFile `json:"skipped"`

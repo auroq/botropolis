@@ -58,12 +58,15 @@ type Session struct {
 	MCPCalls           map[string]int `json:"mcpCalls,omitempty"`
 	Skills             map[string]int `json:"skills,omitempty"`
 	PRs                []claude.PR    `json:"prs,omitempty"`
-	APIErrors          int            `json:"apiErrors"`
-	LastErrorAt        time.Time      `json:"lastErrorAt"`
-	Compactions        int            `json:"compactions"`
-	LastCompactionAt   time.Time      `json:"lastCompactionAt"`
-	StartedAt          time.Time      `json:"startedAt"`
-	LastActivity       time.Time      `json:"lastActivity"`
+	// Hourly is the session's usage by unix hour over its last week,
+	// for sparklines and the plant's breakdown.
+	Hourly           map[int64]claude.Usage `json:"hourly,omitempty"`
+	APIErrors        int                    `json:"apiErrors"`
+	LastErrorAt      time.Time              `json:"lastErrorAt"`
+	Compactions      int                    `json:"compactions"`
+	LastCompactionAt time.Time              `json:"lastCompactionAt"`
+	StartedAt        time.Time              `json:"startedAt"`
+	LastActivity     time.Time              `json:"lastActivity"`
 }
 
 type Server struct {
@@ -262,9 +265,13 @@ func parkedSession(t claude.Transcript) Session {
 	return s
 }
 
+// HourlyKeep is how many hourly buckets a session carries: a week.
+const HourlyKeep = 7 * 24
+
 func attribute(s *Session, t claude.Transcript) {
 	s.Team = t.TeamName
 	s.Agent = t.AgentName
+	s.Hourly = recentHours(t.Hourly, HourlyKeep)
 	s.Messages = t.Messages
 	s.Touches = t.Touches
 	s.MCPCalls = t.MCPCalls
@@ -481,6 +488,26 @@ func Skills(sessions []Session) []Skill {
 		}
 		return out[i].Name < out[j].Name
 	})
+	return out
+}
+
+// recentHours keeps the newest n buckets.
+func recentHours(hourly map[int64]claude.Usage, n int) map[int64]claude.Usage {
+	if len(hourly) == 0 {
+		return nil
+	}
+	hours := make([]int64, 0, len(hourly))
+	for h := range hourly {
+		hours = append(hours, h)
+	}
+	sort.Slice(hours, func(i, j int) bool { return hours[i] > hours[j] })
+	if len(hours) > n {
+		hours = hours[:n]
+	}
+	out := make(map[int64]claude.Usage, len(hours))
+	for _, h := range hours {
+		out[h] = hourly[h]
+	}
 	return out
 }
 
