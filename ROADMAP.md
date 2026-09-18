@@ -15,7 +15,7 @@ The pieces are right; the composition is not.
 
 | | bot-crossing | botropolis (r64) | Gap |
 | --- | --- | --- | --- |
-| **Harnesses** | Claude Code, Codex, Cursor (agent transcripts) | Claude Code, Codex (fixture-tested only) | Cursor adapter; a real Codex rollout as fixture |
+| **Harnesses** | Claude Code, Codex, Cursor (agent transcripts) | Claude Code, Codex (fixture-tested only) | none wanted — Claude Code only on this machine (§5) |
 | Live-process detection | pid probe | pid probe + `daemon/roster.json` attach detection | — (better) |
 | Worktrees folded into repo | yes | yes | — |
 | Sticky layout | hex tiles, root tile, `colony.json` | grid slots + yard slots + river seed, `layout.json` | — |
@@ -89,21 +89,37 @@ Hover shows the card without pinning.
 
 **Empty and first-run states.** No daemon, no sessions, no hooks installed — each has a screen that says what to do.
 
-## 3. Art direction: the asset decision
+## 3. Art direction: decided 2026-09-18
 
-The current Kenney isometric packs are 2014-era 2D tiles.
-They are consistent and CC0, but they read as retro, ship one heading, and their lighting is baked flat.
+The current look reads as Age of Empires or early SimCity rather than Factorio, and the reason is not 2D versus 3D.
+Factorio reads as deliberate because every sprite shares one light direction with a cast shadow, one palette grade, one tile scale,
+and detail that is dense but ordered.
+The current map mixes three pack families at two scales, has no shadows, sits on saturated noise, and spaces its plots out.
+The fix is a committed style, and the cheapest way to get one is Factorio's own method: model in 3D, render once, ship 2D.
 
-| Option | Look | Cost | Notes |
-| --- | --- | --- | --- |
-| **A. 3D low-poly kit, pre-rendered to sprites** — [KayKit City Builder Bits](https://kaylousberg.itch.io/city-builder-bits) (CC0, same author as bot-crossing's kits) and/or [Kenney City Kits](https://kenney.nl/assets?q=city+kit) Suburban / Commercial / Industrial / Roads (CC0) | modern flat-shaded low-poly, consistent lighting, 4 headings, Factorio's actual method | a `tools/render-sprites` Blender pipeline (Blender 5.2 is in `extra`; run headless from the Makefile), atlas packing, a one-time art pass | **Recommended.** Solves rotation, lighting and consistency at once, and swapping a pack later is a re-render, not a redraw |
-| B. Stay 2D, restyle | Kenney iso packs + custom tiles for plaza, parks, avenues | lowest | keeps the retro read; no rotation |
-| C. 2D "modern" packs | Kenney has no modern iso city pack; other CC0 2D iso city sets are rare and inconsistent | search | not worth the hunt |
+**Runtime stays 2D and stays Go.**
+The 3D happens offline in Blender at build time; Ebitengine keeps drawing y-sorted sprites from an atlas exactly as it does now.
+Blender (5.2, in `extra`) is a developer dependency for regenerating atlases; the committed PNGs mean the package and the runtime never touch it.
+Free tilt is the one thing this path cannot give — only the four fixed headings — and it is the only thing that would reopen the engine question.
 
-Trees and parks: [Kenney Nature Kit](https://kenney.nl/assets/nature-kit) (3D, CC0) through the same pipeline, so foliage matches the buildings.
-Workers: KayKit's character rigs render to sprite sheets too, which is how the worker gets a walk cycle rather than a static tile.
+**Packs, all CC0, all Kenney unless noted, chosen for one shared palette (slate, off-white, one amber accent — which is also the needs-you colour):**
 
-The decision is Aria's; the pipeline is built in phase 9 either way, because it is also how option B gets consistent new tiles.
+| Role | Pack | Notes |
+| --- | --- | --- |
+| Buildings, landmarks | [City Kit Commercial](https://kenney.nl/assets/city-kit-commercial), [Industrial](https://kenney.nl/assets/city-kit-industrial), [Suburban](https://kenney.nl/assets/city-kit-suburban) | Industrial has smokestacks, a water tower, silos and a cooling tower: the plant, the towers and the hall have native pieces |
+| Streets, avenues, plaza | [City Kit Roads](https://kenney.nl/assets/city-kit-roads) | |
+| Parks, greenbelt | [Nature Kit](https://kenney.nl/assets/nature-kit) | trees in rows, placed by the plan |
+| Workers (main thread) | [Space Kit](https://kenney.nl/assets/space-kit) rovers | same author and palette; motion is a bob and a wheel spin from the pipeline |
+| Subagents in flight | our own drone, modelled in the pipeline (a body, two rotors, one accent light) | Factorio's logistic bot is exactly this; guarantees the palette and the state light with no third-party asset |
+| Traffic | [Car Kit](https://kenney.nl/assets/car-kit) | cars per road in proportion to traffic |
+| Token flow | [Train Kit](https://kenney.nl/assets/train-kit) | a rail line from the plant instead of power poles: a train per model, wagons per thousand tokens; poles stay as the fallback |
+| River | [Watercraft Kit](https://kenney.nl/assets/watercraft-kit) | only if the river survives the plan |
+| Held in reserve | [Quaternius Animated Robot Pack](https://quaternius.com/packs/animatedrobot.html) (CC0) | a rigged robot with walk and idle clips, if the workers ever want personality rather than machinery |
+
+Workers are bots, not characters.
+That is the line between Factorio and Animal Crossing, and the whole point of the redesign is to be on the Factorio side of it.
+
+Kenney has no robot or drone character pack; the catalogue was checked, not remembered.
 
 ## 4. Phases
 
@@ -131,11 +147,11 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 
 ### 9 — Art pipeline and art pass
 
-- Decision on §3 recorded in DESIGN.md.
-- `tools/render-sprites`: Blender headless script renders each kit piece at four headings and N zoom levels into atlases with a JSON manifest;
-  `make sprites` regenerates; atlases committed with the packs' licences.
-- Building recipes per state and fill (ground floor, storeys, roof) from the new kit; landmark recipes; worker sheet with idle and work cycles;
-  cars, cranes, lamps, sparks re-cut.
+- First step: render one district through the pipeline and put it beside `docs/screenshots/r64-fit.png`; the rest of the pass waits on that comparison.
+- `tools/render-sprites`: Blender headless script renders each kit piece (and the modelled drone) at four headings and N zoom levels into atlases with a JSON manifest,
+  with a size budget per atlas; `make sprites` regenerates; atlases committed with the packs' licences.
+- Building recipes per state and fill (ground floor, storeys, roof) from the city kits; landmark recipes from Industrial;
+  rover worker sheet with bob and wheel spin; drone sheet; cars, trains, cranes, lamps, sparks re-cut.
 - Four headings on `r`; smooth zoom.
 - Map view (low zoom) redrawn to match the palette.
 - **Done when** the city reads at fit, at detail, and at night without a label, and every building state is distinguishable at map view.
@@ -147,9 +163,8 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
   All through `pkg/control` and the `claude` CLI.
 - Hide project (map-only, `layout.json`) and star (map-only) — never written to `~/.claude`.
 - Name plates only for districts with something happening; otherwise on hover.
-- Day/night by the clock (`Live`), with a scrub; lamps keep meaning awake, so night and unattended stop sharing a signal.
+- Day/night by the clock (`Live`), with a scrub; lamps keep meaning awake, so night and unattended stop sharing a signal (§5).
 - Merged PR: flag turns green with a one-shot celebration; API error keeps smoke.
-- Cursor adapter; first real Codex rollout captured as a fixture.
 - **Done when** every row in §1 with a gap reads "—".
 
 ### 11 — Beyond parity
@@ -170,12 +185,31 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - Wayland check (Ebitengine via GLFW/X11 under XWayland today); note it.
 - First-run: `botropolis doctor` reports daemon, hooks, terminal, harnesses.
 
-## 5. Not doing
+## 5. DESIGN.md's open questions, answered
+
+- **Foreground-started sessions.**
+  Parked-when-you-quit is enough; the shell helper is sourced in `~/.bashrc`, so new sessions are already background ones,
+  and there is no CLI to background a running foreground session anyway (the CLI's own dialog is mid-turn only).
+  No affordance is built.
+- **Harnesses.**
+  Claude Code only; there is no `~/.codex` or `~/.cursor` on this machine.
+  The seam and the fixture-tested Codex adapter stay; Cursor is dropped from parity.
+- **Parked sessions on the map.**
+  One storage district on the outskirts, grouped by project; live districts show only what is alive.
+- **Night.**
+  Clock-driven light with a scrub; a lit lamp means a session is awake, so unattended-at-night reads as a lit building in a dark city.
+  Night stops being a state signal.
+- **Cost, context window, parked catalogue, `tasks/` and `plans/`.**
+  Settled in DESIGN.md as recorded there; nothing changes.
+- **Sprites.**
+  §3.
+
+## 6. Not doing
 
 Planets, orbit mode, a 3D renderer, network serving, quality presets beyond render scale and reduced motion, animated faces.
 Each is either bot-crossing's setting rather than a feature, or a cost the footprint principle rules out.
 
-## 6. Order
+## 7. Order
 
 7 → 8 → 9 → 10 → 11 → 12.
 The UI foundation comes first because every later phase draws chrome; the plan comes before the art because the art has to be cut for the plan's cells;
