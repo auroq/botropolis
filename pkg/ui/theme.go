@@ -90,6 +90,9 @@ type Palette struct {
 	Text     color.NRGBA
 	Dim      color.NRGBA
 	Accent   color.NRGBA
+	// Plant is the power plant's own tone, for the bands the kit painted
+	// amber; amber is needs-you and means nothing else on the map.
+	Plant color.NRGBA
 
 	NeedsYou   color.NRGBA
 	Working    color.NRGBA
@@ -114,6 +117,7 @@ var DefaultPalette = Palette{
 	Text:       color.NRGBA{0xe6, 0xe9, 0xef, 0xff},
 	Dim:        color.NRGBA{0x8a, 0x93, 0xa5, 0xff},
 	Accent:     amber,
+	Plant:      color.NRGBA{0x6a, 0x8c, 0xb8, 0xff},
 	NeedsYou:   amber,
 	Working:    color.NRGBA{0x55, 0x9a, 0xe0, 0xff},
 	Waiting:    color.NRGBA{0x4c, 0xb8, 0xa8, 0xff},

@@ -29,6 +29,9 @@ func loadKits() (*kits, error) {
 	k := &kits{}
 	for _, a := range loaded {
 		ka := kitAtlas{KitAtlas: a}
+		// The kit's amber accent on the stack and the tanks becomes the
+		// plant's tone before the pages go up: amber is needs-you.
+		a.RetintAmber([]string{kitStack, kitTower}, ui.DefaultPalette.Plant)
 		for _, page := range a.Pages {
 			ka.pages = append(ka.pages, ebiten.NewImageFromImage(page))
 		}
