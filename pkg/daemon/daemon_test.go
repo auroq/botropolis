@@ -1,6 +1,7 @@
 package daemon_test
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -238,6 +239,30 @@ func TestDaemon(t *testing.T) {
 
 		t.Run("it should set the baseline without logging anything", func(t *testing.T) {
 			assert.Empty(t, d.Events(time.Time{}))
+		})
+	})
+
+	t.Run("when hook events arrive in a burst", func(t *testing.T) {
+		d := newDaemon(t, idleHome(t, "interactive"))
+		var mu sync.Mutex
+		released := 0
+		d.SetRelease(30*time.Millisecond, func() {
+			mu.Lock()
+			defer mu.Unlock()
+			released++
+		})
+		for i := 0; i < 5; i++ {
+			d.Apply(event(claude.HookPreToolUse, "Bash"), now)
+		}
+		count := func() int { mu.Lock(); defer mu.Unlock(); return released }
+
+		t.Run("it should release memory once they settle", func(t *testing.T) {
+			assert.Eventually(t, func() bool { return count() == 1 }, time.Second, 5*time.Millisecond)
+		})
+
+		t.Run("it should not keep releasing after that", func(t *testing.T) {
+			time.Sleep(80 * time.Millisecond)
+			assert.Equal(t, 1, count())
 		})
 	})
 

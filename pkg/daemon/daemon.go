@@ -44,7 +44,17 @@ type Daemon struct {
 	// log is what happened, as each view differs from the last; the
 	// daemon keeps it so a client sees what it missed while closed.
 	log *events.Log
+	// release hands the heap's garbage back to the OS once a burst of
+	// hook events has settled for settleAfter; only rescans did before,
+	// so a storm left the daemon sitting at its ceiling.
+	release     func()
+	settleAfter time.Duration
+	settle      *time.Timer
 }
+
+// SettleAfter is how long after the last hook event the daemon returns
+// memory to the OS.
+const SettleAfter = 5 * time.Second
 
 func New(home string, probes state.Probes, clock func() time.Time, options ...Option) *Daemon {
 	loader := state.NewLoader(home, probes)
@@ -62,7 +72,26 @@ func NewWith(loader Snapshotter, clock func() time.Time) *Daemon {
 		overlays:    map[string]overlay{},
 		subscribers: map[chan proto.Update]struct{}{},
 		log:         events.NewLog(),
+		release:     debug.FreeOSMemory,
+		settleAfter: SettleAfter,
 	}
+}
+
+// SetRelease replaces how and how soon memory is returned after a burst
+// of hook events, for tests and tuning.
+func (d *Daemon) SetRelease(after time.Duration, release func()) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.settleAfter, d.release = after, release
+}
+
+// scheduleRelease (re)arms the settle timer; the burst is over when it
+// fires.
+func (d *Daemon) scheduleRelease() {
+	if d.settle != nil {
+		d.settle.Stop()
+	}
+	d.settle = time.AfterFunc(d.settleAfter, d.release)
 }
 
 func (d *Daemon) Rescan() error {
@@ -123,6 +152,7 @@ func (d *Daemon) Apply(event claude.HookEvent, at time.Time) {
 	}
 	d.overlays[event.SessionID] = o
 	view := d.view()
+	d.scheduleRelease()
 	d.mu.Unlock()
 	d.notify(view)
 }
