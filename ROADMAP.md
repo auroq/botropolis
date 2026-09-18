@@ -115,7 +115,7 @@ Free tilt is the one thing this path cannot give — only the four fixed heading
 | Spend (the ledger) | [Train Kit](https://kenney.nl/assets/train-kit) | a rail line from the plant to each district: a train per model, wagons per thousand tokens over the breakdown window; decided 2026-09-18 |
 | Live rate and telemetry (the current) | power poles and wires, as built | sparks at tokens/min as today; **no wire means the daemon has seen no hook events for that session and is reading files** — the one datum nothing showed |
 | Tower names | signage on the building | short names horizontal on the face, long names vertical up the side, or a billboard on the roof, like a company name on an office block; never a floating plate |
-| River | [Watercraft Kit](https://kenney.nl/assets/watercraft-kit) | only if the river survives the plan |
+| River: arrivals and departures | [Watercraft Kit](https://kenney.nl/assets/watercraft-kit) | decided 2026-09-18: the river carries the session lifecycle — a new session arrives on a barge and docks at its district before its building rises, a demolished session's container leaves downriver. Fallback if that is too much motion: one or two slow boats as scenery, the card saying so |
 | Held in reserve | [Quaternius Animated Robot Pack](https://quaternius.com/packs/animatedrobot.html) (CC0) | a rigged robot with walk and idle clips, if the workers ever want personality rather than machinery |
 
 Workers are bots, not characters.
@@ -269,6 +269,12 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
 9. `--keys "?"` does not open help (F1 does); the `?` binding works from a keyboard but not from the key list.
 10. `AGE` is time since the session started, not since it last did anything; for a manager the second number is the one that matters.
 11. ~~**`TestCycleLight` reads the wall clock.**~~ Fixed with bug 3: the scene test helper pins the clock at the fixture's moment, so `TZ=UTC go test ./pkg/city` passes at any hour. Found 2026-09-18 21:18 UTC: fourteen CI runs in a row failed because the scene's clock-driven night (21:00–06:00) is real time and CI is in UTC; locally in MDT it passes. `TZ=UTC go test ./pkg/city` reproduces it. Inject the clock into `Scene` the way the demolish timer already is. Blocks the ten-green-runs bar for bug 3.
+12. ~~A third CLI status word.~~ Found by Aria validating r111, fixed `8b8f674`: a session in a `!` shell has `status: shell`, which fell through to the tail and read as needs-you; now only `idle` means idle and any other word means busy.
+13. ~~Tab ate the footer's key row.~~ Found by Aria validating r111, fixed `4918435`: a status is a four-second notice above the key row.
+14. **A solo session shows a self-named team.** The card says `team session-37d10079 (review-r2)` for a session with no teammates; a one-member team named after its own session is not a team and should not be a line.
+15. **Untitled parked sessions show the full UUID in the sidebar** (`5c7c6cd3-9e32-4c60-871d-0366014d`) while live untitled ones show the 8-character short id; pick the short id everywhere.
+16. **After a hook storm the daemon sits at the bar.** 2,000 hook events in a minute took it from 17.3 to 21.4 MB RSS and it settled at 20.0 MB idle — a plateau, not a leak, but the hook path never returns memory (only rescans call `FreeOSMemory`). A timer, or not rebuilding the snapshot per overlay, keeps it under 20.
+17. **`harness.Multi` has dropped two fields the same way** (`Stats` in `92499e4`, the cost-known flag in `1d6a787`) and has no round-trip test; one that reflects over `state.Snapshot` and asserts every exported field survives a single-harness merge closes the class.
 
 ### Next steps
 
@@ -279,8 +285,10 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   ten `workflow_dispatch` runs green at `e73620c`; `botropolis events` prints the daemon's log and the away panel opened on a cold start from a stale `seen`.
   Screenshot: `docs/screenshots/r111-correctness.png` (sidebar open at fit, the map clear of it).
   Awaiting Aria's validation checklist before phase 14.
-- **Phase 14 — Polish from the frames.** Bugs 7–10 and the `Later` items below that Aria approves.
-  Exit: the fit view has no overlapping text, night reads at fit, and the `Later` list is empty or explicitly deferred.
+- **Phase 14 — Polish from the frames.** Bugs 7, 8, 9, 10, 14, 15, 16, 17, then the decided `Later` items in this order:
+  containers coloured by project; tower names as signage on the building with the plate only on hover; the train as the ledger with the wires keeping the live rate and the no-wire-means-no-hooks meaning;
+  park-belt tree variants with a seeded in-cell offset from the plan; the plant's band retinted off amber; barges on the river for arrivals and departures (§3).
+  Exit: the fit view has no overlapping text, night reads at fit, every `Later` item is struck, and one frame per item in `docs/screenshots/`.
 - **Phase 15 — Release.** Tag `v0.1.0` (the release workflow has never run) and a README hero shot taken with `h` — the chrome-free frame is the best view of the city.
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
 
@@ -289,11 +297,11 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
 - The client binary is 45 MB (21 MB of embedded atlases plus Ebitengine, bubbletea and Inter); the daemon is 13 MB and links none of the UI.
 - The repo pack is 30 MB, almost all atlases; if `make sprites` churns, that is git-lfs or build-time atlases in the PKGBUILD.
 - `proto` (11%), `app` (16%) and `render` (5%) are the low-coverage packages; `proto` is exercised through the daemon tests, `render` is the GUI.
-- `botropolis-notify` is installed but not enabled; `r96` is built but `r59` is installed.
+- `botropolis-notify` is installed but not enabled; check `pacman -Q botropolis-git` against the PKGBUILD before validating.
 
 ### Validation checklist for Aria
 
-Install `r96`, restart the daemon, enable notify, then:
+Install the latest build, restart the daemon, enable notify, then:
 
 1. `botropolis status` — every live session's state matches what you know it is doing (bug 1 and 2 will show here).
 2. `botropolis` — Tab to the first needs-you, Enter: terminator opens with `claude attach` on that session, and Ctrl-Z leaves it running.
@@ -303,14 +311,16 @@ Install `r96`, restart the daemon, enable notify, then:
 6. `b`, `t`, `s`, `?`, `h`, `r`, `n`, `/` — each opens, closes with Escape, and none leaves the map in a wrong state.
 7. `d d` on a parked container: it is gone from the map and from `claude agents --json --all`.
 8. `botropolis bar` in waybar: the class changes colour when a session needs you.
+9. `b` with more projects than fit the window: the sidebar scrolls and the cursor row stays visible.
+10. Type `!` in a session to drop into a shell, then look at the map: the session reads as working, not needs-you (bug 12).
 
 ## Later
 
 Things noticed while building that are not in a phase; each is a question for Aria, not a plan.
 
 - ~~Train Kit as the token line~~ Decided 2026-09-18: cut it in phase 14 as the ledger, and the wires keep the live rate and gain the telemetry meaning (§3).
-- **Watercraft Kit.** Not cut; the river is a strip. Boats only if the river is worth animating; otherwise drop the kit from §3.
+- ~~Watercraft Kit~~ Decided 2026-09-18: boats carry arrivals and departures (§3); scenery boats as the fallback.
 - ~~Container colour means nothing~~ Decided 2026-09-18: colour by project (phase 14).
 - ~~Tower labels overlap on the ridge~~ Decided 2026-09-18: names go on the tower itself as signage (§3), and the plate appears only on hover (phase 14).
-- **The park belt reads as a hedge.** One tree sprite in a grid; a second variant and a seeded in-cell offset placed by the plan would read as a park.
-- **The plant's amber band is the kit's.** Amber is needs-you; tint the plant's band to the plant's own tone so the one colour keeps its meaning.
+- ~~The park belt reads as a hedge~~ Decided 2026-09-18: variants and a seeded in-cell offset from the plan (phase 14).
+- ~~The plant's amber band is the kit's~~ Decided 2026-09-18: retint to the plant's own tone (phase 14).
