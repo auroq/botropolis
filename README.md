@@ -32,7 +32,7 @@ Hover a building for what its worker is doing right now (tool and file), context
 Milestone 4: `botropolis` with no arguments (or `botropolis city`) opens the city:
 one district per project, one building per session, fill level for context used,
 orange and pulsing for needs-you, cranes for subagents in flight, boarded up for parked.
-Drag to pan, wheel to zoom, click a building to attach it, `tab` (or a click on a state chip in the strip) to jump to the next session in that state, `f` to fit, `n` to force night (to see the lights), `q` to quit.
+Drag to pan, wheel to zoom, click a building to attach it, `tab` (or a click on a state chip in the strip) to jump to the next session in that state and `enter` to attach it, `f` to fit, `n` to force night (to see the lights), `q` to quit.
 The layout is sticky, in `~/.local/state/botropolis/layout.json`.
 The window is built for tiling: it fits the city to whatever size the window manager gives it, refits on resize until you pan or zoom (`f` refits),
 and wraps the footer and clamps the hover card at narrow or short sizes.

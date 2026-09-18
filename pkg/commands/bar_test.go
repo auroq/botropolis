@@ -23,8 +23,8 @@ func TestBar(t *testing.T) {
 	t.Run("when sessions need you", func(t *testing.T) {
 		line := commands.Summarize(snapshot)
 
-		t.Run("it should count live states in order of urgency", func(t *testing.T) {
-			assert.Equal(t, "● 2 needs-you · 1 working", line.Text)
+		t.Run("it should count live states in order of urgency and name who is first", func(t *testing.T) {
+			assert.Equal(t, "● 2 needs-you · 1 working — Fix the CI queue", line.Text)
 		})
 
 		t.Run("it should carry the needs-you class", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestBar(t *testing.T) {
 		require.NoError(t, commands.NewBar(&fakeSource{snapshot: snapshot}, nil).Once(&out, commands.BarText, true))
 
 		t.Run("it should print the text line only", func(t *testing.T) {
-			assert.Equal(t, "● 2 needs-you · 1 working\n", out.String())
+			assert.Equal(t, "● 2 needs-you · 1 working — Fix the CI queue\n", out.String())
 		})
 	})
 
@@ -96,7 +96,7 @@ func TestBar(t *testing.T) {
 		commands.NewBar(&fakeSource{}, feed).Watch(context.Background(), &out, commands.BarText)
 
 		t.Run("it should print a line per snapshot", func(t *testing.T) {
-			assert.Equal(t, "● 2 needs-you · 1 working\nno sessions\n", out.String())
+			assert.Equal(t, "● 2 needs-you · 1 working — Fix the CI queue\nno sessions\n", out.String())
 		})
 	})
 }

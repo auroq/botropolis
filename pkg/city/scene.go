@@ -327,13 +327,19 @@ func (s *Scene) Click(screen Point) Action {
 	hit := s.city.At(s.camera.ScreenToWorld(screen))
 	s.hover = hit
 	s.selected = hit.Building
-	if hit.Building == nil {
+	return s.Activate()
+}
+
+// Activate is what a click or Enter does to the selected building: attach
+// a live session, resume a parked one, nothing when nothing is selected.
+func (s *Scene) Activate() Action {
+	if s.selected == nil {
 		return Action{}
 	}
-	if hit.Building.Session.State == state.Parked {
-		return Action{Kind: ActionResume, SessionID: hit.Building.Session.ID}
+	if s.selected.Session.State == state.Parked {
+		return Action{Kind: ActionResume, SessionID: s.selected.Session.ID}
 	}
-	return Action{Kind: ActionAttach, SessionID: hit.Building.Session.ID}
+	return Action{Kind: ActionAttach, SessionID: s.selected.Session.ID}
 }
 
 func (s *Scene) Demolish(now time.Time) (Action, string) {
@@ -369,6 +375,8 @@ func (s *Scene) Card() (Card, bool) {
 		return s.hover.Beam.Card(), true
 	case s.hover.Line != nil:
 		return s.hover.Line.Card(), true
+	case s.hover.Landmark == LandmarkWater:
+		return Card{Title: s.hover.Water, Lines: []string{"scenery: it means nothing"}}, true
 	}
 	return Card{}, false
 }

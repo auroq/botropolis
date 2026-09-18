@@ -144,6 +144,13 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
 		g.jump(state.NeedsYou)
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		if action := g.scene.Activate(); action.Kind != city.ActionNone && g.actor != nil {
+			if err := g.actor.Do(action); err != nil {
+				g.SetStatus(err.Error())
+			}
+		}
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyN) {
 		if g.scene.ToggleNight() {
 			g.SetStatus("night: forced on (n to release)")
@@ -619,7 +626,7 @@ func (g *Game) footer(screen *ebiten.Image, screenWidth, screenHeight float64) {
 	status := g.status
 	g.mu.Unlock()
 	if status == "" {
-		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click to attach | tab next needs-you | d d to demolish | f to fit | n night | q quit",
+		status = fmt.Sprintf("%d sessions | drag to pan | wheel to zoom | click or enter to attach | tab next needs-you | d d to demolish | f to fit | n night | q quit",
 			len(g.scene.City().Buildings()))
 	}
 	lines := format.Wrap(status, int((screenWidth-24)/charWidth))

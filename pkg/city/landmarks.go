@@ -42,6 +42,7 @@ const (
 	LandmarkTower   Landmark = "tower"
 	LandmarkLibrary Landmark = "library"
 	LandmarkHall    Landmark = "hall"
+	LandmarkWater   Landmark = "water"
 )
 
 type Plant struct {

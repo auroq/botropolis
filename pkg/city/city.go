@@ -83,6 +83,7 @@ type Hit struct {
 	Road     *RoadLine
 	Beam     *Beam
 	Line     *PowerLine
+	Water    string // "river" or "pond" when Landmark is LandmarkWater
 }
 
 // Near is the road, beam or power line within tolerance of p, nearest
@@ -335,6 +336,12 @@ func (c *City) At(p Point) Hit {
 	}
 	if c.Hall.Rect.Area() > 0 && c.Hall.Rect.Contains(p) {
 		return Hit{Landmark: LandmarkHall}
+	}
+	if _, ok := c.River(cellOf(p)); ok {
+		return Hit{Landmark: LandmarkWater, Water: "river"}
+	}
+	if _, ok := c.Lake(cellOf(p)); ok {
+		return Hit{Landmark: LandmarkWater, Water: "pond"}
 	}
 	for _, d := range c.Districts {
 		if !d.Rect.Contains(p) {

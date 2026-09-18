@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/state"
 )
 
@@ -97,6 +98,11 @@ func Summarize(snapshot state.Snapshot) BarLine {
 	}
 	if len(needs) > 0 {
 		line.Tooltip = "needs you:\n" + strings.Join(needs, "\n")
+		// The bar has room for a name: say who is first in line.
+		line.Text += " — " + format.Clip(needs[0], BarTitleWidth)
 	}
 	return line
 }
+
+// BarTitleWidth caps the needs-you title on the bar line.
+const BarTitleWidth = 28

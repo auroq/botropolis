@@ -78,7 +78,9 @@ func TestScene(t *testing.T) {
 
 	t.Run("when the pointer moves over empty ground", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))
-		s.PointerMove(city.Point{X: 799, Y: 599})
+		// Just outside the district, inside the bank the water keeps clear of.
+		d := s.City().Districts[0].Rect
+		s.PointerMove(s.Camera().WorldToScreen(city.Point{X: d.Max.X + city.BuildingSize/2, Y: d.Min.Y - city.BuildingSize/2}))
 
 		t.Run("it should hover nothing", func(t *testing.T) {
 			assert.Nil(t, s.Hover().Building)
@@ -197,7 +199,8 @@ func TestScene(t *testing.T) {
 	t.Run("when empty ground is clicked", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))
 		s.Click(centreOf(t, s, "a"))
-		action := s.Click(city.Point{X: 799, Y: 599})
+		d := s.City().Districts[0].Rect
+		action := s.Click(s.Camera().WorldToScreen(city.Point{X: d.Max.X + city.BuildingSize/2, Y: d.Min.Y - city.BuildingSize/2}))
 
 		t.Run("it should ask for nothing", func(t *testing.T) {
 			assert.Equal(t, city.Action{}, action)
@@ -205,6 +208,17 @@ func TestScene(t *testing.T) {
 
 		t.Run("it should clear the selection", func(t *testing.T) {
 			assert.Nil(t, s.Selected())
+		})
+	})
+
+	t.Run("when the bank beside a district is clicked", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.Click(centreOf(t, s, "a"))
+		d := s.City().Districts[0].Rect
+		action := s.Click(s.Camera().WorldToScreen(city.Point{X: d.Max.X + city.BuildingSize/2, Y: d.Min.Y - city.BuildingSize/2}))
+
+		t.Run("it should ask for nothing", func(t *testing.T) {
+			assert.Equal(t, city.Action{}, action)
 		})
 	})
 
@@ -429,6 +443,51 @@ func TestJumpTo(t *testing.T) {
 		t.Run("it should go nowhere", func(t *testing.T) {
 			assert.Nil(t, s.JumpTo(state.NeedsYou))
 			assert.Nil(t, s.Selected())
+		})
+	})
+}
+
+func TestActivate(t *testing.T) {
+	t.Run("when a live building was reached by a jump and Enter is pressed", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.NeedsYou))
+		require.NotNil(t, s.JumpTo(state.NeedsYou))
+
+		t.Run("it should ask to attach it", func(t *testing.T) {
+			assert.Equal(t, city.Action{Kind: city.ActionAttach, SessionID: "a"}, s.Activate())
+		})
+	})
+
+	t.Run("when a parked building is selected", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Parked))
+		s.JumpTo(state.Parked)
+
+		t.Run("it should ask to resume it", func(t *testing.T) {
+			assert.Equal(t, city.Action{Kind: city.ActionResume, SessionID: "a"}, s.Activate())
+		})
+	})
+
+	t.Run("when nothing is selected", func(t *testing.T) {
+		t.Run("it should do nothing", func(t *testing.T) {
+			assert.Equal(t, city.Action{}, scene(t, session("a", cinders, state.Working)).Activate())
+		})
+	})
+}
+
+func TestWaterCard(t *testing.T) {
+	t.Run("when the pointer rests on the pond", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		require.NotEmpty(t, s.City().LakeCells)
+		s.PointerMove(s.Camera().WorldToScreen(s.City().LakeCells[0].Cell.Center()))
+		card, ok := s.Card()
+		require.True(t, ok)
+
+		t.Run("it should say it is scenery", func(t *testing.T) {
+			assert.Equal(t, "pond", card.Title)
+			assert.Contains(t, card.Lines, "scenery: it means nothing")
+		})
+
+		t.Run("it should not be clickable", func(t *testing.T) {
+			assert.Equal(t, city.Action{}, s.Click(s.Camera().WorldToScreen(s.City().LakeCells[0].Cell.Center())))
 		})
 	})
 }
