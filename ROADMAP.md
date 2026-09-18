@@ -277,6 +277,8 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
 17. ~~**`harness.Multi` has dropped two fields the same way**~~ Closed 2026-09-18 (r122): a reflection round-trip test fills every exported field of `state.Snapshot` and asserts each survives a single-harness merge. (`Stats` in `92499e4`, the cost-known flag in `1d6a787`) and has no round-trip test; one that reflects over `state.Snapshot` and asserts every exported field survives a single-harness merge closes the class.
 
 18. ~~**Road tiles do not meet.**~~ Found by Aria validating r129, fixed r131: the ring road's corners were the kit's `road-bend`, the large-radius piece of a 2×2 whose quarter-disc is a whole cell wide, so it never met the narrower straights; the one-cell `road-curve` replaces it (a half turn from the bend's orientation). And at fit the grass showed as a hairline between every pair of tiles, their anti-aliased rims not quite meeting; ground tiles are now drawn three percent larger than their cell. Frame `docs/screenshots/r131-roads-joined.png`.
+18. **Rovers park on the road.** (Aria, 2026-09-18, r129 frame.) `pkg/render/iso.go:295` puts the worker at `Rect.Max − 0.4 tile`, a fixed offset from the building's bounding box, so for a building on the edge of its block the point lands on the kerb or the avenue. The door should be a plan cell: the building's front-face centre, half a tile in from its footprint, clamped inside the district block.
+19. **Rovers only bob.** A worker that stands still does not read as working, and motion should mean something: the rover drives from the door to the block's avenue edge and back once per tool call (`PreToolUse` out, `PostToolUse` back, along the district's own cells), so every trip is a tool call you can count; idle between calls it waits at the door; under `reduced_motion` it stays at the door.
 
 ### Next steps
 
@@ -296,7 +298,7 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   and the park belt keeps the suburban trees rather than the Nature Kit's teal ones. Package `botropolis-git-r129`; install and validate before phase 15.
 - **Phase 15 — Release.** Tag `v0.1.0` (the release workflow has never run) and a README hero shot taken with `h` — the chrome-free frame is the best view of the city.
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
-- **Phase 16 — Planting and the plaza** (Aria, 2026-09-18, from the r129 frames).
+- **Phase 16 — Planting, the plaza and the workers** (Aria, 2026-09-18, from the r129 frames). Bugs 18 and 19 first, then:
   - *The trees are too consistent.* The Suburban kit has two trees, so variety cannot come from the kit as shipped.
     Take the Nature Kit's geometry (fifty species: oak, pine, thin, fat, small, bush, flower, `planter`) and **retint its materials in the render script** to the Suburban green family,
     scaled so no tree stands taller than a two-storey building — the one-palette rule is about colour, and the pipeline assigns colour.
