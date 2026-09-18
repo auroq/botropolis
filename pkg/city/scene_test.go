@@ -1187,3 +1187,26 @@ func TestSidebarRoom(t *testing.T) {
 		})
 	})
 }
+
+func TestLandmarkLabels(t *testing.T) {
+	t.Run("when the view is at fit", func(t *testing.T) {
+		s := scene(t, append(sessionsIn(cinders, 6), sessionsIn(botropolis, 6)...)...)
+		require.Less(t, s.Camera().Zoom, city.LandmarkLabelZoom)
+
+		t.Run("it should hide the plaza landmarks' plates", func(t *testing.T) {
+			assert.False(t, s.LandmarkLabelsVisible())
+		})
+	})
+
+	t.Run("when the view is zoomed in past the landmark label zoom", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		for s.Camera().Zoom < city.LandmarkLabelZoom {
+			s.Wheel(city.Point{X: 400, Y: 300}, 1)
+			s.Animate(10)
+		}
+
+		t.Run("it should show them", func(t *testing.T) {
+			assert.True(t, s.LandmarkLabelsVisible())
+		})
+	})
+}

@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/auroq/botropolis/pkg/city"
@@ -341,6 +342,54 @@ func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, 
 
 // noteHit remembers a drawn sprite for the pointer; drawIso gathers
 // them front-last.
+// Where the water tower's tank face and leg column sit in its sprite,
+// as fractions of the sprite's box, for the name painted on it.
+const (
+	towerFaceLeft, towerFaceRight = 0.28, 0.72
+	towerFaceTop, towerFaceBottom = 0.23, 0.38
+	towerLegLeft, towerLegRight   = 0.42, 0.58
+	towerLegTop, towerLegBottom   = 0.48, 0.85
+)
+
+// towerSign paints an MCP server's name on its tower: across the tank
+// when that reads, up the legs when the name is long, and not at all
+// when the tower is too small on screen — then the hover plate names it.
+func (g *Game) towerSign(screen *ebiten.Image, r city.Rect, name string) {
+	if r.Area() == 0 || name == "" {
+		return
+	}
+	span := func(l, rt, t, b float64) city.Rect {
+		return city.Rect{
+			Min: city.Point{X: r.Min.X + r.Width()*l, Y: r.Min.Y + r.Height()*t},
+			Max: city.Point{X: r.Min.X + r.Width()*rt, Y: r.Min.Y + r.Height()*b},
+		}
+	}
+	sign, ok := ui.LayoutSign(name, span(towerFaceLeft, towerFaceRight, towerFaceTop, towerFaceBottom),
+		span(towerLegLeft, towerLegRight, towerLegTop, towerLegBottom), g.faces.Measure)
+	if !ok {
+		return
+	}
+	colour := colorKitKerb
+	if sign.Vertical {
+		colour = colorText
+	}
+	g.sign(screen, sign, colour)
+}
+
+// sign draws painted-on text: scaled with the map, and turned a quarter
+// anticlockwise to run up a side when the sign is vertical.
+func (g *Game) sign(screen *ebiten.Image, s ui.Sign, c color.NRGBA) {
+	op := &text.DrawOptions{}
+	op.GeoM.Scale(s.Scale, s.Scale)
+	if s.Vertical {
+		op.GeoM.Rotate(-math.Pi / 2)
+	}
+	op.GeoM.Translate(s.At.X, s.At.Y)
+	op.ColorScale.ScaleWithColor(c)
+	op.Filter = ebiten.FilterLinear
+	text.Draw(screen, s.Text, g.faces.Face(ui.Small), op)
+}
+
 // vacantPlot is a session with nothing typed into it yet: bare ground
 // inside the plot's kerb, no building, no light, hoverable like one.
 func (g *Game) vacantPlot(screen *ebiten.Image, cam *city.Camera, b *city.Building, selected bool) {
@@ -457,7 +506,9 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 				tint.SetG(1)
 				tint.SetB(0.95)
 			}
-			g.isoLandmark(screen, cam, t.Rect, kitTower, tint, city.Hit{Landmark: city.LandmarkTower, Tower: t})
+			r := g.kit(screen, cam, kitTower, 0, t.Rect.Center(), tint)
+			g.noteHit(r, city.Hit{Landmark: city.LandmarkTower, Tower: t})
+			g.towerSign(screen, r, t.Server.Name)
 		}})
 	}
 	if c.Library.Rect.Area() > 0 {
@@ -506,15 +557,14 @@ func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city
 		wText, h := g.measure(s)
 		g.floorLabel(screen, city.Point{X: foot.X - wText/2, Y: foot.Y - float64(size.Y) - h - g.theme.Px(4)}, s, colorDim)
 	}
-	if c.Plant.Rect.Area() > 0 {
+	plates := g.scene.LandmarkLabelsVisible()
+	if c.Plant.Rect.Area() > 0 && (plates || hover.Landmark == city.LandmarkPlant) {
 		above(c.Plant.Rect, "power plant", kitPlant)
 	}
-	// Towers run down the diagonal, so their names hang off each one's
-	// left corner and stagger with it instead of piling up; below the
-	// detail zoom the stagger is shorter than a line, so only a hovered
-	// tower is named.
+	// A tower's name is signage on the tower itself; the plate is for
+	// the hovered one only, so the ridge never piles up with text.
 	for _, t := range c.Towers {
-		if t.Server.Calls == 0 && hover.Tower != t {
+		if hover.Tower != t {
 			continue
 		}
 		top, w := footprint(cam, t.Rect)
@@ -522,10 +572,10 @@ func (g *Game) isoLandmarkLabels(screen *ebiten.Image, cam *city.Camera, c *city
 		wText, h := g.measure(name)
 		g.floorLabel(screen, city.Point{X: top.X - w/2 - wText - g.theme.Px(8), Y: top.Y + w/4 - h/2}, name, colorDim)
 	}
-	if c.Library.Rect.Area() > 0 {
+	if c.Library.Rect.Area() > 0 && (plates || hover.Landmark == city.LandmarkLibrary) {
 		above(c.Library.Rect, "library", kitLibrary)
 	}
-	if c.Hall.Rect.Area() > 0 {
+	if c.Hall.Rect.Area() > 0 && (plates || hover.Landmark == city.LandmarkHall) {
 		above(c.Hall.Rect, "city hall", kitHall)
 	}
 }

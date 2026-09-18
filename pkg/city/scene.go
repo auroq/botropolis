@@ -225,6 +225,18 @@ func (s *Scene) LabelsVisible() bool {
 	return s.camera.Zoom >= LabelZoom
 }
 
+// LandmarkLabelZoom is the zoom from which the plaza's landmarks carry
+// their plates; further out the plates would land on the district
+// plates around them, and the plant, hall and library are known by
+// their shapes (and named on hover).
+const LandmarkLabelZoom = 0.7
+
+// LandmarkLabelsVisible reports whether the plaza landmarks' plates are
+// drawn without a hover.
+func (s *Scene) LandmarkLabelsVisible() bool {
+	return s.camera.Zoom >= LandmarkLabelZoom
+}
+
 const (
 	// DetailZoom is where sprites take over from the map view's flat blocks.
 	DetailZoom = 0.75
