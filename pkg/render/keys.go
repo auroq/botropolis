@@ -77,7 +77,7 @@ func (g *Game) handleKeys() error {
 		g.searching = g.searchKeys()
 		return nil
 	}
-	if just(ebiten.KeySlash) && !ebiten.IsKeyPressed(ebiten.KeyShift) {
+	if just(ebiten.KeySlash) && !g.shifted() {
 		g.searching = true
 		return nil
 	}
@@ -121,7 +121,7 @@ func (g *Game) handleKeys() error {
 		g.SetStatus(quitPrompt)
 		return nil
 	}
-	if (just(ebiten.KeySlash) && ebiten.IsKeyPressed(ebiten.KeyShift)) || just(ebiten.KeyF1) {
+	if (just(ebiten.KeySlash) && g.shifted()) || just(ebiten.KeyF1) {
 		g.help = !g.help
 	}
 	if just(ebiten.KeyH) {

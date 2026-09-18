@@ -139,13 +139,15 @@ type Game struct {
 	// quit is the two-press guard on Escape.
 	quit confirm
 	// searching is the box on /; query is the filter it holds;
-	// scriptedRune is a typed character from --keys.
-	searching    bool
-	query        string
-	scriptedRune rune
-	dragging     bool
-	dragFrom     city.Point
-	started      time.Time
+	// scriptedRune is a typed character from --keys; scriptedShift is a
+	// shift the script holds with this frame's key.
+	searching     bool
+	query         string
+	scriptedRune  rune
+	scriptedShift bool
+	dragging      bool
+	dragFrom      city.Point
+	started       time.Time
 }
 
 func NewGame(scene *city.Scene, actor Actor, theme ui.Theme, faces *faces, saveLayout func(*city.Layout), sprites *sprites) *Game {
@@ -199,12 +201,12 @@ func (g *Game) Update() error {
 			g.shotFrames = 1
 		}
 	}
-	g.scripted, g.scriptedRune = -1, 0
+	g.scripted, g.scriptedRune, g.scriptedShift = -1, 0, false
 	if g.record != "" && g.shotFrames > 0 {
 		// A key every two seconds, then run the clock out.
 		if len(g.script) > 0 && g.recorded%60 == 30 {
-			if key, ok := keyByName(g.script[0]); ok {
-				g.scripted = key
+			if key, shift, ok := scriptedKey(g.script[0]); ok {
+				g.scripted, g.scriptedShift = key, shift
 			}
 			if r := []rune(g.script[0]); len(r) == 1 && g.searching {
 				g.scriptedRune = r[0]
@@ -212,8 +214,8 @@ func (g *Game) Update() error {
 			g.script = g.script[1:]
 		}
 	} else if g.shotFrames > 0 && len(g.script) > 0 {
-		if key, ok := keyByName(g.script[0]); ok {
-			g.scripted = key
+		if key, shift, ok := scriptedKey(g.script[0]); ok {
+			g.scripted, g.scriptedShift = key, shift
 		}
 		if r := []rune(g.script[0]); len(r) == 1 && g.searching {
 			g.scriptedRune = r[0]
@@ -279,6 +281,21 @@ func keyByName(name string) (ebiten.Key, bool) {
 		}
 	}
 	return -1, false
+}
+
+// scriptedKey reads one entry of --keys: a key's own name, or a typed
+// character that needs shift, such as "?" for help.
+func scriptedKey(name string) (key ebiten.Key, shift bool, ok bool) {
+	if name == "?" {
+		return ebiten.KeySlash, true, true
+	}
+	key, ok = keyByName(name)
+	return key, false, ok
+}
+
+// shifted reports whether shift is held, by hand or by the script.
+func (g *Game) shifted() bool {
+	return g.scriptedShift || ebiten.IsKeyPressed(ebiten.KeyShift)
 }
 
 func (g *Game) capture(screen *ebiten.Image) {
