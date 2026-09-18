@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/testing/helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,8 +47,12 @@ func TestStatus(t *testing.T) {
 		})
 
 		t.Run("it should give every row a state", func(t *testing.T) {
+			names := make([]string, 0, len(state.Order)+1)
+			for _, st := range append(state.Order, state.Empty) {
+				names = append(names, string(st))
+			}
 			for _, line := range lines[1:] {
-				assert.Regexp(t, `^(needs-you|working|unattended|parked)\s`, line)
+				assert.Regexp(t, `^(`+strings.Join(names, "|")+`)\s`, line)
 			}
 		})
 	})

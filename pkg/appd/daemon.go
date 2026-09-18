@@ -36,6 +36,11 @@ func DaemonModule(cfg *config.Config, out io.Writer) fx.Option {
 // 20 MB target DESIGN.md sets; GOMEMLIMIT in the environment overrides it.
 const DefaultMemoryLimit = 16 << 20
 
+const (
+	startTimeout = 10 * time.Second
+	stopTimeout  = 5 * time.Second
+)
+
 func RunDaemon(ctx context.Context, cfg *config.Config, out io.Writer) error {
 	if os.Getenv("GOMEMLIMIT") == "" {
 		debug.SetMemoryLimit(DefaultMemoryLimit)
@@ -47,7 +52,11 @@ func RunDaemon(ctx context.Context, cfg *config.Config, out io.Writer) error {
 	if err := app.Err(); err != nil {
 		return err
 	}
-	startCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	// Startup runs to completion on its own clock: a stop signal that
+	// lands while the socket is being brought up is an orderly shutdown
+	// once it is up, not a failed start, so `systemctl stop` during
+	// startup exits zero and leaves no socket behind.
+	startCtx, cancel := context.WithTimeout(context.Background(), startTimeout)
 	defer cancel()
 	if err := app.Start(startCtx); err != nil {
 		return err
@@ -60,7 +69,7 @@ func RunDaemon(ctx context.Context, cfg *config.Config, out io.Writer) error {
 			exit = fmt.Errorf("daemon stopped with exit code %d", sig.ExitCode)
 		}
 	}
-	stopCtx, cancelStop := context.WithTimeout(context.Background(), 5*time.Second)
+	stopCtx, cancelStop := context.WithTimeout(context.Background(), stopTimeout)
 	defer cancelStop()
 	if err := app.Stop(stopCtx); err != nil && exit == nil {
 		exit = err

@@ -147,6 +147,24 @@ func TestRun(t *testing.T) {
 		})
 	})
 
+	t.Run("when the context is cancelled before the daemon has started", func(t *testing.T) {
+		home := helpers.NewHome(t)
+		sock := filepath.Join(shortTempDir(t), "botropolis.sock")
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		var out bytes.Buffer
+		code := run(ctx, []string{"--home", home.Path, "--socket", sock}, &out)
+
+		t.Run("it should exit zero", func(t *testing.T) {
+			assert.Equal(t, 0, code, out.String())
+		})
+
+		t.Run("it should remove its socket", func(t *testing.T) {
+			_, err := os.Stat(sock)
+			assert.True(t, os.IsNotExist(err))
+		})
+	})
+
 	t.Run("when the context is cancelled", func(t *testing.T) {
 		home := helpers.NewHome(t)
 		sock := filepath.Join(shortTempDir(t), "botropolis.sock")
