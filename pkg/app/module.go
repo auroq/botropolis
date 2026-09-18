@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/auroq/botropolis/pkg/proto"
 	"os"
+	"os/exec"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -35,6 +37,7 @@ type cliParams struct {
 	Bar      *cobra.Command   `name:"bar"`
 	Notify   *cobra.Command   `name:"notify"`
 	TUI      *cobra.Command   `name:"tui"`
+	Doctor   *cobra.Command   `name:"doctor"`
 }
 
 var Module = fx.Module("botropolis",
@@ -42,7 +45,7 @@ var Module = fx.Module("botropolis",
 		config.NewViper,
 		newLoader,
 		appd.NewProbes,
-		fx.Annotate(newServices, fx.As(new(cli.Services)), fx.As(new(cli.CityServices)), fx.As(new(cli.BarServices)), fx.As(new(cli.NotifyServices)), fx.As(new(cli.TUIServices))),
+		fx.Annotate(newServices, fx.As(new(cli.Services)), fx.As(new(cli.CityServices)), fx.As(new(cli.BarServices)), fx.As(new(cli.NotifyServices)), fx.As(new(cli.TUIServices)), fx.As(new(cli.DoctorServices))),
 		fx.Annotate(cli.NewStatusCLI, fx.ResultTags(`name:"status"`)),
 		fx.Annotate(cli.NewInstallHooksCLI, fx.ResultTags(`name:"installHooks"`)),
 		fx.Annotate(cli.NewSessionCLIs, fx.ResultTags(`name:"sessions"`)),
@@ -50,8 +53,9 @@ var Module = fx.Module("botropolis",
 		fx.Annotate(cli.NewBarCLI, fx.ResultTags(`name:"bar"`)),
 		fx.Annotate(cli.NewNotifyCLI, fx.ResultTags(`name:"notify"`)),
 		fx.Annotate(cli.NewTUICLI, fx.ResultTags(`name:"tui"`)),
+		fx.Annotate(cli.NewDoctorCLI, fx.ResultTags(`name:"doctor"`)),
 		func(p cliParams) *cobra.Command {
-			subs := append([]*cobra.Command{p.Status, p.Hooks, p.City, p.Bar, p.Notify, p.TUI}, p.Sessions...)
+			subs := append([]*cobra.Command{p.Status, p.Hooks, p.City, p.Bar, p.Notify, p.TUI, p.Doctor}, p.Sessions...)
 			return cli.NewRootCLI(p.Viper, subs...)
 		},
 	),
@@ -118,6 +122,21 @@ func (s *services) Notify(cfg *config.Config) cli.NotifyRunner {
 	n := commands.NewNotify(feed.Run, commands.NotifySend{})
 	n.OnError = func(err error) { fmt.Fprintf(os.Stderr, "botropolis notify: %v\n", err) }
 	return n
+}
+
+func (s *services) Doctor(cfg *config.Config) cli.DoctorRunner {
+	return commands.Doctor{
+		Home: cfg.Home, Socket: cfg.Socket, Terminal: cfg.Terminal, HookCommand: cfg.HookCommand, CodexHome: cfg.CodexHome,
+		Getenv: os.Getenv,
+		OnPath: func(name string) bool { _, err := exec.LookPath(name); return err == nil },
+		Dial: func(sock string) error {
+			client, err := proto.Dial(sock)
+			if err != nil {
+				return err
+			}
+			return client.Close()
+		},
+	}
 }
 
 func (s *services) TUI(cfg *config.Config) cli.TUIRunner {

@@ -93,6 +93,16 @@ type fakeNotify struct{ runs int }
 
 func (f *fakeNotify) Run(context.Context) { f.runs++ }
 
+type fakeDoctor struct{ runs int }
+
+func (f *fakeDoctor) Report(out io.Writer) error {
+	f.runs++
+	_, err := io.WriteString(out, "all good\n")
+	return err
+}
+
+func (h *harness) Doctor(*config.Config) cli.DoctorRunner { return h.doctor }
+
 type fakeTUI struct{ runs int }
 
 func (f *fakeTUI) Run(context.Context) error { f.runs++; return nil }
@@ -118,6 +128,7 @@ type harness struct {
 	bar      *fakeBar
 	notify   *fakeNotify
 	tui      *fakeTUI
+	doctor   *fakeDoctor
 	seen     *config.Config
 	out      bytes.Buffer
 	root     *cobra.Command
@@ -132,10 +143,10 @@ func (h *harness) Notify(cfg *config.Config) cli.NotifyRunner     { h.seen = cfg
 func (h *harness) TUI(cfg *config.Config) cli.TUIRunner           { h.seen = cfg; return h.tui }
 
 func newHarness(cfg *config.Config) *harness {
-	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}, bar: &fakeBar{}, notify: &fakeNotify{}, tui: &fakeTUI{}}
+	h := &harness{status: &fakeStatus{}, hooks: &fakeHooks{}, sessions: &fakeSessions{id: "0898d7e4"}, city: &fakeCity{}, bar: &fakeBar{}, notify: &fakeNotify{}, tui: &fakeTUI{}, doctor: &fakeDoctor{}}
 	load := func() (*config.Config, error) { return cfg, nil }
 	v := config.NewViper()
-	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h), cli.NewBarCLI(load, h), cli.NewNotifyCLI(load, h), cli.NewTUICLI(load, h)},
+	subs := append([]*cobra.Command{cli.NewStatusCLI(load, h), cli.NewInstallHooksCLI(load, h), cli.NewCityCLI(load, h), cli.NewBarCLI(load, h), cli.NewNotifyCLI(load, h), cli.NewTUICLI(load, h), cli.NewDoctorCLI(load, h)},
 		cli.NewSessionCLIs(load, h)...)
 	h.root = cli.NewRootCLI(v, subs...)
 	h.root.SetOut(&h.out)
@@ -146,6 +157,18 @@ func newHarness(cfg *config.Config) *harness {
 func (h *harness) run(args ...string) error {
 	h.root.SetArgs(args)
 	return h.root.Execute()
+}
+
+func TestDoctorCLI(t *testing.T) {
+	t.Run("when doctor is run", func(t *testing.T) {
+		h := newHarness(&config.Config{})
+		require.NoError(t, h.run("doctor"))
+
+		t.Run("it should report", func(t *testing.T) {
+			assert.Equal(t, 1, h.doctor.runs)
+			assert.Contains(t, h.out.String(), "all good")
+		})
+	})
 }
 
 func TestRootCLI(t *testing.T) {
