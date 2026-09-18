@@ -222,6 +222,81 @@ Each is either bot-crossing's setting rather than a feature, or a cost the footp
 The UI foundation comes first because every later phase draws chrome; the plan comes before the art because the art has to be cut for the plan's cells;
 parity waits for both so the sidebar and cards are built once, on the final toolkit.
 
+## 8. Audit, 2026-09-18 (r96, `138c8ba`)
+
+Phases 7–12 shipped in one day.
+The audit built HEAD, ran every command against this machine, shot every panel headlessly, measured the daemon and the hook,
+and recomputed the numbers from the raw transcripts.
+
+**Holds up:** `go build`, `go vet`, `golangci-lint` (0 issues), 25 packages of tests green, race detector clean on daemon/state/claude/city;
+14.4k lines of Go with 12.2k of tests; coverage 85–97% on every model package (`plan` 97.5, `ui` 94.5, `city` 92.3, `state` 90.6, `claude` 88.9).
+Daemon 17.4 MB RSS, 15 threads, ~0.4% CPU idle; hook 3 ms round trip with a daemon, 2 ms and exit 0 without.
+`status` context for this session matches the transcript exactly (519,298 tokens, 52% of 1M); parked count 70 vs 71 on disk (the stub threshold).
+`doctor` found the terminal gap on its first run and terminator is now a known terminal.
+Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all render headlessly.
+
+### Bugs, most important first
+
+1. **An idle background session reads as working.**
+   `botropolis city visualization` (bg, `claude agents` says `idle` for 3 h) shows `working` because Claude Code keeps writing
+   bookkeeping records (`permission-mode`, `atis-latch`, `worktree-state`) to an idle transcript, so its mtime is minutes old
+   and the tail heuristic never sees a hand-back.
+   The session record's own `status` field (`busy` / `idle`) is the CLI's word and should win over the tail when both exist.
+   Consequence: the session is hidden from Tab, the bar and the needs-you count, and the strip lies.
+2. **Empty sessions count as needs-you.**
+   Two bg sessions with no transcript at all (`3fe36032`, `a75745cb` — started, nothing typed) show as needs-you with `-` in every column,
+   and the waybar line names one of them as who is first.
+   A session with no conversation is a new state (`empty`), drawn as a plot without a building, never counted, and offered to `prune`
+   once idle for an hour — this is the "lingering sessions" complaint that started the project, back in a new form.
+3. **CI is red: `TestRun/when_the_context_is_cancelled` fails in 3 of the last 6 runs** (never locally).
+   `run` returns 1 when cancelled right after the socket appears — a startup/shutdown race, and a real one:
+   `systemctl stop` during startup would exit non-zero and trip `Restart=on-failure`.
+4. **The timeline and "while you were away" live in the client.**
+   Close the window and the log is gone; away means "unfocused but open".
+   The daemon sees every snapshot diff and hook event, so the log belongs there (`{"op":"events","since":…}`),
+   and the client's away panel should cover the time the window was closed — which is exactly when you were away.
+5. **The sidebar covers the map instead of reserving width.**
+   With `b` open, the storage district sits under the panel; the scene reserves the strip and footer but not the sidebar.
+6. **Unknown cost shows `~$0.00`.**
+   The breakdown over the sample fixture shows 398.9M tokens at ~$0.00; the rule that applies to the context window applies here:
+   no cost-state means `—`, never a number.
+7. **Tower labels overlap at fit.**
+   Eight tower names stack on the ridge and collide with the `botropolis` district plate; the phase 10 plate rule was not applied to towers.
+8. **Night does not read as "which lights are on".**
+   At fit the lamps are single pixels and the plant's glow is not visible; the promise of the phase 10 commit needs a brighter treatment at low zoom.
+9. `--keys "?"` does not open help (F1 does); the `?` binding works from a keyboard but not from the key list.
+10. `AGE` is time since the session started, not since it last did anything; for a manager the second number is the one that matters.
+
+### Next steps
+
+- **Phase 13 — Correctness.** Bugs 1–6 above, in that order.
+  Exit: `status`, the bar and the strip agree with `claude agents --json` on every live session on this machine; CI green ten runs in a row;
+  the daemon serves the event log and the away panel shows what happened while the window was closed.
+- **Phase 14 — Polish from the frames.** Bugs 7–10 and the `Later` items below that Aria approves.
+  Exit: the fit view has no overlapping text, night reads at fit, and the `Later` list is empty or explicitly deferred.
+- **Phase 15 — Release.** Tag `v0.1.0` (the release workflow has never run), publish `botropolis-git` to the AUR if Aria decides to,
+  and a README hero shot taken with `h` — the chrome-free frame is the best view of the city.
+
+### Worth knowing, not bugs
+
+- The client binary is 45 MB (21 MB of embedded atlases plus Ebitengine, bubbletea and Inter); the daemon is 13 MB and links none of the UI.
+- The repo pack is 30 MB, almost all atlases; if `make sprites` churns, that is git-lfs or build-time atlases in the PKGBUILD.
+- `proto` (11%), `app` (16%) and `render` (5%) are the low-coverage packages; `proto` is exercised through the daemon tests, `render` is the GUI.
+- `botropolis-notify` is installed but not enabled; `r96` is built but `r59` is installed.
+
+### Validation checklist for Aria
+
+Install `r96`, restart the daemon, enable notify, then:
+
+1. `botropolis status` — every live session's state matches what you know it is doing (bug 1 and 2 will show here).
+2. `botropolis` — Tab to the first needs-you, Enter: terminator opens with `claude attach` on that session, and Ctrl-Z leaves it running.
+3. `c` on a district: a new background session in that folder, and it appears on the map within a few seconds.
+4. Let a session hand a turn back while the map is unfocused: the desktop notification fires and the away panel shows it on refocus.
+5. `x` on the plant: the breakdown's 24 h cost is within a few dollars of `~$… 24h` on the strip, and no row says `$0.00` for millions of tokens.
+6. `b`, `t`, `s`, `?`, `h`, `r`, `n`, `/` — each opens, closes with Escape, and none leaves the map in a wrong state.
+7. `d d` on a parked container: it is gone from the map and from `claude agents --json --all`.
+8. `botropolis bar` in waybar: the class changes colour when a session needs you.
+
 ## Later
 
 Things noticed while building that are not in a phase; each is a question for Aria, not a plan.
