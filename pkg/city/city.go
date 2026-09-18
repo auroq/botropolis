@@ -9,6 +9,7 @@ import (
 
 	"time"
 
+	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/format"
 	"github.com/auroq/botropolis/pkg/plan"
 	"github.com/auroq/botropolis/pkg/state"
@@ -38,6 +39,7 @@ type Building struct {
 	Fill      float64
 	Cranes    int
 	Flags     int
+	Merged    int
 	Smoke     int
 	Lit       bool
 	Pulse     bool
@@ -277,6 +279,16 @@ func buildingColumns(slots int) int {
 	return columns
 }
 
+func mergedPRs(s state.Session) int {
+	n := 0
+	for _, pr := range s.PRs {
+		if pr.Merged() {
+			n++
+		}
+	}
+	return n
+}
+
 func newBuilding(s state.Session, slot int, at Point, size float64) *Building {
 	return &Building{
 		Session:   s,
@@ -285,6 +297,7 @@ func newBuilding(s state.Session, slot int, at Point, size float64) *Building {
 		Fill:      math.Min(1, s.ContextPercent/100),
 		Cranes:    s.SubagentsInFlight,
 		Flags:     len(s.PRs),
+		Merged:    mergedPRs(s),
 		Smoke:     s.APIErrors,
 		Lit:       s.State == state.Working || s.State == state.NeedsYou || s.State == state.Unattended,
 		Pulse:     s.State == state.NeedsYou,
@@ -398,7 +411,11 @@ func (b *Building) Card(now time.Time) Card {
 	if len(s.PRs) > 0 {
 		parts := make([]string, 0, len(s.PRs))
 		for _, pr := range s.PRs {
-			parts = append(parts, fmt.Sprintf("#%d %s", pr.Number, pr.Repository))
+			part := fmt.Sprintf("#%d %s", pr.Number, pr.Repository)
+			if pr.State != "" && pr.State != claude.PROpen {
+				part += " (" + pr.State + ")"
+			}
+			parts = append(parts, part)
 		}
 		lines = append(lines, "prs      "+strings.Join(parts, ", "))
 	}

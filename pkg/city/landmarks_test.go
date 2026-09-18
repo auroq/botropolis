@@ -165,16 +165,8 @@ func TestLandmarks(t *testing.T) {
 	})
 
 	t.Run("when a session is running unattended", func(t *testing.T) {
-		t.Run("it should be night", func(t *testing.T) {
-			assert.True(t, c.Night)
-		})
-	})
-
-	t.Run("when no session is unattended", func(t *testing.T) {
-		day := city.Build(snapshot(session("a", cinders, state.Working)), city.NewLayout())
-
-		t.Run("it should be day", func(t *testing.T) {
-			assert.False(t, day.Night)
+		t.Run("it should not make it night: the clock does that", func(t *testing.T) {
+			assert.False(t, c.Night)
 		})
 	})
 

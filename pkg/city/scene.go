@@ -54,9 +54,18 @@ func (l Light) String() string {
 	return "auto"
 }
 
+// Night runs from NightFrom to NightUntil on the local clock.
+const (
+	NightFrom  = 21
+	NightUntil = 6
+)
+
 type Scene struct {
 	snapshot  state.Snapshot
 	light     Light
+	now       func() time.Time
+	location  *time.Location
+	scrub     time.Duration
 	topChrome float64
 	bottom    float64
 	left      float64
@@ -75,10 +84,48 @@ type Scene struct {
 	zoomTarget float64
 	zoomAnchor Point
 	instant    bool
+	// merged is each session's merged-PR count at the last snapshot;
+	// celebrating is when a session's count rose, for a one-shot show.
+	merged      map[string]int
+	celebrating map[string]time.Time
 }
 
+// CelebrateFor is how long a merge is shown off.
+const CelebrateFor = 2500 * time.Millisecond
+
 func NewScene(layout *Layout) *Scene {
-	return &Scene{layout: layout, camera: NewCamera(), city: &City{}}
+	return &Scene{layout: layout, camera: NewCamera(), city: &City{}, now: time.Now, location: time.Local}
+}
+
+// SetClock replaces the wall clock and its zone, for tests and for a
+// scrub that should not follow the machine.
+func (s *Scene) SetClock(now func() time.Time, loc *time.Location) {
+	s.now, s.location = now, loc
+	s.applyNight()
+}
+
+// Clock is the time the light follows: now, shifted by the scrub.
+func (s *Scene) Clock() time.Time {
+	return s.now().In(s.location).Add(s.scrub)
+}
+
+// Scrub shifts the clock and lets the light follow it again; a zero
+// shift goes back to live.
+func (s *Scene) Scrub(by time.Duration) time.Duration {
+	if by == 0 {
+		s.scrub = 0
+	} else {
+		s.scrub += by
+	}
+	s.light = LightAuto
+	s.applyNight()
+	return s.scrub
+}
+
+// IsNight says whether a moment falls in the night hours.
+func IsNight(t time.Time) bool {
+	h := t.Hour()
+	return h >= NightFrom || h < NightUntil
 }
 
 func (s *Scene) City() *City {
@@ -100,6 +147,9 @@ func (s *Scene) ToggleNight() bool {
 	return s.CycleLight() == LightNight
 }
 
+// applyNight decides the city's light: the clock unless it is forced.
+// An unattended session no longer makes it night; a lit lamp at night
+// is what says a session is awake.
 func (s *Scene) applyNight() {
 	if s.city == nil {
 		return
@@ -109,6 +159,8 @@ func (s *Scene) applyNight() {
 		s.city.Night = true
 	case LightDay:
 		s.city.Night = false
+	default:
+		s.city.Night = IsNight(s.Clock())
 	}
 }
 
@@ -320,6 +372,7 @@ func (s *Scene) Insets() Insets {
 func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
 	s.snapshot = snapshot
 	s.city = Build(snapshot, s.layout)
+	s.noteMerges()
 	s.applyNight()
 	s.selected = s.reselect()
 	s.hover = Hit{}
@@ -403,8 +456,10 @@ func (s *Scene) SetInstant(instant bool) {
 }
 
 // Animate moves the camera toward its zoom target, dt seconds on: most
-// of the way each tick, and all the way once it is close.
+// of the way each tick, and all the way once it is close. It also lets
+// the light follow the clock.
 func (s *Scene) Animate(dt float64) {
+	s.applyNight()
 	if s.zoomTarget <= 0 || s.zoomTarget == s.camera.Zoom {
 		return
 	}
@@ -539,6 +594,39 @@ func (s *Scene) Act(kind ActionKind) (Action, string) {
 		return Action{}, "unstarred " + name
 	}
 	return Action{}, ""
+}
+
+// noteMerges starts a celebration for every session whose merged-PR
+// count rose since the last snapshot; the first snapshot only takes
+// note, so an old merge does not fire on start-up.
+func (s *Scene) noteMerges() {
+	first := s.merged == nil
+	if first {
+		s.merged = map[string]int{}
+		s.celebrating = map[string]time.Time{}
+	}
+	now := s.now()
+	for _, b := range s.city.Buildings() {
+		if !first && b.Merged > s.merged[b.Session.ID] {
+			s.celebrating[b.Session.ID] = now
+		}
+		s.merged[b.Session.ID] = b.Merged
+	}
+}
+
+// Celebration is how far along a session's merge show is, 0 at the
+// start and 1 at the end, or -1 when it is not celebrating.
+func (s *Scene) Celebration(id string) float64 {
+	at, ok := s.celebrating[id]
+	if !ok {
+		return -1
+	}
+	p := float64(s.now().Sub(at)) / float64(CelebrateFor)
+	if p >= 1 {
+		delete(s.celebrating, id)
+		return -1
+	}
+	return p
 }
 
 // Select picks a session by id and centres on it; false when it is not

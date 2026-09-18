@@ -29,6 +29,7 @@ var bindings = []ui.Key{
 	{Key: "0", Action: "reset the view"},
 	{Key: "r", Action: "turn the camera"},
 	{Key: "n", Action: "night, day, auto"},
+	{Key: "[ ]", Action: "scrub the clock an hour"},
 	{Key: "s", Action: "settings"},
 	{Key: "b", Action: "sidebar"},
 	{Key: "h", Action: "hide the UI"},
@@ -92,6 +93,14 @@ func (g *Game) handleKeys() error {
 	if just(ebiten.KeyEnter) {
 		g.act(g.scene.Activate())
 	}
+	if just(ebiten.KeyBracketLeft) || just(ebiten.KeyBracketRight) {
+		by := time.Hour
+		if just(ebiten.KeyBracketLeft) {
+			by = -time.Hour
+		}
+		shift := g.scene.Scrub(by)
+		g.SetStatus(fmt.Sprintf("clock %s (%+.0fh; n to go live)", g.scene.Clock().Format("15:04"), shift.Hours()))
+	}
 	if just(ebiten.KeyR) {
 		g.SetStatus(fmt.Sprintf("heading %d°", g.scene.Turn()))
 	}
@@ -105,9 +114,10 @@ func (g *Game) handleKeys() error {
 		case city.LightNight:
 			g.SetStatus("light: night (n again for day)")
 		case city.LightDay:
-			g.SetStatus("light: day (n again to follow the sessions)")
+			g.SetStatus("light: day (n again to follow the clock)")
 		default:
-			g.SetStatus("")
+			g.scene.Scrub(0)
+			g.SetStatus("light: live")
 		}
 	}
 	if just(ebiten.KeyD) || just(ebiten.KeyDelete) {

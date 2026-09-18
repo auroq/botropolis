@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -671,6 +672,63 @@ func TestSelectByID(t *testing.T) {
 	})
 }
 
+func TestCelebration(t *testing.T) {
+	merged := func(id string, st string) state.Session {
+		s := session(id, cinders, state.Working)
+		s.PRs = []claude.PR{{Number: 1181, URL: "https://github.com/mCedar/mullet/pull/1181", Repository: "mCedar/mullet", State: st}}
+		return s
+	}
+	clock := time.Date(2026, 9, 18, 14, 0, 0, 0, time.UTC)
+	tick := func(s *city.Scene, by time.Duration) {
+		clock = clock.Add(by)
+		s.SetClock(func() time.Time { return clock }, time.UTC)
+	}
+
+	t.Run("when a session's PR merges between snapshots", func(t *testing.T) {
+		s := city.NewScene(city.NewLayout())
+		s.Resize(800, 600)
+		tick(s, 0)
+		s.SetSnapshot(snapshot(merged("a", claude.PROpen)))
+		s.SetSnapshot(snapshot(merged("a", claude.PRMerged)))
+
+		t.Run("it should start celebrating", func(t *testing.T) {
+			assert.InDelta(t, 0, s.Celebration("a"), 1e-9)
+		})
+
+		t.Run("it should count the merge on the building", func(t *testing.T) {
+			assert.Equal(t, 1, s.City().Buildings()[0].Merged)
+		})
+
+		t.Run("and a second passes", func(t *testing.T) {
+			tick(s, time.Second)
+
+			t.Run("it should be part way through", func(t *testing.T) {
+				p := s.Celebration("a")
+				assert.Greater(t, p, 0.3)
+				assert.Less(t, p, 0.5)
+			})
+		})
+
+		t.Run("and the show is over", func(t *testing.T) {
+			tick(s, 3*time.Second)
+
+			t.Run("it should stop", func(t *testing.T) {
+				assert.Equal(t, -1.0, s.Celebration("a"))
+			})
+		})
+	})
+
+	t.Run("when the first snapshot already has a merged PR", func(t *testing.T) {
+		s := city.NewScene(city.NewLayout())
+		s.Resize(800, 600)
+		s.SetSnapshot(snapshot(merged("a", claude.PRMerged)))
+
+		t.Run("it should not celebrate an old merge", func(t *testing.T) {
+			assert.Equal(t, -1.0, s.Celebration("a"))
+		})
+	})
+}
+
 func TestNamePlates(t *testing.T) {
 	t.Run("when a district has awake sessions", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working))
@@ -785,14 +843,51 @@ func TestCycleLight(t *testing.T) {
 		})
 	})
 
-	t.Run("when a session runs unattended and day is forced", func(t *testing.T) {
-		s := scene(t, session("a", cinders, state.Unattended))
-		require.True(t, s.City().Night)
-		s.CycleLight()
-		s.CycleLight()
+	t.Run("when it is evening on the clock", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.SetClock(func() time.Time { return time.Date(2026, 9, 18, 22, 30, 0, 0, time.UTC) }, time.UTC)
 
-		t.Run("it should be day regardless", func(t *testing.T) {
+		t.Run("it should be night", func(t *testing.T) {
+			assert.True(t, s.City().Night)
+		})
+
+		t.Run("and day is forced", func(t *testing.T) {
+			s.CycleLight()
+			s.CycleLight()
+
+			t.Run("it should be day regardless", func(t *testing.T) {
+				assert.False(t, s.City().Night)
+			})
+		})
+	})
+
+	t.Run("when it is afternoon and a session runs unattended", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Unattended))
+		s.SetClock(func() time.Time { return time.Date(2026, 9, 18, 14, 0, 0, 0, time.UTC) }, time.UTC)
+
+		t.Run("it should stay day", func(t *testing.T) {
 			assert.False(t, s.City().Night)
+		})
+
+		t.Run("and the clock is scrubbed eight hours on", func(t *testing.T) {
+			s.Scrub(8 * time.Hour)
+
+			t.Run("it should be night", func(t *testing.T) {
+				assert.True(t, s.City().Night)
+			})
+
+			t.Run("it should read 22:00", func(t *testing.T) {
+				assert.Equal(t, 22, s.Clock().Hour())
+			})
+		})
+
+		t.Run("and the scrub is cleared", func(t *testing.T) {
+			s.Scrub(0)
+
+			t.Run("it should be live and day again", func(t *testing.T) {
+				assert.False(t, s.City().Night)
+				assert.Equal(t, 14, s.Clock().Hour())
+			})
 		})
 	})
 }

@@ -401,6 +401,12 @@ func TestBuildingCardDetails(t *testing.T) {
 		t.Run("it should list it", func(t *testing.T) {
 			assert.Contains(t, card.Lines, "prs      #1181 mCedar/mullet")
 		})
+
+		t.Run("it should say when a PR merged", func(t *testing.T) {
+			done := s
+			done.PRs = []claude.PR{{Number: 1181, Repository: "mCedar/mullet", State: claude.PRMerged}}
+			assert.Contains(t, city.Build(snapshot(done), city.NewLayout()).Buildings()[0].Card(now).Lines, "prs      #1181 mCedar/mullet (merged)")
+		})
 	})
 
 	t.Run("when there were API errors", func(t *testing.T) {

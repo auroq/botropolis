@@ -9,6 +9,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/pkg/ui"
 )
@@ -293,9 +294,21 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		at := city.Point{X: r.Min.X + r.Width()/2 + orbit.X, Y: roofTop - 12*cam.Zoom + orbit.Y + hover}
 		g.kitAt(screen, cam, kitDrone, 0, at, nil)
 	}
-	if b.Flags > 0 {
-		vector.FillRect(screen, float32(r.Min.X+r.Width()*0.7), float32(roofTop-dot*2), float32(dot*0.4), float32(dot*2.5), colorPole, false)
-		vector.FillRect(screen, float32(r.Min.X+r.Width()*0.7), float32(roofTop-dot*2), float32(dot*1.4), float32(dot), colorFlag, false)
+	// One flag per PR, coloured by its state: open in the accent, merged
+	// green, closed slate.
+	for i := 0; i < min(b.Flags, 3); i++ {
+		x := r.Min.X + r.Width()*0.62 + float64(i)*dot*1.8
+		flag := g.theme.Palette.Accent
+		if i < b.Merged {
+			flag = g.theme.Palette.Merged
+		} else if i < len(b.Session.PRs) && b.Session.PRs[i].State == claude.PRClosed {
+			flag = g.theme.Palette.Parked
+		}
+		vector.FillRect(screen, float32(x), float32(roofTop-dot*2), float32(dot*0.4), float32(dot*2.5), colorPole, false)
+		vector.FillRect(screen, float32(x), float32(roofTop-dot*2), float32(dot*1.4), float32(dot), flag, false)
+	}
+	if p := g.scene.Celebration(b.Session.ID); p >= 0 {
+		g.celebrate(screen, city.Point{X: r.Min.X + r.Width()/2, Y: roofTop}, r.Width(), p)
 	}
 	if b.Smoke > 0 {
 		for i := 0; i < min(b.Smoke, 3); i++ {
@@ -615,6 +628,25 @@ func pointAlong(path []city.Point, dist float64) (city.Point, city.Point) {
 		dist -= seg
 	}
 	return path[0], city.Point{X: 1}
+}
+
+// celebrate is the one-shot show for a merge: a green ring swelling
+// out of the roof and a few sparks rising, over CelebrateFor.
+func (g *Game) celebrate(screen *ebiten.Image, top city.Point, width float64, p float64) {
+	green := g.theme.Palette.Merged
+	fade := uint8(255 * (1 - p))
+	ring := color.NRGBA{green.R, green.G, green.B, fade}
+	radius := width * (0.3 + 1.2*p)
+	op := &vector.DrawPathOptions{AntiAlias: true}
+	op.ColorScale.ScaleWithColor(ring)
+	var path vector.Path
+	path.Arc(float32(top.X), float32(top.Y), float32(radius), 0, 2*math.Pi, vector.Clockwise)
+	vector.StrokePath(screen, &path, &vector.StrokeOptions{Width: float32(math.Max(1.5, 3*(1-p)))}, op)
+	for i := 0; i < 6; i++ {
+		a := float64(i) * math.Pi / 3
+		rise := width * (0.2 + 0.9*p)
+		vector.FillCircle(screen, float32(top.X+math.Cos(a)*width*0.35*(0.5+p)), float32(top.Y-rise*math.Abs(math.Sin(a+1))), float32(2.5*(1-p)+1), ring, true)
+	}
 }
 
 // carTurn is a kit car's turn for the way it drives: the kit's cars are

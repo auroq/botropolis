@@ -50,6 +50,19 @@ type PR struct {
 	Number     int    `json:"number"`
 	URL        string `json:"url"`
 	Repository string `json:"repository"`
+	// State is open, merged or closed, from the last pr action seen.
+	State string `json:"state,omitempty"`
+}
+
+const (
+	PROpen   = "open"
+	PRMerged = "merged"
+	PRClosed = "closed"
+)
+
+// Merged reports whether the PR was merged.
+func (p PR) Merged() bool {
+	return p.State == PRMerged
 }
 
 type Transcript struct {
@@ -133,6 +146,14 @@ func (mu modelUsageJSON) modelCost() ModelCost {
 	}
 }
 
+// prActionJSON is the pr object the CLI writes on a record when a pull
+// request is created, commented on, edited, closed or merged.
+type prActionJSON struct {
+	Number int    `json:"number"`
+	URL    string `json:"url"`
+	Action string `json:"action"`
+}
+
 type transcriptLineJSON struct {
 	Type         string                    `json:"type"`
 	SessionID    string                    `json:"sessionId"`
@@ -154,6 +175,7 @@ type transcriptLineJSON struct {
 	PRNumber     int                       `json:"prNumber"`
 	PRURL        string                    `json:"prUrl"`
 	PRRepository string                    `json:"prRepository"`
+	PRAction     *prActionJSON             `json:"pr"`
 	TeamName     string                    `json:"teamName"`
 	AgentName    string                    `json:"agentName"`
 	Compact      json.RawMessage           `json:"compactMetadata"`
@@ -268,6 +290,11 @@ func (s *transcriptScan) apply(rec transcriptLineJSON) {
 		}
 	case "pr-link":
 		s.applyPR(rec)
+	}
+	if rec.PRAction != nil {
+		s.applyPRAction(rec)
+	}
+	switch rec.Type {
 	case "cost-state":
 		s.applyCost(rec)
 	case "attachment":
@@ -370,11 +397,56 @@ func (s *transcriptScan) applyPR(rec transcriptLineJSON) {
 	}
 	for i, pr := range s.transcript.PRs {
 		if pr.URL == rec.PRURL {
-			s.transcript.PRs[i] = PR{Number: rec.PRNumber, URL: rec.PRURL, Repository: rec.PRRepository}
+			s.transcript.PRs[i] = PR{Number: rec.PRNumber, URL: rec.PRURL, Repository: rec.PRRepository, State: pr.State}
 			return
 		}
 	}
-	s.transcript.PRs = append(s.transcript.PRs, PR{Number: rec.PRNumber, URL: rec.PRURL, Repository: rec.PRRepository})
+	s.transcript.PRs = append(s.transcript.PRs, PR{Number: rec.PRNumber, URL: rec.PRURL, Repository: rec.PRRepository, State: PROpen})
+}
+
+// applyPRAction follows a PR through its life: created opens it, merged
+// and closed end it; anything else leaves the state alone.
+func (s *transcriptScan) applyPRAction(rec transcriptLineJSON) {
+	a := rec.PRAction
+	state := ""
+	switch a.Action {
+	case "created", "ready":
+		state = PROpen
+	case "merged":
+		state = PRMerged
+	case "closed":
+		state = PRClosed
+	}
+	for i, pr := range s.transcript.PRs {
+		if (a.URL != "" && pr.URL == a.URL) || (a.Number != 0 && pr.Number == a.Number) {
+			if state != "" {
+				s.transcript.PRs[i].State = state
+			}
+			return
+		}
+	}
+	if a.URL == "" && a.Number == 0 {
+		return
+	}
+	if state == "" {
+		state = PROpen
+	}
+	s.transcript.PRs = append(s.transcript.PRs, PR{Number: a.Number, URL: a.URL, Repository: repositoryOf(a.URL), State: state})
+}
+
+// repositoryOf is the owner/name of a GitHub pull request URL.
+func repositoryOf(url string) string {
+	const host = "github.com/"
+	i := strings.Index(url, host)
+	if i < 0 {
+		return ""
+	}
+	rest := url[i+len(host):]
+	parts := strings.SplitN(rest, "/", 4)
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[0] + "/" + parts[1]
 }
 
 func (s *transcriptScan) applyCost(rec transcriptLineJSON) {

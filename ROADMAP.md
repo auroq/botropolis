@@ -19,31 +19,31 @@ The pieces are right; the composition is not.
 | Live-process detection | pid probe | pid probe + `daemon/roster.json` attach detection | — (better) |
 | Worktrees folded into repo | yes | yes | — |
 | Sticky layout | hex tiles, root tile, `colony.json` | grid slots + yard slots + river seed, `layout.json` | — |
-| Session states | errored, running, merged, unread, sleeping, idle | needs-you, working, unattended, parked, error smoke, PR flag | merged-PR celebration; no "sleeping" tier between working and parked |
+| Session states | errored, running, merged, unread, sleeping, idle | needs-you, working, unattended, parked, error smoke, PR flag green when merged with a one-shot celebration | — (no "sleeping" tier: unattended covers it) |
 | Context / tokens / cost | none | per session, per district, strip, plant card, fresh/cached split, ~cost | — (new) |
 | MCP servers, skills, subagents, teams | none | towers, library, cranes, roads | — (new) |
 | Open thread | deep link → app, or terminal `--resume` | `claude attach` in a terminal; resume parked | — (better) |
 | Close / reopen without losing the session | no | `--bg` + attach, Ctrl-Z detach | — (new) |
-| New conversation in a folder | `C` key, from the zone | `botropolis new` CLI only | key + button on the map |
-| Archive / hide | Archive thread (walks to ship); Hide repo | demolish (`claude rm`), `prune` | **Hide repo** (no map action); archive-without-delete |
+| New conversation in a folder | `C` key, from the zone | `c` key and a card button, plus the CLI | — |
+| Archive / hide | Archive thread (walks to ship); Hide repo | demolish (`claude rm`), `prune`, hide project (map-only, unhide from the sidebar) | — (archive-without-delete is parking) |
 | Viewed / stop asking | `V` | n/a — needs-you is derived from the turn, clears itself | — |
-| Reveal folder / copy path | Finder + Copy path buttons | none | both |
+| Reveal folder / copy path | Finder + Copy path buttons | card buttons through xdg-open and the clipboard | — |
 | Next needs-you | `N` flies to it | Tab centres it, Enter attaches | — |
-| Sidebar | repo list with counts, threads per repo, hidden-repo list, selected thread card | none — strip + hover cards + footer only | **sidebar** |
-| Thread card | parked beside the astronaut, follows it, actions on it | hover card, no actions | card with actions, pinned to selection |
-| Name plates | only while working/waiting/stuck, else on hover | always | plate rules |
-| Help overlay | `?` | footer line | overlay |
-| Settings panel | `S`, presets + every knob | config file and flags only | in-app settings |
-| Hide all UI | `H` | none | key |
-| Screenshot / reset view | `P`, `0` | none / `f` | keys |
-| Camera | Google-Earth drag, tilt, rotate, orbit, pinch, keyboard | drag, wheel ladder, fit, Tab-centre | rotate (needs 4-view sprites), keyboard pan/zoom, smooth zoom |
-| Day / night | scrubbable cycle, Live follows the clock | night = unattended, `n` forces | clock-driven light; lamps keep the meaning |
+| Sidebar | repo list with counts, threads per repo, hidden-repo list, selected thread card | `b`: projects with counts, sessions by urgency, hidden list, the selected card docked | — |
+| Thread card | parked beside the astronaut, follows it, actions on it | pinned beside the selected building, follows it, actions on it; hover shows without pinning | — |
+| Name plates | only while working/waiting/stuck, else on hover | only where something is awake, else on hover or selection | — |
+| Help overlay | `?` | `?` overlay | — |
+| Settings panel | `S`, presets + every knob | `s` panel over the same config file | — |
+| Hide all UI | `H` | `h` | — |
+| Screenshot / reset view | `P`, `0` | `p`, `0` and `f` | — |
+| Camera | Google-Earth drag, tilt, rotate, orbit, pinch, keyboard | drag, eased wheel ladder, fit, Tab-centre, `r` four headings, arrows and +/- | — (tilt is not on the table in 2D) |
+| Day / night | scrubbable cycle, Live follows the clock | clock-driven, `[` `]` scrub, `n` night/day/live; lit lamps mean awake | — |
 | Planets / quality presets / HDR / shadows | yes | n/a in 2D | not wanted — render scale and reduced motion only |
-| Art | KayKit 3D kits, PBR, instanced crew, faces, 15 animation clips | Kenney 2D iso packs, static stacks, cars, sparks | art direction (§3), animation pass |
-| Ground | terrain, scatter rebuilt around plots | hashed grass, dirt, trees, river, pond | **city plan** (§2) |
+| Art | KayKit 3D kits, PBR, instanced crew, faces, 15 animation clips | Kenney 3D kits rendered to atlases, rover and drone, cars, sparks | — (§3, phase 9) |
+| Ground | terrain, scatter rebuilt around plots | the city plan: plaza, rings, parks, belt, river edge | — (phase 8) |
 | Satellites | none | TUI, waybar bar, notify, status table | — (new) |
 | Network serving | `BOT_CROSSING_HOST` | none | not wanted |
-| Packaging | npm | AUR package, systemd user units | publish to AUR |
+| Packaging | npm | local `botropolis-git` package, systemd user units | publishing is Aria's call (phase 12) |
 
 Net: the data model, the session control and the satellites are ahead of bot-crossing.
 The chrome, the composition and the art are behind it.
@@ -170,6 +170,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - Day/night by the clock (`Live`), with a scrub; lamps keep meaning awake, so night and unattended stop sharing a signal (§5).
 - Merged PR: flag turns green with a one-shot celebration; API error keeps smoke.
 - **Done when** every row in §1 with a gap reads "—".
+- Done 2026-09-18 (r77–r86); the parity pieces landed ahead of phase 9 on the phase 7 toolkit, the clock and the merged flag after it.
 
 ### 11 — Beyond parity
 

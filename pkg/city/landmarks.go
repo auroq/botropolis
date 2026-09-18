@@ -164,12 +164,6 @@ type Beam struct {
 // left, the hall top right, the library bottom left, the fountain on the
 // centre cell — and one tower per server along the ridge.
 func (c *City) placeLandmarks(snapshot state.Snapshot) {
-	c.Night = false
-	for _, s := range snapshot.Sessions {
-		if s.State == state.Unattended {
-			c.Night = true
-		}
-	}
 	if c.Plaza.Area() == 0 {
 		return
 	}
