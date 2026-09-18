@@ -2,6 +2,7 @@ package city_test
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -1118,6 +1119,71 @@ func TestSceneInsets(t *testing.T) {
 
 		t.Run("it should reserve no left inset", func(t *testing.T) {
 			assert.Zero(t, s.Insets().Left)
+		})
+	})
+}
+
+func TestSidebarRoom(t *testing.T) {
+	const panel = 288.0
+	leftmost := func(s *city.Scene) float64 {
+		extent := s.City().Extent()
+		left := math.Inf(1)
+		for _, corner := range []city.Point{extent.Min, extent.Max, {X: extent.Min.X, Y: extent.Max.Y}, {X: extent.Max.X, Y: extent.Min.Y}} {
+			left = math.Min(left, s.Camera().WorldToScreen(corner).X)
+		}
+		return left
+	}
+
+	t.Run("when the sidebar opens on an untouched fit view", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		require.Less(t, leftmost(s), panel)
+		s.SetLeftChrome(panel)
+
+		t.Run("it should refit the city clear of the panel", func(t *testing.T) {
+			assert.GreaterOrEqual(t, leftmost(s), panel-1e-6)
+		})
+	})
+
+	t.Run("when the sidebar opens after the view was panned", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		s.Pan(city.Point{X: 40, Y: 0})
+		before := centreOf(t, s, "a")
+		s.SetLeftChrome(panel)
+
+		t.Run("it should slide the view right by the panel's width", func(t *testing.T) {
+			assert.InDelta(t, before.X+panel, centreOf(t, s, "a").X, 1e-6)
+		})
+	})
+
+	t.Run("when the sidebar closes again on an untouched view", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working), session("b", botropolis, state.Working))
+		before := centreOf(t, s, "a")
+		s.SetLeftChrome(panel)
+		s.SetLeftChrome(0)
+
+		t.Run("it should give the room back", func(t *testing.T) {
+			assert.InDelta(t, before.X, centreOf(t, s, "a").X, 1e-6)
+		})
+	})
+
+	t.Run("when the city is too big for labels at fit and the sidebar opens", func(t *testing.T) {
+		s := scene(t, append(sessionsIn(cinders, 40), sessionsIn(botropolis, 40)...)...)
+		s.Resize(360, 240)
+		require.False(t, s.LabelsVisible())
+		s.SetLeftChrome(120)
+
+		t.Run("it should still keep the city clear of the panel", func(t *testing.T) {
+			assert.GreaterOrEqual(t, leftmost(s), 120-1e-6)
+		})
+	})
+
+	t.Run("when the strip's height arrives after the first fit", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		before := centreOf(t, s, "a")
+		s.SetTopChrome(26)
+
+		t.Run("it should refit the city below it", func(t *testing.T) {
+			assert.InDelta(t, before.Y+13, centreOf(t, s, "a").Y, 1e-6)
 		})
 	})
 }

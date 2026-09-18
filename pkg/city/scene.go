@@ -214,7 +214,9 @@ func (s *Scene) fit() {
 	}
 	s.camera.FitWithInsets(s.city.Extent(), s.width, s.height, s.Insets())
 	if s.camera.Zoom < LabelZoom {
-		s.camera.FitWithInsets(s.city.Extent(), s.width, s.height, Insets{Bottom: FitFooter})
+		// Labels are hidden this far out, so their room goes back to the
+		// map; the chrome's does not.
+		s.camera.FitWithInsets(s.city.Extent(), s.width, s.height, s.chromeInsets())
 	}
 }
 
@@ -342,23 +344,48 @@ func (m Minimap) ProjectRect(r Rect) Rect {
 // SetTopChrome reserves screen room for chrome drawn along the top, such
 // as the resource strip, so a fit keeps the city below it.
 func (s *Scene) SetTopChrome(px float64) {
-	s.topChrome = px
+	s.reserve(&s.topChrome, px, Point{Y: 1})
 }
 
 // SetBottomChrome reserves screen room for chrome along the bottom, such
 // as the footer; the fit margin still applies when it is shorter.
 func (s *Scene) SetBottomChrome(px float64) {
-	s.bottom = px
+	s.reserve(&s.bottom, px, Point{})
 }
 
 // SetLeftChrome reserves screen room for chrome down the left, such as
 // the sidebar.
 func (s *Scene) SetLeftChrome(px float64) {
-	s.left = px
+	s.reserve(&s.left, px, Point{X: 1})
+}
+
+// reserve changes one chrome inset and keeps the map out from under it:
+// an untouched view refits to the room that is left, a view the user has
+// panned or zoomed slides along the given axis by the change.
+func (s *Scene) reserve(inset *float64, px float64, axis Point) {
+	delta := px - *inset
+	if delta == 0 {
+		return
+	}
+	*inset = px
+	if !s.touched {
+		s.fit()
+		return
+	}
+	if s.camera.Zoom > 0 {
+		s.camera.Pan(axis.Scale(delta / s.camera.Zoom))
+	}
+}
+
+// chromeInsets is the room the window's own chrome takes: the strip,
+// the footer and the sidebar, whatever the zoom.
+func (s *Scene) chromeInsets() Insets {
+	return Insets{Bottom: math.Max(FitFooter, s.bottom), Top: s.topChrome, Left: s.left}
 }
 
 func (s *Scene) Insets() Insets {
-	in := Insets{Bottom: math.Max(FitFooter, s.bottom), Top: LabelHeight + s.topChrome, Left: s.left}
+	in := s.chromeInsets()
+	in.Top += LabelHeight
 	if s.camera.Projection == Isometric {
 		// Isometric labels sit above their landmarks, inside the diamond's
 		// empty corners, so nothing is reserved at the sides.
