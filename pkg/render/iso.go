@@ -667,7 +667,7 @@ func (g *Game) streets(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	for _, sc := range c.StreetCells {
 		name, turn := roadPiece(sc.Mask)
-		g.kit(screen, cam, name, turn, sc.Cell.Center(), nil)
+		g.kitGround(screen, cam, name, turn, sc.Cell.Center(), nil)
 	}
 	g.streetSigns(screen, c, cam, hover, labels)
 }

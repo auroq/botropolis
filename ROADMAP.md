@@ -276,6 +276,8 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
 16. ~~**After a hook storm the daemon sits at the bar.**~~ Fixed 2026-09-18 (r121): the hook path arms a settle timer and returns memory to the OS five seconds after the last event. 2,000 hook events in a minute took it from 17.3 to 21.4 MB RSS and it settled at 20.0 MB idle — a plateau, not a leak, but the hook path never returns memory (only rescans call `FreeOSMemory`). A timer, or not rebuilding the snapshot per overlay, keeps it under 20.
 17. ~~**`harness.Multi` has dropped two fields the same way**~~ Closed 2026-09-18 (r122): a reflection round-trip test fills every exported field of `state.Snapshot` and asserts each survives a single-harness merge. (`Stats` in `92499e4`, the cost-known flag in `1d6a787`) and has no round-trip test; one that reflects over `state.Snapshot` and asserts every exported field survives a single-harness merge closes the class.
 
+18. ~~**Road tiles do not meet.**~~ Found by Aria validating r129, fixed r131: the ring road's corners were the kit's `road-bend`, the large-radius piece of a 2×2 whose quarter-disc is a whole cell wide, so it never met the narrower straights; the one-cell `road-curve` replaces it (a half turn from the bend's orientation). And at fit the grass showed as a hairline between every pair of tiles, their anti-aliased rims not quite meeting; ground tiles are now drawn three percent larger than their cell. Frame `docs/screenshots/r131-roads-joined.png`.
+
 ### Next steps
 
 - **Phase 13 — Correctness.** Bugs 1–6 above, in that order.

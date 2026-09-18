@@ -48,7 +48,7 @@ PIECES = {
     "city-kit-industrial": ["building-a", "building-b", "building-e", "building-h", "building-k", "chimney-large", "chimney-medium",
                             "detail-tank-large", "water-tower", "windmill", "solar-panel-landscape-group",
                             "shipping-container-a", "shipping-container-b", "shipping-container-c"],
-    "city-kit-roads": ["road-straight", "road-bend", "road-crossroad", "road-intersection", "road-end", "road-square",
+    "city-kit-roads": ["road-straight", "road-bend", "road-curve", "road-crossroad", "road-intersection", "road-end", "road-square",
                        "light-square", "light-curved", "electricity-pole", "electricity-wires", "traffic-light", "construction-cone"],
     "city-kit-suburban": ["tree-large", "tree-small"],
     "car-kit": ["sedan", "van", "taxi", "suv", "hatchback-sports", "truck", "delivery"],

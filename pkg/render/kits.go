@@ -91,6 +91,31 @@ func (g *Game) kit(screen *ebiten.Image, cam *city.Camera, name string, turn int
 	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
 }
 
+// kitGround draws a ground tile a hair larger than its cell, so two tiles
+// side by side overlap by their anti-aliased rims instead of letting the
+// grass show through as a seam.
+func (g *Game) kitGround(screen *ebiten.Image, cam *city.Camera, name string, turn int, at city.Point, tint *ebiten.ColorScale) {
+	if g.kits == nil {
+		return
+	}
+	atlas := g.kits.pick(cam.Zoom)
+	if atlas == nil {
+		return
+	}
+	sprite, ok := atlas.Sprite(name, cam.Heading-turn)
+	if !ok || sprite.Page >= len(atlas.pages) {
+		return
+	}
+	scale := cam.Zoom / atlas.Zoom * groundBleed
+	foot := cam.WorldToScreen(at)
+	origin := city.Point{X: foot.X - float64(sprite.Anchor.X)*scale, Y: foot.Y - float64(sprite.Anchor.Y)*scale}
+	img := atlas.pages[sprite.Page].SubImage(sprite.Rect).(*ebiten.Image)
+	g.drawSprite(screen, img, origin, scale, tint)
+}
+
+// groundBleed is how much larger a ground tile is drawn than its cell.
+const groundBleed = 1.03
+
 // kitRising draws a piece standing on a world point at a fraction of its
 // height, growing from its foot: a building rising as its session
 // arrives. At 1 it is kit.
