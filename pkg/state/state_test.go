@@ -832,3 +832,77 @@ func TestEmptySession(t *testing.T) {
 		})
 	})
 }
+
+func TestSoloTeams(t *testing.T) {
+	teamed := func(sid, team, agent string) claude.Transcript {
+		tr := transcript(sid, claude.TurnWorking)
+		tr.TeamName, tr.AgentName = team, agent
+		return tr
+	}
+
+	t.Run("when a session's team is named after a session and has no other member", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusBusy)},
+			[]claude.Transcript{teamed(sidA, "session-"+sidA[:8], "review-r2")}, nil, alive)[0]
+
+		t.Run("it should carry no team", func(t *testing.T) {
+			assert.Empty(t, session.Team)
+			assert.Empty(t, session.Agent)
+		})
+	})
+
+	t.Run("when two sessions share a session-named team", func(t *testing.T) {
+		b := record(sidB, claude.KindBackground, claude.StatusBusy)
+		b.PID = 4343
+		sessions := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusBusy), b},
+			[]claude.Transcript{teamed(sidA, "session-"+sidA[:8], ""), teamed(sidB, "session-"+sidA[:8], "reviewer")}, nil, alive)
+
+		t.Run("they should both keep it", func(t *testing.T) {
+			assert.Equal(t, "session-"+sidA[:8], sessions[0].Team)
+			assert.Equal(t, "session-"+sidA[:8], sessions[1].Team)
+		})
+	})
+
+	t.Run("when a solo session's team has a name of its own", func(t *testing.T) {
+		session := build(t,
+			[]claude.SessionRecord{record(sidA, claude.KindBackground, claude.StatusBusy)},
+			[]claude.Transcript{teamed(sidA, "review", "")}, nil, alive)[0]
+
+		t.Run("it should keep it", func(t *testing.T) {
+			assert.Equal(t, "review", session.Team)
+		})
+	})
+}
+
+func TestShortTitles(t *testing.T) {
+	t.Run("when a live record has no name and its transcript no title", func(t *testing.T) {
+		r := record(sidA, claude.KindBackground, claude.StatusBusy)
+		r.Name = ""
+		untitled := transcript(sidA, claude.TurnWorking)
+		untitled.Title = ""
+		session := build(t, []claude.SessionRecord{r}, []claude.Transcript{untitled}, nil, alive)[0]
+
+		t.Run("it should be titled by its short id", func(t *testing.T) {
+			assert.Equal(t, sidA[:8], session.Title)
+		})
+	})
+
+	t.Run("when a parked transcript has no title", func(t *testing.T) {
+		untitled := transcript(sidB, claude.TurnAwaitingUser)
+		untitled.Title = ""
+		sessions := state.Build(state.Sources{Parked: []claude.Transcript{untitled}}, dead, now)
+		require.Len(t, sessions, 1)
+
+		t.Run("it should be titled by its short id", func(t *testing.T) {
+			assert.Equal(t, sidB[:8], sessions[0].Title)
+		})
+	})
+
+	t.Run("when an id is shortened", func(t *testing.T) {
+		t.Run("it should keep the first eight characters and leave short ids alone", func(t *testing.T) {
+			assert.Equal(t, sidA[:8], state.ShortID(sidA))
+			assert.Equal(t, "abc", state.ShortID("abc"))
+		})
+	})
+}

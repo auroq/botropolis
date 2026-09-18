@@ -177,6 +177,7 @@ func Build(src Sources, probes Probes, now time.Time) []Session {
 	for _, t := range src.Parked {
 		sessions = append(sessions, parkedSession(t))
 	}
+	dropSoloTeams(sessions)
 	sort.SliceStable(sessions, func(i, j int) bool {
 		if sessions[i].CWD != sessions[j].CWD {
 			return sessions[i].CWD < sessions[j].CWD
@@ -184,6 +185,33 @@ func Build(src Sources, probes Probes, now time.Time) []Session {
 		return sessions[i].StartedAt.Before(sessions[j].StartedAt)
 	})
 	return sessions
+}
+
+// dropSoloTeams clears the team of a session that is alone in a team
+// named after a session: a one-member team named after itself is not a
+// team, and gets no line on the card and no camp on the map.
+func dropSoloTeams(sessions []Session) {
+	members := map[string]int{}
+	for _, s := range sessions {
+		if s.Team != "" {
+			members[s.Team]++
+		}
+	}
+	for i := range sessions {
+		s := &sessions[i]
+		if strings.HasPrefix(s.Team, teamNamePrefix) && members[s.Team] == 1 {
+			s.Team, s.Agent = "", ""
+		}
+	}
+}
+
+// ShortID is the eight-character form of a session id, the name a
+// session goes by when it has no title.
+func ShortID(id string) string {
+	if len(id) > 8 {
+		return id[:8]
+	}
+	return id
 }
 
 func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript bool,
@@ -222,6 +250,9 @@ func buildSession(r claude.SessionRecord, t claude.Transcript, hasTranscript boo
 			s.LastActivity = t.LastAt
 		}
 		attribute(&s, t)
+	}
+	if s.Title == "" {
+		s.Title = ShortID(s.ID)
 	}
 	pending := map[string]bool{}
 	for _, id := range t.Tail.PendingToolIDs {
@@ -269,7 +300,7 @@ func parkedSession(t claude.Transcript) Session {
 		s.Model = t.ModelID
 	}
 	if s.Title == "" {
-		s.Title = t.SessionID
+		s.Title = ShortID(t.SessionID)
 	}
 	attribute(&s, t)
 	s.ContextTokens = t.ContextTokens

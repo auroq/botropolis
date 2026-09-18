@@ -153,5 +153,5 @@ func titleOf(s state.Session) string {
 	if s.Title != "" {
 		return s.Title
 	}
-	return s.ID
+	return state.ShortID(s.ID)
 }

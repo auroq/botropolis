@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/state"
 )
 
 // RowKind says what a sidebar row stands for.
@@ -84,7 +85,7 @@ func LayoutSidebar(th Theme, top, bottom float64, projects []city.ProjectRow, hi
 		for _, b := range p.Sessions {
 			title := b.Session.Title
 			if title == "" {
-				title = b.Session.ID
+				title = state.ShortID(b.Session.ID)
 			}
 			tone := StateTone(b.Session.State)
 			row := SidebarRow{

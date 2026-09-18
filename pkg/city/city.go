@@ -397,7 +397,7 @@ func (b *Building) Card(now time.Time) Card {
 	s := b.Session
 	title := s.Title
 	if title == "" {
-		title = s.ID
+		title = state.ShortID(s.ID)
 	}
 	lines := []string{
 		"state    " + string(s.State),
