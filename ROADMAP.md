@@ -158,6 +158,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - Four headings on `r`; smooth zoom.
 - Map view (low zoom) redrawn to match the palette.
 - **Done when** the city reads at fit, at detail, and at night without a label, and every building state is distinguishable at map view.
+- Done 2026-09-18 (r80–r85); see DESIGN.md "Sprite pipeline". Not cut: the train (the poles and sparks stay, as §3 allows) and the Watercraft kit (the river is a strip).
 
 ### 10 — Parity
 

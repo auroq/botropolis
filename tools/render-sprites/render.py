@@ -52,6 +52,8 @@ PIECES = {
                        "light-square", "light-curved", "electricity-pole", "electricity-wires", "traffic-light", "construction-cone"],
     "city-kit-suburban": ["tree-large", "tree-small"],
     "car-kit": ["sedan", "van", "taxi", "suv", "hatchback-sports", "truck", "delivery"],
+    "space-kit": ["rover"],
+    "botropolis": ["drone"],
 }
 
 # Kits that are not modelled at one unit per cell are scaled on import:
@@ -82,6 +84,55 @@ def reset():
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
+ACCENT = (0.91, 0.63, 0.24, 1)
+SLATE = (0.16, 0.18, 0.22, 1)
+OFFWHITE = (0.85, 0.86, 0.88, 1)
+
+
+def solid(name, colour, emission=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = colour
+    bsdf.inputs["Roughness"].default_value = 0.7
+    if emission:
+        bsdf.inputs["Emission Color"].default_value = colour
+        bsdf.inputs["Emission Strength"].default_value = emission
+    return mat
+
+
+def drone(at):
+    """Our own drone: a slate body, two off-white rotors, one accent
+    light — the subagent in flight. Modelled here so it shares the kits'
+    palette and needs no third-party asset."""
+    root = bpy.data.objects.new("botropolis/drone", None)
+    bpy.context.scene.collection.objects.link(root)
+    parts = []
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.09, depth=0.07, location=(0, 0, 0.32))
+    body = bpy.context.active_object
+    body.data.materials.append(solid("drone-body", SLATE))
+    parts.append(body)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0.35))
+    arm = bpy.context.active_object
+    arm.scale = (0.34, 0.03, 0.015)
+    arm.data.materials.append(solid("drone-arm", SLATE))
+    parts.append(arm)
+    for x in (-0.16, 0.16):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.012, location=(x, 0, 0.37))
+        rotor = bpy.context.active_object
+        rotor.data.materials.append(solid("drone-rotor", OFFWHITE))
+        parts.append(rotor)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.035, location=(0, 0, 0.27))
+    lamp = bpy.context.active_object
+    lamp.data.materials.append(solid("drone-light", ACCENT, emission=3.0))
+    parts.append(lamp)
+    for o in parts:
+        o.parent = root
+    root.location = Vector((at[0], at[1], 0))
+    bpy.context.view_layer.update()
+    return root
+
+
 def model_path(kits, kit, name):
     for folder in ("GLB format", "GLTF format"):
         path = os.path.join(kits, kit, "Models", folder, name + ".glb")
@@ -91,7 +142,12 @@ def model_path(kits, kit, name):
 
 
 def piece(kits, kit, name, at, turn=0.0):
-    """Import one kit piece at a tile position, turned in degrees about z."""
+    """Import one kit piece at a tile position, turned in degrees about z;
+    the botropolis kit is modelled here rather than imported."""
+    if kit == "botropolis":
+        if name != "drone":
+            raise FileNotFoundError(f"botropolis/{name} is not a piece we model")
+        return drone(at)
     before = set(bpy.context.scene.objects)
     bpy.ops.import_scene.gltf(filepath=model_path(kits, kit, name))
     new = [o for o in bpy.context.scene.objects if o not in before]

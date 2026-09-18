@@ -93,7 +93,8 @@ A waybar module, for example:
 The city is drawn from [Kenney](https://kenney.nl)'s 3D kits — City Kit Commercial, Roads, Industrial and Suburban, and the Car Kit, all CC0 —
 pre-rendered once in Blender by `tools/render-sprites` into the atlases under `pkg/assets/kits/` (four headings, two zoom levels),
 the way Factorio ships its sprites: the runtime only ever draws 2D.
-A session's building grows with its context window; a parked session is a shipping container in the storage district;
+A session's building grows with its context window; a rover works at its door while it is mid-turn and a drone circles the roof for each subagent in flight;
+a parked session is a shipping container in the storage district;
 the plant, city hall and library stand on the plaza; avenues, lamps and trees are placed by the city plan.
 `r` turns the camera a quarter at a time.
 The 16 px Tiny Town, Tiny Factory and Roguelike Modern City packs remain behind `--projection top`.

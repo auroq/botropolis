@@ -277,8 +277,21 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	}
 	roofTop := r.Min.Y
 	dot := math.Max(3, 6*cam.Zoom)
+	// The worker: a rover at the door while the session is mid-turn,
+	// bobbing as it works.
+	if b.Session.State == state.Working {
+		bob := 1.5 * cam.Zoom * math.Sin(seconds*4)
+		door := city.Point{X: b.Rect.Max.X - city.Tile*0.4, Y: b.Rect.Max.Y - city.Tile*0.4}
+		at := cam.WorldToScreen(door)
+		g.kitAt(screen, cam, kitRover, 90, city.Point{X: at.X, Y: at.Y + bob}, nil)
+	}
+	// Subagents in flight: one drone each, circling over the roof.
 	for i := 0; i < min(b.Cranes, 3); i++ {
-		vector.FillRect(screen, float32(r.Min.X+r.Width()*0.3+float64(i)*dot*1.6), float32(roofTop+dot), float32(dot), float32(dot), colorCrane, false)
+		phase := seconds*0.8 + float64(i)*2*math.Pi/3
+		orbit := city.Point{X: r.Width() * 0.28 * math.Cos(phase), Y: r.Width() * 0.12 * math.Sin(phase)}
+		hover := 2 * cam.Zoom * math.Sin(seconds*3+float64(i))
+		at := city.Point{X: r.Min.X + r.Width()/2 + orbit.X, Y: roofTop - 12*cam.Zoom + orbit.Y + hover}
+		g.kitAt(screen, cam, kitDrone, 0, at, nil)
 	}
 	if b.Flags > 0 {
 		vector.FillRect(screen, float32(r.Min.X+r.Width()*0.7), float32(roofTop-dot*2), float32(dot*0.4), float32(dot*2.5), colorPole, false)

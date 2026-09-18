@@ -27,6 +27,8 @@ var (
 	kitLibrary  = "city-kit-commercial/building-l"
 	kitTower    = "city-kit-industrial/water-tower"
 	kitLamp     = "city-kit-roads/light-square"
+	kitRover    = "space-kit/rover"
+	kitDrone    = "botropolis/drone"
 	kitCars     = []string{"car-kit/sedan", "car-kit/van", "car-kit/taxi", "car-kit/suv", "car-kit/hatchback-sports", "car-kit/delivery"}
 	kitParkTree = "city-kit-suburban/tree-small"
 	kitBeltTree = "city-kit-suburban/tree-large"

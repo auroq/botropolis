@@ -249,15 +249,26 @@ and the camera clamps so the plan stays under the middle of the window.
 
 ## Sprite pipeline
 
-Started 2026-09-18 (roadmap phase 9, first step).
+Roadmap phase 9, 2026-09-18; Aria compared the first kit district with `r64-fit.png` and chose the kits.
 `make kits` runs `tools/fetch-kits`, which follows each kenney.nl asset page's download link into the gitignored `tools/kits/<slug>/`;
 the kits themselves are never committed, only what is rendered from them and their CC0 licence files under `pkg/assets/kits/<slug>/`.
 `tools/render-sprites/render.py` is the headless Blender script (Blender 5.2 from `extra`, a developer dependency only).
-Its `scene` mode composes one district — six Commercial buildings on a block, an avenue ring from the Roads kit with bends, T junctions and lamps,
-the plant from the Industrial kit on the plaza next door — under one sun with soft cast shadows,
-seen by an orthographic camera tilted atan(1/2) above the ground and turned 45°, so a tile's top face projects 2:1 like the current map.
-EEVEE renders it in about six seconds; `make kit-district` writes `docs/screenshots/kit-district.png`.
-The atlas mode, headings and zoom levels wait on the comparison with `r64-fit.png`.
+Its `scene` mode renders one composed district for judging the look (`make kit-district`);
+its `atlas` mode cuts every piece the map uses at four headings and two zoom levels, alpha-cropped with the pixel where the piece's ground origin lands,
+shelf-packed onto 2048 px pages under a budget of eight per zoom, with a JSON manifest (`make sprites`; `tools/shrink-pngs` re-encodes the pages).
+One sun with soft cast shadows; an orthographic camera tilted atan(1/2) above the ground and turned 45° plus the heading, so a one-unit tile projects as the map's 2:1 diamond, 132 px wide at zoom 1.
+Kits not modelled at one unit per cell are scaled on import (the Car Kit to 0.12); the drone is modelled in the script from primitives in the kits' palette.
+
+`pkg/assets/kits.go` loads the atlases; `pkg/render/kits.go` draws a piece with its origin on a world point as the camera's heading sees it, picking the atlas cut at or below the zoom;
+`pkg/render/recipes.go` says which piece stands for what:
+a session's building is one of five classes of Commercial pieces by how much of its context window it has used, with variety from its id and a state-coloured beacon over the door;
+a parked session is an Industrial shipping container in storage; avenues are Roads pieces picked and turned by each cell's joins;
+the plant is an Industrial hall with a stack, the hall and library Commercial pieces, the MCP towers water towers; trees are the Suburban kit's; cars the Car Kit's;
+the worker is the Space Kit rover at the door of a working session, bobbing; each subagent in flight is a drone circling the roof.
+The camera carries a heading (`r` turns it a quarter about the window's middle) and the projection, corners, fit bounds, minimap and back-to-front order all go through it;
+the wheel eases the zoom to its ladder target unless motion is reduced.
+The fit view shows the sprites; only far below it does the flat map view take over.
+The 2D isometric packs of 2026-09-17 are gone; the 16 px packs stay behind `--projection top`.
 
 ## Open questions
 
