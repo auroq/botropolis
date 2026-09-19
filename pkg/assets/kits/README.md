@@ -18,8 +18,8 @@ Only the rendered pages, the manifests and each kit's `License.txt` are committe
 | (modelled in the script) | — | the drone that stands for a subagent in flight |
 
 Every piece is cut at four headings (0, 90, 180, 270 degrees) under one sun,
-seen by an orthographic camera tilted atan(1/2) above the ground and turned 45 degrees,
-so a one-unit tile projects as the map's 2:1 diamond, 132 px wide at zoom 1.
+seen by an orthographic camera 30 degrees above the ground and turned 45 degrees,
+so a one-unit tile projects as the map's 2:1 diamond, 132 px wide and 66 tall at zoom 1.
 Each sprite's manifest entry gives its page, its rectangle and the pixel where the piece's ground origin lands.
 
 Kenney's terms, from [kenney.nl/support](https://kenney.nl/support): CC0, free for any use, attribution welcome but not required.

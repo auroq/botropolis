@@ -260,7 +260,7 @@ the kits themselves are never committed, only what is rendered from them and the
 Its `scene` mode renders one composed district for judging the look (`make kit-district`);
 its `atlas` mode cuts every piece the map uses at four headings and two zoom levels, alpha-cropped with the pixel where the piece's ground origin lands,
 shelf-packed onto 2048 px pages under a budget of eight per zoom, with a JSON manifest (`make sprites`; `tools/shrink-pngs` re-encodes the pages).
-One sun with soft cast shadows; an orthographic camera tilted atan(1/2) above the ground and turned 45° plus the heading, so a one-unit tile projects as the map's 2:1 diamond, 132 px wide at zoom 1.
+One sun with soft cast shadows; an orthographic camera 30° above the ground and turned 45° plus the heading, so a one-unit tile projects as the map's 2:1 diamond, 132 px wide and 66 tall at zoom 1 (atan(1/2) is the diamond's edge angle on screen, not the camera's tilt; the first atlases were cut at it and every tile came out a tenth too short).
 Kits not modelled at one unit per cell are scaled on import (the Car Kit to 0.12); the drone is modelled in the script from primitives in the kits' palette.
 
 `pkg/assets/kits.go` loads the atlases; `pkg/render/kits.go` draws a piece with its origin on a world point as the camera's heading sees it, picking the atlas cut at or below the zoom;

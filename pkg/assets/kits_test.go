@@ -31,6 +31,20 @@ func TestLoadKits(t *testing.T) {
 			}
 		})
 
+		t.Run("it should cut a flat tile as the map's 2:1 diamond", func(t *testing.T) {
+			// The map projects a cell as a diamond twice as wide as it is
+			// tall; a sprite cut at any other tilt leaves a sliver at every
+			// seam. The straight road is a 1x1 slab 0.02 units thick, so
+			// its box is the diamond plus a hair.
+			for _, a := range atlases {
+				s, ok := a.Sprite("city-kit-roads/road-straight", 0)
+				require.True(t, ok)
+				over := float64(s.Rect.Dy()) - a.Tile/2
+				assert.GreaterOrEqual(t, over, 0.0, "zoom %g: %dx%d is shorter than the diamond", a.Zoom, s.Rect.Dx(), s.Rect.Dy())
+				assert.LessOrEqual(t, over, 0.08*a.Tile, "zoom %g: %dx%d is taller than the diamond and its edge", a.Zoom, s.Rect.Dx(), s.Rect.Dy())
+			}
+		})
+
 		t.Run("it should decode every page at the manifest's size", func(t *testing.T) {
 			for _, page := range one.Pages {
 				assert.Equal(t, 2048, page.Bounds().Dx())

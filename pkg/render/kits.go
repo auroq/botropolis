@@ -113,8 +113,9 @@ func (g *Game) kitGround(screen *ebiten.Image, cam *city.Camera, name string, tu
 	g.drawSprite(screen, img, origin, scale, tint)
 }
 
-// groundBleed is how much larger a ground tile is drawn than its cell.
-const groundBleed = 1.03
+// groundBleed is how much larger a ground tile is drawn than its cell:
+// just enough for neighbours' anti-aliased rims to overlap.
+const groundBleed = 1.01
 
 // kitRising draws a piece standing on a world point at a fraction of its
 // height, growing from its foot: a building rising as its session

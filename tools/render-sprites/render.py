@@ -28,9 +28,13 @@ from mathutils import Vector
 
 KITS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "kits")
 
-# The map's 2:1 diamond: the camera looks down at atan(1/2) above the
-# ground, turned 45 degrees, so a tile's top face projects 2:1.
-ISO_TILT = math.degrees(math.atan2(1, 0.5))
+# The map's 2:1 diamond: the camera looks down from 30 degrees above the
+# ground (sin 30 = 1/2 is the foreshortening that makes a square's
+# diagonal twice as wide as it is tall; atan(1/2) is the diamond's edge
+# angle on screen, a different number, and tilting the camera by it cut
+# every tile a tenth too short for its cell) and turned 45 degrees, so
+# a unit tile projects as a diamond 132 px wide and 66 tall at zoom 1.
+ISO_TILT = 60.0
 ISO_TURN = 45.0
 
 # One kit unit is one map cell; the map draws a cell as a diamond
@@ -48,7 +52,7 @@ PIECES = {
     "city-kit-industrial": ["building-a", "building-b", "building-e", "building-h", "building-k", "chimney-large", "chimney-medium",
                             "detail-tank-large", "water-tower", "windmill", "solar-panel-landscape-group",
                             "shipping-container-a", "shipping-container-b", "shipping-container-c"],
-    "city-kit-roads": ["road-straight", "road-bend", "road-curve", "road-crossroad", "road-intersection", "road-end", "road-square",
+    "city-kit-roads": ["road-straight", "road-bend", "road-crossroad", "road-intersection", "road-end", "road-square",
                        "light-square", "light-curved", "electricity-pole", "electricity-wires", "traffic-light", "construction-cone"],
     "city-kit-suburban": ["tree-large", "tree-small"],
     "car-kit": ["sedan", "van", "taxi", "suv", "hatchback-sports", "truck", "delivery"],
