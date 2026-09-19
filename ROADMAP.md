@@ -307,7 +307,11 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
     Natural texture, planned placement — nothing per-frame random.
   - *The fountain is a blue disc.* No kit on disk has a fountain. Model one in the pipeline as the drone was: a basin, a column, a lip, a water disc in the plant's steel blue, and three spray frames cycled slowly (still under `reduced_motion`).
     Its card already says it means nothing; it should at least look like what it is.
-  - Exit: a fit frame and a plaza close-up in `docs/screenshots/`, and `make sprites-check` still byte-identical on a no-op render.
+  - *Buildings get signs, like corporate offices.* (Aria, 2026-09-18.) A session's title goes on its building the way a tower's name goes on the tank: a short title as a fascia sign over the door on the front face;
+    a long one on a rooftop billboard (two lines, ellipsised, the billboard a kit-palette panel on two posts); a tall building may run it up the side.
+    Same rules as the towers — nothing below seven pixels, the plate only on hover — so the "titles visible from 1.5×" plates retire.
+    The district name stays on the floor; the state beacon stays over the door.
+  - Exit: a fit frame and a plaza close-up in `docs/screenshots/`, a close-up of a block with three signed buildings, and `make sprites-check` still byte-identical on a no-op render.
 
 ### Worth knowing, not bugs
 
