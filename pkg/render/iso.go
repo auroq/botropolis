@@ -546,20 +546,24 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		g.isoDistrict(screen, cam, d, hover.District == d)
 	}
 	g.isoPlaza(screen, cam, c)
-	g.fountain(screen, cam, c, seconds)
 	g.powerLines(screen, c, cam, hover, seconds)
 	g.camps(screen, c, cam)
 	var items []drawable
+	if c.Fountain.Area() > 0 {
+		items = append(items, drawable{depth: cam.DepthOf(c.Fountain), draw: func() {
+			g.fountain(screen, cam, c, seconds)
+		}})
+	}
 	for _, l := range c.Lamps {
 		l := l
-		items = append(items, drawable{depth: cam.Depth(l.Center()), draw: func() {
+		items = append(items, drawable{depth: cam.DepthOf(l.Rect()), draw: func() {
 			g.lamp(screen, cam, l, c.Night)
 		}})
 	}
 	for _, d := range c.Districts {
 		for _, b := range d.Buildings {
 			b := b
-			items = append(items, drawable{depth: cam.Depth(b.Rect.Max), draw: func() {
+			items = append(items, drawable{depth: cam.DepthOf(b.Rect), draw: func() {
 				g.isoBuilding(screen, cam, b, b == selected, detailed, seconds)
 			}})
 		}
@@ -583,7 +587,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		}})
 	}
 	if c.Plant.Rect.Area() > 0 {
-		items = append(items, drawable{depth: cam.Depth(c.Plant.Rect.Max), draw: func() {
+		items = append(items, drawable{depth: cam.DepthOf(c.Plant.Rect), draw: func() {
 			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, nil, city.Hit{Landmark: city.LandmarkPlant})
 			g.kit(screen, cam, kitStack, 0, city.Point{X: c.Plant.Rect.Max.X - city.Tile, Y: c.Plant.Rect.Max.Y - city.Tile}, nil)
 		}})
@@ -596,7 +600,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	for _, t := range c.Towers {
 		t := t
-		items = append(items, drawable{depth: cam.Depth(t.Rect.Max), draw: func() {
+		items = append(items, drawable{depth: cam.DepthOf(t.Rect), draw: func() {
 			tint := &ebiten.ColorScale{}
 			if t.Server.Calls == 0 {
 				tint.SetR(0.6)
@@ -613,12 +617,12 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		}})
 	}
 	if c.Library.Rect.Area() > 0 {
-		items = append(items, drawable{depth: cam.Depth(c.Library.Rect.Max), draw: func() {
+		items = append(items, drawable{depth: cam.DepthOf(c.Library.Rect), draw: func() {
 			g.isoLandmark(screen, cam, c.Library.Rect, kitLibrary, nil, city.Hit{Landmark: city.LandmarkLibrary})
 		}})
 	}
 	if c.Hall.Rect.Area() > 0 {
-		items = append(items, drawable{depth: cam.Depth(c.Hall.Rect.Max), draw: func() {
+		items = append(items, drawable{depth: cam.DepthOf(c.Hall.Rect), draw: func() {
 			g.isoLandmark(screen, cam, c.Hall.Rect, kitHall, nil, city.Hit{Landmark: city.LandmarkHall})
 		}})
 	}

@@ -55,6 +55,11 @@ func (c *Camera) turn(p Point) Point {
 	return p
 }
 
+// TurnPoint is a world point in the camera's own frame, where depth is
+// x + y. Exported for the draw-order guard, which needs to say what
+// "behind" means from a heading.
+func (c *Camera) TurnPoint(p Point) Point { return c.turn(p) }
+
 func (c *Camera) unturn(p Point) Point {
 	switch ((c.Heading/90)%4 + 4) % 4 {
 	case 1:
@@ -106,6 +111,22 @@ func (c *Camera) Bounds(r Rect) Rect {
 func (c *Camera) Depth(p Point) float64 {
 	t := c.turn(p)
 	return t.X + t.Y
+}
+
+// DepthOf orders a footprint back to front: the depth of its back-most
+// corner, the first part of it the viewer would lose sight of.
+//
+// One point is only right for something standing on one cell. A piece
+// that spans cells — the plant and its cooling tower — keyed off a
+// single corner ties with whatever sits on the cell beside it, and the
+// order between them is then whatever the sort happened to do. Sorting
+// by where a footprint begins breaks the tie the way the eye does.
+func (c *Camera) DepthOf(r Rect) float64 {
+	depth := math.Inf(1)
+	for _, p := range [4]Point{r.Min, {X: r.Max.X, Y: r.Min.Y}, r.Max, {X: r.Min.X, Y: r.Max.Y}} {
+		depth = math.Min(depth, c.Depth(p))
+	}
+	return depth
 }
 
 // Turn faces the camera a quarter turn on, keeping the world point under

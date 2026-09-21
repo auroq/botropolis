@@ -276,3 +276,72 @@ func TestCameraHeading(t *testing.T) {
 		})
 	})
 }
+
+// headings is every quarter turn the camera can face.
+var headings = []int{0, 90, 180, 270}
+
+func TestDepthOf(t *testing.T) {
+	// Two cells side by side, and a piece spanning both, laid out on
+	// the grid the plan uses.
+	west := city.RectAt(0, 0, city.CellSize, city.CellSize)
+	east := city.RectAt(city.CellSize, 0, city.CellSize, city.CellSize)
+	south := city.RectAt(0, city.CellSize, city.CellSize, city.CellSize)
+	wide := city.RectAt(0, 0, 2*city.CellSize, city.CellSize)
+
+	t.Run("when a footprint is one cell", func(t *testing.T) {
+		cam := city.NewCamera()
+
+		t.Run("it should take the depth of its back corner", func(t *testing.T) {
+			assert.InDelta(t, cam.Depth(west.Min), cam.DepthOf(west), 1e-9)
+		})
+	})
+
+	t.Run("when one cell is behind another at every heading", func(t *testing.T) {
+		cam := city.NewCamera()
+
+		t.Run("it should order the far one first whichever way the camera faces", func(t *testing.T) {
+			for _, heading := range headings {
+				cam.Heading = heading
+				near, far := east, west
+				if cam.DepthOf(east) < cam.DepthOf(west) {
+					near, far = west, east
+				}
+				assert.Less(t, cam.DepthOf(far), cam.DepthOf(near), "heading %d", heading)
+			}
+		})
+	})
+
+	t.Run("when a piece spans two cells and a neighbour sits beside it", func(t *testing.T) {
+		cam := city.NewCamera()
+
+		t.Run("it should not tie with the neighbour, as one point does", func(t *testing.T) {
+			assert.Equal(t, cam.Depth(wide.Max), cam.Depth(south.Max), "the near corners do tie")
+			assert.NotEqual(t, cam.DepthOf(wide), cam.DepthOf(south))
+		})
+
+		t.Run("it should be sorted by where it begins, so the neighbour draws over it", func(t *testing.T) {
+			assert.Less(t, cam.DepthOf(wide), cam.DepthOf(south))
+		})
+	})
+
+	t.Run("when the camera turns", func(t *testing.T) {
+		cam := city.NewCamera()
+		cam.Heading = 0
+		front := cam.DepthOf(south)
+		cam.Heading = 180
+		back := cam.DepthOf(south)
+
+		t.Run("it should follow the heading rather than the world", func(t *testing.T) {
+			assert.NotEqual(t, front, back)
+		})
+	})
+
+	t.Run("when a footprint is a single point", func(t *testing.T) {
+		cam := city.NewCamera()
+		dot := city.Rect{Min: city.Point{X: 12, Y: 20}, Max: city.Point{X: 12, Y: 20}}
+
+		t.Run("it should be the depth of that point", func(t *testing.T) {
+			assert.InDelta(t, cam.Depth(dot.Min), cam.DepthOf(dot), 1e-9)
+		})
+	})
+}
