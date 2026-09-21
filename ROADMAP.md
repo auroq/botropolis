@@ -319,7 +319,7 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
 - **Phase 16 — Planting, the plaza and the workers** (Aria, 2026-09-18, from the r129 frames). Bugs 18 and 19 first, then:
   Done 2026-09-21 (r144.f76c246): one commit an item, a frame each.
-  Package `botropolis-git-r144.f76c246` built, not installed.
+  Package `botropolis-git-r145.07f3ce6` built, not installed.
   - ~~*The trees are too consistent.*~~ Done 2026-09-21 (r141). The Suburban kit has two trees, so variety cannot come from the kit as shipped.
     Take the Nature Kit's geometry (fifty species: oak, pine, thin, fat, small, bush, flower, `planter`) and **retint its materials in the render script** to the Suburban green family,
     scaled so no tree stands taller than a two-storey building — the one-palette rule is about colour, and the pipeline assigns colour.
