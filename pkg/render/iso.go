@@ -270,7 +270,8 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		tint.SetB(1)
 	}
 	r := g.kitRising(screen, cam, buildingPiece(b), b.Rect.Center(), tint, rise)
-	g.noteHit(r, city.Hit{Building: b, District: g.scene.City().DistrictOf(b)})
+	district := g.scene.City().DistrictOf(b)
+	g.noteHit(r, city.Hit{Building: b, District: district})
 	if r.Area() == 0 || g.scene.Dimmed(b) {
 		return
 	}
@@ -292,8 +293,7 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	// bobbing as it works.
 	if b.Session.State == state.Working {
 		bob := 1.5 * cam.Zoom * math.Sin(seconds*4)
-		door := city.Point{X: b.Rect.Max.X - city.Tile*0.4, Y: b.Rect.Max.Y - city.Tile*0.4}
-		at := cam.WorldToScreen(door)
+		at := cam.WorldToScreen(district.Door(b))
 		g.kitAt(screen, cam, kitRover, 90, city.Point{X: at.X, Y: at.Y + bob}, nil)
 	}
 	// Subagents in flight: one drone each, circling over the roof.

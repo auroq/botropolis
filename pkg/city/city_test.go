@@ -18,6 +18,7 @@ import (
 const (
 	cinders    = "/home/avesta/workspaces/github/mCedar/cinders"
 	botropolis = "/home/avesta/workspaces/github/auroq/botropolis"
+	mullet     = "/home/avesta/workspaces/github/mCedar/mullet"
 	worktree   = botropolis + "/.claude/worktrees/milestone-0-scaffold"
 )
 

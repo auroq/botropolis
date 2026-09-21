@@ -391,7 +391,7 @@ func (c *City) At(p Point) Hit {
 	if c.Fountain.Area() > 0 && c.Fountain.Contains(p) {
 		return Hit{Landmark: LandmarkFountain}
 	}
-	if _, ok := c.River(cellOf(p)); ok {
+	if _, ok := c.River(CellOf(p)); ok {
 		return Hit{Landmark: LandmarkWater}
 	}
 	for _, d := range c.Districts {

@@ -45,6 +45,27 @@ func TestLoadKits(t *testing.T) {
 			}
 		})
 
+		t.Run("it should stand every piece on its own sprite", func(t *testing.T) {
+			// The anchor is where the piece's ground point lands inside
+			// its sprite. A piece may float above that point (the wires,
+			// the drone), so the anchor may sit below the box; it may
+			// never sit beside it or above it, because then the map
+			// would draw the piece somewhere its point is not — which is
+			// how the Space Kit's rover, modelled two tiles off its own
+			// origin, came to park in the avenue.
+			for _, a := range atlases {
+				for _, name := range a.Names() {
+					for _, heading := range assets.Headings {
+						s, ok := a.Sprite(name, heading)
+						require.True(t, ok)
+						assert.GreaterOrEqual(t, s.Anchor.X, 0, "zoom %g: %s at %d is anchored left of its sprite", a.Zoom, name, heading)
+						assert.LessOrEqual(t, s.Anchor.X, s.Rect.Dx(), "zoom %g: %s at %d is anchored right of its sprite", a.Zoom, name, heading)
+						assert.GreaterOrEqual(t, s.Anchor.Y, 0, "zoom %g: %s at %d is anchored above its sprite", a.Zoom, name, heading)
+					}
+				}
+			}
+		})
+
 		t.Run("it should decode every page at the manifest's size", func(t *testing.T) {
 			for _, page := range one.Pages {
 				assert.Equal(t, 2048, page.Bounds().Dx())

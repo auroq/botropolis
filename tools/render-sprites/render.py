@@ -70,6 +70,17 @@ PIECES = {
 # Kit's tug 3.5, and a wagon or a barge on the map is two thirds of a cell.
 SCALE = {"car-kit": 0.12, "train-kit": 0.25, "watercraft-kit": 0.25}
 
+# Pieces a kit models away from their own origin. The map puts a piece
+# on a point and the atlas anchors the sprite where that point lands, so
+# a mesh that sits off its origin is drawn off its point: the Space Kit
+# models the rover two tiles east and one and a half south of its own
+# origin, which is how the worker came to park in the avenue instead of
+# standing at the door. Every other piece in PIECES is within a tenth of
+# a tile of its origin, and their origins are where the kit's author put
+# them (a lamp's is the foot of its post, not the middle of its arm), so
+# only the ones named here are moved.
+OFF_ORIGIN = {"space-kit/rover"}
+
 GRASS = (0.22, 0.33, 0.17, 1)
 PLAZA = (0.54, 0.53, 0.49, 1)
 CONCRETE = (0.45, 0.45, 0.47, 1)
@@ -165,6 +176,13 @@ def piece(kits, kit, name, at, turn=0.0):
     for o in new:
         if o.parent is None:
             o.parent = root
+    if f"{kit}/{name}" in OFF_ORIGIN:
+        bpy.context.view_layer.update()
+        lo, hi = bounds(root)
+        off = Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, 0))
+        for o in new:
+            if o.parent is root:
+                o.location = o.location - off
     root.location = Vector((at[0], at[1], at[2] if len(at) > 2 else 0))
     root.rotation_euler = (0, 0, math.radians(turn))
     k = SCALE.get(kit, 1.0)

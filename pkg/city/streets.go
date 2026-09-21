@@ -32,7 +32,8 @@ type Street struct {
 	Path []Point
 }
 
-func cellOf(p Point) Cell {
+// CellOf is the cell a world point falls in.
+func CellOf(p Point) Cell {
 	return Cell{Col: int(math.Floor(p.X / BuildingSize)), Row: int(math.Floor(p.Y / BuildingSize))}
 }
 
@@ -68,7 +69,7 @@ func (c *City) placeStreets() {
 // kerbCells is every street cell touching a district's block.
 func (c *City) kerbCells(d *District) map[Cell]bool {
 	kerb := map[Cell]bool{}
-	min, max := cellOf(d.Rect.Min), cellOf(d.Rect.Max.Sub(Point{X: 1, Y: 1}))
+	min, max := CellOf(d.Rect.Min), CellOf(d.Rect.Max.Sub(Point{X: 1, Y: 1}))
 	for col := min.Col - 1; col <= max.Col+1; col++ {
 		for row := min.Row - 1; row <= max.Row+1; row++ {
 			edge := col < min.Col || col > max.Col || row < min.Row || row > max.Row
