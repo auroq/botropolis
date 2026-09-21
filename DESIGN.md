@@ -285,6 +285,9 @@ The 2D isometric packs of 2026-09-17 are gone; the 16 px packs stay behind `--pr
 ## Parity
 
 Roadmap phase 10, 2026-09-18.
+A session's title is painted on its building: a fascia over the door when it is short enough to read there, up the flank of a tall one when it is not, and a rooftop billboard of two ellipsised lines otherwise.
+Nothing is hung below seven pixels, and the name plate appears only on hover — the same rule the towers follow.
+
 A selected building's card pins beside it and follows it with its actions — attach or resume, stop, a new session in its directory (also `c`),
 reveal the folder, copy the path, hide the project, star it — all through `pkg/control` and the `claude` CLI except hide and star,
 which are marks in `layout.json` and never touch `~/.claude`.

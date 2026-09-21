@@ -314,6 +314,11 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	}
 	roofTop := r.Min.Y
 	dot := math.Max(3, 6*cam.Zoom)
+	// Signage is paint on the building, not chrome: like a tower's name
+	// it stays when h hides the interface.
+	if !b.BoardedUp {
+		g.buildingSign(screen, r, foot, b.Card(g.scene.City().Time).Title)
+	}
 	// The worker: a rover that waits at the door while the session is
 	// mid-turn and drives out to the kerb and back for each tool call,
 	// bobbing as it goes.
@@ -404,6 +409,62 @@ func (g *Game) towerSign(screen *ebiten.Image, r city.Rect, name string) {
 	g.sign(screen, sign, colour)
 }
 
+// Where a session's name goes on its building, as fractions of a tile
+// on screen: a fascia band over the door on the front face, a strip up
+// the flank for a tall one, and the room above the roofline a
+// billboard may stand in.
+// A building sprite is one cell wide whatever its height, so the sign's
+// bands are measured against the sprite's width and not its height or
+// the zoom: a fascia is a storey, not a fraction of a tower.
+const (
+	fasciaWidth  = 0.40
+	fasciaHeight = 0.13
+	fasciaAbove  = 0.08
+	flankWidth   = 0.17
+	flankInset   = 0.74
+	flankFoot    = 0.22
+	flankHead    = 0.06
+	boardWidth   = 0.95
+	boardHeight  = 0.42
+)
+
+// buildingSign paints a session's title on its building the way a firm
+// puts its name on an office: over the door when it is short, up the
+// side of a tall one, and on a rooftop billboard when it is too long
+// for either. Nothing under seven pixels — the hover plate has the
+// name then, as it does for a tower.
+func (g *Game) buildingSign(screen *ebiten.Image, r city.Rect, foot city.Point, name string) {
+	if r.Area() == 0 || name == "" {
+		return
+	}
+	cell := r.Width()
+	centre := r.Min.X + cell/2
+	fascia := city.RectAt(foot.X-cell*fasciaWidth/2, foot.Y-cell*(fasciaAbove+fasciaHeight), cell*fasciaWidth, cell*fasciaHeight)
+	flankTop := r.Min.Y + cell*flankHead
+	flank := city.RectAt(r.Min.X+cell*flankInset-cell*flankWidth/2, flankTop, cell*flankWidth, math.Max(0, foot.Y-cell*flankFoot-flankTop))
+	board := city.RectAt(centre-cell*boardWidth/2, r.Min.Y-cell*boardHeight, cell*boardWidth, cell*boardHeight)
+	sign, ok := ui.LayoutBuildingSign(name, fascia, flank, board, g.faces.Measure)
+	if !ok {
+		return
+	}
+	if sign.Billboard() {
+		for _, post := range sign.Posts {
+			vector.FillRect(screen, float32(post.Min.X), float32(post.Min.Y), float32(post.Width()), float32(post.Height()), colorKitKerb, false)
+		}
+		vector.FillRect(screen, float32(sign.Panel.Min.X), float32(sign.Panel.Min.Y), float32(sign.Panel.Width()), float32(sign.Panel.Height()), colorKitFloor, false)
+		vector.StrokeRect(screen, float32(sign.Panel.Min.X), float32(sign.Panel.Min.Y), float32(sign.Panel.Width()), float32(sign.Panel.Height()), 1, colorKitKerb, false)
+	}
+	// Paint is light on the building's own dark ground floor, and the
+	// billboard's panel is a light kit face, so its two lines are dark.
+	ink := colorText
+	if sign.Billboard() {
+		ink = colorKitKerb
+	}
+	for _, line := range sign.Lines {
+		g.sign(screen, line, ink)
+	}
+}
+
 // sign draws painted-on text: scaled with the map, and turned a quarter
 // anticlockwise to run up a side when the sign is vertical.
 func (g *Game) sign(screen *ebiten.Image, s ui.Sign, c color.NRGBA) {
@@ -456,13 +517,6 @@ func (g *Game) noteHit(r city.Rect, hit city.Hit) {
 	g.mu.Lock()
 	g.frameHits = append(g.frameHits, spriteHit{rect: r, hit: hit})
 	g.mu.Unlock()
-}
-
-func (g *Game) isoTitle(screen *ebiten.Image, cam *city.Camera, b *city.Building) {
-	name := formatTitle(b.Card(g.scene.City().Time).Title)
-	wText, _ := g.measure(name)
-	top, w := footprint(cam, b.Rect)
-	g.floorLabel(screen, city.Point{X: top.X - wText/2, Y: top.Y + w/2 + g.theme.Px(6)}, name, colorText)
 }
 
 // drawIso is the isometric frame: ground, lines, district floors, then
@@ -575,14 +629,6 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	for _, d := range c.Districts {
 		if g.districtLabelVisible(d) {
 			g.floorLabel(screen, g.districtLabelAt(d), d.Name, colorText)
-		}
-	}
-	if g.titlesVisible() {
-		for _, b := range c.Buildings() {
-			if (b.BoardedUp || b.Vacant) && hover.Building != b {
-				continue
-			}
-			g.isoTitle(screen, cam, b)
 		}
 	}
 	if labels {
