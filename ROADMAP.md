@@ -413,6 +413,63 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   - Exit: a fit frame and a plaza close-up in `docs/screenshots/`, a close-up of a block with three signed buildings, and `make sprites-check` green under the tolerance of bug 21.
     Done 2026-09-21 (r143) but for the last: the fit frame is `r136-hero.png`, the plaza close-up `r142-fountain.png`, the block `r143-building-signage.png`.
     `make sprites-check` reports a diff for one reason only — ImageMagick's `date:*` chunks — and stripping them is Aria's call (see "Worth knowing" below).
+## 9. Info views (Aria, 2026-09-21)
+
+The map draws every layer at once — roads, power lines, tower beams, rails, cars, trains, trees, lamps, signage, containers.
+That is why it reads busy, and it is the same complaint that started this project about bot-crossing's crowd of astronauts.
+The genre solved this thirty years ago and the solution is **subtractive**: an info view shows one dimension and takes the rest away.
+
+### What the genre does
+
+Cities: Skylines ships **36 info views**, and the pattern is consistent across them ([wiki](https://skylines.paradoxwikis.com/Info_views)):
+
+- **One view at a time**, each a mode you enter and leave. Two overlays at once make colour meaningless.
+- **The base city recedes and the data is coloured.** Saturated colour carries more visual weight than muted, so desaturating the base is what makes the overlay readable ([Justinmind on game UI hierarchy](https://www.justinmind.com/ui-design/game)).
+- **The view reveals its own network.** Water pipes and heating pipes are *only* visible in their views — they are underground the rest of the time. That is the direct answer to "power lines on and off": not a checkbox, a view.
+- **Every view carries an aggregate.** Electricity has a supply meter, traffic an average-flow meter, tourism a pie chart. A view without a number is decoration.
+- **The carrier is coloured, not just the source.** Roads go green where a service reaches and grey where it does not, so coverage is read along the network rather than as a radius.
+
+Factorio adds the other half: overlays that appear **contextually** rather than as a mode — hold a power pole and the electric network lights up; alt-mode labels every machine with its recipe. No mode to enter, no mode to forget to leave.
+
+### Three different things, kept apart
+
+Conflating these is how an options menu grows twenty checkboxes nobody touches.
+
+1. **Info views** — one at a time, keyed, recolour the city by one datum, bring a legend and an aggregate. The subject of this section.
+2. **Clutter toggles** — trees, cars, boats, lamps on or off. A *detail* setting, like a graphics preset, not a data view. One `detail` setting with two or three steps, in the settings panel, not nine checkboxes.
+3. **Contextual highlight** — hovering a tower dims everything that does not call it; hovering a district lights its roads and the districts at their far ends; selecting a session lights its subagents, its MCP beams and its team. No mode, no key, and it is where most of the pattern-finding actually lives.
+
+### The views worth having
+
+Each answers a question, tints the city by one number, and puts its aggregate in the strip. `v` cycles; the number keys jump; the same key leaves.
+
+| View | Tints by | Reveals | Answers |
+| --- | --- | --- | --- |
+| **Attention** (default, today's map) | state | needs-you pulse | who wants me |
+| **Spend** | 24 h cost per district and session | the freight loop and its wagons | where the money went |
+| **Pressure** | context used, red over 80% | — | who is about to compact |
+| **Staleness** | IDLE time | — | what has gone quiet and can be pruned |
+| **Servers** | which MCP servers a session calls | tower beams | what breaks if Atlassian goes down |
+| **Traffic** | messages and file touches | roads, cars | which repos actually talk to each other |
+| **Models** | model per session | — | where the Fable usage is |
+| **Fan-out** | subagents in flight and their lifetime tokens | cranes | which sessions spawn armies |
+| **Health** | errors and PR state | smoke, flags | what is broken, what shipped |
+
+Two of these — Traffic and Servers — are the cross-repo pattern-finding Aria is after, and neither is legible today because their networks are drawn over everything else at all times.
+
+### Why this is also bug 22's fix
+
+Drawing one network instead of nine is less to draw. The static-city compose from phase 18 caches per view, and a view that hides the cars, trains and drones has nothing left to animate — so the cheapest view costs a fraction of a frame. Doing info views after phase 18's caching, rather than before, means the cache key is `(snapshot, camera, heading, view)` from the start.
+
+### Phase 19 — Info views
+
+1. `pkg/city` gains a `View` enum and a per-object tint function; `pkg/render` draws the base desaturated and the tint over it. No new data: every view above is already in the snapshot.
+2. `v` cycles, `1`–`9` jump, the same key or Escape leaves, the current view and its legend sit in the strip, and the view is remembered in `layout.json`.
+3. Networks move behind their views: power lines in Spend, beams in Servers, roads and cars in Traffic, cranes in Fan-out. Attention keeps the map as it is today minus the networks.
+4. Contextual highlight on hover and selection, in every view.
+5. A `detail` setting for the scenery, replacing nothing and adding no per-item checkboxes.
+6. Exit: a frame per view in `docs/screenshots/`, each view's aggregate visible in the strip, and the Attention view measurably cheaper than today's map because it no longer draws four networks.
+
 
 ### Worth knowing, not bugs
 
