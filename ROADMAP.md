@@ -335,7 +335,12 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
     The anchor and the draw order are both correct and the tower still reads as hanging — see `docs/screenshots/r150-plaza-stacks.png`.
     Two ways out, both art rather than arithmetic: bake a soft contact shadow under every piece in the atlas (a dark ellipse on the ground plane, cut with the sprite), or light the scene so each piece throws a shadow the camera can see.
     The first is cheap and uniform and would fix the trees and the lamps at the same time; the second changes every sprite in the atlas. Aria's call.
-    While there: poles and wires are drawn in one pass before the sorted list, so a pole nearer the viewer than a building is painted under it.
+    **Challenged 2026-09-21 on the evidence of the frame itself — test this before buying either fix.** Every tree, bush, lamp and container in `r150-plaza-stacks.png` also throws no visible contact shadow, and every one of them reads as planted. A missing shadow makes a thing look *detached*; the plant looks *elevated*, which is a different symptom.
+    A likelier cause is in `pkg/render/iso.go:589-593`: the plant building and the stack are **one drawable with one depth**, and the stack is drawn unconditionally after the building. Its ground point is `Plant.Rect.Max - (Tile, Tile)`, which lies behind the building slab, so the building should occlude its base and instead the base is painted over it. A tower standing on ground the viewer cannot see, painted in front of the thing hiding that ground, appears to hang exactly this way — and the height it appears to hang by should equal the slab's screen height.
+    Cheap test: give the stack its own `drawable` with `cam.Depth` of its own ground point and see whether it drops onto the plaza. If it does, this is bug 20's class one level down — inside a composite drawable — and no atlas recut is needed.
+    A baked contact shadow is still worth having, but as art, not as the fix for this.
+    While there: poles and wires are drawn in one pass before the sorted list, so a pole nearer the viewer than a building is painted under it — the same bug in the other direction.
+24. **A third of the atlas is never drawn.** (Verified 2026-09-21.) 25 of the 79 cut pieces appear in no `.go` file — every piece name in `pkg/render/recipes.go` is a literal, so nothing constructs them at runtime: `car-kit/truck`, nine `city-kit-commercial/building-*` and `-skyscraper-*`, seven `city-kit-industrial/*` including `windmill` and `solar-panel-landscape-group`, five `city-kit-roads/*` including `electricity-pole` and `electricity-wires`, two `train-kit` carriages, `watercraft-kit/boat-row-small`. That is a third of a 21 MB atlas and of the z2 page budget. Either draw them or drop them from `PIECES`; dropping them shrinks the atlas and the pack. Note that two of the four pieces that moved most under bug 20's derived anchors (`building-h` 0.437, `electricity-wires` 0.278) are in this list, so that fix was partly measured against pieces nothing looks at.
 
 ### Next steps
 
@@ -365,7 +370,7 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   Nothing published to the AUR.
   Package `botropolis-git-r138.ec3d439` built, not installed.
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
-- **Phase 18 — The renderer stops burning a core.** Bug 22.
+- **Phase 18 — The renderer stops burning a core, and the plant lands.** Bugs 22, 23 and 24.
 - **Phase 17 — The plaza stacks right.** Bugs 20 and 21; it is the one thing in the frames that reads as broken rather than unfinished.
   Done 2026-09-21 (r150): one commit an item.
   `sprites-check` is pixel-exact against a measured floor; anchors are derived from the mesh and `OFF_ORIGIN` is gone; depth is a footprint and the fountain is in the sorted list; the plaza's draw order is guarded at all four headings.
