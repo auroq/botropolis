@@ -289,12 +289,13 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	}
 	roofTop := r.Min.Y
 	dot := math.Max(3, 6*cam.Zoom)
-	// The worker: a rover at the door while the session is mid-turn,
-	// bobbing as it works.
+	// The worker: a rover that waits at the door while the session is
+	// mid-turn and drives out to the kerb and back for each tool call,
+	// bobbing as it goes.
 	if b.Session.State == state.Working {
 		bob := 1.5 * cam.Zoom * math.Sin(seconds*4)
-		at := cam.WorldToScreen(district.Door(b))
-		g.kitAt(screen, cam, kitRover, 90, city.Point{X: at.X, Y: at.Y + bob}, nil)
+		at := cam.WorldToScreen(g.scene.Worker(b))
+		g.kitAt(screen, cam, kitRover, g.scene.WorkerTurn(b), city.Point{X: at.X, Y: at.Y + bob}, nil)
 	}
 	// Subagents in flight: one drone each, circling over the roof.
 	for i := 0; i < min(b.Cranes, 3); i++ {

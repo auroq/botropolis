@@ -231,6 +231,7 @@ func (g *Game) Update() error {
 	}
 
 	g.scene.SetInstant(g.reduced || g.screenshot != "")
+	g.scene.SetReducedMotion(g.reduced)
 	g.scene.Animate(1.0 / 30)
 	if g.screenshot == "" {
 		g.watchFocus()

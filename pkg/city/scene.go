@@ -91,8 +91,16 @@ type Scene struct {
 	celebrating map[string]time.Time
 	// known is the last snapshot's live sessions by id and voyages the
 	// tugs on the river for those that came or went since.
-	known       map[string]state.Session
-	voyages     []*Voyage
+	known   map[string]state.Session
+	voyages []*Voyage
+	// tools is each live session's tool call at the last snapshot and
+	// trips the workers out on the road because one started.
+	tools map[string]string
+	trips map[string]*Trip
+	// reduced is the reduced_motion setting: everything that moves on
+	// its own stands still. It is not the same as instant, which a
+	// still frame sets so the camera does not have to ease into place.
+	reduced     bool
 	log         *events.Log
 	filter      Filter
 	budget      float64
@@ -423,6 +431,7 @@ func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
 	s.city.Plant.BudgetUSD = s.budget
 	s.noteMerges()
 	s.noteVoyages(snapshot, s.now())
+	s.noteTrips(snapshot, s.now())
 	s.applyNight()
 	s.selected = s.reselect()
 	s.hover = Hit{}
@@ -513,9 +522,16 @@ func (s *Scene) Wheel(cursor Point, amount float64) {
 	}
 }
 
-// SetInstant makes every zoom jump instead of ease, for reduced motion.
+// SetInstant makes every zoom jump instead of ease: for reduced motion,
+// and for a still frame, which cannot wait for an ease.
 func (s *Scene) SetInstant(instant bool) {
 	s.instant = instant
+}
+
+// SetReducedMotion stops the things that move on their own. A still
+// frame does not set it, so a screenshot catches the city as it is.
+func (s *Scene) SetReducedMotion(reduced bool) {
+	s.reduced = reduced
 }
 
 // Animate moves the camera toward its zoom target, dt seconds on: most
