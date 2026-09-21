@@ -332,7 +332,7 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		phase := seconds*0.8 + float64(i)*2*math.Pi/3
 		orbit := city.Point{X: r.Width() * 0.28 * math.Cos(phase), Y: r.Width() * 0.12 * math.Sin(phase)}
 		hover := 2 * cam.Zoom * math.Sin(seconds*3+float64(i))
-		at := city.Point{X: r.Min.X + r.Width()/2 + orbit.X, Y: roofTop - 12*cam.Zoom + orbit.Y + hover}
+		at := city.Point{X: r.Min.X + r.Width()/2 + orbit.X, Y: roofTop - droneHover*cam.Zoom + orbit.Y + hover}
 		g.kitAt(screen, cam, kitDrone, 0, at, nil)
 	}
 	// One flag per PR, coloured by its state: open in the accent, merged
@@ -464,6 +464,13 @@ func (g *Game) buildingSign(screen *ebiten.Image, r city.Rect, foot city.Point, 
 		g.sign(screen, line, ink)
 	}
 }
+
+// droneHover is how far above the roofline a subagent's drone flies, in
+// pixels at zoom 1. It is measured to the drone's own foot: since the
+// atlas began deriving anchors from the mesh, a piece that never
+// touches the ground is anchored at the bottom of itself rather than at
+// the ground beneath it, which is 19 px further up at this zoom.
+const droneHover = 31.0
 
 // sign draws painted-on text: scaled with the map, and turned a quarter
 // anticlockwise to run up a side when the sign is vertical.

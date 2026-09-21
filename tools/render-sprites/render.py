@@ -101,16 +101,6 @@ NATURE_TINT = {
     "woodBarkDark": "#82523c",
 }
 
-# Pieces a kit models away from their own origin. The map puts a piece
-# on a point and the atlas anchors the sprite where that point lands, so
-# a mesh that sits off its origin is drawn off its point: the Space Kit
-# models the rover two tiles east and one and a half south of its own
-# origin, which is how the worker came to park in the avenue instead of
-# standing at the door. Every other piece in PIECES is within a tenth of
-# a tile of its origin, and their origins are where the kit's author put
-# them (a lamp's is the foot of its post, not the middle of its arm), so
-# only the ones named here are moved.
-OFF_ORIGIN = {"space-kit/rover"}
 
 GRASS = (0.22, 0.33, 0.17, 1)
 PLAZA = (0.54, 0.53, 0.49, 1)
@@ -263,13 +253,6 @@ def piece(kits, kit, name, at, turn=0.0):
     for o in new:
         if o.parent is None:
             o.parent = root
-    if f"{kit}/{name}" in OFF_ORIGIN:
-        bpy.context.view_layer.update()
-        lo, hi = bounds(root)
-        off = Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, 0))
-        for o in new:
-            if o.parent is root:
-                o.location = o.location - off
     root.location = Vector((at[0], at[1], at[2] if len(at) > 2 else 0))
     root.rotation_euler = (0, 0, math.radians(turn))
     k = SCALE.get(kit, 1.0)
@@ -450,9 +433,32 @@ def bounds(root):
     return lo, hi
 
 
-def frame_piece(root, heading, zoom):
+def ground_point(root):
+    """Where a piece meets the ground: the centre of its footprint in x
+    and y, and in z the ground plane itself — or the foot of the piece
+    when it never reaches the ground.
+
+    The atlas anchors a sprite here, so the map can put a piece on a
+    point and have the piece stand on it. Deriving this from the mesh
+    rather than trusting the model's origin is the fix for bug 20: a kit
+    that models geometry away from its origin was drawn wherever that
+    origin happened to fall.
+
+    z is `max(0, lowest)` rather than the lowest point, because a kit
+    that dips below the ground means it: the Nature Kit sets its trees
+    0.023 to 0.062 of a tile into the earth so they do not read as
+    standing on a plane, and its bushes deepest of all. Anchoring those
+    at their lowest point would lift them out of the ground, which is
+    the same floating this bug is about, in the other direction. A piece
+    that is wholly above the ground — the drone — is anchored at its own
+    foot, because there is no ground under it to meet."""
+    lo, hi = bounds(root)
+    return Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, max(0.0, lo.z)))
+
+
+def frame_piece(root, heading, zoom, ground):
     """Point the camera at a piece from a heading and size the frame to
-    hold it: returns the resolution and where the ground origin lands."""
+    hold it: returns the resolution and where its ground point lands."""
     scene = bpy.context.scene
     cam = scene.camera
     cam.rotation_euler = (math.radians(ISO_TILT), 0, math.radians(ISO_TURN + heading))
@@ -476,7 +482,7 @@ def frame_piece(root, heading, zoom):
     scene.render.resolution_x = px
     scene.render.resolution_y = px
     bpy.context.view_layer.update()
-    ndc = world_to_camera_view(scene, cam, Vector((0, 0, 0)))
+    ndc = world_to_camera_view(scene, cam, ground)
     return px, (ndc.x * px, (1 - ndc.y) * px)
 
 
@@ -573,8 +579,11 @@ def atlas(args):
                 root = piece(args.kits, kit, name, (0, 0))
                 key = f"{kit}/{name}"
                 sprites[key] = {}
+                # One ground point per piece, projected once per heading:
+                # the camera turns, the piece does not.
+                ground = ground_point(root)
                 for heading in (0, 90, 180, 270):
-                    px, (ax, ay) = frame_piece(root, heading, zoom)
+                    px, (ax, ay) = frame_piece(root, heading, zoom, ground)
                     rgba = render_pixels(tmp)
                     cut, (x0, y0) = crop(rgba)
                     page, x, y = pages.put(cut)

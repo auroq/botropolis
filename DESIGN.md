@@ -265,7 +265,11 @@ Kits not modelled at one unit per cell are scaled on import (the Car Kit to 0.12
 (no kit on disk has a fountain, and the fountain's three spray frames are cut as three pieces the city cycles).
 The Nature Kit's trees are brought onto the city's terms there too: each is scaled to a height in the Suburban trees' range and its named materials repainted in their greens,
 because the one-palette rule is about colour and the pipeline is where colour is decided.
-A piece the kit models away from its own origin is slid back onto it (`OFF_ORIGIN`), because the atlas anchors a sprite where the piece's origin projects.
+Every piece is anchored where it meets the ground, derived in Blender from its own mesh: the centre of its footprint in x and y, and the ground plane in z —
+or the foot of the piece when it never reaches the ground, as the drone does not.
+A model's own origin is not trusted for this, because a kit is free to put it anywhere and one kit does:
+the Space Kit models its rover two tiles east and one and a half south of its origin, which is how workers came to stand in the avenue.
+z is clamped at the ground rather than taken as the lowest point, because the Nature Kit sets its trees and bushes slightly into the earth on purpose.
 The render is reproducible to within a handful of pixels, and `make sprites-check` is built around that number rather than around a hope.
 It re-cuts every atlas and runs `tools/atlas-diff.py`, which holds the manifests to a byte — every number in them is a decision the pipeline made —
 and compares the pages as decoded pixels, passing a page while fewer than 400 of its 16,777,216 bytes differ.

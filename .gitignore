@@ -11,3 +11,6 @@ tools/kits/
 
 # The sprite pipeline's scratch frame, written once per piece per heading
 pkg/assets/kits/.render.png
+
+# Python bytecode from the tools
+tools/__pycache__/
