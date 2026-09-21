@@ -324,6 +324,7 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
     | daemon, no subscriber | 18.8 MB | 1.1% |
     | daemon, UI subscribed | 24 MB | 5.4% |
     | city, window open and idle | 247 MB (109 anon, 100 file-backed) | 47% |
+    | the same on r156, after phase 17 | 270 MB | 53% |
     | city, `--reduced_motion` | same | 61% (no saving) |
     | **city, minimised** | same | **49%** |
     The daemon is within its bar. The renderer is not: `ebiten.SetTPS(30)` (`pkg/render/run.go:109`) already halves the default, and it still redraws the whole city thirty times a second whether or not anything changed, whether or not the window is visible, and `reduced_motion` — which stops the animation — saves nothing, which says the cost is the redraw rather than the motion.
@@ -341,6 +342,9 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
     A baked contact shadow is still worth having, but as art, not as the fix for this.
     While there: poles and wires are drawn in one pass before the sorted list, so a pole nearer the viewer than a building is painted under it — the same bug in the other direction.
 24. **A third of the atlas is never drawn.** (Verified 2026-09-21.) 25 of the 79 cut pieces appear in no `.go` file — every piece name in `pkg/render/recipes.go` is a literal, so nothing constructs them at runtime: `car-kit/truck`, nine `city-kit-commercial/building-*` and `-skyscraper-*`, seven `city-kit-industrial/*` including `windmill` and `solar-panel-landscape-group`, five `city-kit-roads/*` including `electricity-pole` and `electricity-wires`, two `train-kit` carriages, `watercraft-kit/boat-row-small`. That is a third of a 21 MB atlas and of the z2 page budget. Either draw them or drop them from `PIECES`; dropping them shrinks the atlas and the pack. Note that two of the four pieces that moved most under bug 20's derived anchors (`building-h` 0.437, `electricity-wires` 0.278) are in this list, so that fix was partly measured against pieces nothing looks at.
+25. **Every bend and T junction is turned 180° from where it should be.** (Aria, 2026-09-21, live on r156.) `roadPiece` in `pkg/render/recipes.go:119-171` documents its assumption in a comment — "a bend at turn 0 joins north and west (its arc bulges to the south-east)" and "a T at turn 0 has its bar east–west and its stem south" — and those premises about the kit's own geometry are half a turn out.
+    The symptom pattern is the proof: `road-straight` and `road-crossroad` are unchanged by a half turn, and they look right; `road-bend`, `road-intersection` and `road-end` are the only pieces in the table that are not, and the bend and the T are exactly what Aria reports. The kerb ends up on the outer side of a bend instead of the inner, which is visible in `docs/screenshots/r150-plaza-stacks.png` at the park's south-west corner.
+    Do not just add 180 to those cases and call it fixed. Render `road-bend`, `road-intersection` and `road-end` alone, at turn 0, look at which way each actually faces, correct the comment to what the kit does, and derive the table from that. Then a test: for every one of the sixteen join masks, assert the piece's open sides after its turn are exactly the mask's directions — that closes the class rather than the instance, and would have caught this.
 
 ### Next steps
 
@@ -370,7 +374,7 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   Nothing published to the AUR.
   Package `botropolis-git-r138.ec3d439` built, not installed.
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
-- **Phase 18 — The renderer stops burning a core, and the plant lands.** Bugs 22, 23 and 24.
+- **Phase 18 — The renderer stops burning a core, the plant lands, the roads point the right way.** Bugs 22, 25, 23 and 24.
 - **Phase 17 — The plaza stacks right.** Bugs 20 and 21; it is the one thing in the frames that reads as broken rather than unfinished.
   Done 2026-09-21 (r150): one commit an item.
   `sprites-check` is pixel-exact against a measured floor; anchors are derived from the mesh and `OFF_ORIGIN` is gone; depth is a footprint and the fountain is in the sorted list; the plaza's draw order is guarded at all four headings.
