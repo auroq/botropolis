@@ -80,6 +80,13 @@ sprites :: kits
 	@blender -b --python tools/render-sprites/render.py -- atlas --out pkg/assets/kits 2>&1 | grep -E "WROTE|BUDGET|Traceback|Error" || true
 	@tools/shrink-pngs pkg/assets/kits/kits-z*.png
 
+sprites-check :: sprites
+	$(LOG) "Checking the re-render against the committed atlases"
+	@git diff --stat -- pkg/assets/kits
+	@git diff --quiet -- pkg/assets/kits \
+		&& echo "byte-identical: a no-op render reproduces the committed atlases" \
+		|| { echo "DIFFERS: the render is not reproducible; see the diffstat above"; exit 1; }
+
 kit-district :: kits
 	$(LOG) "Rendering one district from the Kenney kits (tools/render-sprites)"
 	@blender -b --python tools/render-sprites/render.py -- scene --out docs/screenshots/kit-district.png 2>&1 | grep -E "WROTE|Traceback|Error" || true

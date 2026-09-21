@@ -262,6 +262,10 @@ its `atlas` mode cuts every piece the map uses at four headings and two zoom lev
 shelf-packed onto 2048 px pages under a budget of eight per zoom, with a JSON manifest (`make sprites`; `tools/shrink-pngs` re-encodes the pages).
 One sun with soft cast shadows; an orthographic camera 30° above the ground and turned 45° plus the heading, so a one-unit tile projects as the map's 2:1 diamond, 132 px wide and 66 tall at zoom 1 (atan(1/2) is the diamond's edge angle on screen, not the camera's tilt; the first atlases were cut at it and every tile came out a tenth too short).
 Kits not modelled at one unit per cell are scaled on import (the Car Kit to 0.12); the drone is modelled in the script from primitives in the kits' palette.
+The render is reproducible: `make sprites-check` re-cuts every atlas and diffs `pkg/assets/kits`, and on 2026-09-21 a no-op render came back bit for bit identical —
+the same manifests, the same compressed image data and the same pixels on all nine pages.
+The atlases therefore do not churn in git, so they stay committed: no git-lfs, no build-time render in the package.
+The one thing that does change per run is the `date:*` text chunks ImageMagick stamps into each page in `tools/shrink-pngs`, which is why the check still reports a diff.
 
 `pkg/assets/kits.go` loads the atlases; `pkg/render/kits.go` draws a piece with its origin on a world point as the camera's heading sees it, picking the atlas cut at or below the zoom;
 `pkg/render/recipes.go` says which piece stands for what:

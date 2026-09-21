@@ -317,6 +317,13 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
 
 - The client binary is 45 MB (21 MB of embedded atlases plus Ebitengine, bubbletea and Inter); the daemon is 13 MB and links none of the UI.
 - The repo pack is 30 MB, almost all atlases; if `make sprites` churns, that is git-lfs or build-time atlases in the PKGBUILD.
+  Measured 2026-09-21 with the new `make sprites-check` (phase 15): it does not churn.
+  A no-op render reproduces every atlas bit for bit — same manifests, same IDAT bytes, same decoded pixels on all nine pages —
+  so git-lfs and build-time atlases are both off the table.
+  The target still reports DIFFERS, for one reason only:
+  `tools/shrink-pngs` runs ImageMagick, which stamps three `date:create` / `date:modify` / `date:timestamp` tEXt chunks with the wall clock (111 bytes a page).
+  Strip those and `git diff` is empty; left alone, every re-render rewrites nine files that differ only by a date.
+  **Aria's call before phase 16's exit criterion can pass.**
 - `proto` (11%), `app` (16%) and `render` (5%) are the low-coverage packages; `proto` is exercised through the daemon tests, `render` is the GUI.
 - `botropolis-notify` is installed but not enabled; check `pacman -Q botropolis-git` against the PKGBUILD before validating.
 
