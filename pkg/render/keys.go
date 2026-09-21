@@ -55,8 +55,31 @@ var footerKeys = []ui.Key{
 
 const (
 	keyPanStep = 12.0
-	quitPrompt = "quit? y or enter to quit; any other key stays"
+	// scriptPanBeat is how many frames of holding one scripted arrow
+	// press is worth. A hand holds the key down; --keys gets a single
+	// frame per key, so without this the script could zoom and turn but
+	// never walk the view off the plaza.
+	scriptPanBeat = 10
+	quitPrompt    = "quit? y or enter to quit; any other key stays"
 )
+
+// panFor is how far the arrow keys move the view this frame.
+func panFor(down func(ebiten.Key) bool, step float64) city.Point {
+	var pan city.Point
+	if down(ebiten.KeyArrowLeft) {
+		pan.X += step
+	}
+	if down(ebiten.KeyArrowRight) {
+		pan.X -= step
+	}
+	if down(ebiten.KeyArrowUp) {
+		pan.Y += step
+	}
+	if down(ebiten.KeyArrowDown) {
+		pan.Y -= step
+	}
+	return pan
+}
 
 // handleKeys answers the keyboard for one tick.
 func (g *Game) handleKeys() error {
@@ -174,19 +197,8 @@ func (g *Game) handleKeys() error {
 		g.SetStatus(note)
 		g.act(action)
 	}
-	var pan city.Point
-	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
-		pan.X += keyPanStep
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
-		pan.X -= keyPanStep
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
-		pan.Y += keyPanStep
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
-		pan.Y -= keyPanStep
-	}
+	pan := panFor(ebiten.IsKeyPressed, keyPanStep).
+		Add(panFor(func(k ebiten.Key) bool { return g.scripted == k }, keyPanStep*scriptPanBeat))
 	if pan != (city.Point{}) {
 		g.scene.Pan(pan.Scale(g.theme.Scale))
 	}

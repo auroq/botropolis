@@ -3,6 +3,7 @@ package render
 import (
 	"testing"
 
+	"github.com/auroq/botropolis/pkg/city"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,6 +35,42 @@ func TestScriptedKey(t *testing.T) {
 
 		t.Run("it should say so", func(t *testing.T) {
 			assert.False(t, ok)
+		})
+	})
+}
+
+func TestPanFor(t *testing.T) {
+	t.Run("when the up arrow is the only key down", func(t *testing.T) {
+		pan := panFor(func(k ebiten.Key) bool { return k == ebiten.KeyArrowUp }, 12)
+
+		t.Run("it should walk the view north by one step", func(t *testing.T) {
+			assert.Equal(t, city.Point{Y: 12}, pan)
+		})
+	})
+
+	t.Run("when opposite arrows are both down", func(t *testing.T) {
+		down := map[ebiten.Key]bool{ebiten.KeyArrowLeft: true, ebiten.KeyArrowRight: true}
+		pan := panFor(func(k ebiten.Key) bool { return down[k] }, 12)
+
+		t.Run("it should cancel out", func(t *testing.T) {
+			assert.Equal(t, city.Point{}, pan)
+		})
+	})
+
+	t.Run("when no arrow is down", func(t *testing.T) {
+		pan := panFor(func(ebiten.Key) bool { return false }, 12)
+
+		t.Run("it should leave the view alone", func(t *testing.T) {
+			assert.Equal(t, city.Point{}, pan)
+		})
+	})
+
+	t.Run("when the script presses an arrow rather than a hand holding it", func(t *testing.T) {
+		held := panFor(func(k ebiten.Key) bool { return k == ebiten.KeyArrowUp }, keyPanStep)
+		scripted := panFor(func(k ebiten.Key) bool { return k == ebiten.KeyArrowUp }, keyPanStep*scriptPanBeat)
+
+		t.Run("it should be worth a beat of holding, since the script gets one frame", func(t *testing.T) {
+			assert.Equal(t, held.Y*scriptPanBeat, scripted.Y)
 		})
 	})
 }
