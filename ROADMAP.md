@@ -288,6 +288,10 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
    Reduced motion got its own switch on the scene on the way: a still frame sets `SetInstant` so the camera does not have to ease into place, which is not the same as asking everything to stand still,
    and conflating them meant a screenshot could never show a worker anywhere but its door.
    Frame `docs/screenshots/r140-rover-trip.png`.
+20. **The plaza stacks wrong: things float or sit in front of what they are behind.** (Aria, 2026-09-18, r145 plaza frame.) Two causes, both in how a sprite meets the ground:
+    - *Ground contact is assumed, not measured.* `tools/render-sprites/render.py:113` keeps `OFF_ORIGIN` as a hand-curated set of one piece, and even for the rover it only recentres X and Y — nothing anchors a piece to where its mesh actually touches Z=0. The claim that every other piece is within a tenth of a tile of its origin was measured once, for the pieces in `PIECES` at that time; the plant, the fountain, the poles and the trees all read wrong in the frame. Compute each piece's anchor in Blender from its own bounds — footprint centre in X and Y, minimum Z for the ground plane — store it in the manifest per piece, and delete the exception set. An anchor that is derived cannot drift as pieces are added.
+    - *Depth is one point per object.* `Camera.Depth` is `x + y` of a single point (`pkg/city/camera.go:106`), and `pkg/render/iso.go` keys each drawable off one corner: the plant off `Plant.Rect.Max`, the fountain off its centre, a pole off its foot. Painter's order over one point is only correct for objects of one cell; a cooling tower that spans cells and stands several storeys tall will interleave with anything on a neighbouring cell. Sort multi-cell pieces by the back-most cell of their footprint, and give a tall piece a footprint the sort can see rather than a point.
+    Exit: a plaza close-up where the plant meets its own base, the fountain is in front of it, no pole crosses a wall it is behind, and a guard test that renders the plaza at all four headings and asserts the draw order is the footprint order.
 
 ### Next steps
 
@@ -317,6 +321,7 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   Nothing published to the AUR.
   Package `botropolis-git-r138.ec3d439` built, not installed.
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
+- **Phase 17 — The plaza stacks right.** Bug 20 alone; it is the one thing in the frames that reads as broken rather than unfinished.
 - **Phase 16 — Planting, the plaza and the workers** (Aria, 2026-09-18, from the r129 frames). Bugs 18 and 19 first, then:
   Done 2026-09-21 (r144.f76c246): one commit an item, a frame each.
   Package `botropolis-git-r145.07f3ce6` built, not installed.
