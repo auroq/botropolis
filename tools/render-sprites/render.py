@@ -63,7 +63,7 @@ PIECES = {
                   "train-carriage-container-red", "train-carriage-container-blue", "train-carriage-container-green",
                   "train-carriage-box", "train-carriage-tank"],
     "watercraft-kit": ["boat-tug-a", "boat-tug-b", "boat-row-small"],
-    "botropolis": ["drone"],
+    "botropolis": ["drone", "fountain-a", "fountain-b", "fountain-c"],
 }
 
 # Kits that are not modelled at one unit per cell are scaled on import:
@@ -138,6 +138,11 @@ def reset():
 ACCENT = (0.91, 0.63, 0.24, 1)
 SLATE = (0.16, 0.18, 0.22, 1)
 OFFWHITE = (0.85, 0.86, 0.88, 1)
+# The plaza's own stone, as an sRGB hex like the rest of the palette.
+STONE = "#9a9791"
+# The plant's steel blue, ui.Palette.Plant: the fountain's water is the
+# same water the plant's tanks hold.
+PLANT_BLUE = "#6a8cb8"
 
 
 def solid(name, colour, emission=0.0):
@@ -184,6 +189,55 @@ def drone(at):
     return root
 
 
+
+# How high the jet stands and how wide the droplets fly in each of the
+# three spray frames: up, over, and falling back. The city cycles them
+# slowly, and holds the first when motion is reduced.
+SPRAY = {"a": (0.10, 0.09), "b": (0.19, 0.15), "c": (0.14, 0.21)}
+
+
+def fountain(at, frame):
+    """The plaza's fountain: a stone basin with a lip, a column, a disc
+    of water in the plant's steel blue, and a spray cut in three frames.
+    No kit on disk has one, so it is modelled here as the drone is,
+    where the palette is decided."""
+    root = bpy.data.objects.new(f"botropolis/fountain-{frame}", None)
+    bpy.context.scene.collection.objects.link(root)
+    parts = []
+    stone = solid("fountain-stone", rgba(STONE))
+    water = solid("fountain-water", rgba(PLANT_BLUE))
+    spray = solid("fountain-spray", rgba(PLANT_BLUE), emission=0.8)
+
+    def cyl(radius, depth, z, mat):
+        bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=(0, 0, z), vertices=28)
+        o = bpy.context.active_object
+        o.data.materials.append(mat)
+        parts.append(o)
+
+    cyl(0.38, 0.10, 0.05, stone)     # the basin
+    cyl(0.41, 0.05, 0.10, stone)     # the lip round its rim
+    cyl(0.36, 0.02, 0.135, water)    # the water standing in it
+    cyl(0.055, 0.26, 0.23, stone)    # the column
+    cyl(0.13, 0.03, 0.365, stone)    # the dish it holds up
+    rise, spread = SPRAY[frame]
+    cyl(0.022, rise, 0.38 + rise / 2, spray)
+    for i in range(6):
+        angle = i * math.pi / 3
+        bpy.ops.mesh.primitive_uv_sphere_add(
+            radius=0.024,
+            location=(spread * math.cos(angle), spread * math.sin(angle), 0.38 + rise * (0.8 if i % 2 else 0.55)),
+            segments=12,
+            ring_count=8,
+        )
+        drop = bpy.context.active_object
+        drop.data.materials.append(spray)
+        parts.append(drop)
+    for o in parts:
+        o.parent = root
+    root.location = Vector((at[0], at[1], 0))
+    bpy.context.view_layer.update()
+    return root
+
 def model_path(kits, kit, name):
     for folder in ("GLB format", "GLTF format"):
         path = os.path.join(kits, kit, "Models", folder, name + ".glb")
@@ -196,9 +250,11 @@ def piece(kits, kit, name, at, turn=0.0):
     """Import one kit piece at a tile position, turned in degrees about z;
     the botropolis kit is modelled here rather than imported."""
     if kit == "botropolis":
-        if name != "drone":
-            raise FileNotFoundError(f"botropolis/{name} is not a piece we model")
-        return drone(at)
+        if name == "drone":
+            return drone(at)
+        if name.startswith("fountain-") and name[len("fountain-"):] in SPRAY:
+            return fountain(at, name[len("fountain-"):])
+        raise FileNotFoundError(f"botropolis/{name} is not a piece we model")
     before = set(bpy.context.scene.objects)
     bpy.ops.import_scene.gltf(filepath=model_path(kits, kit, name))
     new = [o for o in bpy.context.scene.objects if o not in before]

@@ -122,15 +122,40 @@ func (g *Game) isoPlaza(screen *ebiten.Image, cam *city.Camera, c *city.City) {
 	g.polyStroke(screen, cam, c.Plaza, 2, colorKitKerb)
 }
 
-// fountain is a round basin on the plaza's centre cell.
-func (g *Game) fountain(screen *ebiten.Image, cam *city.Camera, c *city.City) {
+// SprayPeriod is how long one of the fountain's spray frames holds. It
+// is slow on purpose: the fountain means nothing, so it should not
+// catch the eye the way a beacon does.
+const SprayPeriod = 0.9
+
+// sprayFrame is which frame of a cycle is showing at a moment. With
+// motion reduced the animation clock stands still, so the fountain
+// does too.
+func sprayFrame(seconds float64, frames int) int {
+	if frames <= 0 {
+		return 0
+	}
+	n := int(math.Floor(seconds/SprayPeriod)) % frames
+	if n < 0 {
+		n += frames
+	}
+	return n
+}
+
+// fountain is the plaza's centrepiece: a stone basin with a lip, a
+// column and a disc of water in the plant's steel blue, modelled in
+// the pipeline because no kit on disk has a fountain.
+func (g *Game) fountain(screen *ebiten.Image, cam *city.Camera, c *city.City, seconds float64) {
 	if c.Fountain.Area() == 0 {
 		return
 	}
 	centre := c.Fountain.Center()
-	g.circle(screen, cam, centre, city.Tile*1.1, colorKerb)
-	g.circle(screen, cam, centre, city.Tile, colorWater)
-	g.circle(screen, cam, centre, city.Tile*0.35, colorWaterLight)
+	if g.kits == nil {
+		g.circle(screen, cam, centre, city.Tile*1.1, colorKerb)
+		g.circle(screen, cam, centre, city.Tile, colorWater)
+		g.circle(screen, cam, centre, city.Tile*0.35, colorWaterLight)
+		return
+	}
+	g.kit(screen, cam, kitFountain[sprayFrame(seconds, len(kitFountain))], 0, centre, nil)
 }
 
 // lamp is a post at an avenue crossing; at night its head glows.
@@ -460,7 +485,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		g.isoDistrict(screen, cam, d, hover.District == d)
 	}
 	g.isoPlaza(screen, cam, c)
-	g.fountain(screen, cam, c)
+	g.fountain(screen, cam, c, seconds)
 	g.powerLines(screen, c, cam, hover, seconds)
 	g.camps(screen, c, cam)
 	var items []drawable

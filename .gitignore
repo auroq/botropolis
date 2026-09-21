@@ -8,3 +8,6 @@ testing/helpers/fixtures/
 
 # Kenney 3D kits for the sprite pipeline: fetched by make kits, never committed
 tools/kits/
+
+# The sprite pipeline's scratch frame, written once per piece per heading
+pkg/assets/kits/.render.png

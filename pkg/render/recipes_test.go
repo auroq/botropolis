@@ -56,3 +56,37 @@ func TestTreePiece(t *testing.T) {
 		})
 	})
 }
+
+func TestSprayFrame(t *testing.T) {
+	t.Run("when the clock has just started", func(t *testing.T) {
+		t.Run("it should show the first frame", func(t *testing.T) {
+			assert.Equal(t, 0, sprayFrame(0, 3))
+		})
+	})
+
+	t.Run("when a period has passed", func(t *testing.T) {
+		t.Run("it should have stepped on one", func(t *testing.T) {
+			assert.Equal(t, 1, sprayFrame(SprayPeriod*1.5, 3))
+		})
+	})
+
+	t.Run("when the cycle has come round", func(t *testing.T) {
+		t.Run("it should be back at the first", func(t *testing.T) {
+			assert.Equal(t, 0, sprayFrame(SprayPeriod*3, 3))
+		})
+	})
+
+	t.Run("when the clock stands still, as it does with motion reduced", func(t *testing.T) {
+		held := sprayFrame(pulsePeriod/4, 3)
+
+		t.Run("it should hold one frame however long you look", func(t *testing.T) {
+			assert.Equal(t, held, sprayFrame(pulsePeriod/4, 3))
+		})
+	})
+
+	t.Run("when there are no frames to show", func(t *testing.T) {
+		t.Run("it should not divide by zero", func(t *testing.T) {
+			assert.Equal(t, 0, sprayFrame(12, 0))
+		})
+	})
+}

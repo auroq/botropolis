@@ -261,7 +261,8 @@ Its `scene` mode renders one composed district for judging the look (`make kit-d
 its `atlas` mode cuts every piece the map uses at four headings and two zoom levels, alpha-cropped with the pixel where the piece's ground origin lands,
 shelf-packed onto 2048 px pages under a budget of eight per zoom, with a JSON manifest (`make sprites`; `tools/shrink-pngs` re-encodes the pages).
 One sun with soft cast shadows; an orthographic camera 30° above the ground and turned 45° plus the heading, so a one-unit tile projects as the map's 2:1 diamond, 132 px wide and 66 tall at zoom 1 (atan(1/2) is the diamond's edge angle on screen, not the camera's tilt; the first atlases were cut at it and every tile came out a tenth too short).
-Kits not modelled at one unit per cell are scaled on import (the Car Kit to 0.12); the drone is modelled in the script from primitives in the kits' palette.
+Kits not modelled at one unit per cell are scaled on import (the Car Kit to 0.12); the drone and the plaza's fountain are modelled in the script from primitives in the kits' palette
+(no kit on disk has a fountain, and the fountain's three spray frames are cut as three pieces the city cycles).
 The Nature Kit's trees are brought onto the city's terms there too: each is scaled to a height in the Suburban trees' range and its named materials repainted in their greens,
 because the one-palette rule is about colour and the pipeline is where colour is decided.
 A piece the kit models away from its own origin is slid back onto it (`OFF_ORIGIN`), because the atlas anchors a sprite where the piece's origin projects.
