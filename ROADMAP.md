@@ -300,6 +300,13 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   Hero taken r136 at `render_scale 2` from the fit view with `h`: `docs/screenshots/r136-hero.png`.
   `--keys` can now walk the view: `arrowup`/`arrowdown`/`arrowleft`/`arrowright` pan, one scripted press worth a beat of holding,
   because a script that could zoom and turn but never leave the plaza could not frame the ridge.
+  Done 2026-09-21 (r138): one commit an item.
+  `make sprites-check` answered the git-lfs question (the render is reproducible; only ImageMagick's date chunks are not — see "Worth knowing" below);
+  the ridge close-up and the hero are in `docs/screenshots/`;
+  the README leads with the city, the GIF and the four commands;
+  `v0.1.0` is tagged and signed, the release workflow ran green in 1m48s and attached `botropolis-v0.1.0-linux-amd64.tar.gz`.
+  Nothing published to the AUR.
+  Package `botropolis-git-r138.ec3d439` built, not installed.
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
 - **Phase 16 — Planting, the plaza and the workers** (Aria, 2026-09-18, from the r129 frames). Bugs 18 and 19 first, then:
   - *The trees are too consistent.* The Suburban kit has two trees, so variety cannot come from the kit as shipped.
