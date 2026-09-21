@@ -19,6 +19,15 @@ const (
 	x11Instance   = "botropolis"
 )
 
+// runsUnfocused reports whether the loop should keep ticking while the
+// window is not focused. A window nobody is looking at should cost
+// nothing, so normally it should not — but a scripted frame runs on a
+// virtual display with no window manager to focus it, and stopping
+// there would mean the screenshot is never taken.
+func runsUnfocused(screenshot, record string) bool {
+	return screenshot != "" || record != ""
+}
+
 type Options struct {
 	Layout     *city.Layout
 	LayoutPath string
@@ -107,6 +116,7 @@ func Run(ctx context.Context, opts Options) error {
 	ebiten.SetWindowSize(width, height)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetTPS(30)
+	ebiten.SetRunnableOnUnfocused(runsUnfocused(opts.Screenshot, opts.Record))
 	err = ebiten.RunGameWithOptions(game, &ebiten.RunGameOptions{
 		X11ClassName:    x11Class,
 		X11InstanceName: x11Instance,

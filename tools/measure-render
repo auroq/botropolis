@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# Measure what the city costs with its window actually open.
+#
+# The window goes on a private virtual display, never on yours: this is
+# the same rule as --headless, and it means the numbers can be taken
+# while you are working. CPU is utime+stime from /proc/<pid>/stat over
+# the sample, as a percentage of one core; RSS is VmRSS from
+# /proc/<pid>/status, sampled at the end.
+#
+# These are NOT the numbers you get on a real GPU. A virtual display has
+# no graphics card, so Mesa draws in software: the same city that costs
+# half a core and 270 MB on the desktop reads about nine cores and a
+# gigabyte here. That makes this a magnifying glass rather than a
+# thermometer — software GL does on the CPU what the card does for free,
+# so the figure moves with the amount of drawing and the ratio between
+# two rows is the thing to read. Pinning llvmpipe to one thread was
+# tried and is worse: the renderer saturates it, the number clips at
+# 100% and an improvement cannot be seen. Confirm absolute numbers on
+# real hardware.
+set -euo pipefail
+
+seconds=20
+socket=""
+label=""
+extra=()
+display=":97"
+unmap=0
+unfocus=0
+
+usage() {
+	cat <<USAGE
+Usage: tools/measure-render [options] [-- extra city flags]
+
+  --seconds N     how long to sample for (default: ${seconds})
+  --socket PATH   daemon socket to read the city from (default: the real one)
+  --label TEXT    what to call this row in the output
+  --display :N    virtual display to open the window on (default: ${display})
+  --unmap         unmap the window before sampling, which is what a
+                  minimised or hidden window looks like to the toolkit
+  --unfocus       open a second city window on the same display so the
+                  first loses input focus, and sample the first
+  -h, --help      this
+
+Prints one row: label, RSS in MB, CPU as a percentage of one core.
+Example:
+  tools/measure-render --label "idle, visible" --seconds 20
+  tools/measure-render --label "reduced motion" -- --reduced_motion
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	--seconds) seconds="$2"; shift 2 ;;
+	--socket) socket="$2"; shift 2 ;;
+	--label) label="$2"; shift 2 ;;
+	--display) display="$2"; shift 2 ;;
+	--unmap) unmap=1; shift ;;
+	--unfocus) unfocus=1; shift ;;
+	-h | --help) usage; exit 0 ;;
+	--) shift; extra=("$@"); break ;;
+	*) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
+	esac
+done
+label="${label:-city}"
+
+command -v Xvfb >/dev/null || { echo "Xvfb is not installed" >&2; exit 1; }
+[[ -x bin/botropolis ]] || { echo "bin/botropolis is missing; run make build" >&2; exit 1; }
+
+Xvfb "${display}" -screen 0 1280x800x24 -nolisten tcp >/dev/null 2>&1 &
+xvfb=$!
+cleanup() {
+	[[ -n "${thief:-}" ]] && kill "${thief}" 2>/dev/null || true
+	[[ -n "${city:-}" ]] && kill "${city}" 2>/dev/null || true
+	kill "${xvfb}" 2>/dev/null || true
+	wait 2>/dev/null || true
+}
+trap cleanup EXIT
+sleep 2
+
+args=(city)
+[[ -n "${socket}" ]] && args+=(--socket "${socket}")
+[[ ${#extra[@]} -gt 0 ]] && args+=("${extra[@]}")
+DISPLAY="${display}" bin/botropolis "${args[@]}" >/dev/null 2>&1 &
+city=$!
+
+# Let it start, load the atlases and settle on its first snapshot.
+sleep 15
+kill -0 "${city}" 2>/dev/null || { echo "the city exited before it could be measured" >&2; exit 1; }
+
+if [[ "${unfocus}" == 1 ]]; then
+	# There is no window manager on the private display, so nothing will
+	# move input focus for us. A second window takes it on creation,
+	# which is the state a focused-elsewhere desktop leaves the city in.
+	DISPLAY="${display}" bin/botropolis "${args[@]}" >/dev/null 2>&1 &
+	thief=$!
+	sleep 12
+fi
+
+if [[ "${unmap}" == 1 ]]; then
+	# xdotool here only ever talks to the private display above, never to a
+	# real one; there is no window manager on it, so unmapping the window is
+	# how it becomes invisible.
+	command -v xdotool >/dev/null || { echo "xdotool is needed for --unmap" >&2; exit 1; }
+	DISPLAY="${display}" xdotool search --name Botropolis windowunmap >/dev/null 2>&1 || true
+	sleep 3
+fi
+
+ticks=$(getconf CLK_TCK)
+read_cpu() { awk '{print $14 + $15}' "/proc/$1/stat"; }
+before=$(read_cpu "${city}")
+sleep "${seconds}"
+after=$(read_cpu "${city}")
+rss=$(awk '/^VmRSS:/ {print $2}' "/proc/${city}/status")
+
+awk -v l="${label}" -v b="${before}" -v a="${after}" -v s="${seconds}" -v t="${ticks}" -v r="${rss}" \
+	'BEGIN { printf "| %-28s | %6.1f MB | %5.1f%% |\n", l, r/1024, (a-b)/t/s*100 }'
