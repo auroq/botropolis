@@ -266,10 +266,20 @@ Kits not modelled at one unit per cell are scaled on import (the Car Kit to 0.12
 The Nature Kit's trees are brought onto the city's terms there too: each is scaled to a height in the Suburban trees' range and its named materials repainted in their greens,
 because the one-palette rule is about colour and the pipeline is where colour is decided.
 A piece the kit models away from its own origin is slid back onto it (`OFF_ORIGIN`), because the atlas anchors a sprite where the piece's origin projects.
-The render is reproducible: `make sprites-check` re-cuts every atlas and diffs `pkg/assets/kits`, and on 2026-09-21 a no-op render came back bit for bit identical —
-the same manifests, the same compressed image data and the same pixels on all nine pages.
+The render is reproducible to within a handful of pixels, and `make sprites-check` is built around that number rather than around a hope.
+It re-cuts every atlas and runs `tools/atlas-diff.py`, which holds the manifests to a byte — every number in them is a decision the pipeline made —
+and compares the pages as decoded pixels, passing a page while fewer than 400 of its 16,777,216 bytes differ.
+
+The noise floor, measured on no-op renders in September 2026: seven of the nine pages come back byte-identical,
+and the other two move 42 and 47 bytes — ten or so pixels, each by one or two of 255.
+An independent run moved 142 bytes on one page.
+Eevee at 32 TAA samples under software GL is very nearly, not exactly, reproducible, so a byte comparison fails on pixels nothing in the city can see,
+and a gate that cries wolf is a gate nobody reads.
+The tolerance is roughly three times the worst run observed; a change that moves real geometry moves whole sprites, which is tens of thousands of bytes, not hundreds.
+
 The atlases therefore do not churn in git, so they stay committed: no git-lfs, no build-time render in the package.
-The one thing that does change per run is the `date:*` text chunks ImageMagick stamps into each page in `tools/shrink-pngs`, which is why the check still reports a diff.
+`tools/shrink-pngs` passes `-define png:exclude-chunk=date` because ImageMagick otherwise stamps the wall clock into every page.
+`tools/atlas-diff.py --self-test` checks its own PNG decoder against all five filters before it judges anything, and the Makefile runs it first.
 
 `pkg/assets/kits.go` loads the atlases; `pkg/render/kits.go` draws a piece with its origin on a world point as the camera's heading sees it, picking the atlas cut at or below the zoom;
 `pkg/render/recipes.go` says which piece stands for what:

@@ -82,10 +82,8 @@ sprites :: kits
 
 sprites-check :: sprites
 	$(LOG) "Checking the re-render against the committed atlases"
-	@git diff --stat -- pkg/assets/kits
-	@git diff --quiet -- pkg/assets/kits \
-		&& echo "byte-identical: a no-op render reproduces the committed atlases" \
-		|| { echo "DIFFERS: the render is not reproducible; see the diffstat above"; exit 1; }
+	@python3 tools/atlas-diff.py --self-test
+	@python3 tools/atlas-diff.py
 
 kit-district :: kits
 	$(LOG) "Rendering one district from the Kenney kits (tools/render-sprites)"
