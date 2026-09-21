@@ -14,7 +14,9 @@ fi
 
 for f in "$@"; do
 	before=$(stat -c %s "$f")
-	magick "$f" -define png:compression-level=9 -define png:compression-filter=5 -define png:compression-strategy=1 "$f.tmp.png"
+	# Exclude the date chunk: ImageMagick stamps date:create/modify/timestamp from the
+	# wall clock, which is the whole of the diff a no-op re-render otherwise shows.
+	magick "$f" -define png:compression-level=9 -define png:compression-filter=5 -define png:compression-strategy=1 -define png:exclude-chunk=date "$f.tmp.png"
 	mv "$f.tmp.png" "$f"
 	after=$(stat -c %s "$f")
 	echo "$f: $before -> $after"
