@@ -288,7 +288,7 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
    Reduced motion got its own switch on the scene on the way: a still frame sets `SetInstant` so the camera does not have to ease into place, which is not the same as asking everything to stand still,
    and conflating them meant a screenshot could never show a worker anywhere but its door.
    Frame `docs/screenshots/r140-rover-trip.png`.
-20. **The plaza stacks wrong: things float or sit in front of what they are behind.** (Aria, 2026-09-18, r145 plaza frame.) Two causes, both in how a sprite meets the ground:
+20. ~~**The plaza stacks wrong: things float or sit in front of what they are behind.**~~ Fixed 2026-09-21 (r150), with one cause still open — see below. (Aria, 2026-09-18, r145 plaza frame.) Two causes, both in how a sprite meets the ground:
     - ~~*Ground contact is assumed, not measured.*~~ Fixed 2026-09-21 (r147). `tools/render-sprites/render.py:113` keeps `OFF_ORIGIN` as a hand-curated set of one piece, and even for the rover it only recentres X and Y — nothing anchors a piece to where its mesh actually touches Z=0. The claim that every other piece is within a tenth of a tile of its origin was measured once, for the pieces in `PIECES` at that time; the plant, the fountain, the poles and the trees all read wrong in the frame. Compute each piece's anchor in Blender from its own bounds — footprint centre in X and Y, minimum Z for the ground plane — store it in the manifest per piece, and delete the exception set. An anchor that is derived cannot drift as pieces are added.
       Done: `ground_point` in `render.py` derives it and `OFF_ORIGIN` is gone.
       z is `max(0, lowest)` rather than the lowest point, which is a deviation worth knowing: the Nature Kit sets its trees 0.023–0.062 of a tile *into* the earth and its bushes deepest of all,
@@ -308,6 +308,15 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
     nothing standing clear in front of another is painted before it, no two overlapping footprints share a depth, and the fountain and the plant are painted in the order they stand.
     Worth knowing: the first two hold for the old one-point key as well on this layout, because its ties are all between pieces that never share screen space.
     The discriminating test is `TestDepthOf`, which pins the two-cell piece and its neighbour whose near corners tie exactly; the plaza guard's own teeth are the fountain assertion, which fails the moment the fountain leaves the sorted list.
+    Frame `docs/screenshots/r150-plaza-stacks.png`.
+    **The plant still does not meet its own base, and it is neither of the two causes in this bug.** Run down:
+    the anchor is right — with the ground point drawn as a marker it lands on the centre of the tower's footprint, and the sprite's own base sits the expected 46 px below it for a plinth of its width;
+    the depth is right — the tower is painted after the hall it stands in front of, and the fountain after the tower.
+    The tower reads as hanging because `chimney-large` is a hollow shell with no floor, so its lowest geometry is a thin open rim,
+    and the sun in `render.py` comes from the front-left, which throws its contact shadow behind the piece where the camera cannot see it.
+    Nothing ties it to the plaza visually. The fix is art, not arithmetic — a contact shadow baked under a piece, or a plinth — and it is Aria's call, so it is left as bug 23.
+    While looking: poles and wires are drawn in one pass *before* the sorted list, so a pole nearer the viewer than a building is hidden by it.
+    Nothing crosses a wall it is behind, which was the exit criterion, but the error exists in the other direction and wants the same footprint treatment.
 21. ~~**`sprites-check` cannot be byte-exact; make it pixel-exact with a floor.**~~ Fixed 2026-09-21 (r146): `tools/atlas-diff.py` holds the manifests to a byte and allows each page 400 of its 16,777,216 decoded bytes. Measured floor: seven of nine pages byte-identical, the other two 42 and 47 bytes; Aria's independent run moved 142. Recorded in DESIGN.md. The tool decodes PNG with the standard library alone (all five filters, checked by `--self-test`), so the check adds no dependency. (2026-09-18, verified while stripping the date chunks.) Two sources of churn, only one of them fixed: ImageMagick's date chunks are gone (`-define png:exclude-chunk=date`, pages re-baselined), but re-rendering `kits-z2-6.png` moved **142 bytes of its 33,554,432 bytes of decoded pixels — about twenty pixels, each by one or two of 255**. Eevee at 32 TAA samples under software GL is very nearly, not exactly, reproducible, so the earlier "bit for bit" reading held for the pages compared at that moment and cannot be relied on. Fix the check rather than the render: compare the manifest byte for byte, compare pixels with a tolerance of a few hundred differing bytes per page, and fail on anything larger. A gate that cries wolf is a gate nobody reads. git-lfs stays off the table either way — the churn is a handful of pixels, and the 21 MB re-render added 3 MB to the pack.
 22. **The city costs half a core while you are not looking at it, and a quarter of a gigabyte while you are.** (Measured 2026-09-18 on r145+, this machine, 70 parked and 10 live sessions.)
     | | RSS | CPU |
@@ -320,6 +329,13 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
     The daemon is within its bar. The renderer is not: `ebiten.SetTPS(30)` (`pkg/render/run.go:109`) already halves the default, and it still redraws the whole city thirty times a second whether or not anything changed, whether or not the window is visible, and `reduced_motion` — which stops the animation — saves nothing, which says the cost is the redraw rather than the motion.
     Three fixes, cheapest first: `ebiten.SetRunnableOnUnfocused(false)` so an unfocused or minimised window costs nothing; compose the static city (ground, streets, buildings, trees, signage) into an offscreen image and redraw it only when the snapshot, camera or heading changes, drawing just the moving things — cars, trains, rovers, drones, sparks, the pulse — over it each frame; and drop the tick to 10 when nothing is animating. DESIGN.md's fifth principle says the renderer is a separate process you can close, which covers 247 MB but was never meant to excuse 49% of a core behind a minimised window.
     Exit: idle and visible under 10% of a core, minimised or unfocused under 1%, and the numbers in DESIGN.md beside the daemon's.
+
+23. **The plant hangs: a piece with no floor has nothing to stand on.** (Found 2026-09-21 finishing bug 20, which it is not.) `city-kit-industrial/chimney-large` is a hollow shell;
+    its lowest geometry is an open rim, and the sun in `render.py` is front-left, so the shadow that would tie it to the ground falls behind it, out of the camera's sight.
+    The anchor and the draw order are both correct and the tower still reads as hanging — see `docs/screenshots/r150-plaza-stacks.png`.
+    Two ways out, both art rather than arithmetic: bake a soft contact shadow under every piece in the atlas (a dark ellipse on the ground plane, cut with the sprite), or light the scene so each piece throws a shadow the camera can see.
+    The first is cheap and uniform and would fix the trees and the lamps at the same time; the second changes every sprite in the atlas. Aria's call.
+    While there: poles and wires are drawn in one pass before the sorted list, so a pole nearer the viewer than a building is painted under it.
 
 ### Next steps
 
@@ -351,6 +367,10 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
 - **Phase 18 — The renderer stops burning a core.** Bug 22.
 - **Phase 17 — The plaza stacks right.** Bugs 20 and 21; it is the one thing in the frames that reads as broken rather than unfinished.
+  Done 2026-09-21 (r150): one commit an item.
+  `sprites-check` is pixel-exact against a measured floor; anchors are derived from the mesh and `OFF_ORIGIN` is gone; depth is a footprint and the fountain is in the sorted list; the plaza's draw order is guarded at all four headings.
+  Two findings on the way, both in §8: a third of the cut pieces are never drawn, and the plant's tower still hangs for a reason that is neither of bug 20's two causes — bug 23.
+  Package `botropolis-git-r150` built, not installed.
 - **Phase 16 — Planting, the plaza and the workers** (Aria, 2026-09-18, from the r129 frames). Bugs 18 and 19 first, then:
   Done 2026-09-21 (r144.f76c246): one commit an item, a frame each.
   Package `botropolis-git-r145.07f3ce6` built, not installed.
