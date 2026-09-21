@@ -81,7 +81,7 @@ and [docs/usage-profile.md](docs/usage-profile.md) for the numbers it is built a
 
 ## Thanks
 
-The city is drawn from [Kenney](https://kenney.nl)'s 3D kits — City Kit Commercial, Roads, Industrial and Suburban, the Car Kit, the Train Kit and the Watercraft Kit, all CC0 —
+The city is drawn from [Kenney](https://kenney.nl)'s 3D kits — City Kit Commercial, Roads, Industrial and Suburban, the Nature Kit, the Car Kit, the Space Kit, the Train Kit and the Watercraft Kit, all CC0 —
 pre-rendered once in Blender by `tools/render-sprites` into the atlases under `pkg/assets/kits/` (four headings, two zoom levels),
 the way Factorio ships its sprites: the runtime only ever draws 2D.
 The 16 px Tiny Town, Tiny Factory and Roguelike Modern City packs remain behind `--projection top`.

@@ -238,7 +238,7 @@ func Build(snapshot state.Snapshot, layout *Layout) *City {
 	for _, t := range p.Trees {
 		cell := toCell(t.Cell)
 		centre := cell.Center()
-		city.Trees = append(city.Trees, Tree{Cell: cell, Variant: t.Variant, At: Point{X: centre.X + t.DX*CellSize, Y: centre.Y + t.DY*CellSize}})
+		city.Trees = append(city.Trees, Tree{Cell: cell, Kind: t.Kind, Variant: t.Variant, At: Point{X: centre.X + t.DX*CellSize, Y: centre.Y + t.DY*CellSize}})
 	}
 	city.Rails = railPath(p.Rails)
 	for _, l := range p.Lamps {

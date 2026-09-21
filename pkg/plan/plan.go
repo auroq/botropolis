@@ -73,12 +73,35 @@ const (
 	DirW
 )
 
-// Tree is one tree on a park cell: which of the two variants, and how
-// far off the cell's centre it stands, in cells, so a block of park
-// reads as trees rather than a hedge. Both are seeded from the cell,
-// so the same plan grows the same wood.
+// TreeKind is what a planting is, and how the city draws it: a tree in
+// a park or the belt wood, one of a line along an avenue, or a bush or
+// planter on the plaza's edge.
+type TreeKind int
+
+const (
+	ParkTree TreeKind = iota
+	StreetTree
+	Bush
+	Planter
+)
+
+// How many species the renderer keeps for each kind; the plan picks one
+// by index and pkg/render maps it to a piece. A park mixes two to four
+// of the park species, a street is planted in one all the way down.
+const (
+	ParkSpecies   = 8
+	StreetSpecies = 3
+	BushSpecies   = 2
+)
+
+// Tree is one planting: its cell, what kind it is, which species, and
+// how far off the cell's centre it stands, in cells, so a block of park
+// reads as a wood rather than a hedge. Everything is seeded from the
+// cell or its block, so the same plan grows the same garden every time
+// and nothing moves between frames.
 type Tree struct {
 	Cell    Cell
+	Kind    TreeKind
 	Variant int
 	DX, DY  float64
 }
@@ -86,12 +109,71 @@ type Tree struct {
 // TreeJitter is how far a tree may stand from its cell's centre, in cells.
 const TreeJitter = 0.3
 
-func plantTree(c Cell) Tree {
+// KerbOffset is how far off a street cell's centre a street tree
+// stands: out on the verge, clear of the carriageway.
+const KerbOffset = 0.42
+
+// StreetTreeSpacing is how many cells apart street trees stand. A city
+// plants a street at a fixed pitch, not wherever there is room.
+const StreetTreeSpacing = 3
+
+func seedOf(parts ...int) uint32 {
 	h := fnv.New32a()
-	_, _ = fmt.Fprintf(h, "%d,%d", c.Col, c.Row)
-	seed := h.Sum32()
-	unit := func(bits uint32) float64 { return float64(bits&0xffff)/0xffff*2 - 1 }
-	return Tree{Cell: c, Variant: int(seed & 1), DX: unit(seed>>1) * TreeJitter, DY: unit(seed>>17) * TreeJitter}
+	for _, p := range parts {
+		_, _ = fmt.Fprintf(h, "%d,", p)
+	}
+	return h.Sum32()
+}
+
+func unitOf(bits uint32) float64 { return float64(bits&0xffff)/0xffff*2 - 1 }
+
+// grove is the two to four species a park block is planted with, drawn
+// from the park palette by the block's own corner.
+func grove(b Block) []int {
+	seed := seedOf(b.Min.Col, b.Min.Row, b.Cols, b.Rows)
+	n := 2 + int(seed%3)
+	var species []int
+	for i := 0; len(species) < n; i++ {
+		pick := int((seed>>(2*uint(i))+uint32(i)*7)%ParkSpecies) % ParkSpecies
+		if !contains(species, pick) {
+			species = append(species, pick)
+		}
+		if i > 3*ParkSpecies {
+			break
+		}
+	}
+	return species
+}
+
+func contains(xs []int, x int) bool {
+	for _, v := range xs {
+		if v == x {
+			return true
+		}
+	}
+	return false
+}
+
+// plantTree puts one tree on a cell, its species drawn from the ones
+// offered and its step off centre seeded from the cell.
+func plantTree(c Cell, kind TreeKind, species []int) Tree {
+	seed := seedOf(c.Col, c.Row)
+	pick := 0
+	if len(species) > 0 {
+		pick = species[int(seed>>8)%len(species)]
+	}
+	return Tree{Cell: c, Kind: kind, Variant: pick,
+		DX: unitOf(seed>>1) * TreeJitter, DY: unitOf(seed>>17) * TreeJitter}
+}
+
+// everySpecies is the whole park palette, for the belt: the wood is
+// mixed rather than planted in groves.
+func everySpecies() []int {
+	all := make([]int, ParkSpecies)
+	for i := range all {
+		all[i] = i
+	}
+	return all
 }
 
 // Street is one avenue cell and which neighbours it joins.
@@ -284,15 +366,13 @@ func (p *Plan) place(in Input) {
 	for _, r := range p.Rails {
 		onRails[r] = true
 	}
-	for _, b := range append(append([]Block(nil), p.Parks...), p.Belt...) {
-		for row := b.Min.Row; row < b.Min.Row+b.Rows; row++ {
-			for col := b.Min.Col; col < b.Min.Col+b.Cols; col++ {
-				p.park[Cell{col, row}] = true
-				if !onRails[Cell{col, row}] {
-					p.Trees = append(p.Trees, plantTree(Cell{col, row}))
-				}
-			}
-		}
+	// A park block grows a grove of two to four species; the belt is
+	// the same wood, mixed the whole way round.
+	for _, b := range p.Parks {
+		p.plantBlock(b, grove(b), onRails)
+	}
+	for _, b := range p.Belt {
+		p.plantBlock(b, everySpecies(), onRails)
 	}
 	for i := 0; i < in.Towers; i++ {
 		p.Towers = append(p.Towers, Cell{Col: westRoad + 1 + 2*i, Row: ridge})
@@ -346,9 +426,94 @@ func (p *Plan) place(in Input) {
 			p.Lamps = append(p.Lamps, cell)
 		}
 	}
+	p.plantStreets()
+	p.plantPlazaEdge()
 	sort.Slice(p.Streets, func(i, j int) bool { return less(p.Streets[i].Cell, p.Streets[j].Cell) })
 	sort.Slice(p.Lamps, func(i, j int) bool { return less(p.Lamps[i], p.Lamps[j]) })
-	sort.Slice(p.Trees, func(i, j int) bool { return less(p.Trees[i].Cell, p.Trees[j].Cell) })
+	sort.SliceStable(p.Trees, func(i, j int) bool { return less(p.Trees[i].Cell, p.Trees[j].Cell) })
+}
+
+// plantBlock plants every cell of a block that the rails do not run
+// through, drawing each tree's species from the ones offered.
+func (p *Plan) plantBlock(b Block, species []int, onRails map[Cell]bool) {
+	for row := b.Min.Row; row < b.Min.Row+b.Rows; row++ {
+		for col := b.Min.Col; col < b.Min.Col+b.Cols; col++ {
+			cell := Cell{col, row}
+			p.park[cell] = true
+			if !onRails[cell] {
+				p.Trees = append(p.Trees, plantTree(cell, ParkTree, species))
+			}
+		}
+	}
+}
+
+// plantStreets lines every avenue with trees at a fixed pitch, out on
+// the verge and only along the straights, so nothing stands in a
+// junction. A street is planted in one species the whole way down.
+func (p *Plan) plantStreets() {
+	for cell, mask := range p.street {
+		vertical := mask == DirN|DirS
+		if !vertical && mask != DirE|DirW {
+			continue
+		}
+		along, line := cell.Row, cell.Col
+		if !vertical {
+			along, line = cell.Col, cell.Row
+		}
+		if mod(along, StreetTreeSpacing) != 0 {
+			continue
+		}
+		species := int(seedOf(line, int(b2i(vertical))) % StreetSpecies)
+		side := 1.0
+		if mod(along, 2*StreetTreeSpacing) != 0 {
+			side = -1
+		}
+		tree := Tree{Cell: cell, Kind: StreetTree, Variant: species}
+		if vertical {
+			tree.DX = side * KerbOffset
+		} else {
+			tree.DY = side * KerbOffset
+		}
+		p.Trees = append(p.Trees, tree)
+	}
+}
+
+// plantPlazaEdge sets bushes and planters round the plaza's rim, one
+// alternating with the other, so the civic square has a planted edge
+// and its middle stays clear for the landmarks.
+func (p *Plan) plantPlazaEdge() {
+	b := p.Plaza
+	if b.Cols < 2 || b.Rows < 2 {
+		return
+	}
+	i := 0
+	for row := b.Min.Row; row < b.Min.Row+b.Rows; row++ {
+		for col := b.Min.Col; col < b.Min.Col+b.Cols; col++ {
+			edge := row == b.Min.Row || row == b.Min.Row+b.Rows-1 ||
+				col == b.Min.Col || col == b.Min.Col+b.Cols-1
+			if !edge {
+				continue
+			}
+			cell := Cell{col, row}
+			seed := seedOf(cell.Col, cell.Row)
+			t := Tree{Cell: cell, Kind: Bush, Variant: int(seed>>8) % BushSpecies,
+				DX: unitOf(seed>>1) * TreeJitter / 2, DY: unitOf(seed>>17) * TreeJitter / 2}
+			if i%2 == 1 {
+				t.Kind, t.Variant = Planter, 0
+			}
+			p.Trees = append(p.Trees, t)
+			i++
+		}
+	}
+}
+
+func mod(a, n int) int { return ((a % n) + n) % n }
+
+func b2i(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // railLoop is every cell of the rectangle from nw to se, clockwise from

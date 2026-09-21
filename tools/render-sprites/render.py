@@ -54,7 +54,9 @@ PIECES = {
                             "shipping-container-a", "shipping-container-b", "shipping-container-c"],
     "city-kit-roads": ["road-straight", "road-bend", "road-crossroad", "road-intersection", "road-end", "road-square",
                        "light-square", "light-curved", "electricity-pole", "electricity-wires", "traffic-light", "construction-cone"],
-    "city-kit-suburban": ["tree-large", "tree-small"],
+    "city-kit-suburban": ["tree-large", "tree-small", "planter"],
+    "nature-kit": ["tree_default", "tree_oak", "tree_thin", "tree_tall", "tree_pineRoundA", "tree_small",
+                   "plant_bush", "plant_bushLarge"],
     "car-kit": ["sedan", "van", "taxi", "suv", "hatchback-sports", "truck", "delivery"],
     "space-kit": ["rover"],
     "train-kit": ["train-diesel-a", "train-diesel-b", "train-diesel-c",
@@ -69,6 +71,35 @@ PIECES = {
 # third of a cell; the Train Kit's wagons are 2.7 long and the Watercraft
 # Kit's tug 3.5, and a wagon or a barge on the map is two thirds of a cell.
 SCALE = {"car-kit": 0.12, "train-kit": 0.25, "watercraft-kit": 0.25}
+
+# The Nature Kit's geometry, on this city's terms. Its trees are the
+# variety the two Suburban ones cannot give, but they are modelled a
+# storey and a half taller than the buildings and their leaves are
+# teal, so the pipeline — which is where colour is decided — scales
+# each piece to a height in the Suburban trees' range and repaints its
+# materials in the Suburban greens. The tallest comes in a hair over
+# tree-large's 0.77, well under two storeys.
+NATURE_HEIGHT = {
+    "tree_default": 0.80,
+    "tree_oak": 0.70,
+    "tree_thin": 0.76,
+    "tree_tall": 0.84,
+    "tree_pineRoundA": 0.78,
+    "tree_small": 0.56,
+    "plant_bush": 0.26,
+    "plant_bushLarge": 0.30,
+}
+
+# The Suburban trees' own colours, read off the atlas they are cut into:
+# leaf, shaded leaf and bark. The Nature Kit names its materials, so the
+# repaint is by name rather than by pixel.
+NATURE_TINT = {
+    "leafsGreen": "#3c8f6e",
+    "leafsDark": "#2d7458",
+    "grass": "#3c8f6e",
+    "woodBark": "#9c6349",
+    "woodBarkDark": "#82523c",
+}
 
 # Pieces a kit models away from their own origin. The map puts a piece
 # on a point and the atlas anchors the sprite where that point lands, so
@@ -186,9 +217,53 @@ def piece(kits, kit, name, at, turn=0.0):
     root.location = Vector((at[0], at[1], at[2] if len(at) > 2 else 0))
     root.rotation_euler = (0, 0, math.radians(turn))
     k = SCALE.get(kit, 1.0)
+    if kit == "nature-kit":
+        repaint(new, NATURE_TINT)
+        k = nature_scale(root, name)
     root.scale = (k, k, k)
     bpy.context.view_layer.update()
     return root
+
+
+def srgb_to_linear(c):
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def rgba(hex_colour):
+    """A #rrggbb string as Blender's linear RGBA."""
+    h = hex_colour.lstrip("#")
+    return tuple(srgb_to_linear(int(h[i:i + 2], 16) / 255) for i in (0, 2, 4)) + (1.0,)
+
+
+def repaint(objects, tints):
+    """Set the base colour of every material named in tints. Kits that
+    paint with plain materials rather than a colour map can be brought
+    onto this city's palette here, where colour is decided."""
+    seen = set()
+    for o in objects:
+        for slot in getattr(o, "material_slots", []):
+            m = slot.material
+            if m is None or m.name in seen or not m.use_nodes:
+                continue
+            seen.add(m.name)
+            want = tints.get(m.name.split(".")[0])
+            if want is None:
+                continue
+            for node in m.node_tree.nodes:
+                if node.type == "BSDF_PRINCIPLED":
+                    node.inputs["Base Color"].default_value = rgba(want)
+
+
+def nature_scale(root, name):
+    """The scale that brings a Nature Kit piece to its height in
+    NATURE_HEIGHT, so no tree stands taller than the city's own."""
+    want = NATURE_HEIGHT.get(name)
+    if want is None:
+        return 1.0
+    bpy.context.view_layer.update()
+    lo, hi = bounds(root)
+    tall = hi.z - lo.z
+    return want / tall if tall > 0 else 1.0
 
 
 def flat(name, size, at, colour):

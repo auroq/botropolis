@@ -4,6 +4,7 @@ import (
 	"hash/fnv"
 
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/plan"
 )
 
 // Recipes: which kit piece stands for what. A session's building grows
@@ -21,17 +22,38 @@ var (
 	fillSteps = []float64{0.2, 0.45, 0.7, 0.9}
 	sheds     = []string{"city-kit-industrial/shipping-container-a", "city-kit-industrial/shipping-container-b", "city-kit-industrial/shipping-container-c"}
 
-	kitPlant    = "city-kit-industrial/building-a"
-	kitStack    = "city-kit-industrial/chimney-large"
-	kitHall     = "city-kit-commercial/building-n"
-	kitLibrary  = "city-kit-commercial/building-l"
-	kitTower    = "city-kit-industrial/water-tower"
-	kitLamp     = "city-kit-roads/light-square"
-	kitRover    = "space-kit/rover"
-	kitDrone    = "botropolis/drone"
-	kitCars     = []string{"car-kit/sedan", "car-kit/van", "car-kit/taxi", "car-kit/suv", "car-kit/hatchback-sports", "car-kit/delivery"}
-	kitParkTree = "city-kit-suburban/tree-small"
-	kitBeltTree = "city-kit-suburban/tree-large"
+	kitPlant   = "city-kit-industrial/building-a"
+	kitStack   = "city-kit-industrial/chimney-large"
+	kitHall    = "city-kit-commercial/building-n"
+	kitLibrary = "city-kit-commercial/building-l"
+	kitTower   = "city-kit-industrial/water-tower"
+	kitLamp    = "city-kit-roads/light-square"
+	kitRover   = "space-kit/rover"
+	kitDrone   = "botropolis/drone"
+	kitCars    = []string{"car-kit/sedan", "car-kit/van", "car-kit/taxi", "car-kit/suv", "car-kit/hatchback-sports", "car-kit/delivery"}
+	// The park palette: the Suburban kit's two, and six of the Nature
+	// Kit's cut to their height and repainted in their greens by the
+	// pipeline. plan.ParkSpecies is how many the plan may ask for.
+	kitParkTrees = []string{
+		"city-kit-suburban/tree-small",
+		"city-kit-suburban/tree-large",
+		"nature-kit/tree_default",
+		"nature-kit/tree_oak",
+		"nature-kit/tree_thin",
+		"nature-kit/tree_tall",
+		"nature-kit/tree_pineRoundA",
+		"nature-kit/tree_small",
+	}
+	// A street is planted in one of these, all the way down: the neat,
+	// narrow ones.
+	kitStreetTrees = []string{
+		"city-kit-suburban/tree-small",
+		"nature-kit/tree_thin",
+		"nature-kit/tree_small",
+	}
+	// The plaza's edge.
+	kitBushes  = []string{"nature-kit/plant_bush", "nature-kit/plant_bushLarge"}
+	kitPlanter = "city-kit-suburban/planter"
 	// The ledger's trains: a locomotive and container wagons in one of
 	// three liveries, matched to city.ContainerHues.
 	kitLocos = []string{"train-kit/train-diesel-a", "train-kit/train-diesel-b", "train-kit/train-diesel-c"}
@@ -70,10 +92,25 @@ func buildingPiece(b *city.Building) string {
 // which share the city kits' palette, the plan's seeded variant picking
 // which so a block reads as a wood, not a hedge.
 func treePiece(t city.Tree) string {
-	if t.Variant == 0 {
-		return kitBeltTree
+	switch t.Kind {
+	case plan.StreetTree:
+		return pickPiece(kitStreetTrees, t.Variant)
+	case plan.Bush:
+		return pickPiece(kitBushes, t.Variant)
+	case plan.Planter:
+		return kitPlanter
+	default:
+		return pickPiece(kitParkTrees, t.Variant)
 	}
-	return kitParkTree
+}
+
+// pickPiece is the species a planting asked for, or the first when the
+// plan offers more species than the palette has pieces.
+func pickPiece(pieces []string, variant int) string {
+	if variant < 0 || variant >= len(pieces) {
+		return pieces[0]
+	}
+	return pieces[variant]
 }
 
 // roadPiece is the road piece and its turn for a street cell's joins.

@@ -275,19 +275,42 @@ func TestMake(t *testing.T) {
 		again := plan.Make(plan.Input{Districts: live(2)}, plan.NewMemory())
 		require.NotEmpty(t, p.Trees)
 
-		t.Run("it should set each tree off its cell's centre within the jitter", func(t *testing.T) {
+		t.Run("it should set each park tree off its cell's centre within the jitter", func(t *testing.T) {
 			for _, tree := range p.Trees {
+				if tree.Kind != plan.ParkTree {
+					continue
+				}
 				assert.LessOrEqual(t, math.Abs(tree.DX), plan.TreeJitter, tree)
 				assert.LessOrEqual(t, math.Abs(tree.DY), plan.TreeJitter, tree)
 			}
 		})
 
-		t.Run("it should plant both variants", func(t *testing.T) {
+		t.Run("it should stand every street tree out on the verge", func(t *testing.T) {
+			for _, tree := range p.Trees {
+				if tree.Kind != plan.StreetTree {
+					continue
+				}
+				assert.Equal(t, plan.KerbOffset, math.Abs(tree.DX)+math.Abs(tree.DY), tree)
+			}
+		})
+
+		t.Run("it should mix more than the two species the Suburban kit ships", func(t *testing.T) {
 			seen := map[int]bool{}
 			for _, tree := range p.Trees {
-				seen[tree.Variant] = true
+				if tree.Kind == plan.ParkTree {
+					seen[tree.Variant] = true
+				}
 			}
-			assert.Equal(t, map[int]bool{0: true, 1: true}, seen)
+			assert.Greater(t, len(seen), 2)
+		})
+
+		t.Run("it should keep every species inside the palette", func(t *testing.T) {
+			limit := map[plan.TreeKind]int{plan.ParkTree: plan.ParkSpecies, plan.StreetTree: plan.StreetSpecies,
+				plan.Bush: plan.BushSpecies, plan.Planter: 1}
+			for _, tree := range p.Trees {
+				assert.Less(t, tree.Variant, limit[tree.Kind], tree)
+				assert.GreaterOrEqual(t, tree.Variant, 0, tree)
+			}
 		})
 
 		t.Run("it should plant the same trees for the same plan", func(t *testing.T) {
@@ -319,4 +342,108 @@ func abs(n int) int {
 		return -n
 	}
 	return n
+}
+
+func treesOf(p plan.Plan, kind plan.TreeKind) []plan.Tree {
+	var out []plan.Tree
+	for _, t := range p.Trees {
+		if t.Kind == kind {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+func TestPlanting(t *testing.T) {
+	p := plan.Make(plan.Input{Districts: live(4), Towers: 3, StorageRows: 2}, plan.NewMemory())
+
+	t.Run("when the avenues are planted", func(t *testing.T) {
+		street := treesOf(p, plan.StreetTree)
+		require.NotEmpty(t, street)
+
+		t.Run("it should stand every street tree on an avenue cell", func(t *testing.T) {
+			for _, tree := range street {
+				assert.True(t, p.IsStreet(tree.Cell), tree)
+			}
+		})
+
+		t.Run("it should plant a line at a fixed pitch", func(t *testing.T) {
+			for _, tree := range street {
+				assert.True(t, tree.Cell.Col%plan.StreetTreeSpacing == 0 || tree.Cell.Row%plan.StreetTreeSpacing == 0, tree)
+			}
+		})
+
+		t.Run("it should plant one street in one species", func(t *testing.T) {
+			byCol := map[int]map[int]bool{}
+			for _, tree := range street {
+				if tree.DX == 0 {
+					continue
+				}
+				if byCol[tree.Cell.Col] == nil {
+					byCol[tree.Cell.Col] = map[int]bool{}
+				}
+				byCol[tree.Cell.Col][tree.Variant] = true
+			}
+			for col, species := range byCol {
+				assert.Len(t, species, 1, "column %d", col)
+			}
+		})
+	})
+
+	t.Run("when a park block is planted", func(t *testing.T) {
+		require.NotEmpty(t, p.Parks)
+		block := p.Parks[0]
+		species := map[int]bool{}
+		for _, tree := range treesOf(p, plan.ParkTree) {
+			if block.Contains(tree.Cell) {
+				species[tree.Variant] = true
+			}
+		}
+
+		t.Run("it should be a grove of two to four species", func(t *testing.T) {
+			assert.GreaterOrEqual(t, len(species), 2)
+			assert.LessOrEqual(t, len(species), 4)
+		})
+	})
+
+	t.Run("when the belt is planted", func(t *testing.T) {
+		species := map[int]bool{}
+		for _, tree := range treesOf(p, plan.ParkTree) {
+			for _, b := range p.Belt {
+				if b.Contains(tree.Cell) {
+					species[tree.Variant] = true
+				}
+			}
+		}
+
+		t.Run("it should mix more species than a single park grove", func(t *testing.T) {
+			assert.Greater(t, len(species), 4)
+		})
+	})
+
+	t.Run("when the plaza is edged", func(t *testing.T) {
+		edge := append(treesOf(p, plan.Bush), treesOf(p, plan.Planter)...)
+		require.NotEmpty(t, edge)
+
+		t.Run("it should keep every bush and planter on the plaza's rim", func(t *testing.T) {
+			for _, tree := range edge {
+				onRim := tree.Cell.Col == p.Plaza.Min.Col || tree.Cell.Col == p.Plaza.Min.Col+p.Plaza.Cols-1 ||
+					tree.Cell.Row == p.Plaza.Min.Row || tree.Cell.Row == p.Plaza.Min.Row+p.Plaza.Rows-1
+				assert.True(t, onRim, tree)
+			}
+		})
+
+		t.Run("it should set both bushes and planters", func(t *testing.T) {
+			assert.NotEmpty(t, treesOf(p, plan.Bush))
+			assert.NotEmpty(t, treesOf(p, plan.Planter))
+		})
+	})
+
+	t.Run("when the same plan is made twice", func(t *testing.T) {
+		again := plan.Make(plan.Input{Districts: live(4), Towers: 3, StorageRows: 2}, plan.NewMemory())
+
+		t.Run("it should grow the same garden", func(t *testing.T) {
+			assert.Equal(t, p.Trees, again.Trees)
+		})
+	})
 }

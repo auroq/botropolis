@@ -318,12 +318,17 @@ Rotation, zoom, sidebar, breakdown, timeline, settings, F1 help, hide-chrome all
   Package `botropolis-git-r138.ec3d439` built, not installed.
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
 - **Phase 16 — Planting, the plaza and the workers** (Aria, 2026-09-18, from the r129 frames). Bugs 18 and 19 first, then:
-  - *The trees are too consistent.* The Suburban kit has two trees, so variety cannot come from the kit as shipped.
+  - ~~*The trees are too consistent.*~~ Done 2026-09-21 (r141). The Suburban kit has two trees, so variety cannot come from the kit as shipped.
     Take the Nature Kit's geometry (fifty species: oak, pine, thin, fat, small, bush, flower, `planter`) and **retint its materials in the render script** to the Suburban green family,
     scaled so no tree stands taller than a two-storey building — the one-palette rule is about colour, and the pipeline assigns colour.
     Then plant by rule, in `pkg/plan`: street trees in a line at fixed spacing along every avenue (a city plants in rows);
     two to four species per park block mixed by a seeded scatter with in-cell offsets (a park grows in groves); bushes and planters on the plaza's edge; the belt as the wood it is now, but mixed.
     Natural texture, planned placement — nothing per-frame random.
+    Six Nature Kit species are cut into the atlas, each scaled to a height in the Suburban trees' range (`NATURE_HEIGHT`) and its named materials repainted in their greens (`NATURE_TINT`);
+    the Suburban kit's own two and its planter stand beside them.
+    `plan.TreeKind` says what a planting is — park tree, street tree, bush, planter — and `plan.Tree.Variant` which species, both seeded from the cell or its block.
+    Avenues are lined at a fixed pitch on the verge, one species a street; a park block is a grove of two to four species; the belt is the same wood mixed; the plaza's rim alternates bushes and planters.
+    Frame `docs/screenshots/r141-planting.png`.
   - *The fountain is a blue disc.* No kit on disk has a fountain. Model one in the pipeline as the drone was: a basin, a column, a lip, a water disc in the plant's steel blue, and three spray frames cycled slowly (still under `reduced_motion`).
     Its card already says it means nothing; it should at least look like what it is.
   - *Buildings get signs, like corporate offices.* (Aria, 2026-09-18.) A session's title goes on its building the way a tower's name goes on the tank: a short title as a fascia sign over the door on the front face;

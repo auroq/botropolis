@@ -135,6 +135,7 @@ func (d *District) storageCard() Card {
 // stands, a seeded step off the cell's centre.
 type Tree struct {
 	Cell    Cell
+	Kind    plan.TreeKind
 	Variant int
 	At      Point
 }
