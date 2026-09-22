@@ -531,23 +531,21 @@ func (g *Game) noteHit(r city.Rect, hit city.Hit) {
 func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, selected *city.Building, width, height float64, seconds float64) {
 	detailed := g.scene.Detailed()
 	labels := g.labelsVisible()
-	g.mu.Lock()
-	g.frameHits = g.frameHits[:0]
-	g.mu.Unlock()
+	defer frames.start()()
 	defer func() {
 		g.mu.Lock()
 		g.hits = append(g.hits[:0], g.frameHits...)
 		g.mu.Unlock()
 	}()
-	g.isoGround(screen, cam, c, width, height)
-	g.streets(screen, c, cam, hover, labels)
-	g.beams(screen, c, cam, hover)
-	for _, d := range c.Districts {
-		g.isoDistrict(screen, cam, d, hover.District == d)
-	}
-	g.isoPlaza(screen, cam, c)
+	// The city under the traffic, composed once and blitted; then its
+	// hover targets replayed, because the frame is drawn fresh even when
+	// the layer is not.
+	under := g.staticCity(c, cam, hover, width, height)
+	g.mu.Lock()
+	g.frameHits = append(g.frameHits[:0], g.static.hits...)
+	g.mu.Unlock()
+	screen.DrawImage(under, &ebiten.DrawImageOptions{})
 	g.powerLines(screen, c, cam, hover, seconds)
-	g.camps(screen, c, cam)
 	var items []drawable
 	if c.Fountain.Area() > 0 {
 		items = append(items, drawable{depth: cam.DepthOf(c.Fountain), draw: func() {

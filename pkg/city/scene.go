@@ -100,7 +100,11 @@ type Scene struct {
 	// reduced is the reduced_motion setting: everything that moves on
 	// its own stands still. It is not the same as instant, which a
 	// still frame sets so the camera does not have to ease into place.
-	reduced     bool
+	reduced bool
+	// view is the info view the city is drawn in, and generation counts
+	// the snapshots taken, so the renderer can tell one city from the next.
+	view        View
+	generation  int
 	log         *events.Log
 	filter      Filter
 	budget      float64
@@ -427,6 +431,7 @@ func (s *Scene) Insets() Insets {
 
 func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
 	s.snapshot = snapshot
+	s.generation++
 	s.city = Build(snapshot, s.layout)
 	s.city.Plant.BudgetUSD = s.budget
 	s.noteMerges()

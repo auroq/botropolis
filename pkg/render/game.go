@@ -97,6 +97,9 @@ type Game struct {
 	snap   string
 	help   bool
 	hidden bool
+	// static is the city under the traffic, composed once and blitted
+	// until the snapshot, the camera, the heading or the view changes.
+	static staticLayer
 
 	settings     ui.Settings
 	settingsOpen bool
