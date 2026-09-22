@@ -536,6 +536,14 @@ Two additions to the plan as written:
 
 ### Phase 19 — Info views
 
+0. ~~**The sorted list, cached, with its own ordering guard.**~~ Done 2026-09-22 (r168), carried from phase 18 and moved first at Aria's direction.
+   Each drawable says whether it moves; the still ones — buildings, trees, towers, the landmarks, a steady beacon — compose into a second cached layer, and each mover redraws the still things it passes in front of.
+   The redraw has to **cascade**: painting a building back over a car that drove behind it also paints over the trees at its foot, so anything later that the redraw itself covered comes back too. That was a real bug before the guard caught it, and `TestPaintItems` pins it.
+   A building is two drawables at one depth now, body and life, so the sprite can be cached while the beacon's pulse is not — and the life's geometry is worked out without drawing (`buildingFrame`, `kitRect`), because on most frames the body was painted several frames ago.
+   Measured: CPU-side drawing 2.7 ms a frame to 1.8, about a third, on the instrument that predicted item 2's cut on real glass to within a percent. Aria to re-run the A/B on hardware.
+   **The cost, stated plainly:** every sprite in the list is now composited through a transparent layer, so anti-aliased edges blend twice. Against a frozen fixture with the clock pinned, 29,597 pixels of 3,344,000 differ by more than 12/765 — but 28,989 of those are single-pixel outlines and only 608 are anything else. The map reads the same; its edges are a hair softer.
+
+
 1. `pkg/city` gains a `View` enum and a per-object tint function; `pkg/render` draws the base desaturated and the tint over it. No new data: every view above is already in the snapshot.
 2. `v` cycles, `1`–`9` jump, the same key or Escape leaves, the current view and its legend sit in the strip, and the view is remembered in `layout.json`.
 3. Networks move behind their views: power lines in Spend, beams in Servers, roads and cars in Traffic, cranes in Fan-out. Attention keeps the map as it is today minus the networks.

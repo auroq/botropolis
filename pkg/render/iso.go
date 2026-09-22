@@ -3,7 +3,6 @@ package render
 import (
 	"image/color"
 	"math"
-	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
@@ -258,26 +257,81 @@ func wirePoint(tops []city.Point, t, sag float64) city.Point {
 
 var colorNightOverlay = color.NRGBA{0x08, 0x0c, 0x24, 0x70}
 
+// drawable is one thing painted back to front. It knows where it landed
+// on screen, because a thing that moves has to know which still things
+// stand in front of it; and whether it moves at all, because the ones
+// that do not are painted once into the cached layer.
 type drawable struct {
 	depth float64
-	draw  func()
+	moves bool
+	draw  func(dst *ebiten.Image) city.Rect
+	rect  city.Rect
 }
 
-// isoBuilding draws a session as a stacked building on its footprint, or a
-// flat diamond in the map view.
-func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Building, selected, detailed bool, seconds float64) {
+// A building is drawn in two halves. The body — the sprite, its
+// signage, its flags, the ring round a selection — only changes when
+// the city or the camera does, so it is painted once into the cached
+// layer. Its life — the state beacon's pulse, the worker at the door,
+// the drones over the roof, smoke, a merge being celebrated — changes
+// every frame, and only for the buildings where something is actually
+// happening.
+
+// buildingBody is where a building landed and what stands on it, or an
+// empty rect when there is nothing to draw.
+type buildingBody struct {
+	rect city.Rect
+	foot city.Point
+	live bool
+}
+
+// alive reports whether anything on a building moves between frames: a
+// pulsing beacon, a worker, a drone, smoke, a merge being celebrated,
+// or the building itself still rising out of the ground. A building
+// with a steady beacon and nothing else is as still as the ground it
+// stands on, and is painted into the layer with everything else.
+func (g *Game) alive(b *city.Building) bool {
+	if b.Vacant || b.BoardedUp || g.scene.Dimmed(b) {
+		return false
+	}
+	if g.scene.Rising(b.Session.ID) < 1 {
+		return true
+	}
+	return b.Pulse || b.Cranes > 0 || b.Smoke > 0 ||
+		b.Session.State == state.Working ||
+		g.scene.Celebration(b.Session.ID) >= 0
+}
+
+// buildingFrame is where a building lands and what stands on it,
+// worked out without drawing anything. Both halves ask for it, so
+// neither depends on the other having run — the body is often painted
+// into a layer several frames ago, while its life is painted now.
+func (g *Game) buildingFrame(cam *city.Camera, b *city.Building, detailed bool) buildingBody {
+	if !detailed || g.kits == nil || b.Vacant || g.scene.Rising(b.Session.ID) <= 0 {
+		return buildingBody{rect: screenBounds(cam, b.Rect)}
+	}
+	r := g.kitRect(cam, buildingPiece(b), 0, b.Rect.Center())
+	if r.Area() == 0 || g.scene.Dimmed(b) {
+		return buildingBody{rect: r}
+	}
+	return buildingBody{rect: r, foot: cam.WorldToScreen(b.Rect.Center()), live: true}
+}
+
+// isoBuildingBody draws a session as a stacked building on its
+// footprint, or a flat diamond in the map view, and returns where it
+// landed so its life can be drawn over it.
+func (g *Game) isoBuildingBody(screen *ebiten.Image, cam *city.Camera, b *city.Building, selected, detailed bool, seconds float64) buildingBody {
 	if !detailed || g.kits == nil {
 		g.poly(screen, cam, b.Rect, blockColor(b, seconds))
 		g.polyStroke(screen, cam, b.Rect, 1, colorKerb)
 		if selected {
 			g.polyStroke(screen, cam, b.Rect, 2, colorSelected)
 		}
-		return
+		return buildingBody{rect: screenBounds(cam, b.Rect)}
 	}
 	rise := g.scene.Rising(b.Session.ID)
 	if b.Vacant || rise <= 0 {
 		g.vacantPlot(screen, cam, b, selected)
-		return
+		return buildingBody{rect: screenBounds(cam, b.Rect)}
 	}
 	var tint *ebiten.ColorScale
 	switch {
@@ -298,11 +352,46 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	district := g.scene.City().DistrictOf(b)
 	g.noteHit(r, city.Hit{Building: b, District: district})
 	if r.Area() == 0 || g.scene.Dimmed(b) {
-		return
+		return buildingBody{rect: r}
 	}
+	foot := cam.WorldToScreen(b.Rect.Center())
+	dot := math.Max(3, 6*cam.Zoom)
+	roofTop := r.Min.Y
+	// Signage is paint on the building, not chrome: like a tower's name
+	// it stays when h hides the interface.
+	if !b.BoardedUp {
+		g.buildingSign(screen, r, foot, b.Card(g.scene.City().Time).Title)
+	}
+	// One flag per PR, coloured by its state: open in the accent, merged
+	// green, closed slate.
+	for i := 0; i < min(b.Flags, 3); i++ {
+		x := r.Min.X + r.Width()*0.62 + float64(i)*dot*1.8
+		flag := g.theme.Palette.Accent
+		if i < b.Merged {
+			flag = g.theme.Palette.Merged
+		} else if i < len(b.Session.PRs) && b.Session.PRs[i].State == claude.PRClosed {
+			flag = g.theme.Palette.Parked
+		}
+		vector.FillRect(screen, float32(x), float32(roofTop-dot*2), float32(dot*0.4), float32(dot*2.5), colorPole, false)
+		vector.FillRect(screen, float32(x), float32(roofTop-dot*2), float32(dot*1.4), float32(dot), flag, false)
+	}
+	if selected {
+		g.polyStroke(screen, cam, b.Rect, 2, colorSelected)
+	}
+	return buildingBody{rect: r, foot: foot, live: true}
+}
+
+// isoBuildingLife draws what moves on a building: the beacon over the
+// door, the worker, the drones, a celebration, the smoke of an error.
+func (g *Game) isoBuildingLife(screen *ebiten.Image, cam *city.Camera, b *city.Building, body buildingBody, seconds float64) city.Rect {
+	if !body.live {
+		return body.rect
+	}
+	r, foot := body.rect, body.foot
+	roofTop := r.Min.Y
+	dot := math.Max(3, 6*cam.Zoom)
 	// The state light: a beacon over the door in the state's own colour,
 	// pulsing for needs-you, so the palette reads the same as the strip.
-	foot := cam.WorldToScreen(b.Rect.Center())
 	if !b.BoardedUp {
 		beacon := g.theme.Color(ui.StateTone(b.Session.State))
 		if b.Pulse {
@@ -311,13 +400,6 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		radius := math.Max(2, 4*cam.Zoom)
 		vector.FillCircle(screen, float32(foot.X), float32(foot.Y-radius*2), float32(radius*1.6), colorKitKerb, true)
 		vector.FillCircle(screen, float32(foot.X), float32(foot.Y-radius*2), float32(radius), beacon, true)
-	}
-	roofTop := r.Min.Y
-	dot := math.Max(3, 6*cam.Zoom)
-	// Signage is paint on the building, not chrome: like a tower's name
-	// it stays when h hides the interface.
-	if !b.BoardedUp {
-		g.buildingSign(screen, r, foot, b.Card(g.scene.City().Time).Title)
 	}
 	// The worker: a rover that waits at the door while the session is
 	// mid-turn and drives out to the kerb and back for each tool call,
@@ -335,19 +417,6 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		at := city.Point{X: r.Min.X + r.Width()/2 + orbit.X, Y: roofTop - droneHover*cam.Zoom + orbit.Y + hover}
 		g.kitAt(screen, cam, kitDrone, 0, at, nil)
 	}
-	// One flag per PR, coloured by its state: open in the accent, merged
-	// green, closed slate.
-	for i := 0; i < min(b.Flags, 3); i++ {
-		x := r.Min.X + r.Width()*0.62 + float64(i)*dot*1.8
-		flag := g.theme.Palette.Accent
-		if i < b.Merged {
-			flag = g.theme.Palette.Merged
-		} else if i < len(b.Session.PRs) && b.Session.PRs[i].State == claude.PRClosed {
-			flag = g.theme.Palette.Parked
-		}
-		vector.FillRect(screen, float32(x), float32(roofTop-dot*2), float32(dot*0.4), float32(dot*2.5), colorPole, false)
-		vector.FillRect(screen, float32(x), float32(roofTop-dot*2), float32(dot*1.4), float32(dot), flag, false)
-	}
 	if p := g.scene.Celebration(b.Session.ID); p >= 0 {
 		g.celebrate(screen, city.Point{X: r.Min.X + r.Width()/2, Y: roofTop}, r.Width(), p)
 	}
@@ -358,19 +427,21 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 			vector.FillCircle(screen, float32(at.X), float32(at.Y), float32((3+phase*3)*cam.Zoom), colorSmoke, true)
 		}
 	}
-	if selected {
-		g.polyStroke(screen, cam, b.Rect, 2, colorSelected)
-	}
+	// The life reaches above the roof and out to the kerb; the box a
+	// mover claims has to cover everything it painted.
+	return r.Union(city.RectAt(r.Min.X, roofTop-droneHover*cam.Zoom-dot*3, r.Width(), dot*3))
 }
 
 // isoLandmark draws a kit piece standing on a world rect's centre and
 // notes where it landed for the pointer.
-func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, name string, tint *ebiten.ColorScale, hit city.Hit) {
+func (g *Game) isoLandmark(screen *ebiten.Image, cam *city.Camera, r city.Rect, name string, tint *ebiten.ColorScale, hit city.Hit) city.Rect {
 	if g.kits == nil {
 		g.poly(screen, cam, r, colorPlant)
-		return
+		return screenBounds(cam, r)
 	}
-	g.noteHit(g.kit(screen, cam, name, 0, r.Center(), tint), hit)
+	box := g.kit(screen, cam, name, 0, r.Center(), tint)
+	g.noteHit(box, hit)
+	return box
 }
 
 // noteHit remembers a drawn sprite for the pointer; drawIso gathers
@@ -537,97 +608,20 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		g.hits = append(g.hits[:0], g.frameHits...)
 		g.mu.Unlock()
 	}()
-	// The city under the traffic, composed once and blitted; then its
-	// hover targets replayed, because the frame is drawn fresh even when
-	// the layer is not.
-	under := g.staticCity(c, cam, hover, width, height)
+	// The still city, composed once and blitted in two halves with the
+	// power lines between them; then its hover targets replayed, because
+	// the frame is drawn fresh even when the layers are not; then the
+	// things that move, each followed by whatever stands in front of it.
+	items := g.isoItems(c, cam, hover, selected, detailed, seconds)
+	layer := g.staticCity(c, cam, hover, selected, width, height, items)
 	g.mu.Lock()
 	g.frameHits = append(g.frameHits[:0], g.static.hits...)
 	g.mu.Unlock()
-	screen.DrawImage(under, &ebiten.DrawImageOptions{})
+	op := &ebiten.DrawImageOptions{}
+	screen.DrawImage(layer.under, op)
 	g.powerLines(screen, c, cam, hover, seconds)
-	var items []drawable
-	if c.Fountain.Area() > 0 {
-		items = append(items, drawable{depth: cam.DepthOf(c.Fountain), draw: func() {
-			g.fountain(screen, cam, c, seconds)
-		}})
-	}
-	for _, l := range c.Lamps {
-		l := l
-		items = append(items, drawable{depth: cam.DepthOf(l.Rect()), draw: func() {
-			g.lamp(screen, cam, l, c.Night)
-		}})
-	}
-	for _, d := range c.Districts {
-		for _, b := range d.Buildings {
-			b := b
-			items = append(items, drawable{depth: cam.DepthOf(b.Rect), draw: func() {
-				g.isoBuilding(screen, cam, b, b == selected, detailed, seconds)
-			}})
-		}
-	}
-	for _, v := range g.scene.Voyages() {
-		v := v
-		items = append(items, drawable{depth: cam.Depth(v.At(g.scene.Clock())), draw: func() {
-			g.drawVoyage(screen, cam, v, seconds)
-		}})
-	}
-	for _, k := range g.carriages(c, seconds) {
-		k := k
-		items = append(items, drawable{depth: cam.Depth(k.at), draw: func() {
-			g.drawCarriage(screen, cam, k)
-		}})
-	}
-	for _, car := range g.cars(c, seconds) {
-		car := car
-		items = append(items, drawable{depth: cam.Depth(car.at), draw: func() {
-			g.drawCar(screen, cam, car)
-		}})
-	}
-	if c.Plant.Rect.Area() > 0 {
-		items = append(items, drawable{depth: cam.DepthOf(c.Plant.Rect), draw: func() {
-			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, nil, city.Hit{Landmark: city.LandmarkPlant})
-			g.kit(screen, cam, kitStack, 0, city.Point{X: c.Plant.Rect.Max.X - city.Tile, Y: c.Plant.Rect.Max.Y - city.Tile}, nil)
-		}})
-	}
-	for _, t := range c.Trees {
-		t := t
-		items = append(items, drawable{depth: cam.Depth(t.At), draw: func() {
-			g.isoTree(screen, cam, t, nil)
-		}})
-	}
-	for _, t := range c.Towers {
-		t := t
-		items = append(items, drawable{depth: cam.DepthOf(t.Rect), draw: func() {
-			tint := &ebiten.ColorScale{}
-			if t.Server.Calls == 0 {
-				tint.SetR(0.6)
-				tint.SetG(0.6)
-				tint.SetB(0.65)
-			} else {
-				tint.SetR(0.7)
-				tint.SetG(1)
-				tint.SetB(0.95)
-			}
-			r := g.kit(screen, cam, kitTower, 0, t.Rect.Center(), tint)
-			g.noteHit(r, city.Hit{Landmark: city.LandmarkTower, Tower: t})
-			g.towerSign(screen, r, t.Server.Name)
-		}})
-	}
-	if c.Library.Rect.Area() > 0 {
-		items = append(items, drawable{depth: cam.DepthOf(c.Library.Rect), draw: func() {
-			g.isoLandmark(screen, cam, c.Library.Rect, kitLibrary, nil, city.Hit{Landmark: city.LandmarkLibrary})
-		}})
-	}
-	if c.Hall.Rect.Area() > 0 {
-		items = append(items, drawable{depth: cam.DepthOf(c.Hall.Rect), draw: func() {
-			g.isoLandmark(screen, cam, c.Hall.Rect, kitHall, nil, city.Hit{Landmark: city.LandmarkHall})
-		}})
-	}
-	sort.SliceStable(items, func(i, j int) bool { return items[i].depth < items[j].depth })
-	for _, item := range items {
-		item.draw()
-	}
+	screen.DrawImage(layer.over, op)
+	g.paintItems(screen, items)
 	if hover.Building != nil && hover.Building != selected {
 		g.polyStroke(screen, cam, hover.Building.Rect, 1.5, colorHighlight)
 	}

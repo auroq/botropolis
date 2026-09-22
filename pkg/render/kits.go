@@ -97,6 +97,27 @@ func (g *Game) kit(screen *ebiten.Image, cam *city.Camera, name string, turn int
 	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
 }
 
+// kitRect is where kit would land a piece, without drawing it. The
+// things that move need to know how big the still things around them
+// are on frames where those were not drawn at all.
+func (g *Game) kitRect(cam *city.Camera, name string, turn int, at city.Point) city.Rect {
+	if g.kits == nil {
+		return city.Rect{}
+	}
+	atlas := g.kits.pick(cam.Zoom)
+	if atlas == nil {
+		return city.Rect{}
+	}
+	sprite, ok := atlas.Sprite(name, cam.Heading-turn)
+	if !ok {
+		return city.Rect{}
+	}
+	scale := cam.Zoom / atlas.Zoom
+	foot := cam.WorldToScreen(at)
+	origin := city.Point{X: foot.X - float64(sprite.Anchor.X)*scale, Y: foot.Y - float64(sprite.Anchor.Y)*scale}
+	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
+}
+
 // kitGround draws a ground tile a hair larger than its cell, so two tiles
 // side by side overlap by their anti-aliased rims instead of letting the
 // grass show through as a seam.

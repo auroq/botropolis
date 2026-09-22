@@ -36,22 +36,32 @@ type layerKey struct {
 	labels     bool
 	projection city.Projection
 	// hover moves the highlight on a street, a district and a tower
-	// beam, all of which are painted into this layer.
+	// beam; selected rings a building; and the search dims what it does
+	// not match. All of them are painted into these layers.
 	hoverDistrict *city.District
 	hoverTower    *city.Tower
 	hoverLine     *city.PowerLine
+	selected      *city.Building
+	query         string
+	detailed      bool
+	rising        bool
 }
 
-// staticLayer is the composed image and the key it was composed for.
+// staticLayer is the composed city and the key it was composed for, in
+// two images rather than one. The power lines are painted between them,
+// because their sparks travel with the clock and would freeze in a
+// layer, and they belong under the buildings rather than over.
 type staticLayer struct {
-	img  *ebiten.Image
-	key  layerKey
-	hits []spriteHit
-	ok   bool
+	under *ebiten.Image
+	over  *ebiten.Image
+	key   layerKey
+	hits  []spriteHit
+	rects []city.Rect
+	ok    bool
 }
 
 // keyFor is the key this frame would compose under.
-func (g *Game) keyFor(cam *city.Camera, hover city.Hit, width, height int) layerKey {
+func (g *Game) keyFor(cam *city.Camera, hover city.Hit, selected *city.Building, width, height int) layerKey {
 	return layerKey{
 		generation:    g.scene.Generation(),
 		offset:        cam.Offset,
@@ -66,37 +76,66 @@ func (g *Game) keyFor(cam *city.Camera, hover city.Hit, width, height int) layer
 		hoverDistrict: hover.District,
 		hoverTower:    hover.Tower,
 		hoverLine:     hover.Line,
+		selected:      selected,
+		query:         g.query,
+		detailed:      g.scene.Detailed(),
+		// A building that is still rising has to be composed again each
+		// frame until it has.
+		rising: g.anyRising(),
 	}
 }
 
-// staticCity returns the composed city under the traffic, drawing it
-// again only when its key has changed.
-func (g *Game) staticCity(c *city.City, cam *city.Camera, hover city.Hit, width, height float64) *ebiten.Image {
-	key := g.keyFor(cam, hover, int(width), int(height))
-	frames.note(g.static.ok && g.static.key == key && g.static.img != nil)
-	if g.static.ok && g.static.key == key && g.static.img != nil {
-		return g.static.img
-	}
-	if g.static.img == nil || g.static.img.Bounds().Dx() != int(width) || g.static.img.Bounds().Dy() != int(height) {
-		if g.static.img != nil {
-			g.static.img.Deallocate()
+// staticCity returns the composed city, drawing it again only when its
+// key has changed.
+func (g *Game) staticCity(c *city.City, cam *city.Camera, hover city.Hit, selected *city.Building, width, height float64, items []drawable) *staticLayer {
+	key := g.keyFor(cam, hover, selected, int(width), int(height))
+	reused := g.static.ok && g.static.key == key && g.static.under != nil
+	frames.note(reused)
+	if reused {
+		// The layer is kept, but the rects the movers need belong to the
+		// drawables of this frame, so they are carried across.
+		for i := range items {
+			if !items[i].moves && i < len(g.static.rects) {
+				items[i].rect = g.static.rects[i]
+			}
 		}
-		g.static.img = ebiten.NewImage(int(width), int(height))
+		return &g.static
 	}
-	g.static.img.Clear()
-	// The layers under the traffic own hover targets too — a street, a
-	// district floor, a tower beam. They are recorded while composing
-	// and replayed every frame, which is sound for exactly as long as
-	// the key holds, because the key is what fixes them on screen.
+	g.static.under = fit(g.static.under, int(width), int(height))
+	g.static.over = fit(g.static.over, int(width), int(height))
+	g.static.under.Clear()
+	g.static.over.Clear()
+	// The layers own hover targets too — a street, a district floor, a
+	// tower, a building. They are recorded while composing and replayed
+	// every frame, which is sound for exactly as long as the key holds,
+	// because the key is what fixes them on screen.
 	g.mu.Lock()
 	g.frameHits = g.frameHits[:0]
 	g.mu.Unlock()
-	g.composeStatic(g.static.img, c, cam, hover, width, height)
+	g.composeStatic(g.static.under, c, cam, hover, width, height)
+	g.camps(g.static.over, c, cam)
+	g.composeItems(g.static.over, items)
 	g.mu.Lock()
 	g.static.hits = append(g.static.hits[:0], g.frameHits...)
 	g.mu.Unlock()
+	g.static.rects = g.static.rects[:0]
+	for i := range items {
+		g.static.rects = append(g.static.rects, items[i].rect)
+	}
 	g.static.key, g.static.ok = key, true
-	return g.static.img
+	return &g.static
+}
+
+// fit returns an image of the wanted size, reusing the one given when
+// it already is.
+func fit(img *ebiten.Image, width, height int) *ebiten.Image {
+	if img != nil && img.Bounds().Dx() == width && img.Bounds().Dy() == height {
+		return img
+	}
+	if img != nil {
+		img.Deallocate()
+	}
+	return ebiten.NewImage(width, height)
 }
 
 // composeStatic paints the layers that sit under the sorted list.
@@ -109,5 +148,16 @@ func (g *Game) composeStatic(dst *ebiten.Image, c *city.City, cam *city.Camera, 
 		g.isoDistrict(dst, cam, d, hover.District == d)
 	}
 	g.isoPlaza(dst, cam, c)
-	g.camps(dst, c, cam)
+}
+
+// anyRising reports whether a building is still growing out of the
+// ground after its tug docked. While one is, the layer has to be
+// composed every frame, because the building's own height is changing.
+func (g *Game) anyRising() bool {
+	for _, b := range g.scene.City().Buildings() {
+		if g.scene.Rising(b.Session.ID) < 1 {
+			return true
+		}
+	}
+	return false
 }
