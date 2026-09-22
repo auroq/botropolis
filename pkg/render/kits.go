@@ -3,6 +3,7 @@ package render
 import (
 	"image"
 	"image/color"
+	"runtime/debug"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -39,6 +40,11 @@ func loadKits() (*kits, error) {
 		ka.Pages = nil
 		k.atlases = append(k.atlases, ka)
 	}
+	// Nine 2048-pixel pages decode to about 150 MB on the way to the
+	// card, and that is the peak a small machine would feel. Nothing
+	// else the city does allocates on that scale, so without a nudge the
+	// collector has no reason to run and the peak is what it keeps.
+	debug.FreeOSMemory()
 	return k, nil
 }
 

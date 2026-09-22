@@ -98,8 +98,13 @@ type Game struct {
 	help   bool
 	hidden bool
 	// live is whether anyone was watching the window last tick, so the
-	// tick is only changed when that changes.
-	live bool
+	// tick is only changed when that changes. ticks counts Update calls
+	// and painted the tick the last frame was painted for, so a repeat
+	// of a frame already on screen can be skipped.
+	live    bool
+	tps     int
+	ticks   uint64
+	painted uint64
 	// static is the city under the traffic, composed once and blitted
 	// until the snapshot, the camera, the heading or the view changes.
 	static staticLayer
@@ -187,6 +192,7 @@ func (g *Game) SetStatus(status string) {
 }
 
 func (g *Game) Update() error {
+	g.ticks++
 	g.mu.Lock()
 	pending := g.pending
 	g.pending = nil
@@ -365,6 +371,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		time.Sleep(idleSleep)
 		return
 	}
+	if !g.fresh() && !g.capturing() {
+		// This frame would repaint what is already on the glass. The
+		// screen is not cleared between frames, so leaving it is enough.
+		return
+	}
+	g.painted = g.ticks
 	defer g.capture(screen)
 	c := g.scene.City()
 	cam := g.scene.Camera()

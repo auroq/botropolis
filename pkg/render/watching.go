@@ -1,6 +1,7 @@
 package render
 
 import (
+	"runtime/debug"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -24,6 +25,11 @@ import (
 const (
 	// liveTPS is the tick while someone is watching.
 	liveTPS = 30
+	// stillTPS is the tick while someone is watching a city in which
+	// nothing moves. Ten a second still answers a key or a drag without
+	// anyone noticing the difference, and there is no motion left to
+	// make choppy — city.Scene.Animating says when that holds.
+	stillTPS = 10
 	// idleTPS is the tick while nobody is. Clamping it is not enough on
 	// its own: the tick governs Update, and it is the frame that runs
 	// away, because Draw is called once per display refresh whatever the
@@ -55,17 +61,37 @@ func watching(scripted bool) bool {
 // capturing reports whether this run is writing frames to disk.
 func (g *Game) capturing() bool { return g.screenshot != "" || g.record != "" }
 
+// fresh reports whether anything has happened since the last frame was
+// painted. Ebitengine calls Draw once per display refresh and Update at
+// the tick, so on a sixty-hertz screen half the frames repaint exactly
+// what is already on the glass. Leaving those alone is item 2's insight
+// one level up: the cheapest drawing is the drawing not done.
+func (g *Game) fresh() bool { return g.ticks != g.painted }
+
 // idle throttles the loop when nobody is watching and returns whether
 // this frame should be drawn at all.
 func (g *Game) idle() bool {
 	live := watching(g.capturing())
-	if live != g.live {
-		g.live = live
-		tps := idleTPS
-		if live {
-			tps = liveTPS
-		}
+	tps := idleTPS
+	switch {
+	case g.capturing():
+		tps = liveTPS
+	case live && g.scene.Animating():
+		tps = liveTPS
+	case live:
+		tps = stillTPS
+	}
+	if live != g.live || tps != g.tps {
+		wasLive := g.live
+		g.live, g.tps = live, tps
 		ebiten.SetTPS(tps)
+		if wasLive && !live {
+			// Going quiet is the moment to hand memory back. An idle
+			// app allocates too little to make the collector run, so
+			// whatever the last busy stretch peaked at is what a hidden
+			// window would otherwise sit on.
+			debug.FreeOSMemory()
+		}
 	}
 	return live
 }

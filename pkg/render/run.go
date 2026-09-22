@@ -111,6 +111,9 @@ func Run(ctx context.Context, opts Options) error {
 	// gate on focus, and a window manager is free to leave a hidden
 	// window focused, which is the case that ran away. See watching.go.
 	ebiten.SetRunnableOnUnfocused(true)
+	// A frame that repeats the one before it is skipped rather than
+	// redrawn, which needs the last frame left on the glass.
+	ebiten.SetScreenClearedEveryFrame(false)
 	err = ebiten.RunGameWithOptions(game, &ebiten.RunGameOptions{
 		X11ClassName:    x11Class,
 		X11InstanceName: x11Instance,
