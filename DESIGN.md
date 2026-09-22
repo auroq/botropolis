@@ -340,6 +340,40 @@ The README leads with the latest screenshot, the GIF, the four commands of a fir
 A tag `v*` runs `.github/workflows/release.yml`, which builds the three binaries on Ubuntu, tests, and attaches a tarball to a GitHub release with generated notes;
 the local `botropolis-git` package stays local until Aria decides to publish it.
 
+## What it costs
+
+Roadmap phase 18, 2026-09-22.
+The daemon was always within its bar; the renderer was not, and redrew the whole city thirty times a second whether or not anything had changed or anyone was looking.
+
+Three things fixed that, cheapest first.
+A window nobody can see draws nothing and waits in `Draw` rather than trusting the display's throttle, because a hidden window has no vertical blank left to wait for and a window manager is free to leave one focused while it is unmapped.
+The city under the traffic — ground, avenues, beams, district floors, the plaza, the camp ties — composes into an offscreen image keyed on `(generation, camera, heading, view, size, night, labels, hover)` and blits until that key changes.
+And a frame whose tick has already been painted is skipped, with the tick itself dropping to ten when `city.Scene.Animating` says nothing on the map moves.
+
+**Numbers are a measurement of one desk, so the desk is written beside them.**
+CPU is `utime+stime` from `/proc/<pid>/stat` over a twenty-second sample as a percentage of one core, RSS is `VmRSS` and the peak `VmHWM` from `/proc/<pid>/status`, taken by `tools/measure-render` on a display that already answers.
+Every row carries the frames drawn during the sample, because a cheap app and a stopped one look alike without it.
+
+| Rig | Build | Visible | Hidden | RSS | Peak |
+| --- | --- | --- | --- | --- | --- |
+| Aria's desk | r156, before phase 18 | 56.7% | 57.7% | 244 MB | 740 MB |
+| Aria's desk | items 1 and 2, first cut | 35.6% | 50.3% | 268 MB | — |
+| Aria's desk | item 1 redone | 40.7–46.1% | 0.8%, 0 frames | 247 MB | — |
+| Agent's rig | r156, before phase 18 | — | — | — | — |
+| Agent's rig | item 1 redone | 28.7%, 1200 frames | 0.6%, 0 frames | 231 MB | — |
+| Agent's rig | item 3, frames capped | 20.3%, 600 frames | — | 235 MB | — |
+| Agent's rig | item 3 complete | 18.8%, 600 frames | 0.2%, 0 frames | 208 MB hidden, 236 MB visible | 536 MB |
+
+Aria's desk: 1920×1200, the window 636×1120 under i3's tiling, 8 live sessions and 72 in all, 45-second warm-up.
+The agent's rig: the same machine's `DISPLAY=:0` through a separate daemon, window at Ebitengine's default, 15-second warm-up.
+The two disagree on the visible figure by a third on the same commit — different cities on different glass — and agree on the hidden one to a tenth of a percent.
+A virtual display cannot stand in for either: software rasterising turns everything into fill rate, where one full-screen blit shades as many pixels as the sprites it replaces, and no draw-call saving is visible at all.
+`BOTROPOLIS_FRAMETIME=1` reports what a frame costs the CPU and how often the static layer was reused; that is the hardware-independent signal, and it predicted item 2's cut on real glass to within a percent (3.69 ms to 2.30, −38%, against −37% measured).
+
+Memory: 151 MB of the settled RSS is the atlas on the card — nine 2048-pixel pages — and cannot go without loading it again.
+The start-up peak is `assets.LoadKits` decoding all nine pages before uploading any, so both copies are alive at once; a page at a time would fix the peak itself.
+An idle app allocates too little to make the collector run, so memory is handed back explicitly when the window goes quiet and after the atlas upload.
+
 ## Open questions
 
 All settled; the decisions are in [ROADMAP.md](ROADMAP.md) §5 and §3.
