@@ -97,6 +97,9 @@ type Game struct {
 	snap   string
 	help   bool
 	hidden bool
+	// live is whether anyone was watching the window last tick, so the
+	// tick is only changed when that changes.
+	live bool
 	// static is the city under the traffic, composed once and blitted
 	// until the snapshot, the camera, the heading or the view changes.
 	static staticLayer
@@ -355,6 +358,13 @@ func writePNG(path string, img image.Image) error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	if !g.idle() {
+		// Nobody can see this frame. Holding here is what keeps the
+		// rate down: Draw is called once per display refresh, and an
+		// unmapped window has no refresh to wait for.
+		time.Sleep(idleSleep)
+		return
+	}
 	defer g.capture(screen)
 	c := g.scene.City()
 	cam := g.scene.Camera()

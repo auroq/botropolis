@@ -63,15 +63,24 @@ while [[ $# -gt 0 ]]; do
 done
 label="${label:-city}"
 
-command -v Xvfb >/dev/null || { echo "Xvfb is not installed" >&2; exit 1; }
 [[ -x bin/botropolis ]] || { echo "bin/botropolis is missing; run make build" >&2; exit 1; }
 
-Xvfb "${display}" -screen 0 1280x800x24 -nolisten tcp >/dev/null 2>&1 &
-xvfb=$!
+# A display that already answers is used as it is — that is how to get
+# numbers a desktop would recognise, with a real card and a real window
+# manager. Only a display nobody is serving gets an Xvfb of its own, and
+# those numbers are fill rate, not draw calls. See the note above.
+xvfb=""
+if DISPLAY="${display}" xdpyinfo >/dev/null 2>&1; then
+	echo "# using the display already on ${display}" >&2
+else
+	command -v Xvfb >/dev/null || { echo "Xvfb is not installed and ${display} is not running" >&2; exit 1; }
+	Xvfb "${display}" -screen 0 1280x800x24 -nolisten tcp >/dev/null 2>&1 &
+	xvfb=$!
+fi
 cleanup() {
 	[[ -n "${thief:-}" ]] && kill "${thief}" 2>/dev/null || true
 	[[ -n "${city:-}" ]] && kill "${city}" 2>/dev/null || true
-	kill "${xvfb}" 2>/dev/null || true
+	[[ -n "${xvfb}" ]] && kill "${xvfb}" 2>/dev/null || true
 	wait 2>/dev/null || true
 }
 trap cleanup EXIT
