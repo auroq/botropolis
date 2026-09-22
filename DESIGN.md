@@ -362,13 +362,25 @@ Every row carries the frames drawn during the sample, because a cheap app and a 
 | Agent's rig | r156, before phase 18 | — | — | — | — |
 | Agent's rig | item 1 redone | 28.7%, 1200 frames | 0.6%, 0 frames | 231 MB | — |
 | Agent's rig | item 3, frames capped | 20.3%, 600 frames | — | 235 MB | — |
-| Agent's rig | item 3 complete | 18.8%, 600 frames | 0.2%, 0 frames | 208 MB hidden, 236 MB visible | 536 MB |
+| Agent's rig | item 3 complete | 18.8%, 600 frames | 0.2%, 0 frames | 208–236 MB | 536 MB |
+| Aria's desk | item 3 complete | 14.5%, 360 frames | 0.3–0.4%, 0 frames | 212–234 MB | 504 MB |
 
-Aria's desk: 1920×1200, the window 636×1120 under i3's tiling, 8 live sessions and 72 in all, 45-second warm-up.
+Aria's desk: 1920×1200, the window 636×1120 under i3's tiling, 8 live sessions and 72 in all, 40–45-second warm-up.
 The agent's rig: the same machine's `DISPLAY=:0` through a separate daemon, window at Ebitengine's default, 15-second warm-up.
 The two disagree on the visible figure by a third on the same commit — different cities on different glass — and agree on the hidden one to a tenth of a percent.
+
+The frame counts are worth reading as a number in their own right.
+Thirty a second is the tick; eighteen means `city.Scene.Animating` found nothing moving for two frames in five, so the tick had dropped to ten for that share of the sample.
+It gates off far more often on a real desk than the agent's own city suggested, which is to say the tick drop is worth more than the measurement that introduced it credited it with.
+A city with work in it always has something moving; a city mostly parked does not, and that is the common case.
+
+RSS is given as a range because it is not a property of the build.
+An idle app allocates too little to make the collector run, so memory is handed back explicitly when the window goes quiet — but whether that has happened yet by the time a sample is taken is timing.
+One rig saw 236 MB fall to 208 when hidden; the other saw 212 rise to 219 and 224 to 234 across runs.
 A virtual display cannot stand in for either: software rasterising turns everything into fill rate, where one full-screen blit shades as many pixels as the sprites it replaces, and no draw-call saving is visible at all.
 `BOTROPOLIS_FRAMETIME=1` reports what a frame costs the CPU and how often the static layer was reused; that is the hardware-independent signal, and it predicted item 2's cut on real glass to within a percent (3.69 ms to 2.30, −38%, against −37% measured).
+A gate that is hard to exercise by hand is itself worth recording: i3 will not hand focus to the window from a non-interactive shell, so an unfocused window correctly draws nothing and a naive sample reads the hidden figure whatever it meant to measure.
+That is why every row carries its frame count.
 
 Memory: 151 MB of the settled RSS is the atlas on the card — nine 2048-pixel pages — and cannot go without loading it again.
 The start-up peak is `assets.LoadKits` decoding all nine pages before uploading any, so both copies are alive at once; a page at a time would fix the peak itself.
