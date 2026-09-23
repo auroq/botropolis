@@ -17,6 +17,16 @@
 # tried and is worse: the renderer saturates it, the number clips at
 # 100% and an improvement cannot be seen. Confirm absolute numbers on
 # real hardware.
+# On a real desktop, getting the window focused from a script is the
+# hard part, and a sample of an unfocused window is a sample of an app
+# that is not running. On i3 the recipe that works is: name the focused
+# workspace explicitly, because a window launched from a
+# non-interactive shell lands on whatever workspace i3 last used and
+# "move workspace current" resolves against the window's own workspace
+# once it is focused; floating enable, so the tiling is not disturbed;
+# move the pointer into the window, because focus_follows_mouse snaps
+# focus back to wherever it sits; then focus. And reject any sample
+# that drew zero frames — set BOTROPOLIS_FRAMETIME=1 and count them.
 set -euo pipefail
 
 seconds=20

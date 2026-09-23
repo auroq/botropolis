@@ -545,12 +545,13 @@ Two additions to the plan as written:
 
 ### Phase 19 — Info views
 
-0. ~~**The sorted list, cached, with its own ordering guard.**~~ Done 2026-09-22 (r168), carried from phase 18 and moved first at Aria's direction.
-   Each drawable says whether it moves; the still ones — buildings, trees, towers, the landmarks, a steady beacon — compose into a second cached layer, and each mover redraws the still things it passes in front of.
-   The redraw has to **cascade**: painting a building back over a car that drove behind it also paints over the trees at its foot, so anything later that the redraw itself covered comes back too. That was a real bug before the guard caught it, and `TestPaintItems` pins it.
-   A building is two drawables at one depth now, body and life, so the sprite can be cached while the beacon's pulse is not — and the life's geometry is worked out without drawing (`buildingFrame`, `kitRect`), because on most frames the body was painted several frames ago.
-   Measured: CPU-side drawing 2.7 ms a frame to 1.8, about a third, on the instrument that predicted item 2's cut on real glass to within a percent. Aria to re-run the A/B on hardware.
-   **The cost, stated plainly:** every sprite in the list is now composited through a transparent layer, so anti-aliased edges blend twice. Against a frozen fixture with the clock pinned, 29,597 pixels of 3,344,000 differ by more than 12/765 — but 28,989 of those are single-pixel outlines and only 608 are anything else. The map reads the same; its edges are a hair softer.
+0. ~~**The sorted list, cached, with its own ordering guard.**~~ **Reverted 2026-09-23 (r170).** Built, measured, and not worth it — which is what taking it first was for.
+   On Aria's desk it bought 19.8% → 19.5% of a core, about 2%, and cost 29,597 changed pixels of softened edges across the whole map.
+   The fallback was tried before reverting: buildings per-frame, only trees, lamps and landmarks cached. It is *faster* than the full version on the agent's rig (1.35 ms a frame against 1.8, and phase 18's 2.7) because the cascade no longer drags whole buildings and their signage back over the layer — but it still changed 19,218 pixels.
+   Then a third arrangement: one opaque layer instead of two, with the wires and poles inside it and their sparks promoted to movers so a tree still stands in front of one. That removes the transparent-layer compositing entirely and still changed 18,403.
+   **The cost is inherent, not a bug to tune out.** Whenever a mover forces a still thing to be painted again over the layer, that sprite's anti-aliased edge blends a second time. Any arrangement that caches the list has to redraw what movers pass in front of, so any arrangement pays it.
+   Reverted to the phase-18 renderer, which the frozen-fixture frame matches to the pixel. The wire-and-spark split went with it; the profile put the power lines at 0.0% of a frame, so it was not worth keeping on its own.
+   What it bought was the knowledge Aria wanted from doing it first: **the cheap structural win is not there, what is left of the frame is movers, and hiding networks is therefore the lever.** Phase 19 is the performance work.
 
 
 1. `pkg/city` gains a `View` enum and a per-object tint function; `pkg/render` draws the base desaturated and the tint over it. No new data: every view above is already in the snapshot.
