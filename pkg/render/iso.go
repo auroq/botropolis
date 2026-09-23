@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/colorm"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
@@ -58,6 +59,17 @@ func (g *Game) polyStroke(screen *ebiten.Image, cam *city.Camera, r city.Rect, w
 // scaled uniformly.
 func (g *Game) drawSprite(screen *ebiten.Image, img *ebiten.Image, at city.Point, scale float64, tint *ebiten.ColorScale) {
 	if img == nil {
+		return
+	}
+	// A view drains the colour out of everything it has nothing to say
+	// about, and draining colour is a mixing of channels that a scale
+	// cannot do — so those sprites go through a colour matrix instead.
+	if g.viewing() && tint == nil {
+		op := &colorm.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(at.X, at.Y)
+		op.Filter = ebiten.FilterLinear
+		colorm.DrawImage(screen, img, recedeMatrix(), op)
 		return
 	}
 	op := &ebiten.DrawImageOptions{}
@@ -283,6 +295,14 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	switch {
 	case g.scene.Dimmed(b):
 		tint = dimmed()
+	case g.viewing():
+		// In a view the city recedes and only what the view has
+		// something to say about is painted in its colour. Leaving the
+		// tint nil is deliberate: that is what drains a sprite, which a
+		// scale cannot do because draining mixes channels.
+		if c, ok := g.viewTint(b); ok {
+			tint = viewScale(c)
+		}
 	case b.BoardedUp:
 		tint = &ebiten.ColorScale{}
 		tint.SetR(0.7)
@@ -544,7 +564,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	g.mu.Lock()
 	g.frameHits = append(g.frameHits[:0], g.static.hits...)
 	g.mu.Unlock()
-	screen.DrawImage(under, &ebiten.DrawImageOptions{})
+	g.blitBase(screen, under)
 	g.powerLines(screen, c, cam, hover, seconds)
 	var items []drawable
 	if c.Fountain.Area() > 0 {
@@ -586,14 +606,14 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	if c.Plant.Rect.Area() > 0 {
 		items = append(items, drawable{depth: cam.DepthOf(c.Plant.Rect), draw: func() {
-			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, nil, city.Hit{Landmark: city.LandmarkPlant})
+			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, g.scenery(), city.Hit{Landmark: city.LandmarkPlant})
 			g.kit(screen, cam, kitStack, 0, city.Point{X: c.Plant.Rect.Max.X - city.Tile, Y: c.Plant.Rect.Max.Y - city.Tile}, nil)
 		}})
 	}
 	for _, t := range c.Trees {
 		t := t
 		items = append(items, drawable{depth: cam.Depth(t.At), draw: func() {
-			g.isoTree(screen, cam, t, nil)
+			g.isoTree(screen, cam, t, g.scenery())
 		}})
 	}
 	for _, t := range c.Towers {
@@ -616,12 +636,12 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	}
 	if c.Library.Rect.Area() > 0 {
 		items = append(items, drawable{depth: cam.DepthOf(c.Library.Rect), draw: func() {
-			g.isoLandmark(screen, cam, c.Library.Rect, kitLibrary, nil, city.Hit{Landmark: city.LandmarkLibrary})
+			g.isoLandmark(screen, cam, c.Library.Rect, kitLibrary, g.scenery(), city.Hit{Landmark: city.LandmarkLibrary})
 		}})
 	}
 	if c.Hall.Rect.Area() > 0 {
 		items = append(items, drawable{depth: cam.DepthOf(c.Hall.Rect), draw: func() {
-			g.isoLandmark(screen, cam, c.Hall.Rect, kitHall, nil, city.Hit{Landmark: city.LandmarkHall})
+			g.isoLandmark(screen, cam, c.Hall.Rect, kitHall, g.scenery(), city.Hit{Landmark: city.LandmarkHall})
 		}})
 	}
 	sort.SliceStable(items, func(i, j int) bool { return items[i].depth < items[j].depth })

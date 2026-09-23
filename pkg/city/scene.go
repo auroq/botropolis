@@ -103,8 +103,13 @@ type Scene struct {
 	reduced bool
 	// view is the info view the city is drawn in, and generation counts
 	// the snapshots taken, so the renderer can tell one city from the next.
-	view        View
-	generation  int
+	view       View
+	generation int
+	// viewTop is the largest value each ramped view found in the city,
+	// and viewCats the categories each categorical one sorts it into.
+	// Both are worked out once a snapshot and thrown away with it.
+	viewTop     map[View]float64
+	viewCats    map[View][]string
 	log         *events.Log
 	filter      Filter
 	budget      float64
@@ -432,6 +437,7 @@ func (s *Scene) Insets() Insets {
 func (s *Scene) SetSnapshot(snapshot state.Snapshot) {
 	s.snapshot = snapshot
 	s.generation++
+	s.viewTop, s.viewCats = nil, nil
 	s.city = Build(snapshot, s.layout)
 	s.city.Plant.BudgetUSD = s.budget
 	s.noteMerges()

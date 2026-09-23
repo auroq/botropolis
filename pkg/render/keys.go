@@ -139,6 +139,11 @@ func (g *Game) handleKeys() error {
 		g.help = false
 		return nil
 	}
+	if just(ebiten.KeyEscape) && g.scene.View() != city.ViewAttention {
+		// Escape is back before it is quit: leave the view first.
+		g.setView(city.ViewAttention)
+		return nil
+	}
 	if just(ebiten.KeyEscape) || just(ebiten.KeyQ) {
 		g.quit.ask(timeNow())
 		g.SetStatus(quitPrompt)
@@ -146,6 +151,27 @@ func (g *Game) handleKeys() error {
 	}
 	if (just(ebiten.KeySlash) && g.shifted()) || just(ebiten.KeyF1) {
 		g.help = !g.help
+	}
+	// v walks the views; 1 to 9 jump to one; Escape leaves for Attention
+	// before it offers to quit, which is handled above.
+	if just(ebiten.KeyV) {
+		views := city.Views
+		next := views[0]
+		for i, v := range views {
+			if v == g.scene.View() {
+				next = views[(i+1)%len(views)]
+				break
+			}
+		}
+		g.setView(next)
+	}
+	for i, key := range []ebiten.Key{
+		ebiten.KeyDigit1, ebiten.KeyDigit2, ebiten.KeyDigit3, ebiten.KeyDigit4, ebiten.KeyDigit5,
+		ebiten.KeyDigit6, ebiten.KeyDigit7, ebiten.KeyDigit8, ebiten.KeyDigit9,
+	} {
+		if just(key) && i < len(city.Views) {
+			g.setView(city.Views[i])
+		}
 	}
 	if just(ebiten.KeyH) {
 		g.hidden = !g.hidden
