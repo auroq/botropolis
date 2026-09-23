@@ -221,6 +221,8 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		return fmt.Errorf("unknown projection %q: use iso or top", c.config.Projection)
 	}
 	recordDir, recordSeconds := cli.Record(cmd)
+	hoverX, hoverY, hoverSet := cli.Hover(cmd)
+	hoverPoint := city.Point{X: hoverX, Y: hoverY}
 	return render.Run(cmd.Context(), render.Options{
 		Layout:     layout,
 		LayoutPath: layoutPath,
@@ -232,6 +234,8 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		Projection:    projection,
 		Screenshot:    cli.Screenshot(cmd),
 		Keys:          cli.Keys(cmd),
+		Hover:         hoverPoint,
+		HoverSet:      hoverSet,
 		Record:        recordDir,
 		RecordSeconds: recordSeconds,
 		Scale:         c.config.RenderScale,

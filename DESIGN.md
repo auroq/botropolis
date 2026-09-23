@@ -278,6 +278,12 @@ So a categorical view colours the top three kinds and folds everything else into
 "other" is the absence of a category, and giving it a colour would claim the sessions inside it had something in common.
 Thirteen MCP servers were never going to be thirteen colours; Servers is legible because colour carries the top three and the contextual highlight carries the rest.
 
+Contextual highlight is the other half of how a view stays legible, and the half that does not need colour at all.
+Put the pointer on a water tower and the sessions that call that server stay lit while the rest of the city fades.
+That is what makes Servers readable with three colours and thirteen servers: colour carries the top three, and the pointer carries the rest.
+The lit set fades its complement rather than receding it, using the same treatment as search, so "not what you asked about" always looks the same.
+It stays down when there is nothing to tie — a session that calls no servers ties nothing, and fading the map to say so is worse than saying nothing.
+
 The second is that the view has to be subtractive for the palette to be legal at all.
 The state tones already spend amber, blue, teal, violet, slate, red and green.
 Of the 56 ways to pick three of the reference's eight dark slots, 15 clear the all-pairs gates, and every one of them lands within delta E 2.2 of some state tone under deuteranopia.

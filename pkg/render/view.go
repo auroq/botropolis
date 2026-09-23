@@ -77,6 +77,23 @@ func viewScale(c color.NRGBA) *ebiten.ColorScale {
 // when the base recedes.
 func (g *Game) viewing() bool { return g.scene.View().Scale() != city.ScaleNone }
 
+// unlit reports whether the contextual highlight is up and this building
+// is not part of the answer.
+//
+// It fades rather than recedes, and the difference is the point. A view's
+// recede is the city stepping back for as long as the mode is on; the
+// highlight is a transient answer to "what is this tied to", so the
+// things that are not the answer get out of the way harder and come
+// straight back when the pointer moves.
+func (g *Game) unlit(b *city.Building) bool {
+	return g.lit.Active && !g.lit.HasBuilding(b)
+}
+
+// unlitTower is the same question for a tower.
+func (g *Game) unlitTower(t *city.Tower) bool {
+	return g.lit.Active && !g.lit.HasTower(t)
+}
+
 // scenery is the tint for the things a view has nothing to say about.
 // It is nil on purpose: a nil tint under a view is what tells the
 // sprite path to drain the colour out of it, which a scale cannot do.

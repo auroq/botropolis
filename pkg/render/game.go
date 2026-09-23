@@ -65,7 +65,12 @@ type Actor interface {
 }
 
 type Game struct {
-	scene     *city.Scene
+	scene *city.Scene
+	// lit is the contextual highlight for the frame being drawn.
+	lit city.Highlight
+	// hover parks the pointer for a scripted frame; see Options.Hover.
+	hover     city.Point
+	hoverSet  bool
 	actor     Actor
 	theme     ui.Theme
 	faces     *faces
@@ -250,6 +255,9 @@ func (g *Game) Update() error {
 	}
 	x, y := ebiten.CursorPosition()
 	cursor := city.Point{X: float64(x), Y: float64(y)}
+	if g.hoverSet {
+		cursor = g.hover
+	}
 	g.scene.PointerMove(cursor)
 	g.hoverSprites(cursor)
 
@@ -382,6 +390,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	cam := g.scene.Camera()
 	hover := g.scene.Hover()
 	selected := g.scene.Selected()
+	// Worked out once a frame rather than once an object: it walks every
+	// building, and every building asks it.
+	g.lit = g.scene.Highlight()
 	labels := g.labelsVisible()
 	detailed := g.scene.Detailed()
 	bounds := screen.Bounds()

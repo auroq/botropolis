@@ -295,6 +295,8 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	switch {
 	case g.scene.Dimmed(b):
 		tint = dimmed()
+	case g.unlit(b):
+		tint = dimmed()
 	case g.viewing():
 		// In a view the city recedes and only what the view has
 		// something to say about is painted in its colour. Leaving the
@@ -619,7 +621,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	for _, t := range c.Towers {
 		t := t
 		items = append(items, drawable{depth: cam.DepthOf(t.Rect), draw: func() {
-			r := g.kit(screen, cam, kitTower, 0, t.Rect.Center(), towerTint(t, g.viewing()))
+			r := g.kit(screen, cam, kitTower, 0, t.Rect.Center(), towerTint(t, g.viewing(), g.unlitTower(t)))
 			g.noteHit(r, city.Hit{Landmark: city.LandmarkTower, Tower: t})
 			g.towerSign(screen, r, t.Server.Name)
 		}})
@@ -988,7 +990,10 @@ func glow(screen *ebiten.Image, at city.Point, radius float64, col color.NRGBA) 
 // hands over a scale of its own is an object a view can never drain —
 // which is how thirteen bright water towers went on standing over a
 // city that had stepped back.
-func towerTint(t *city.Tower, viewing bool) *ebiten.ColorScale {
+func towerTint(t *city.Tower, viewing, unlit bool) *ebiten.ColorScale {
+	if unlit {
+		return dimmed()
+	}
 	if viewing {
 		return nil
 	}

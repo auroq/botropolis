@@ -33,6 +33,12 @@ type Options struct {
 	// Keys are pressed first, one per frame.
 	Screenshot string
 	Keys       []string
+	// Hover parks the pointer at a window position for a scripted frame,
+	// because --keys cannot move a mouse and some of the map only reacts
+	// to one. HoverSet says whether it was asked for, since 0,0 is a
+	// perfectly good place to point.
+	Hover    city.Point
+	HoverSet bool
 	// Record, when set, writes a frame every tenth of a second into the
 	// directory for RecordSeconds, pressing Keys two seconds apart, then
 	// exits.
@@ -86,6 +92,7 @@ func Run(ctx context.Context, opts Options) error {
 	game.kits = kitSprites
 	game.screenshot = opts.Screenshot
 	game.script = opts.Keys
+	game.hover, game.hoverSet = opts.Hover, opts.HoverSet
 	game.record = opts.Record
 	game.recordFrames = int(opts.RecordSeconds * 30)
 	game.reduced = opts.ReducedMotion

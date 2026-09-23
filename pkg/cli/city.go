@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -67,6 +70,35 @@ func Headless(cmd *cobra.Command) bool {
 	return headless
 }
 
+// HoverFlag names the flag that parks the pointer at a screen position
+// for a scripted frame. Some of what the city does only happens under
+// the pointer — the contextual highlight most of all — and --keys cannot
+// move a mouse, so without this those frames cannot be shot headless at
+// all.
+const HoverFlag = "hover"
+
+func AddHoverFlag(flags *pflag.FlagSet) {
+	flags.String(HoverFlag, "", "park the pointer at X,Y in window pixels for the screenshot")
+}
+
+// Hover is the point given with --hover, and whether one was given.
+func Hover(cmd *cobra.Command) (x, y float64, ok bool) {
+	raw, _ := cmd.Flags().GetString(HoverFlag)
+	if raw == "" {
+		return 0, 0, false
+	}
+	parts := strings.SplitN(raw, ",", 2)
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	x, errX := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+	y, errY := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+	if errX != nil || errY != nil {
+		return 0, 0, false
+	}
+	return x, y, true
+}
+
 // Keys is the list given with --keys, in order.
 func Keys(cmd *cobra.Command) []string {
 	keys, _ := cmd.Flags().GetStringSlice(KeysFlag)
@@ -90,5 +122,6 @@ func NewCityCLI(load Loader, services CityServices) *cobra.Command {
 	AddKeysFlag(cmd.Flags())
 	AddRecordFlags(cmd.Flags())
 	AddHeadlessFlag(cmd.Flags())
+	AddHoverFlag(cmd.Flags())
 	return cmd
 }
