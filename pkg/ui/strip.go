@@ -121,3 +121,26 @@ func (s Strip) Hit(at city.Point) (Chip, bool) {
 	}
 	return Chip{}, false
 }
+
+// Drained is the strip with its state tones taken off, which is what a
+// view does to it.
+//
+// This is not decoration. The state palette spends amber, blue, teal,
+// violet, slate, red and green, and a view's own palette cannot stay
+// clear of all seven — the closest any validated three gets is delta E
+// 2.2 under deuteranopia, and the sequential ramp passes within 0.3 of
+// the waiting teal. So the promise that one colour means one thing is
+// kept by the mode rather than by the palette: while a view is up the
+// tones are not on screen, and the only colour is the view's.
+//
+// The counts and their jumps stay. Who wants you is still the question a
+// glance asks, and clicking a count to reach the next session is
+// navigation, not colour.
+func Drained(chips []Chip) []Chip {
+	out := make([]Chip, len(chips))
+	for i, c := range chips {
+		c.Tone = ToneNone
+		out[i] = c
+	}
+	return out
+}

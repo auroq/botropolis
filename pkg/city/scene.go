@@ -120,7 +120,13 @@ type Scene struct {
 const CelebrateFor = 2500 * time.Millisecond
 
 func NewScene(layout *Layout) *Scene {
-	return &Scene{layout: layout, camera: NewCamera(), city: &City{}, now: time.Now, location: time.Local, log: events.NewLog()}
+	s := &Scene{layout: layout, camera: NewCamera(), city: &City{}, now: time.Now, location: time.Local, log: events.NewLog()}
+	if layout != nil {
+		// An unknown name opens on Attention rather than refusing to
+		// start: the view is a preference, not data anyone can lose.
+		s.view, _ = ViewByName(layout.View)
+	}
+	return s
 }
 
 // SetClock replaces the wall clock and its zone, for tests and for a

@@ -19,9 +19,10 @@ func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
 	status := g.notice.Text(timeNow())
 	g.mu.Unlock()
 	footer := ui.LayoutFooter(th, width, height, status, footerKeys, g.faces.Measure)
+	legend := ui.LayoutLegend(th, width, footer.Rect.Min.Y, g.scene.Legend(), g.faces.Measure)
 	top := g.strip(screen, width)
 	g.scene.SetTopChrome(top)
-	bottom := footer.KeyRow.Height()
+	bottom := footer.KeyRow.Height() + legend.Rect.Height()
 	g.scene.SetBottomChrome(bottom)
 	if box, ok := ui.LayoutMinimap(th, width, height, bottom); ok {
 		g.minimap(screen, box)
@@ -53,6 +54,7 @@ func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
 	}
 	g.drawSearch(screen, top, width)
 	g.footer(screen, footer)
+	g.legend(screen, legend)
 }
 
 // buildingOnScreen is the screen rect a building's footprint covers, in

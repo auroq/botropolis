@@ -84,7 +84,11 @@ func (g *Game) scenery() *ebiten.ColorScale { return nil }
 
 // setView changes the view and says which one it is, because a mode you
 // entered is a mode you can forget you are in.
+//
+// The status is the announcement, not the legend: it names the view and
+// the question it answers and then gets out of the way. What the colours
+// are worth stays on screen for as long as the view does, a row lower.
 func (g *Game) setView(v city.View) {
 	g.scene.SetView(v)
-	g.SetStatus(v.Name() + " — " + g.scene.Legend())
+	g.SetStatus(v.Name() + " — " + v.Question())
 }

@@ -36,6 +36,9 @@ type Layout struct {
 	// Seen is the last moment the window was open and focused; the
 	// away list on the next start covers everything after it.
 	Seen time.Time `json:"seen,omitzero"`
+	// View is the info view the window was last in, by name rather than
+	// by number so reordering the views cannot silently change it.
+	View string `json:"view,omitempty"`
 }
 
 func NewLayout() *Layout {

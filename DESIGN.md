@@ -254,6 +254,20 @@ OKLCH lightness band and chroma floor, OKLab delta E under a Machado-Oliveira-Fe
 `pkg/ui`'s palette tests apply the same metrics in Go, so the tool and the tests cannot drift.
 The metric matters more than it looks: the first version of those tests measured euclidean distance in sRGB, which is not perceptually uniform, and passed a palette containing a pair full-colour readers could not separate.
 
+The legend is a row of its own above the key row, drawn for as long as the view is up.
+A status line that fades takes the view's meaning with it, so the legend is not one:
+a ramp view draws the ramp with both ends written out, a categorical view a swatch per category.
+`Scene.Legend` returns a structure rather than a sentence because the chrome draws colour, not text.
+When no view is up it has no height, so entering and leaving a view never moves the map.
+The view itself is remembered in `layout.json` by name rather than by number, so reordering the views cannot silently change what a saved layout means.
+
+While a view is up the strip gives its state tones back and keeps only the counts.
+That is the same correctness requirement, not a flourish: the tones have to be off the screen for the view's palette to be legal at all.
+
+Anything that hands the sprite path a tint of its own is invisible to all of this.
+The recede happens where the tint is nil, so a sprite that always supplies a `ColorScale` — the water towers, which carry their server's call count — never receded at all, and stood over a city that had stepped back.
+It is a class of bug rather than one bug: the 16 px top-down projection has the same shape and has not been checked.
+
 Two things the validator established that the eye did not.
 
 The first is the cap.

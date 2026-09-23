@@ -15,7 +15,11 @@ import (
 // returns how tall it was; it keeps the layout so a click can find a chip.
 func (g *Game) strip(screen *ebiten.Image, width float64) float64 {
 	th := g.theme
-	strip := ui.LayoutStrip(th, ui.StripChips(g.scene.City().Summary()), width, g.faces.Measure)
+	chips := ui.StripChips(g.scene.City().Summary())
+	if g.viewing() {
+		chips = ui.Drained(chips)
+	}
+	strip := ui.LayoutStrip(th, chips, width, g.faces.Measure)
 	g.bar(screen, city.RectAt(0, 0, width, strip.Height), strip.Height)
 	for _, chip := range strip.Chips {
 		if chip.Tone != ui.ToneNone {

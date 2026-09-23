@@ -243,3 +243,31 @@ func TestLayoutStrip(t *testing.T) {
 		})
 	})
 }
+
+func TestDrained(t *testing.T) {
+	t.Run("when a view is up and the strip has to give the tones back", func(t *testing.T) {
+		summary := city.Summary{NeedsYou: 3, Working: 1, Parked: 2, MCPCalls: 9, PRs: 3, Errors: 1}
+		before := ui.StripChips(summary)
+		after := ui.Drained(before)
+
+		t.Run("it should leave no state tone anywhere on the strip", func(t *testing.T) {
+			for _, c := range after {
+				require.Equal(t, ui.ToneNone, c.Tone, c.Text)
+			}
+		})
+
+		t.Run("it should keep every chip, because the counts still answer the question", func(t *testing.T) {
+			assert.Equal(t, chipTexts(before), chipTexts(after))
+		})
+
+		t.Run("it should keep the jumps, because navigation is not colour", func(t *testing.T) {
+			chip, ok := findChip(after, "3 need you")
+			require.True(t, ok)
+			assert.Equal(t, state.NeedsYou, chip.State)
+		})
+
+		t.Run("it should not disturb the row it was given", func(t *testing.T) {
+			assert.Equal(t, ui.ToneNeedsYou, before[0].Tone)
+		})
+	})
+}

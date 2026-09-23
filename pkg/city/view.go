@@ -3,7 +3,6 @@ package city
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/auroq/botropolis/pkg/state"
@@ -39,6 +38,18 @@ const (
 var Views = []View{
 	ViewAttention, ViewSpend, ViewPressure, ViewStaleness,
 	ViewServers, ViewTraffic, ViewModels, ViewFanout, ViewHealth,
+}
+
+// ViewByName is the view that answers to a name, for reading one back
+// out of the layout. A name this build does not know is not an error
+// worth refusing to start over.
+func ViewByName(name string) (View, bool) {
+	for _, v := range Views {
+		if v.Name() == name {
+			return v, true
+		}
+	}
+	return ViewAttention, false
 }
 
 // Name is the view's own name, for the strip and the legend.
@@ -151,7 +162,8 @@ const StalenessCap = 4 * time.Hour
 // View is the info view the city is drawn in.
 func (s *Scene) View() View { return s.view }
 
-// SetView changes it, and forgets what the last view had worked out.
+// SetView changes it, forgets what the last view had worked out, and
+// remembers the new one so the next run opens where this one left off.
 func (s *Scene) SetView(v View) {
 	if v == s.view {
 		return
@@ -159,6 +171,9 @@ func (s *Scene) SetView(v View) {
 	s.view = v
 	s.viewTop = nil
 	s.viewCats = nil
+	if s.layout != nil {
+		s.layout.View = v.Name()
+	}
 }
 
 // Generation counts the snapshots the scene has taken. It is the
@@ -320,21 +335,39 @@ func (s *Scene) Tint(b *Building) Tint {
 	return Tint{}
 }
 
-// Legend is the line under the view's name: what the ramp's far end
-// means, or which categories are on the map.
-func (s *Scene) Legend() string {
+// Legend is what the view has to explain about its own colouring: a
+// ramp's two ends, or the categories on the map in the order their
+// colours go out.
+//
+// It is structured rather than a sentence because the chrome draws
+// swatches and a gradient bar, not a status line. A view whose legend is
+// not on screen is not shippable — a colour that means a number means
+// nothing without the number beside it.
+type Legend struct {
+	// Shown is false for Attention, which colours nothing of its own and
+	// so has nothing to explain.
+	Shown bool
+	Title string
+	// Ramp says which shape the legend takes: a gradient between Low and
+	// High, or the list in Categories.
+	Ramp       bool
+	Low, High  string
+	Categories []string
+}
+
+// Legend is the current view's.
+func (s *Scene) Legend() Legend {
 	v := s.view
+	l := Legend{Shown: true, Title: v.Name()}
 	switch v.Scale() {
 	case ScaleRamp:
-		return "0 — " + s.legendTop(v)
+		l.Ramp, l.Low, l.High = true, "0", s.legendTop(v)
 	case ScaleCategory:
-		names := s.categories(v)
-		if len(names) == 0 {
-			return "nothing to show"
-		}
-		return strings.Join(names, "  ")
+		l.Categories = s.categories(v)
+	default:
+		l.Shown = false
 	}
-	return v.Question()
+	return l
 }
 
 func (s *Scene) legendTop(v View) string {

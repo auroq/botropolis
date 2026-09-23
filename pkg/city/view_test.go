@@ -167,7 +167,19 @@ func TestLegend(t *testing.T) {
 		s := viewed(t, city.ViewSpend, rich)
 
 		t.Run("it should say what the far end is worth", func(t *testing.T) {
-			assert.Contains(t, s.Legend(), "$12.50")
+			assert.Equal(t, "$12.50", s.Legend().High)
+		})
+
+		t.Run("it should start where the ramp starts", func(t *testing.T) {
+			assert.Equal(t, "0", s.Legend().Low)
+		})
+
+		t.Run("it should offer a bar rather than a list", func(t *testing.T) {
+			assert.True(t, s.Legend().Ramp)
+		})
+
+		t.Run("it should name no categories", func(t *testing.T) {
+			assert.Empty(t, s.Legend().Categories)
 		})
 	})
 
@@ -176,8 +188,20 @@ func TestLegend(t *testing.T) {
 		a.Model = "claude-opus-5"
 		s := viewed(t, city.ViewModels, a)
 
-		t.Run("it should name the categories", func(t *testing.T) {
-			assert.Contains(t, s.Legend(), "claude-opus-5")
+		t.Run("it should name the categories in the order the colours go out", func(t *testing.T) {
+			assert.Equal(t, []string{"claude-opus-5"}, s.Legend().Categories)
+		})
+
+		t.Run("it should offer a list rather than a bar", func(t *testing.T) {
+			assert.False(t, s.Legend().Ramp)
+		})
+	})
+
+	t.Run("when any view is on", func(t *testing.T) {
+		s := viewed(t, city.ViewSpend)
+
+		t.Run("it should carry the view's name, so the legend says what it is reading", func(t *testing.T) {
+			assert.Equal(t, "spend", s.Legend().Title)
 		})
 	})
 
@@ -197,7 +221,15 @@ func TestLegend(t *testing.T) {
 		s := viewed(t, city.ViewSpend)
 
 		t.Run("it should still answer rather than divide by nothing", func(t *testing.T) {
-			assert.NotEmpty(t, s.Legend())
+			assert.NotEmpty(t, s.Legend().High)
+		})
+	})
+
+	t.Run("when attention is on, which colours nothing", func(t *testing.T) {
+		s := viewed(t, city.ViewAttention)
+
+		t.Run("it should have nothing to explain", func(t *testing.T) {
+			assert.False(t, s.Legend().Shown)
 		})
 	})
 }
@@ -244,6 +276,55 @@ func TestCategoryCap(t *testing.T) {
 
 		t.Run("it should paint that category the neutral rather than a second-hand hue", func(t *testing.T) {
 			assert.Equal(t, ui.Uncategorised, ui.Category(s.Tint(buildingOf(t, s, "e")).Category))
+		})
+	})
+}
+
+func TestViewByName(t *testing.T) {
+	t.Run("when a view's own name is looked up", func(t *testing.T) {
+		t.Run("it should give back the view that answers to it", func(t *testing.T) {
+			for _, v := range city.Views {
+				got, ok := city.ViewByName(v.Name())
+				require.True(t, ok, v.Name())
+				require.Equal(t, v, got, v.Name())
+			}
+		})
+	})
+
+	t.Run("when a name belongs to no view", func(t *testing.T) {
+		t.Run("it should say so rather than guess", func(t *testing.T) {
+			_, ok := city.ViewByName("weather")
+			assert.False(t, ok)
+		})
+	})
+}
+
+func TestTheViewIsRemembered(t *testing.T) {
+	t.Run("when a view is chosen", func(t *testing.T) {
+		s := viewed(t, city.ViewSpend)
+
+		t.Run("it should be written into the layout, so the next run opens where you left off", func(t *testing.T) {
+			assert.Equal(t, "spend", s.Layout().View)
+		})
+	})
+
+	t.Run("when a layout remembers a view", func(t *testing.T) {
+		l := city.NewLayout()
+		l.View = "pressure"
+		s := city.NewScene(l)
+
+		t.Run("it should start in it", func(t *testing.T) {
+			assert.Equal(t, city.ViewPressure, s.View())
+		})
+	})
+
+	t.Run("when a layout names a view this build no longer has", func(t *testing.T) {
+		l := city.NewLayout()
+		l.View = "weather"
+		s := city.NewScene(l)
+
+		t.Run("it should open on attention rather than refuse to start", func(t *testing.T) {
+			assert.Equal(t, city.ViewAttention, s.View())
 		})
 	})
 }

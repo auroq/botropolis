@@ -619,17 +619,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	for _, t := range c.Towers {
 		t := t
 		items = append(items, drawable{depth: cam.DepthOf(t.Rect), draw: func() {
-			tint := &ebiten.ColorScale{}
-			if t.Server.Calls == 0 {
-				tint.SetR(0.6)
-				tint.SetG(0.6)
-				tint.SetB(0.65)
-			} else {
-				tint.SetR(0.7)
-				tint.SetG(1)
-				tint.SetB(0.95)
-			}
-			r := g.kit(screen, cam, kitTower, 0, t.Rect.Center(), tint)
+			r := g.kit(screen, cam, kitTower, 0, t.Rect.Center(), towerTint(t, g.viewing()))
 			g.noteHit(r, city.Hit{Landmark: city.LandmarkTower, Tower: t})
 			g.towerSign(screen, r, t.Server.Name)
 		}})
@@ -988,4 +978,29 @@ func glow(screen *ebiten.Image, at city.Point, radius float64, col color.NRGBA) 
 	op := &vector.DrawPathOptions{AntiAlias: true, Blend: ebiten.BlendLighter}
 	op.ColorScale.ScaleWithColor(col)
 	vector.FillPath(screen, &path, nil, op)
+}
+
+// towerTint is the colour a tower carries for its own reasons: warm when
+// something is calling that server, cold when nothing is.
+//
+// Under a view it carries none. A view is subtractive, and the recede
+// happens on the nil-tint path in drawSprite, so an object that always
+// hands over a scale of its own is an object a view can never drain —
+// which is how thirteen bright water towers went on standing over a
+// city that had stepped back.
+func towerTint(t *city.Tower, viewing bool) *ebiten.ColorScale {
+	if viewing {
+		return nil
+	}
+	tint := &ebiten.ColorScale{}
+	if t.Server.Calls == 0 {
+		tint.SetR(0.6)
+		tint.SetG(0.6)
+		tint.SetB(0.65)
+	} else {
+		tint.SetR(0.7)
+		tint.SetG(1)
+		tint.SetB(0.95)
+	}
+	return tint
 }
