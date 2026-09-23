@@ -1,6 +1,7 @@
 package city_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/state"
+	"github.com/auroq/botropolis/pkg/ui"
 )
 
 func viewed(t *testing.T, v city.View, sessions ...state.Session) *city.Scene {
@@ -212,4 +214,36 @@ func TestStalenessUsesTheClock(t *testing.T) {
 	})
 
 	_ = time.Second
+}
+
+func TestCategoryCap(t *testing.T) {
+	t.Run("when the palette is asked how many kinds it can carry", func(t *testing.T) {
+		t.Run("it should never be asked for more colours than it has", func(t *testing.T) {
+			assert.LessOrEqual(t, city.MaxCategories, len(ui.Categorical))
+		})
+	})
+
+	t.Run("when more models are running than the map can colour", func(t *testing.T) {
+		// Five kinds, one session each, so the counts tie and the order is
+		// alphabetical: the first three earn a colour and the rest do not.
+		var sessions []state.Session
+		for i, cwd := range []string{cinders, botropolis, "/tmp/c", "/tmp/d", "/tmp/e"} {
+			sess := session(string(rune('a'+i)), cwd, state.Working)
+			sess.Model = fmt.Sprintf("model-%d", i)
+			sessions = append(sessions, sess)
+		}
+		s := viewed(t, city.ViewModels, sessions...)
+
+		t.Run("it should colour the three it can and fold the rest into one", func(t *testing.T) {
+			assert.Equal(t, []string{"model-0", "model-1", "model-2", city.OtherCategory}, s.Categories(city.ViewModels))
+		})
+
+		t.Run("it should put a folded session in the other category", func(t *testing.T) {
+			assert.Equal(t, city.MaxCategories, s.Tint(buildingOf(t, s, "e")).Category)
+		})
+
+		t.Run("it should paint that category the neutral rather than a second-hand hue", func(t *testing.T) {
+			assert.Equal(t, ui.Uncategorised, ui.Category(s.Tint(buildingOf(t, s, "e")).Category))
+		})
+	})
 }

@@ -28,11 +28,11 @@ import (
 //  4. The categorical palette is distinct from both the state tones and
 //     the ramps.
 //
-// Note for whoever reads this next: these were chosen without the
-// dataviz palette reference, which was not installed in the session
-// that wrote them. They follow the rules above and the usual sources
-// for colourblind-safe scales, but they are a proposal rather than a
-// citation, and are in one file so they can be replaced in one edit.
+// Everything here is checked rather than asserted. pkg/ui's palette
+// tests apply the same metrics as tools/validate-palette.py — OKLab
+// delta E under a Machado-Oliveira-Fernandes simulation, the OKLCH
+// lightness band and chroma floor — so a palette that passes the tool
+// passes the tests, and neither can drift from the other.
 
 // Ramp is a sequential scale: a value from 0 to 1 becomes a colour.
 type Ramp []color.NRGBA
@@ -77,31 +77,54 @@ func mix(a, b color.NRGBA, t float64) color.NRGBA {
 }
 
 // Categorical is what the views that sort into kinds use — which model,
-// which server. Six hues chosen to stay apart from each other, from the
-// state tones and from the sequential ramp, and to still hold apart
-// when simulated through deuteranopia and protanopia, where the closest
-// pair is 51 apart on a 0–441 scale.
+// which server. These are the first three dark slots of the dataviz
+// reference palette: blue, orange, aqua.
 //
-// Six and not more, deliberately. The state palette already occupies
-// amber, blue, teal, violet, slate, red and green, which leaves little
-// room, and a scale that needs a seventh colour is a scale colour
-// cannot carry. Anything past the sixth kind is folded into one "other"
-// by city.Scene rather than handed a colour that lies.
+// Three, and that is not a budget but a measurement. The reference's own
+// validated eight-hue palette passes six slots on the adjacent pairlist
+// — bars and lines, where only neighbours touch — and fails at four on
+// all pairs. A map is an all-pairs surface: any two districts can sit
+// side by side, so every pair has to hold. On the dark surface three
+// pass and four do not. Anything past the third kind is folded into one
+// "other" by city.Scene rather than handed a colour that lies.
+//
+// Condition 4 above is met as far as colour can meet it, and no further.
+// Of the 56 ways to pick three of the reference's eight, 15 clear the
+// all-pairs gates, and every one of them has a slot within delta E 2.2
+// of some state tone under deuteranopia: seven tones and three
+// categories do not both fit in the space. These three are on that
+// frontier — best-in-class separation between themselves (normal 20.9,
+// CVD 9.4) at the same 2.2. So the tones are kept off the screen rather
+// than out of the palette: a view is subtractive, and the strip recedes
+// with the rest of the city, which is what stops #3987e5 on the map ever
+// sitting beside unattended violet in the chrome.
 var Categorical = []color.NRGBA{
-	{0x3a, 0xd8, 0xe8, 0xff},
-	{0xe8, 0xd0, 0x90, 0xff},
-	{0x4a, 0x4a, 0xf0, 0xff},
-	{0xc8, 0xe0, 0x3a, 0xff},
-	{0xd0, 0xf0, 0xff, 0xff},
-	{0x9a, 0xf0, 0xc0, 0xff},
+	{0x39, 0x87, 0xe5, 0xff},
+	{0xd9, 0x59, 0x26, 0xff},
+	{0x19, 0x9e, 0x70, 0xff},
 }
 
-// Category is the colour handed to the nth kind.
+// Uncategorised is what "other" is painted in: everything the palette
+// has no colour left for, folded into one.
+//
+// It is deliberately a neutral rather than a fourth hue. "Other" is not
+// a category — it is the absence of one — and painting it a colour would
+// claim the eleven servers inside it have something in common. It sits
+// outside the lightness band and under the chroma floor on purpose: both
+// gates exist to make a hue readable as a hue, and this is not one. What
+// it does have to clear is the three, which it does by delta E 22.6 for
+// a full-colour reader and 15.7 under the commonest deficiencies, and
+// the receded ground, which it clears at 2.6:1.
+var Uncategorised = color.NRGBA{0xc3, 0xc2, 0xb7, 0xff}
+
+// Category is the colour handed to the nth kind. Past the last one it is
+// the neutral, not a repeat: two kinds sharing a hue is the failure the
+// cap exists to prevent, so running off the end must not wrap.
 func Category(n int) color.NRGBA {
-	if n < 0 {
-		n = 0
+	if n < 0 || n >= len(Categorical) {
+		return Uncategorised
 	}
-	return Categorical[n%len(Categorical)]
+	return Categorical[n]
 }
 
 // Recede is how much of its colour the base city keeps while a view is

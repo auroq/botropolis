@@ -237,6 +237,40 @@ and writes the one key back through `config.Save`, which never spells out defaul
 The acceptance test shoots the sample city at 1× and 2× with no daemon and checks the frame doubles,
 the first strip dot is a state tone at both scales, and the bars are dark with ground between them.
 
+## Info views
+
+A view is subtractive: it shows one network and takes the rest away.
+The city behind it recedes — `colorm.ChangeHSV(0, 0.18, 0.75)` drains most of its saturation and a little of its value — and only the objects the view is about keep their colour.
+
+Draining colour needs `colorm`, not `ebiten.ColorScale`.
+A `ColorScale` multiplies each channel independently, so it can only ever darken;
+it cannot move a colour toward grey, because that means mixing channels.
+The first attempt at receding the city used one and looked like nothing had happened at all.
+Worth knowing before reaching for the cheaper-looking API.
+
+Colour is validated, not asserted.
+`tools/validate-palette.py` is the dataviz reference's own validator, vendored so the palettes can be checked here rather than by hand:
+OKLCH lightness band and chroma floor, OKLab delta E under a Machado-Oliveira-Fernandes severity-1.0 simulation, and WCAG contrast against the surface.
+`pkg/ui`'s palette tests apply the same metrics in Go, so the tool and the tests cannot drift.
+The metric matters more than it looks: the first version of those tests measured euclidean distance in sRGB, which is not perceptually uniform, and passed a palette containing a pair full-colour readers could not separate.
+
+Two things the validator established that the eye did not.
+
+The first is the cap.
+A legend is an adjacent-pairs surface — in bars and lines only neighbours touch — and the reference's validated eight-hue palette carries six that way.
+A map is an all-pairs surface, because any two districts can sit side by side, and the same palette fails at four.
+Three pass on the dark ground.
+So a categorical view colours the top three kinds and folds everything else into one "other", painted a neutral rather than a fourth hue:
+"other" is the absence of a category, and giving it a colour would claim the sessions inside it had something in common.
+Thirteen MCP servers were never going to be thirteen colours; Servers is legible because colour carries the top three and the contextual highlight carries the rest.
+
+The second is that the view has to be subtractive for the palette to be legal at all.
+The state tones already spend amber, blue, teal, violet, slate, red and green.
+Of the 56 ways to pick three of the reference's eight dark slots, 15 clear the all-pairs gates, and every one of them lands within delta E 2.2 of some state tone under deuteranopia.
+The sequential ramp is no better placed: it passes within 11.1 of the error red for a full-colour reader and within 0.3 of the waiting teal under deuteranopia.
+Seven tones and a view palette do not both fit in the space.
+That makes "the chrome recedes with the city" a correctness requirement rather than a polish item — the tones are kept off the screen rather than out of the palette.
+
 ## City plan
 
 Phase 8 of the roadmap, 2026-09-18.

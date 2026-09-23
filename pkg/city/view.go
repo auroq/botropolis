@@ -125,12 +125,22 @@ type Tint struct {
 
 // MaxCategories is how many kinds a categorical view hands a colour to
 // before folding the rest together. It is a property of what colour can
-// carry, not of the data: the state palette already spends most of the
-// hue space, and a seventh colour told apart from the other six, from
-// the state tones and from the ramp does not exist.
-const MaxCategories = 6
+// carry on a map, and it was measured rather than chosen.
+//
+// A legend is an adjacent-pairs surface: in a bar chart or a line chart
+// only neighbours touch, and the dataviz reference's validated eight-hue
+// palette carries six that way. A map is an all-pairs surface — any two
+// districts can sit side by side — and the same palette fails at four.
+// Three pass on the dark ground and four do not, so three is where the
+// evidence puts it. Everything past the third kind is folded into one
+// "other" rather than handed a colour a reader cannot separate.
+//
+// Thirteen MCP servers were never going to be thirteen colours. Servers
+// is legible because colour carries the top three and the contextual
+// highlight carries the rest.
+const MaxCategories = 3
 
-// OtherCategory is what everything past the sixth kind is called.
+// OtherCategory is what everything past the third kind is called.
 const OtherCategory = "other"
 
 // StalenessCap is how long a session has to have been quiet to reach
