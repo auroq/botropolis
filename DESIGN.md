@@ -386,6 +386,23 @@ Memory: 151 MB of the settled RSS is the atlas on the card — nine 2048-pixel p
 The start-up peak is `assets.LoadKits` decoding all nine pages before uploading any, so both copies are alive at once; a page at a time would fix the peak itself.
 An idle app allocates too little to make the collector run, so memory is handed back explicitly when the window goes quiet and after the atlas upload.
 
+### Why the sorted list is not cached
+
+Tried and reverted, 2026-09-22 (`2b4976c`, reverted in `3b7af45`).
+The static city is composed once and reused; the sorted list of buildings, landmarks, trees, lamps and movers is not, and that is deliberate.
+
+Caching it means a mover must redraw whatever still thing it passes in front of, or a car is painted over the building it is driving behind.
+Redrawing that sprite over the cached layer blends its anti-aliased edge a second time, so a hair of softness spreads across the map.
+Three arrangements were measured and all three pay it: the full version changed 29,597 pixels of 3,344,000, the fallback that leaves buildings per-frame changed 19,218, and a version with no transparent layer at all changed 18,403.
+The cost is inherent to caching a list something else has to draw over, not a bug to tune out.
+
+What it buys does not cover that.
+On the author's rig the full version took 2.7 ms/frame to 1.8; on Aria's desk, with eight live and seventy parked sessions, the same instrument read 2.62 to 2.45 and process CPU moved 19.8% to 19.5% — about two points of a core.
+The win scales with how much of a frame is static, and on a real city what remains is movers: cars, trains, drones, workers, sparks.
+
+The conclusion that matters is the one that followed: if what is left is movers, then **hiding networks is the lever**, and the info views of roadmap phase 19 are the performance work rather than a feature resting on it.
+
+
 ## Open questions
 
 All settled; the decisions are in [ROADMAP.md](ROADMAP.md) §5 and §3.
