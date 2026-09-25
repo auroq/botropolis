@@ -8,6 +8,7 @@ import (
 
 	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/format"
+	"github.com/auroq/botropolis/pkg/plan"
 	"github.com/auroq/botropolis/pkg/state"
 )
 
@@ -170,8 +171,15 @@ func (c *City) placeLandmarks(snapshot state.Snapshot) {
 	}
 	pad := Tile
 	plaza := c.Plaza
+	// Each civic building stands on the plot the plan reserved for it,
+	// rather than being measured off the plaza a second time. The plan
+	// is what keeps the planting off this ground, so the planting and
+	// the building have to be reading the same reservation or they are
+	// two opinions again.
+	plots := c.plan.Plots
 	c.Plant = Plant{Power: snapshot.Power}
-	c.Plant.Rect = RectAt(plaza.Min.X+pad, plaza.Min.Y+pad, PlantWidth, PlantHeight)
+	c.Plant.Rect = plotRect(plots.Plant, plaza, pad, PlantWidth, PlantHeight,
+		RectAt(plaza.Min.X+pad, plaza.Min.Y+pad, PlantWidth, PlantHeight))
 
 	c.Towers = nil
 	for i, server := range snapshot.Servers {
@@ -186,12 +194,14 @@ func (c *City) placeLandmarks(snapshot state.Snapshot) {
 	}
 
 	c.Library = Library{Skills: snapshot.Skills}
-	c.Library.Rect = RectAt(plaza.Min.X+pad, plaza.Max.Y-pad-LibraryHeight, LibraryWidth, LibraryHeight)
+	c.Library.Rect = plotRect(plots.Library, plaza, pad, LibraryWidth, LibraryHeight,
+		RectAt(plaza.Min.X+pad, plaza.Max.Y-pad-LibraryHeight, LibraryWidth, LibraryHeight))
 
 	c.Hall = Hall{}
 	if snapshot.Stats != nil {
 		c.Hall.Stats = *snapshot.Stats
-		c.Hall.Rect = RectAt(plaza.Max.X-pad-HallWidth, plaza.Min.Y+pad, HallWidth, HallHeight)
+		c.Hall.Rect = plotRect(plots.Hall, plaza, pad, HallWidth, HallHeight,
+			RectAt(plaza.Max.X-pad-HallWidth, plaza.Min.Y+pad, HallWidth, HallHeight))
 	}
 }
 
@@ -337,4 +347,19 @@ func plural(n int, noun string) string {
 		return fmt.Sprintf("%d %s", n, noun)
 	}
 	return fmt.Sprintf("%d %ss", n, noun)
+}
+
+// plotRect centres a landmark of w by h on the plot the plan reserved,
+// padded off its edges, and falls back to the given rect when the plaza
+// was too small for the plan to reserve anything.
+func plotRect(plot plan.Block, plaza Rect, pad, w, h float64, fallback Rect) Rect {
+	if plot.Cols == 0 || plot.Rows == 0 {
+		return fallback
+	}
+	area := Rect{
+		Min: Point{X: float64(plot.Min.Col) * CellSize, Y: float64(plot.Min.Row) * CellSize},
+	}
+	area.Max = Point{X: area.Min.X + float64(plot.Cols)*CellSize, Y: area.Min.Y + float64(plot.Rows)*CellSize}
+	area = area.Inset(pad)
+	return RectAt(area.Min.X+(area.Width()-w)/2, area.Min.Y+(area.Height()-h)/2, w, h)
 }

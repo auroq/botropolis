@@ -270,6 +270,13 @@ func (g *Game) Update() error {
 	if _, wheel := ebiten.Wheel(); wheel != 0 {
 		g.scene.Wheel(cursor, wheel)
 	}
+	// The split between press and release is load-bearing, and it is
+	// luck rather than design, so it is written down before someone
+	// spends it. Card buttons are hit on press and the selection is made
+	// on release, which is the only reason a single click cannot press a
+	// button on the card it just raised — and that card carries stop two
+	// along from attach. Move either to the other event and a click
+	// becomes able to stop a session.
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		if !g.clickViewKey(cursor) && !g.clickTimeline(cursor) && !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
 			g.dragging, g.dragFrom = true, cursor

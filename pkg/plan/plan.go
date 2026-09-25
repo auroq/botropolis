@@ -189,9 +189,41 @@ type RiverCell struct {
 }
 
 // Plan is the city laid out.
+// Plots are the plaza's reserved corners: the ground the civic
+// buildings stand on.
+//
+// They belong to the plan because the plan is what decides where
+// anything goes, and because decoration cannot keep off what it does not
+// know about. The plaza used to have two deciders and no referee — the
+// plan planted a bush or a planter on every cell of the rim, and the
+// city dropped the plant, the hall and the library onto the same plaza
+// afterwards, computed from the plaza's own rectangle. Nothing made the
+// two agree, so planters grew out of the concrete and a bush floated
+// beside the cooling tower.
+type Plots struct {
+	Plant   Block
+	Hall    Block
+	Library Block
+}
+
+// All is the three plots, for asking whether a cell is spoken for.
+func (p Plots) All() []Block { return []Block{p.Plant, p.Hall, p.Library} }
+
+// Taken reports whether a cell falls on any reserved plot.
+func (p Plots) Taken(c Cell) bool {
+	for _, b := range p.All() {
+		if b.Contains(c) {
+			return true
+		}
+	}
+	return false
+}
+
 type Plan struct {
-	Bounds   Block
-	Plaza    Block
+	Bounds Block
+	Plaza  Block
+	// Plots is the plaza's reserved ground; see Plots.
+	Plots    Plots
 	Blocks   map[string]Block
 	Slots    map[string]Slot
 	Parks    []Block
@@ -342,6 +374,7 @@ func (p *Plan) place(in Input) {
 
 	p.Plaza = p.BlockAt(Slot{})
 	p.Fountain = p.Plaza.Center()
+	p.Plots = plazaPlots(p.Plaza)
 	used := map[Slot]bool{}
 	for root, slot := range p.Slots {
 		p.Blocks[root] = p.BlockAt(slot)
@@ -495,6 +528,13 @@ func (p *Plan) plantPlazaEdge() {
 				continue
 			}
 			cell := Cell{col, row}
+			// Nothing is planted on ground already spoken for. The
+			// plots and the fountain are the plan's own, so this asks
+			// the plan rather than guessing from geometry — which is
+			// the whole reason the plots exist.
+			if p.Plots.Taken(cell) || cell == p.Fountain {
+				continue
+			}
 			seed := seedOf(cell.Col, cell.Row)
 			t := Tree{Cell: cell, Kind: Bush, Variant: int(seed>>8) % BushSpecies,
 				DX: unitOf(seed>>1) * TreeJitter / 2, DY: unitOf(seed>>17) * TreeJitter / 2}
@@ -580,4 +620,34 @@ func abs(v int) int {
 		return -v
 	}
 	return v
+}
+
+// plotCols and plotRows are how much plaza a civic building takes. The
+// widest of them is two and a half cells across and the tallest two
+// deep, so three by two holds any of them with a little room round the
+// walls.
+const (
+	plotCols = 3
+	plotRows = 2
+)
+
+// plazaPlots reserves a corner of the plaza for each civic building:
+// the plant top-left, the hall top-right, the library bottom-left. The
+// corners are where pkg/city has always put them; the difference is that
+// the plan now says so, once, where the planting can see it.
+func plazaPlots(plaza Block) Plots {
+	if plaza.Cols < 2*plotCols || plaza.Rows < 2*plotRows {
+		// Too small to hold three plots without them touching. Reserve
+		// nothing rather than reserve overlapping ground — the planting
+		// filling a cramped plaza is a smaller wrong than two buildings
+		// on one plot.
+		return Plots{}
+	}
+	right := plaza.Min.Col + plaza.Cols - plotCols
+	bottom := plaza.Min.Row + plaza.Rows - plotRows
+	return Plots{
+		Plant:   Block{Min: plaza.Min, Cols: plotCols, Rows: plotRows},
+		Hall:    Block{Min: Cell{Col: right, Row: plaza.Min.Row}, Cols: plotCols, Rows: plotRows},
+		Library: Block{Min: Cell{Col: plaza.Min.Col, Row: bottom}, Cols: plotCols, Rows: plotRows},
+	}
 }
