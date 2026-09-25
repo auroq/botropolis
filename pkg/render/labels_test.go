@@ -21,8 +21,14 @@ import (
 //
 // The map is full of labels of this kind now: the footer's verbs, the
 // view key's nine questions, a legend's aggregate, five mover cards.
-// Each is a promise that can quietly stop being true. These are the ones
-// that can be checked cheaply.
+// Each is a promise that can quietly stop being true.
+//
+// These are the ones that can be checked cheaply. The gap, left open on
+// purpose rather than forgotten: the five mover cards and the legend's
+// aggregate are not tied to anything, and they are the likeliest to
+// drift — a card's sentence is assembled from several fields, so any one
+// of them can change meaning while the sentence reads the same. See
+// "Two things that must agree" in DESIGN.md.
 
 func action(keys []ui.Key, key string) (string, bool) {
 	for _, k := range keys {

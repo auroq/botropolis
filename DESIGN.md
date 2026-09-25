@@ -445,6 +445,33 @@ The consequence is worth stating plainly, because it is a coupling and not a pre
 If the state tones ever come back while a view is up, the palette is illegal again and no choice of hue repairs it.
 `TestDrained` in `pkg/ui/strip_test.go` is what holds it — "it should leave no state tone anywhere on the strip" — and it must not be relaxed without re-opening this section.
 
+## Two things that must agree
+
+The most productive bug in this project is not a bug. It is a shape, and it has turned up six times in three phases, in disguises that looked nothing like each other until they were laid side by side.
+
+**Somewhere, two things must say the same thing, and nothing makes them.**
+They agree on the day they are written, because whoever wrote them held both in mind at once. Then one of them changes.
+
+| | the two things | how it showed | what closed it |
+| --- | --- | --- | --- |
+| bug 23 | the stack's ground point, written once to draw with and once to sort by | a tower drawn in front of the slab that should hide it | `plantStackAt` — one expression, two callers |
+| bug 34 | the atlas manifest and what `go:embed` ships | 922 KB of a page nothing could reach, in every binary | `render.py` deletes pages the manifest does not name |
+| bug 33 | the mesh and the sprite | a true sentence about an open rim, used to explain a picture that never shows undersides | measure the object the claim is about |
+| phase 20 | the footer's verb and what a click does | "click attach" while a click selected | `labels_test.go` — the one that cannot derive |
+| phase 20 | the plan's planting and the city's landmarks | planters growing out of the power plant | `plan.Plots` — the plan reserves, both read the reservation |
+| phase 20 | the layout drawn and the layout hit-tested | *nothing yet* | hit-test what was drawn |
+
+**Four of the six were closed by derivation**: make one side compute from the other so they cannot differ, rather than writing both and hoping.
+That is the first thing to reach for, and it is usually smaller than the duplication it replaces.
+
+**One could not be.** A verb in a key row cannot be computed from what the code does without reflection, so it is tested instead — the test asserts the promise against the behaviour. That is the fallback, not the default, and it is weaker: a test covers the pairs someone thought of.
+
+**One was caught before it bit**, which is the only reason it is in the table with an empty column. A click hit-tested a layout recomputed from `scene.Size()` while the draw used `screen.Bounds()`. They agreed, because `LayoutF` feeds both. Agreement that holds *today* is the signature — it reads as a coincidence rather than a fact, and that feeling is the thing to act on.
+
+**What to ask, before the seventh.** Where two things must say the same thing: can one be made to derive from the other? If not, what test ties them? And if neither, write down that they are coupled and why, where the person about to change one will see it — which is what `TestDrained`'s comment does for the palette, and what the press/release comment does for the card.
+
+**The honest gap.** `labels_test.go` ties the footer's verbs, the view key's nine questions and Enter's promise. It does not tie the five mover cards or the legend's aggregate, and those are the likeliest to drift, because a card's sentence is assembled from several fields and any one of them can change meaning while the sentence stays the same. The class is not closed.
+
 ## What it costs
 
 Roadmap phase 18, 2026-09-22.
