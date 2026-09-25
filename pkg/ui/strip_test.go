@@ -244,6 +244,24 @@ func TestLayoutStrip(t *testing.T) {
 	})
 }
 
+// This test is load-bearing, and not in the way it looks.
+//
+// It reads like a tidiness check — fewer dots while a view is up — and
+// it is not. The view palettes cannot be kept clear of the state tones
+// by choosing hues: of the 56 ways to take three of the reference
+// palette's eight dark slots, the 15 that pass a map's all-pairs gates
+// all come within delta E 2.2 of some state tone under one of the
+// deficiencies, and the sequential ramp passes within 0.3 of the waiting
+// teal. The fourth condition the ramps were allowed under — that they
+// stay distinct from the state tones — is therefore kept by the mode
+// rather than by the palette: while a view is up the tones are not on
+// screen, so the two can never be confused because they are never seen
+// together.
+//
+// Which means that relaxing this assertion does not cost a little
+// polish. It makes the palette illegal again, and no choice of hue
+// repairs it. See "Why the category colours are legal" in DESIGN.md for
+// the search and the argument before changing anything here.
 func TestDrained(t *testing.T) {
 	t.Run("when a view is up and the strip has to give the tones back", func(t *testing.T) {
 		summary := city.Summary{NeedsYou: 3, Working: 1, Parked: 2, MCPCalls: 9, PRs: 3, Errors: 1}

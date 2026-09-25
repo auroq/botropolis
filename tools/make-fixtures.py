@@ -2,8 +2,10 @@
 """Copy a scrubbed slice of ~/.claude into testing/helpers/fixtures/<name>/.
 
 The slice is every session with a live record in ~/.claude/sessions, the N most
-recently touched transcripts, the smallest bridge-session stub, and the most
-recent session that spawned subagents. Structure, ids, timestamps, and `usage`
+recently touched transcripts, the smallest bridge-session stub, the most
+recent session that spawned subagents, and a pair of sessions that gives the
+map a road — one reaching into the other's repo, both ends included, because a
+road with no far end is dropped when the city is built. Structure, ids, timestamps, and `usage`
 are kept verbatim; prompt text, tool inputs and outputs, thinking, titles,
 slugs, file snapshots, and account identifiers are replaced with deterministic
 placeholders so the fixture is stable across regenerations and safe to commit.
@@ -164,6 +166,70 @@ def is_bridge_stub(path):
         return False
 
 
+def session_cwd(path):
+    """The directory a session ran in.
+
+    Scanned for rather than read off the first record: a transcript opens
+    with mode, permission-mode and bridge-session lines that carry no
+    cwd, so taking the first record's gives every session the empty
+    string and quietly makes every later question about repos
+    unanswerable.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if '"cwd"' not in line:
+                    continue
+                try:
+                    cwd = json.loads(line).get("cwd")
+                except json.JSONDecodeError:
+                    continue
+                if cwd:
+                    return cwd
+    except OSError:
+        pass
+    return ""
+
+
+def cross_repo_touches(path, roots, own):
+    """Files this session touched inside somebody else's repo, by repo.
+
+    This is the fixture's only way to grow a road. pkg/state.Roads draws
+    one when a session working in repo A touches a file under repo B, and
+    pkg/city drops it again unless B also has a district — so counting
+    the far end here, rather than just the crossings, is what makes the
+    difference between a fixture with roads and one that merely looks as
+    though it should have them.
+    """
+    others = sorted((r for r in roots if r and r != own), key=len, reverse=True)
+    if not others:
+        return {}
+    found = {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if '"file_path"' not in line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                msg = rec.get("message") or {}
+                for block in msg.get("content") or []:
+                    if not isinstance(block, dict) or block.get("type") != "tool_use":
+                        continue
+                    fp = (block.get("input") or {}).get("file_path")
+                    if not isinstance(fp, str) or not fp.startswith("/"):
+                        continue
+                    for root in others:
+                        if fp.startswith(root + "/"):
+                            found[root] = found.get(root, 0) + 1
+                            break
+    except OSError:
+        return {}
+    return found
+
+
 def select_transcripts(claude_dir, live_ids, recent, exclude_id=None):
     projects = claude_dir / "projects"
     all_main = [p for p in projects.glob("*/*.jsonl") if p.stem != exclude_id and p.stat().st_size > 0]
@@ -183,7 +249,45 @@ def select_transcripts(claude_dir, live_ids, recent, exclude_id=None):
     with_subagents = [p for p in by_mtime if (p.parent / p.stem / "subagents").is_dir()]
     if with_subagents:
         chosen.setdefault(with_subagents[0].stem, with_subagents[0])
+    add_a_road(by_mtime, live_ids, chosen)
     return chosen
+
+
+def add_a_road(by_mtime, live_ids, chosen):
+    """Make sure the fixture has at least one road on it.
+
+    Roads are the one thing on the map the recent-and-live rules cannot
+    be relied on to produce, and the reason is worth writing down because
+    it is not obvious from the data: a road is drawn between two
+    sessions, and a session only exists if it has a live record in
+    ~/.claude/sessions. A transcript on its own is never a session, so a
+    crossing transcript whose far end has no record produces a road with
+    nothing at either end and pkg/city drops it. Both ends have to be
+    live or there is no point copying either.
+
+    Until this rule existed the sample home had no roads at all: 27% of
+    its absolute file touches went into .claude/, which is not a project
+    root, and the Traffic view came out with a grid nobody had painted.
+    The live machine has them in quantity, so this was a fixture gap
+    rather than a feature gap — but it was a gap that hid one.
+    """
+    live = [p for p in by_mtime if p.stem in live_ids]
+    cwds = {p: session_cwd(p) for p in live}
+    roots = {c for c in cwds.values() if c}
+    best = None
+    for src in live:
+        own = cwds[src]
+        if not own:
+            continue
+        for target, count in cross_repo_touches(src, roots, own).items():
+            far = next((p for p in live if cwds[p] == target), None)
+            if far is not None and far is not src and (best is None or count > best[0]):
+                best = (count, src, far)
+    if best is None:
+        return
+    _, src, far = best
+    chosen.setdefault(src.stem, src)
+    chosen.setdefault(far.stem, far)
 
 
 def copy_session(src, home_out, raw_out):
