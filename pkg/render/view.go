@@ -77,6 +77,42 @@ func viewScale(c color.NRGBA) *ebiten.ColorScale {
 // when the base recedes.
 func (g *Game) viewing() bool { return g.scene.View().Scale() != city.ScaleNone }
 
+// flat is a world colour with the view's recede applied when a view is
+// up. It is the top-down projection's half of the subtraction: the
+// isometric map pushes sprites through a colour matrix, and there are no
+// sprites here to push, only fills.
+//
+// Applied at the call site rather than inside g.rect, because the
+// buildings are the exception — they carry the view's own colour — and a
+// primitive that quietly drained everything would make that exception
+// invisible.
+func (g *Game) flat(c color.NRGBA) color.NRGBA {
+	if !g.viewing() {
+		return c
+	}
+	return ui.Receded(c)
+}
+
+// flatBody is the colour a building is filled with in the top-down
+// projection, once the view and the highlight have had their say. It is
+// the flat twin of the tint switch in isoBuilding, and the two have to
+// agree about precedence or the same city reads differently in the two
+// projections: the highlight fades what is not the answer, a view paints
+// what it has something to say about and steps the rest back, and only
+// then does the state colour get a look in.
+func (g *Game) flatBody(b *city.Building, state color.NRGBA) color.NRGBA {
+	switch {
+	case g.unlit(b):
+		return ui.Receded(state)
+	case g.viewing():
+		if c, ok := g.viewTint(b); ok {
+			return c
+		}
+		return ui.Receded(state)
+	}
+	return state
+}
+
 // shows reports whether the view up now draws that network. Attention
 // draws none of them, which is both the whole point of the view and
 // where the frame time goes: the networks are the movers.

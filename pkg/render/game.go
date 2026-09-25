@@ -504,9 +504,17 @@ func (g *Game) districtLabelVisible(d *city.District) bool {
 
 // powerLineStrokes is the top-down view's power lines: plain strokes.
 func (g *Game) powerLineStrokes(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit) {
-	for _, line := range c.PowerLines() {
-		g.line(screen, cam, line.From, line.To, lineWidth(line.Cached, 1, 3), colorLineCached)
-		g.line(screen, cam, line.From, line.To, lineWidth(line.Fresh, 1, 5), colorLineFresh)
+	if !g.shows(city.NetworkWires) {
+		return
+	}
+	lines := c.PowerLines()
+	for _, line := range lines {
+		cached, fresh := colorLineCached, colorLineFresh
+		if t := g.scene.WireTint(line, lines); t.Known {
+			cached, fresh = ui.Sequential.At(t.Value), ui.Sequential.At(t.Value)
+		}
+		g.line(screen, cam, line.From, line.To, lineWidth(line.Cached, 1, 3), cached)
+		g.line(screen, cam, line.From, line.To, lineWidth(line.Fresh, 1, 5), fresh)
 		if hover.Line != nil && hover.Line.Building == line.Building {
 			g.line(screen, cam, line.From, line.To, 2, colorHighlight)
 		}
@@ -587,6 +595,7 @@ func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building
 	case b.Lit:
 		body = colorLit
 	}
+	body = g.flatBody(b, body)
 	if g.sprites != nil && b.BoardedUp {
 		g.shack(screen, cam, b)
 		if selected {
@@ -616,7 +625,7 @@ func (g *Game) building(screen *ebiten.Image, cam *city.Camera, b *city.Building
 			g.rect(screen, cam, fillRect, colorFill)
 		}
 	}
-	for i := 0; i < b.Cranes; i++ {
+	for i := 0; g.shows(city.NetworkCranes) && i < b.Cranes; i++ {
 		if g.sprites != nil {
 			x := b.Rect.Min.X + 2 + float64(i)*14
 			g.drawTile(screen, cam, g.sprites.factory.tile(factoryChain[0], factoryChain[1]), city.RectAt(x, b.Rect.Min.Y-26, 14, 14), nil)
@@ -655,8 +664,8 @@ func (g *Game) district(screen *ebiten.Image, cam *city.Camera, d *city.District
 		if hovered {
 			fill = colorMapDistHi
 		}
-		g.rect(screen, cam, d.Rect, fill)
-		g.stroke(screen, cam, d.Rect, 1, colorKerb)
+		g.rect(screen, cam, d.Rect, g.flat(fill))
+		g.stroke(screen, cam, d.Rect, 1, g.flat(colorKerb))
 		return
 	}
 	scale := &ebiten.ColorScale{}
@@ -712,18 +721,31 @@ func (g *Game) house(screen *ebiten.Image, cam *city.Camera, b *city.Building, b
 		scale.SetG(f)
 		scale.SetB(f)
 	}
+	// A house is the one thing in the flat path a view has something to
+	// say about, so it takes the view's colour where everything else
+	// recedes. nil asks drawTileTinted for the recede instead, which is
+	// what a building the view cannot place should get.
+	var tint *ebiten.ColorScale
+	if g.viewing() && !g.unlit(b) {
+		if c, ok := g.viewTint(b); ok {
+			tint = viewScale(c)
+		}
+	}
+	draw := func(t *ebiten.Image, r city.Rect) {
+		g.drawTileTinted(screen, cam, t, r, scale, tint)
+	}
 	for col := 0; col < 3; col++ {
-		g.drawTile(screen, cam, g.sprites.town.tile(roof[col][0], roof[col][1]), cell(b.Rect, 3, 3, col, 0), scale)
+		draw(g.sprites.town.tile(roof[col][0], roof[col][1]), cell(b.Rect, 3, 3, col, 0))
 	}
 	for col := 0; col < 3; col++ {
 		t := walls[col]
 		if col != 1 {
 			t = window
 		}
-		g.drawTile(screen, cam, g.sprites.town.tile(t[0], t[1]), cell(b.Rect, 3, 3, col, 1), scale)
+		draw(g.sprites.town.tile(t[0], t[1]), cell(b.Rect, 3, 3, col, 1))
 	}
 	for col := 0; col < 3; col++ {
-		g.drawTile(screen, cam, g.sprites.town.tile(walls[col][0], walls[col][1]), cell(b.Rect, 3, 3, col, 2), scale)
+		draw(g.sprites.town.tile(walls[col][0], walls[col][1]), cell(b.Rect, 3, 3, col, 2))
 	}
 }
 

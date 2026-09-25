@@ -77,7 +77,7 @@ func (g *Game) ground(screen *ebiten.Image, cam *city.Camera, c *city.City, widt
 	if c.Night {
 		flat = colorGroundNight
 	}
-	g.rect(screen, cam, bounds, flat)
+	g.rect(screen, cam, bounds, g.flat(flat))
 	if g.sprites == nil || !detailed {
 		return
 	}
@@ -96,6 +96,9 @@ func (g *Game) ground(screen *ebiten.Image, cam *city.Camera, c *city.City, widt
 		}
 	}
 	for _, t := range c.Trees {
+		if !g.scene.Scenery() {
+			break
+		}
 		centre := t.At
 		r := city.RectAt(centre.X-city.Tile/2, centre.Y-city.Tile/2, city.Tile, city.Tile)
 		tree := townTrees[((t.Cell.Row%len(townTrees))+len(townTrees))%len(townTrees)]
@@ -110,31 +113,33 @@ func (g *Game) flatCells(screen *ebiten.Image, cam *city.Camera, c *city.City) {
 	if c.Night {
 		water = colorWaterNight
 	}
+	water = g.flat(water)
 	for _, rc := range c.RiverCells {
 		g.rect(screen, cam, rc.Cell.Rect(), water)
 	}
 	if c.Plaza.Area() > 0 {
-		g.rect(screen, cam, c.Plaza, colorPlazaFloor)
+		g.rect(screen, cam, c.Plaza, g.flat(colorPlazaFloor))
 	}
 	if c.Fountain.Area() > 0 {
 		g.circle(screen, cam, c.Fountain.Center(), city.Tile, water)
 	}
+	street, streetLine := g.flat(colorStreet), g.flat(colorStreetLine)
 	for _, sc := range c.StreetCells {
 		r := sc.Cell.Rect()
-		g.rect(screen, cam, r, colorStreet)
+		g.rect(screen, cam, r, street)
 		centre := r.Center()
 		half := city.BuildingSize / 2
 		if sc.Mask&city.DirW != 0 {
-			g.line(screen, cam, centre, city.Point{X: centre.X - half, Y: centre.Y}, 1, colorStreetLine)
+			g.line(screen, cam, centre, city.Point{X: centre.X - half, Y: centre.Y}, 1, streetLine)
 		}
 		if sc.Mask&city.DirE != 0 {
-			g.line(screen, cam, centre, city.Point{X: centre.X + half, Y: centre.Y}, 1, colorStreetLine)
+			g.line(screen, cam, centre, city.Point{X: centre.X + half, Y: centre.Y}, 1, streetLine)
 		}
 		if sc.Mask&city.DirN != 0 {
-			g.line(screen, cam, centre, city.Point{X: centre.X, Y: centre.Y - half}, 1, colorStreetLine)
+			g.line(screen, cam, centre, city.Point{X: centre.X, Y: centre.Y - half}, 1, streetLine)
 		}
 		if sc.Mask&city.DirS != 0 {
-			g.line(screen, cam, centre, city.Point{X: centre.X, Y: centre.Y + half}, 1, colorStreetLine)
+			g.line(screen, cam, centre, city.Point{X: centre.X, Y: centre.Y + half}, 1, streetLine)
 		}
 	}
 }
@@ -176,7 +181,7 @@ func blockColor(b *city.Building, seconds float64) color.NRGBA {
 // silhouette, its context as a strip up the right side, cranes and flags as
 // dots.
 func (g *Game) block(screen *ebiten.Image, cam *city.Camera, b *city.Building, seconds float64) {
-	g.rect(screen, cam, b.Rect, blockColor(b, seconds))
+	g.rect(screen, cam, b.Rect, g.flatBody(b, blockColor(b, seconds)))
 	if b.Fill > 0 && !b.BoardedUp {
 		gauge := city.RectAt(b.Rect.Max.X-b.Rect.Width()*0.22, b.Rect.Min.Y, b.Rect.Width()*0.22, b.Rect.Height())
 		g.rect(screen, cam, gauge, colorGaugeBack)
@@ -184,7 +189,7 @@ func (g *Game) block(screen *ebiten.Image, cam *city.Camera, b *city.Building, s
 		g.rect(screen, cam, city.Rect{Min: city.Point{X: gauge.Min.X, Y: gauge.Max.Y - height}, Max: gauge.Max}, gaugeColor(b.Fill))
 	}
 	dot := b.Rect.Width() * 0.18
-	for i := 0; i < min(b.Cranes, 3); i++ {
+	for i := 0; g.shows(city.NetworkCranes) && i < min(b.Cranes, 3); i++ {
 		g.rect(screen, cam, city.RectAt(b.Rect.Min.X+dot*0.5+float64(i)*dot*1.4, b.Rect.Min.Y+dot*0.5, dot, dot), colorCrane)
 	}
 	if b.Flags > 0 {

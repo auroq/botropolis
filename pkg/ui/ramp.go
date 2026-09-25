@@ -136,3 +136,41 @@ const (
 	Recede      = 0.18
 	RecedeValue = 0.75
 )
+
+// Receded is a flat colour with the view's recede applied to it.
+//
+// The isometric map steps back by pushing every sprite through a colour
+// matrix. The top-down map has no sprites to push — it is flat fills —
+// so it has to drain the fill colour instead. Two mechanisms for one
+// meaning, which only stays true if they agree; pkg/render's test holds
+// this against colorm.ChangeHSV for exactly that reason.
+//
+// Note for whoever reads this next: ChangeHSV does not work in HSV. It
+// goes to YCbCr, rotates the hue in the CbCr plane, scales luma by the
+// value and chroma by saturation times value, and comes back. Writing
+// the honest HSV version of it lands two units away on a mid grey, which
+// is invisible but means the two halves of the map are no longer the
+// same function. This is the YCbCr one, so they are.
+//
+// Saturation goes first and value second because it is the colour that
+// has to leave rather than the light: a map that is merely darker still
+// competes with the overlay, and one that is merely greyer loses the
+// shape of its own streets.
+func Receded(c color.NRGBA) color.NRGBA {
+	r, g, b := float64(c.R)/255, float64(c.G)/255, float64(c.B)/255
+	y := 0.2990*r + 0.5870*g + 0.1140*b
+	cb := -0.1687*r - 0.3313*g + 0.5000*b
+	cr := 0.5000*r - 0.4187*g - 0.0813*b
+	y *= RecedeValue
+	cb *= Recede * RecedeValue
+	cr *= Recede * RecedeValue
+	clamp := func(x float64) uint8 {
+		return uint8(math.Round(math.Min(1, math.Max(0, x)) * 255))
+	}
+	return color.NRGBA{
+		clamp(y + 1.40200*cr),
+		clamp(y - 0.34414*cb - 0.71414*cr),
+		clamp(y + 1.77200*cb),
+		c.A,
+	}
+}

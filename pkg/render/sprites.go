@@ -4,6 +4,7 @@ import (
 	"image"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/colorm"
 
 	"github.com/auroq/botropolis/pkg/assets"
 	"github.com/auroq/botropolis/pkg/city"
@@ -68,7 +69,40 @@ var (
 )
 
 // draw places a 16 px tile so that it covers the world rect r (which need not be square).
+// drawTile draws one 16 px tile in world space.
+//
+// While a view is up it recedes, whatever scale it was handed. That is
+// the same rule as drawSprite in the isometric path and for the same
+// reason — the view is subtractive — but it has to be stated here too,
+// because these callers hand over a scale of their own (the plant's
+// glow, a tower's warmth) and a scale can only darken. An object that
+// always carries its own tint is one a view can never drain, which is
+// exactly how the water towers went on shining over a city that had
+// stepped back. The building path wants the view's colour rather than
+// the recede, and asks for it with drawTileTinted.
 func (g *Game) drawTile(screen *ebiten.Image, cam *city.Camera, t *ebiten.Image, r city.Rect, scale *ebiten.ColorScale) {
+	if g.viewing() {
+		g.drawTileMatrix(screen, cam, t, r, recedeMatrix())
+		return
+	}
+	g.drawTileScaled(screen, cam, t, r, scale)
+}
+
+// drawTileTinted is drawTile for the things a view has something to say
+// about: it takes the view's colour instead of receding.
+func (g *Game) drawTileTinted(screen *ebiten.Image, cam *city.Camera, t *ebiten.Image, r city.Rect, scale *ebiten.ColorScale, tint *ebiten.ColorScale) {
+	if g.viewing() {
+		if tint != nil {
+			g.drawTileScaled(screen, cam, t, r, tint)
+			return
+		}
+		g.drawTileMatrix(screen, cam, t, r, recedeMatrix())
+		return
+	}
+	g.drawTileScaled(screen, cam, t, r, scale)
+}
+
+func (g *Game) drawTileScaled(screen *ebiten.Image, cam *city.Camera, t *ebiten.Image, r city.Rect, scale *ebiten.ColorScale) {
 	min := cam.WorldToScreen(r.Min)
 	max := cam.WorldToScreen(r.Max)
 	op := &ebiten.DrawImageOptions{}
@@ -79,6 +113,16 @@ func (g *Game) drawTile(screen *ebiten.Image, cam *city.Camera, t *ebiten.Image,
 	}
 	op.Filter = ebiten.FilterNearest
 	screen.DrawImage(t, op)
+}
+
+func (g *Game) drawTileMatrix(screen *ebiten.Image, cam *city.Camera, t *ebiten.Image, r city.Rect, m colorm.ColorM) {
+	min := cam.WorldToScreen(r.Min)
+	max := cam.WorldToScreen(r.Max)
+	op := &colorm.DrawImageOptions{}
+	op.GeoM.Scale((max.X-min.X)/assets.TileSize, (max.Y-min.Y)/assets.TileSize)
+	op.GeoM.Translate(min.X, min.Y)
+	op.Filter = ebiten.FilterNearest
+	colorm.DrawImage(screen, t, m, op)
 }
 
 func cell(r city.Rect, cols, rows, col, row int) city.Rect {

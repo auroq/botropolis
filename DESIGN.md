@@ -264,6 +264,11 @@ The view itself is remembered in `layout.json` by name rather than by number, so
 While a view is up the strip gives its state tones back and keeps only the counts.
 That is the same correctness requirement, not a flourish: the tones have to be off the screen for the view's palette to be legal at all.
 
+There are two projections and the views have to mean the same thing in both.
+The isometric map recedes by pushing sprites through a colour matrix; the top-down map has no sprites to push, only flat fills, so it drains the fill colour with `ui.Receded`.
+`colorm.ChangeHSV` does not work in HSV despite its name — YCbCr, hue rotated in the CbCr plane, luma scaled by value and chroma by saturation×value — so `ui.Receded` is written as that same transform and held against the matrix by a test over eight colours.
+Writing the honest HSV version instead lands two units away on a mid grey: invisible, and enough to make the two halves of the map different functions.
+
 Anything that hands the sprite path a tint of its own is invisible to all of this.
 The recede happens where the tint is nil, so a sprite that always supplies a `ColorScale` — the water towers, which carry their server's call count — never receded at all, and stood over a city that had stepped back.
 It is a class of bug rather than one bug: the 16 px top-down projection has the same shape and has not been checked.
