@@ -358,7 +358,8 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	if b.Session.State == state.Working {
 		bob := 1.5 * cam.Zoom * math.Sin(seconds*4)
 		at := cam.WorldToScreen(g.scene.Worker(b))
-		g.kitAt(screen, cam, kitRover, g.scene.WorkerTurn(b), city.Point{X: at.X, Y: at.Y + bob}, nil)
+		rover := g.kitAt(screen, cam, kitRover, g.scene.WorkerTurn(b), city.Point{X: at.X, Y: at.Y + bob}, nil)
+		g.noteHit(rover, city.Hit{Building: b, District: g.scene.City().DistrictOf(b), Worker: b})
 	}
 	// Subagents in flight: one drone each, circling over the roof, and
 	// only in the view that asks how many there are.
@@ -367,7 +368,8 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		orbit := city.Point{X: r.Width() * 0.28 * math.Cos(phase), Y: r.Width() * 0.12 * math.Sin(phase)}
 		hover := 2 * cam.Zoom * math.Sin(seconds*3+float64(i))
 		at := city.Point{X: r.Min.X + r.Width()/2 + orbit.X, Y: roofTop - droneHover*cam.Zoom + orbit.Y + hover}
-		g.kitAt(screen, cam, kitDrone, 0, at, nil)
+		drone := g.kitAt(screen, cam, kitDrone, 0, at, nil)
+		g.noteHit(drone, city.Hit{Building: b, District: g.scene.City().DistrictOf(b), Subagent: b})
 	}
 	// One flag per PR, coloured by its state: open in the accent, merged
 	// green, closed slate.
@@ -381,6 +383,10 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		}
 		vector.FillRect(screen, float32(x), float32(roofTop-dot*2), float32(dot*0.4), float32(dot*2.5), colorPole, false)
 		vector.FillRect(screen, float32(x), float32(roofTop-dot*2), float32(dot*1.4), float32(dot), flag, false)
+		if i < len(b.Session.PRs) {
+			g.noteHit(city.RectAt(x, roofTop-dot*2, dot*1.4, dot*2.5),
+				city.Hit{Building: b, District: g.scene.City().DistrictOf(b), Flag: &city.FlagHit{Building: b, PR: b.Session.PRs[i]}})
+		}
 	}
 	if p := g.scene.Celebration(b.Session.ID); p >= 0 {
 		g.celebrate(screen, city.Point{X: r.Min.X + r.Width()/2, Y: roofTop}, r.Width(), p)
@@ -389,7 +395,10 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		for i := 0; i < min(b.Smoke, 3); i++ {
 			phase := math.Mod(seconds*0.4+float64(i)*0.33, 1)
 			at := city.Point{X: r.Min.X + r.Width()*0.5 + float64(i)*dot*1.5 + 3*cam.Zoom*math.Sin(phase*6), Y: roofTop - phase*18*cam.Zoom}
-			vector.FillCircle(screen, float32(at.X), float32(at.Y), float32((3+phase*3)*cam.Zoom), colorSmoke, true)
+			radius := (3 + phase*3) * cam.Zoom
+			vector.FillCircle(screen, float32(at.X), float32(at.Y), float32(radius), colorSmoke, true)
+			g.noteHit(city.RectAt(at.X-radius, at.Y-radius, radius*2, radius*2),
+				city.Hit{Building: b, District: g.scene.City().DistrictOf(b), Smoke: b})
 		}
 	}
 	if selected {
@@ -835,6 +844,11 @@ type car struct {
 	at    city.Point
 	model string
 	turn  int
+	// road is the pair of repos this car's traffic is between. A car
+	// cannot say that by where it is — the street is routed on the grid
+	// and runs along whichever districts happen to be adjacent — so it
+	// has to carry it.
+	road *city.RoadLine
 }
 
 func (g *Game) cars(c *city.City, seconds float64) []car {
@@ -859,7 +873,7 @@ func (g *Game) cars(c *city.City, seconds float64) []car {
 			if !forward {
 				dir = city.Point{X: -dir.X, Y: -dir.Y}
 			}
-			out = append(out, car{at: at, model: kitCars[(i*maxCars+k)%len(kitCars)], turn: carTurn(dir)})
+			out = append(out, car{at: at, model: kitCars[(i*maxCars+k)%len(kitCars)], turn: carTurn(dir), road: street.Road})
 		}
 	}
 	return out
@@ -951,7 +965,18 @@ func carTurn(d city.Point) int {
 }
 
 func (g *Game) drawCar(screen *ebiten.Image, cam *city.Camera, car car) {
-	g.kit(screen, cam, car.model, car.turn, car.at, nil)
+	r := g.kit(screen, cam, car.model, car.turn, car.at, nil)
+	if car.road == nil {
+		return
+	}
+	from, to := "", ""
+	if car.road.From != nil {
+		from = car.road.From.Name
+	}
+	if car.road.To != nil {
+		to = car.road.To.Name
+	}
+	g.noteHit(r, city.Hit{Car: &city.CarHit{Road: car.road, From: from, To: to}})
 }
 
 // Night: the wash dims everything, then every building with a session

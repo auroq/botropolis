@@ -156,19 +156,22 @@ func (g *Game) kitRising(screen *ebiten.Image, cam *city.Camera, name string, at
 
 // kitAt draws a piece with its ground origin on a screen point, for
 // things that hover or bob rather than stand on a cell.
-func (g *Game) kitAt(screen *ebiten.Image, cam *city.Camera, name string, turn int, foot city.Point, tint *ebiten.ColorScale) {
+// kitAt is kit with the foot already projected, and returns the screen
+// rect it drew into so the caller can make it answer when pointed at.
+func (g *Game) kitAt(screen *ebiten.Image, cam *city.Camera, name string, turn int, foot city.Point, tint *ebiten.ColorScale) city.Rect {
 	if g.kits == nil {
-		return
+		return city.Rect{}
 	}
 	atlas := g.kits.pick(cam.Zoom)
 	sprite, ok := atlas.Sprite(name, cam.Heading-turn)
 	if !ok || sprite.Page >= len(atlas.pages) {
-		return
+		return city.Rect{}
 	}
 	scale := cam.Zoom / atlas.Zoom
 	origin := city.Point{X: foot.X - float64(sprite.Anchor.X)*scale, Y: foot.Y - float64(sprite.Anchor.Y)*scale}
 	img := atlas.pages[sprite.Page].SubImage(sprite.Rect).(*ebiten.Image)
 	g.drawSprite(screen, img, origin, scale, tint)
+	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
 }
 
 // kitSize is a piece's screen size at the camera's zoom without drawing it.

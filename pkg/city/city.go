@@ -125,6 +125,29 @@ type Hit struct {
 	Park     *Park
 	Train    *Train
 	Voyage   *Voyage
+	// The movers. These five were the only objects on the map that could
+	// not be asked what they meant, and three of them are vehicles, which
+	// is most of why they blurred together. See movers.go.
+	Worker   *Building
+	Subagent *Building
+	Smoke    *Building
+	Car      *CarHit
+	Flag     *FlagHit
+}
+
+// CarHit is one car and the road it is driving, so it can name the pair
+// of repos it stands for — which is the thing a car on a routed street
+// cannot say by where it is.
+type CarHit struct {
+	Road *RoadLine
+	From string
+	To   string
+}
+
+// FlagHit is one flag on a roof and the pull request it stands for.
+type FlagHit struct {
+	Building *Building
+	PR       claude.PR
 }
 
 // Near is the road, beam or power line within tolerance of p, nearest

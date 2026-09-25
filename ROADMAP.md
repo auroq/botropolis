@@ -686,6 +686,11 @@ For the record, the intended meanings, which is itself the evidence — if this 
 
 Three of the five are vehicles, which is most of why they blur. **Make all five hoverable before anything else in this phase** — that is the fix for items 6 and 7, and it is the fix Aria did not ask for because she asked the question instead.
 
+**Done 2026-09-25 (r195).** Frame `docs/screenshots/r195-mover-cards.png`: worker, car, flag and smoke, each answering when pointed at.
+Each of the five has a card naming the datum it stands for — `WorkerCard`, `SubagentCard`, `CarCard`, `FlagCard`, `SmokeCard` in `pkg/city/movers.go` — and `Hit` gained the five to carry them. The car had to be given its `RoadLine`, because it is the one mover that cannot say what it means from where it is: the street is routed on the grid, so the car carries the pair. That is most of item 5 already answered, on hover.
+**The thing that would have made this silently not work.** `hoverSprites` only consulted the sprite hits when the world hover was open ground, and `Hit.ground()` is false whenever a building is under the pointer — so a rover at a door, a drone over a roof, a flag on one and smoke rising off it were all unreachable by construction, being inside or above the footprint of the building they belong to. `pickHit` now lets a mover override a building hover and nothing else does, with `TestPickHit` over the five cases.
+**Four of the five are verified in a frame; the drone is not.** No session on this machine has a subagent in flight right now — every row of `status` reads `0/N` — so `SubagentCard` is covered by unit test and by being the same two lines as the worker's, which is honest but not the same as having seen it.
+
 ### 1. Overlay key (asked for)
 A key listing the nine views with their numbers, **clickable**, not only a legend for the view already up. It is the same failure one level higher: the views are discoverable only by pressing keys you have to know exist.
 

@@ -472,18 +472,37 @@ type spriteHit struct {
 // hoverSprites lets a sprite's body take the hover when the map's
 // footprints found only ground under the pointer.
 func (g *Game) hoverSprites(cursor city.Point) {
-	if !g.scene.Hover().Ground() {
-		return
-	}
 	g.mu.Lock()
 	hits := g.hits
 	g.mu.Unlock()
-	for i := len(hits) - 1; i >= 0; i-- {
-		if hits[i].rect.Contains(cursor) {
-			g.scene.SetHover(hits[i].hit)
-			return
-		}
+	if hit, ok := pickHit(g.scene.Hover(), hits, cursor); ok {
+		g.scene.SetHover(hit)
 	}
+}
+
+// pickHit is what the pointer has landed on, given where the world says
+// it is and every sprite drawn this frame.
+//
+// Sprites are searched back to front, so the thing drawn last — the
+// thing on top — wins. A sprite normally only gets a say when the world
+// hover is open ground, because a building already knows its own
+// footprint; the exception is the movers. A rover stands at a door, a
+// drone circles a roof, a flag stands on one and smoke rises off it, so
+// all four are inside or above the footprint of the building they belong
+// to. Without letting them override, they are hoverable in principle and
+// unreachable in practice, which is the whole of what this was meant to
+// fix.
+func pickHit(world city.Hit, hits []spriteHit, cursor city.Point) (city.Hit, bool) {
+	for i := len(hits) - 1; i >= 0; i-- {
+		if !hits[i].rect.Contains(cursor) {
+			continue
+		}
+		if world.Ground() || hits[i].hit.Mover() {
+			return hits[i].hit, true
+		}
+		return city.Hit{}, false
+	}
+	return city.Hit{}, false
 }
 
 // timeNow is the wall clock, one seam for the keys that stamp files.

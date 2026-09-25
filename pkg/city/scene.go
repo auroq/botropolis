@@ -498,6 +498,14 @@ func (h Hit) Ground() bool {
 	return h.ground()
 }
 
+// Mover reports whether this hit is one of the five moving things. They
+// are drawn on and above the buildings they belong to, so the pointer
+// resolves to the building first in world space; a mover has to be
+// allowed to win or it can never be pointed at at all.
+func (h Hit) Mover() bool {
+	return h.Worker != nil || h.Subagent != nil || h.Smoke != nil || h.Car != nil || h.Flag != nil
+}
+
 func (h Hit) ground() bool {
 	if h.Building != nil || h.District != nil || h.Tower != nil {
 		return false
@@ -852,6 +860,19 @@ func (s *Scene) Demolish(now time.Time) (Action, string) {
 
 func (s *Scene) Card() (Card, bool) {
 	switch {
+	// The movers first: a drone circles a roof and a flag stands on one,
+	// so the building's hit rect covers both. Pointing at the drone has
+	// to answer about the drone.
+	case s.hover.Car != nil:
+		return CarCard(s.hover.Car.Road, s.hover.Car.From, s.hover.Car.To), true
+	case s.hover.Flag != nil:
+		return FlagCard(s.hover.Flag.PR), true
+	case s.hover.Subagent != nil:
+		return SubagentCard(s.hover.Subagent), true
+	case s.hover.Worker != nil:
+		return WorkerCard(s.hover.Worker), true
+	case s.hover.Smoke != nil:
+		return SmokeCard(s.hover.Smoke), true
 	case s.hover.Landmark == LandmarkPlant:
 		return s.city.Plant.Card(), true
 	case s.hover.Landmark == LandmarkTower && s.hover.Tower != nil:
