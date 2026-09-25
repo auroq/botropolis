@@ -77,6 +77,11 @@ func viewScale(c color.NRGBA) *ebiten.ColorScale {
 // when the base recedes.
 func (g *Game) viewing() bool { return g.scene.View().Scale() != city.ScaleNone }
 
+// shows reports whether the view up now draws that network. Attention
+// draws none of them, which is both the whole point of the view and
+// where the frame time goes: the networks are the movers.
+func (g *Game) shows(n city.Network) bool { return g.scene.View().Shows(n) }
+
 // unlit reports whether the contextual highlight is up and this building
 // is not part of the answer.
 //

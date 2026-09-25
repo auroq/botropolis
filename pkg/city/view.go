@@ -308,7 +308,10 @@ func (s *Scene) Tint(b *Building) Tint {
 		}
 		top := s.top(v)
 		if top <= 0 {
-			return Tint{Known: true}
+			// Nothing to scale. Painting every building the ramp's
+			// darkest stop would say "all at the bottom" of a scale that
+			// does not exist; the legend says it in words instead.
+			return Tint{}
 		}
 		return Tint{Value: min(1, n/top), Known: true}
 	case ScaleCategory:
@@ -353,14 +356,28 @@ type Legend struct {
 	Ramp       bool
 	Low, High  string
 	Categories []string
+	// Note replaces the bar when the ramp has nothing to scale. A
+	// gradient from zero to zero is a scale that means nothing, and
+	// drawing one anyway is the decoration a view is meant to avoid.
+	Note string
+	// Aside is a second fact the view carries beside its scale. Only
+	// Health has one: how many sessions the daemon is actually hearing
+	// from. A building with no wire is a building whose numbers were read
+	// off files, and the missing wire is only a signal to someone who has
+	// been told the wires mean something.
+	Aside string
 }
 
 // Legend is the current view's.
 func (s *Scene) Legend() Legend {
 	v := s.view
-	l := Legend{Shown: true, Title: v.Name()}
+	l := Legend{Shown: true, Title: v.Name(), Aside: s.wireAside(v)}
 	switch v.Scale() {
 	case ScaleRamp:
+		if s.top(v) <= 0 {
+			l.Note = s.legendNothing(v)
+			return l
+		}
 		l.Ramp, l.Low, l.High = true, "0", s.legendTop(v)
 	case ScaleCategory:
 		l.Categories = s.categories(v)
@@ -378,7 +395,7 @@ func (s *Scene) legendTop(v View) string {
 	case ViewPressure:
 		return "100% of the window"
 	case ViewStaleness:
-		return StalenessCap.String() + " quiet"
+		return fmt.Sprintf("%dh quiet", int(StalenessCap.Hours()))
 	case ViewTraffic:
 		return fmt.Sprintf("%.0f messages and touches", top)
 	case ViewFanout:
@@ -387,4 +404,42 @@ func (s *Scene) legendTop(v View) string {
 		return fmt.Sprintf("%.0f api errors", top)
 	}
 	return ""
+}
+
+// legendNothing is what a counting view says when there is nothing to
+// count: the fact, in the view's own words, rather than a zero beside a
+// gradient that cannot mean anything.
+func (s *Scene) legendNothing(v View) string {
+	switch v {
+	case ViewSpend:
+		return "nothing spent"
+	case ViewTraffic:
+		return "no messages or touches"
+	case ViewFanout:
+		return "no subagents in flight"
+	case ViewHealth:
+		return "no api errors"
+	}
+	return "nothing to show"
+}
+
+// wireAside is Health's second fact: how many sessions the daemon is
+// hearing from. It says nothing when every session is on the wire —
+// there is no missing wire to point at, and a legend that reports a
+// full house every time teaches people to stop reading it.
+func (s *Scene) wireAside(v View) string {
+	if v != ViewHealth {
+		return ""
+	}
+	lit, total := 0, 0
+	for _, b := range s.city.Buildings() {
+		total++
+		if b.Session.Hooked {
+			lit++
+		}
+	}
+	if total == 0 || lit == total {
+		return ""
+	}
+	return fmt.Sprintf("%d of %d on the wire", lit, total)
 }

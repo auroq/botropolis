@@ -20,14 +20,63 @@ import (
 const reportEvery = 120
 
 type frameTimer struct {
-	on     bool
-	frames int
-	draw   time.Duration
-	hits   int
-	misses int
+	on         bool
+	frames     int
+	draw       time.Duration
+	hits       int
+	misses     int
+	lastQuiet  time.Time
+	lastTick   time.Time
+	lastFrames int
 }
 
 var frames = &frameTimer{on: os.Getenv("BOTROPOLIS_FRAMETIME") != ""}
+
+// Why a run draws nothing.
+//
+// A window that paints no frames still reports a plausible-looking CPU
+// figure — a quarter of one core, spent sleeping — and the only symptom
+// is a number that means "an app that was not running" while looking
+// like a measurement. Three of eight runs on one desk did exactly that.
+// So there are two reports, because there are two ways to draw nothing
+// and they need telling apart.
+
+// quiet is the first: the window is there and the loop is running, but
+// nobody is watching it, and it says which of the three conditions
+// failed.
+func (f *frameTimer) quiet(focused, visible, minimised bool) {
+	if !f.on {
+		return
+	}
+	if now := time.Now(); now.Sub(f.lastQuiet) >= time.Second {
+		f.lastQuiet = now
+		fmt.Fprintf(os.Stderr, "QUIET no frames: focused=%v visible=%v minimised=%v\n", focused, visible, minimised)
+	}
+}
+
+// tick is the second, and the one that catches the harder case: Update
+// is running and Draw is not being called at all, so neither the frame
+// counter nor the gate above ever gets a word in. Silence then looks
+// exactly like an idle app, which is how a scripted window on a real
+// desktop can sit focused and visible and paint nothing for a minute
+// while every probe says it should be drawing.
+func (f *frameTimer) tick() {
+	if !f.on {
+		return
+	}
+	now := time.Now()
+	if f.lastTick.IsZero() {
+		f.lastTick, f.lastFrames = now, f.frames
+		return
+	}
+	if now.Sub(f.lastTick) < 5*time.Second {
+		return
+	}
+	if f.frames == f.lastFrames {
+		fmt.Fprintf(os.Stderr, "QUIET update is running but Draw has painted nothing for %.0fs\n", now.Sub(f.lastTick).Seconds())
+	}
+	f.lastTick, f.lastFrames = now, f.frames
+}
 
 // note records whether the static layer was reused this frame.
 func (f *frameTimer) note(hit bool) {

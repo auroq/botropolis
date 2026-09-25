@@ -24,10 +24,17 @@ func (g *Game) legend(screen *ebiten.Image, l ui.Legend) {
 		g.roundRect(screen, e.Box, th.Radius()/3, e.Swatch)
 		g.text(screen, e.LabelAt, e.Label, l.Size, th.Palette.Text)
 	}
-	if l.Bar.Area() > 0 {
+	// Low carries the ramp's near end, or — when the view has nothing to
+	// scale — the sentence that stands in for the whole bar.
+	if l.Low.Text != "" {
 		g.run(screen, l.Low, th.Palette.Dim)
+	}
+	if l.Bar.Area() > 0 {
 		g.rampBar(screen, l.Bar)
 		g.run(screen, l.High, th.Palette.Text)
+	}
+	if l.Aside.Text != "" {
+		g.run(screen, l.Aside, th.Palette.Dim)
 	}
 }
 

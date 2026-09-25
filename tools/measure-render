@@ -36,6 +36,7 @@ extra=()
 display=":97"
 unmap=0
 unfocus=0
+place=0
 
 usage() {
 	cat <<USAGE
@@ -49,9 +50,20 @@ Usage: tools/measure-render [options] [-- extra city flags]
                   minimised or hidden window looks like to the toolkit
   --unfocus       open a second city window on the same display so the
                   first loses input focus, and sample the first
+  --place         on a real desktop running i3, float the window, put the
+                  pointer in it and focus it before sampling. Without this
+                  the window lands wherever i3 last was, unfocused, and an
+                  unfocused window is an app that is not running.
   -h, --help      this
 
-Prints one row: label, RSS in MB, CPU as a percentage of one core.
+Prints one row: label, RSS in MB, CPU as a percentage of one core, and
+how many frames it actually drew while being sampled. A row that drew no
+frames is not a measurement of anything and says so.
+
+To measure one info view, pre-seed the layout rather than passing a flag:
+  d=$(mktemp -d); mkdir -p "$d/botropolis"
+  echo '{"version":1,"view":"attention"}' > "$d/botropolis/layout.json"
+  XDG_STATE_HOME="$d" tools/measure-render --place --label attention
 Example:
   tools/measure-render --label "idle, visible" --seconds 20
   tools/measure-render --label "reduced motion" -- --reduced_motion
@@ -66,6 +78,7 @@ while [[ $# -gt 0 ]]; do
 	--display) display="$2"; shift 2 ;;
 	--unmap) unmap=1; shift ;;
 	--unfocus) unfocus=1; shift ;;
+	--place) place=1; shift ;;
 	-h | --help) usage; exit 0 ;;
 	--) shift; extra=("$@"); break ;;
 	*) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -99,7 +112,12 @@ sleep 2
 args=(city)
 [[ -n "${socket}" ]] && args+=(--socket "${socket}")
 [[ ${#extra[@]} -gt 0 ]] && args+=("${extra[@]}")
-DISPLAY="${display}" bin/botropolis "${args[@]}" >/dev/null 2>&1 &
+# The frame counter is the only thing that can tell a cheap frame from a
+# frame that was never drawn. Three of Aria's eight runs reported 0.2% of
+# a core while drawing nothing at all.
+frames_log=$(mktemp)
+trap 'rm -f "${frames_log}"' EXIT
+DISPLAY="${display}" BOTROPOLIS_FRAMETIME=1 bin/botropolis "${args[@]}" >/dev/null 2>"${frames_log}" &
 city=$!
 
 # Let it start, load the atlases and settle on its first snapshot.

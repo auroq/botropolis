@@ -221,7 +221,7 @@ func TestLegend(t *testing.T) {
 		s := viewed(t, city.ViewSpend)
 
 		t.Run("it should still answer rather than divide by nothing", func(t *testing.T) {
-			assert.NotEmpty(t, s.Legend().High)
+			assert.Equal(t, "nothing spent", s.Legend().Note)
 		})
 	})
 

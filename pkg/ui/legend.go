@@ -34,6 +34,8 @@ type Legend struct {
 	// no area on a categorical view.
 	Bar       city.Rect
 	Low, High Text
+	// Aside is the second fact, placed after everything else.
+	Aside Text
 }
 
 // barWidth is how long the gradient runs, in grid squares. Long enough
@@ -60,6 +62,18 @@ func LayoutLegend(th Theme, width, bottom float64, spec city.Legend, measure Mea
 	l.Title = Text{Text: spec.Title, At: city.Point{X: x, Y: baseline}, Size: Small}
 	x += titleW + 2*grid
 
+	aside := func(at float64) {
+		if spec.Aside == "" {
+			return
+		}
+		l.Aside = Text{Text: spec.Aside, At: city.Point{X: at + 3*grid, Y: baseline}, Size: Small}
+	}
+	if spec.Note != "" {
+		w, _ := measure(spec.Note, Small)
+		l.Low = Text{Text: spec.Note, At: city.Point{X: x, Y: baseline}, Size: Small}
+		aside(x + w)
+		return l
+	}
 	if spec.Ramp {
 		lowW, _ := measure(spec.Low, Small)
 		l.Low = Text{Text: spec.Low, At: city.Point{X: x, Y: baseline}, Size: Small}
@@ -67,6 +81,8 @@ func LayoutLegend(th Theme, width, bottom float64, spec city.Legend, measure Mea
 		l.Bar = city.RectAt(x, baseline+lineH/4, barWidth*grid, lineH/2)
 		x = l.Bar.Max.X + grid
 		l.High = Text{Text: spec.High, At: city.Point{X: x, Y: baseline}, Size: Small}
+		highW, _ := measure(spec.High, Small)
+		aside(x + highW)
 		return l
 	}
 

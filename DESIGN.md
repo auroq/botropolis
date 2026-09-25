@@ -278,6 +278,21 @@ So a categorical view colours the top three kinds and folds everything else into
 "other" is the absence of a category, and giving it a colour would claim the sessions inside it had something in common.
 Thirteen MCP servers were never going to be thirteen colours; Servers is legible because colour carries the top three and the contextual highlight carries the rest.
 
+The networks — the wires from the plant, the beams from the towers, the cars on the avenues, the freight loop, the drones over a roof — each sit behind the view that asks about them.
+Spend has the wires and the train, Servers the beams, Traffic the cars, Fan-out the drones, and Attention none of them.
+Health keeps the wires too, for what is *not* there: a session the daemon has seen no hook events from has no wire, and that missing wire says the numbers beside that building are files-only guesses.
+Which view draws which network is a property of `pkg/city`, so it is testable without a window.
+
+The carrier is tinted, not only what it runs to: a wire by the rate it is carrying, a beam by its calls, an avenue by its traffic.
+Each already held that number, so this reads what was there rather than adding anything.
+
+The movers are gated before the sorted list rather than at the draw, so a view that does not want cars does not place them either — nothing is created and nothing is depth-sorted.
+That is the same decision as the view itself, one level down: the cheapest drawing is the drawing not done.
+
+Taking the networks out of Attention is worth **26% of a frame** on a live city — 3.31 ms to 2.45 ms, seven paired samples, every pair in the same direction.
+It is worth nothing at all on the sample fixture, which has no wires, no roads, two beams and one freight carriage.
+That is the same fact twice: the size of the win is the size of your networks, so the number belongs beside the city it was taken on.
+
 Contextual highlight is the other half of how a view stays legible, and the half that does not need colour at all.
 Put the pointer on a water tower and the sessions that call that server stay lit while the rest of the city fades.
 That is what makes Servers readable with three colours and thirteen servers: colour carries the top three, and the pointer carries the rest.
@@ -439,6 +454,29 @@ That is why every row carries its frame count.
 Memory: 151 MB of the settled RSS is the atlas on the card — nine 2048-pixel pages — and cannot go without loading it again.
 The start-up peak is `assets.LoadKits` decoding all nine pages before uploading any, so both copies are alive at once; a page at a time would fix the peak itself.
 An idle app allocates too little to make the collector run, so memory is handed back explicitly when the window goes quiet and after the atlas upload.
+
+### How to measure this, and what does not work
+
+Two instruments, and the second one only because the first cannot be driven from a script on this rig.
+
+**Whole-process CPU** — `utime+stime` from `/proc/<pid>/stat` over a sample, `VmRSS` from `/proc/<pid>/status` — is the number that matters, and it has to be taken with the window open on a real display.
+`tools/measure-render` does it, and `--place` implements the i3 recipe: name the focused workspace explicitly, because a window launched from a non-interactive shell lands on whatever workspace i3 last used; float it so the tiling is not disturbed; move the pointer into it, because focus_follows_mouse snaps focus back to wherever the pointer sits; then focus.
+
+**That recipe is not sufficient on this machine, and it took a while to establish why.**
+A city window placed exactly that way — X input focus confirmed on it, floating, mapped, pointer inside — draws *zero* frames and costs 0.3% of a core, indefinitely.
+A minimal Ebitengine program placed identically reports `focused=true visible=true minimised=false`, so the gate in `watching()` is not the thing refusing.
+Neither the frame counter nor the gate's own diagnostic ever prints, which means `Draw` is not being called at all.
+So the honest position is that whole-process CPU for a *non-capturing* window cannot be scripted here; it has to be taken by hand, or by whoever's desktop answers differently.
+
+**Frame time** — `BOTROPOLIS_FRAMETIME=1`, which prints ms of drawing every 120 frames — works whenever the run is capturing, because `capturing()` short-circuits the gate.
+It is also the hardware-independent number: it counts the work of issuing the drawing rather than the fill rate a software display would charge for.
+The catch is that `--record` costs about three seconds a frame, and none of that is drawing: `frame(screen)` reads the framebuffer back off the card, which stalls the pipeline.
+That cost lands outside the timer, so the ms/frame figure is clean, but a twelve-second recording takes six minutes of wall clock.
+
+**A run that draws nothing still reports a plausible CPU figure**, which is the trap worth naming: a quarter of a core, spent sleeping, looks exactly like a cheap frame.
+Three of eight runs on one desk did that.
+So there are two diagnostics behind `BOTROPOLIS_FRAMETIME`, because there are two ways to draw nothing: `QUIET no frames` names which of focus, visibility and minimisation failed, and `QUIET update is running but Draw has painted nothing` catches the harder case above, where the gate never gets a word in.
+Every measurement in the table below carries its frame count for the same reason.
 
 ### Why the sorted list is not cached
 

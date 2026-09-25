@@ -198,6 +198,7 @@ func (g *Game) SetStatus(status string) {
 
 func (g *Game) Update() error {
 	g.ticks++
+	frames.tick()
 	g.mu.Lock()
 	pending := g.pending
 	g.pending = nil
@@ -528,8 +529,19 @@ func (g *Game) roadLines(screen *ebiten.Image, c *city.City, cam *city.Camera, h
 }
 
 func (g *Game) beams(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit) {
-	for _, beam := range c.Beams() {
-		g.line(screen, cam, beam.From, beam.To, lineWidth(float64(beam.Calls)*20_000, 1, 3), colorBeam)
+	if !g.shows(city.NetworkBeams) {
+		return
+	}
+	beams := c.Beams()
+	for _, beam := range beams {
+		// Servers paints the carrier as well as what it runs to: a beam
+		// by the calls it has carried, so the thick line and the bright
+		// one say the same thing rather than only one of them.
+		col := colorBeam
+		if t := g.scene.BeamTint(beam, beams); t.Known {
+			col = ui.Sequential.At(t.Value)
+		}
+		g.line(screen, cam, beam.From, beam.To, lineWidth(float64(beam.Calls)*20_000, 1, 3), col)
 		if hover.Beam != nil && hover.Beam.Building == beam.Building && hover.Beam.Tower == beam.Tower {
 			g.line(screen, cam, beam.From, beam.To, 2, colorHighlight)
 		}

@@ -74,3 +74,42 @@ func TestLayoutLegend(t *testing.T) {
 		})
 	})
 }
+
+func TestLegendNote(t *testing.T) {
+	th := ui.NewTheme(1)
+
+	t.Run("when the view has nothing to scale", func(t *testing.T) {
+		spec := city.Legend{Shown: true, Title: "fan-out", Note: "no subagents in flight"}
+		l := ui.LayoutLegend(th, 800, 560, spec, measure7)
+
+		t.Run("it should say so instead of drawing a bar", func(t *testing.T) {
+			assert.Zero(t, l.Bar.Area())
+		})
+
+		t.Run("it should still put the words on screen", func(t *testing.T) {
+			assert.Equal(t, "no subagents in flight", l.Low.Text)
+		})
+	})
+}
+
+func TestLegendAside(t *testing.T) {
+	th := ui.NewTheme(1)
+
+	t.Run("when the view carries a second fact beside its scale", func(t *testing.T) {
+		spec := city.Legend{Shown: true, Title: "health", Ramp: true, Low: "0", High: "1 api errors", Aside: "5 of 8 on the wire"}
+		l := ui.LayoutLegend(th, 800, 560, spec, measure7)
+
+		t.Run("it should place it after the far end rather than over it", func(t *testing.T) {
+			assert.Greater(t, l.Aside.At.X, l.High.At.X)
+		})
+	})
+
+	t.Run("when the view has no second fact", func(t *testing.T) {
+		spec := city.Legend{Shown: true, Title: "spend", Ramp: true, Low: "0", High: "$12.50"}
+		l := ui.LayoutLegend(th, 800, 560, spec, measure7)
+
+		t.Run("it should leave the room empty", func(t *testing.T) {
+			assert.Empty(t, l.Aside.Text)
+		})
+	})
+}

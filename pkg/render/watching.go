@@ -55,7 +55,11 @@ func watching(scripted bool) bool {
 		return true
 	}
 	focused, visible, minimised := seen()
-	return focused && visible && !minimised
+	if focused && visible && !minimised {
+		return true
+	}
+	frames.quiet(focused, visible, minimised)
+	return false
 }
 
 // capturing reports whether this run is writing frames to disk.

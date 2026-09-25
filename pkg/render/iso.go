@@ -202,7 +202,11 @@ var (
 // for fresh tokens, cool and thin for cache reads, with sparks running
 // from the plant to the building at a pace set by the token rate.
 func (g *Game) powerLines(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, seconds float64) {
-	for _, line := range c.PowerLines() {
+	if !g.shows(city.NetworkWires) {
+		return
+	}
+	lines := c.PowerLines()
+	for _, line := range lines {
 		from, to := line.From, line.To
 		length := math.Hypot(to.X-from.X, to.Y-from.Y)
 		poles := max(2, int(length/poleSpacing)+1)
@@ -231,8 +235,15 @@ func (g *Game) powerLines(screen *ebiten.Image, c *city.City, cam *city.Camera, 
 				op.ColorScale.ScaleWithColor(col)
 				vector.StrokePath(screen, path, &vector.StrokeOptions{Width: width}, op)
 			}
-			strokeWire(&cached, lineWidth(line.Cached, 1, 3), colorLineCached)
-			strokeWire(&fresh, lineWidth(line.Fresh, 1, 4), colorLineFresh)
+			cachedCol, freshCol := colorLineCached, colorLineFresh
+			// Spend paints the carrier, not only what it runs to: a wire
+			// by the rate it is carrying. Health draws the same wires
+			// plain, because there the signal is the one that is missing.
+			if t := g.scene.WireTint(line, lines); t.Known {
+				cachedCol, freshCol = ui.Sequential.At(t.Value), ui.Sequential.At(t.Value)
+			}
+			strokeWire(&cached, lineWidth(line.Cached, 1, 3), cachedCol)
+			strokeWire(&fresh, lineWidth(line.Fresh, 1, 4), freshCol)
 			if highlight {
 				strokeWire(&fresh, 2, colorHighlight)
 			}
@@ -349,8 +360,9 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 		at := cam.WorldToScreen(g.scene.Worker(b))
 		g.kitAt(screen, cam, kitRover, g.scene.WorkerTurn(b), city.Point{X: at.X, Y: at.Y + bob}, nil)
 	}
-	// Subagents in flight: one drone each, circling over the roof.
-	for i := 0; i < min(b.Cranes, 3); i++ {
+	// Subagents in flight: one drone each, circling over the roof, and
+	// only in the view that asks how many there are.
+	for i := 0; g.shows(city.NetworkCranes) && i < min(b.Cranes, 3); i++ {
 		phase := seconds*0.8 + float64(i)*2*math.Pi/3
 		orbit := city.Point{X: r.Width() * 0.28 * math.Cos(phase), Y: r.Width() * 0.12 * math.Sin(phase)}
 		hover := 2 * cam.Zoom * math.Sin(seconds*3+float64(i))
@@ -594,13 +606,13 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 			g.drawVoyage(screen, cam, v, seconds)
 		}})
 	}
-	for _, k := range g.carriages(c, seconds) {
+	for _, k := range g.freight(c, seconds) {
 		k := k
 		items = append(items, drawable{depth: cam.Depth(k.at), draw: func() {
 			g.drawCarriage(screen, cam, k)
 		}})
 	}
-	for _, car := range g.cars(c, seconds) {
+	for _, car := range g.trafficCars(c, seconds) {
 		car := car
 		items = append(items, drawable{depth: cam.Depth(car.at), draw: func() {
 			g.drawCar(screen, cam, car)
@@ -768,8 +780,22 @@ func (g *Game) streets(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 // streetSigns highlights the hovered street and signs each one at the
 // middle of its path, in either view.
 func (g *Game) streetSigns(screen *ebiten.Image, c *city.City, cam *city.Camera, hover city.Hit, labels bool) {
+	// Traffic paints the carrier: each avenue in the colour of what it
+	// is carrying, so the busy route between two repos reads before you
+	// have counted a single car. The grid itself stays in every view —
+	// it is the city's shape, not one of its networks — and this is only
+	// the load on it. It rides in the static layer, so it costs one
+	// compose rather than a frame.
+	roads := c.Roads
 	for i := range c.Streets {
 		street := &c.Streets[i]
+		if street.Road != nil {
+			if t := g.scene.RoadTint(*street.Road, roads); t.Known {
+				for k := 1; k < len(street.Path); k++ {
+					g.line(screen, cam, street.Path[k-1], street.Path[k], float32(1+3*t.Value), ui.Sequential.At(t.Value))
+				}
+			}
+		}
 		if hover.Road == street.Road {
 			for k := 1; k < len(street.Path); k++ {
 				g.line(screen, cam, street.Path[k-1], street.Path[k], 2, colorHighlight)
@@ -1008,4 +1034,23 @@ func towerTint(t *city.Tower, viewing, unlit bool) *ebiten.ColorScale {
 		tint.SetB(0.95)
 	}
 	return tint
+}
+
+// trafficCars and freight are the two mover networks behind their views:
+// the cars are what Traffic is about and the train is what Spend is,
+// and Attention pays for neither. Gating here rather than at each draw
+// keeps the cost out of the sorted list as well as off the screen —
+// nothing is placed, so nothing is depth-sorted.
+func (g *Game) trafficCars(c *city.City, seconds float64) []car {
+	if !g.shows(city.NetworkTraffic) {
+		return nil
+	}
+	return g.cars(c, seconds)
+}
+
+func (g *Game) freight(c *city.City, seconds float64) []carriage {
+	if !g.shows(city.NetworkFreight) {
+		return nil
+	}
+	return g.carriages(c, seconds)
 }
