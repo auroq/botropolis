@@ -99,9 +99,14 @@ type Game struct {
 	recordFrames int
 	recorded     int
 	// snap is a frame the p key asked for, saved on the next draw.
-	snap   string
-	help   bool
-	hidden bool
+	snap string
+	help bool
+	// viewKey is the overlay listing all nine views; see ui.LayoutViewKey.
+	// viewKeyRows is the layout as last drawn, so a click lands on the
+	// rows the reader can actually see.
+	viewKey     bool
+	viewKeyRows ui.ViewKey
+	hidden      bool
 	// live is whether anyone was watching the window last tick, so the
 	// tick is only changed when that changes. ticks counts Update calls
 	// and painted the tick the last frame was painted for, so a repeat
@@ -266,7 +271,7 @@ func (g *Game) Update() error {
 		g.scene.Wheel(cursor, wheel)
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		if !g.clickTimeline(cursor) && !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
+		if !g.clickViewKey(cursor) && !g.clickTimeline(cursor) && !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
 			g.dragging, g.dragFrom = true, cursor
 		}
 	}
@@ -447,6 +452,9 @@ func (g *Game) overlay(screen *ebiten.Image, width, height float64) {
 		return
 	}
 	g.chrome(screen, width, height)
+	if g.viewKey {
+		g.drawViewKey(screen, width, height)
+	}
 	if g.help {
 		g.drawHelp(screen, width, height)
 	}

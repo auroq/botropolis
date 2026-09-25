@@ -1,0 +1,84 @@
+package ui_test
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/ui"
+)
+
+func TestLayoutViewKey(t *testing.T) {
+	th := ui.NewTheme(1)
+	const width, height = 1200.0, 800.0
+	k := ui.LayoutViewKey(th, width, height, city.ViewServers, measure7)
+
+	t.Run("when the key is opened", func(t *testing.T) {
+		t.Run("it should list every view there is", func(t *testing.T) {
+			assert.Len(t, k.Rows, len(city.Views))
+		})
+
+		t.Run("it should number them the way the keyboard does, from one", func(t *testing.T) {
+			assert.Equal(t, "1", k.Rows[0].Key)
+			assert.Equal(t, "9", k.Rows[len(k.Rows)-1].Key)
+		})
+
+		t.Run("it should say what each view is for, which is the reason for having it", func(t *testing.T) {
+			for _, r := range k.Rows {
+				require.NotEmpty(t, r.Question, r.Name)
+			}
+		})
+
+		t.Run("it should mark the view that is up", func(t *testing.T) {
+			for _, r := range k.Rows {
+				require.Equal(t, r.View == city.ViewServers, r.Current, r.Name)
+			}
+		})
+	})
+
+	t.Run("when the rows are laid out", func(t *testing.T) {
+		t.Run("it should give each one a band wide enough to click", func(t *testing.T) {
+			for _, r := range k.Rows {
+				require.Greater(t, r.Row.Width(), 0.0, r.Name)
+				require.Greater(t, r.Row.Height(), 0.0, r.Name)
+			}
+		})
+
+		t.Run("it should not let two rows overlap", func(t *testing.T) {
+			for i := 1; i < len(k.Rows); i++ {
+				require.GreaterOrEqual(t, k.Rows[i].Row.Min.Y, k.Rows[i-1].Row.Max.Y, k.Rows[i].Name)
+			}
+		})
+
+		t.Run("it should keep every row inside the panel", func(t *testing.T) {
+			for _, r := range k.Rows {
+				require.True(t, k.Rect.Contains(r.Row.Min) && k.Rect.Contains(r.Row.Max), r.Name)
+			}
+		})
+	})
+
+	t.Run("when a row is clicked", func(t *testing.T) {
+		t.Run("it should give back that row's view", func(t *testing.T) {
+			want := k.Rows[3]
+			got, ok := k.Hit(want.Row.Center())
+			require.True(t, ok)
+			assert.Equal(t, want.View, got)
+		})
+	})
+
+	t.Run("when the click lands off the panel", func(t *testing.T) {
+		t.Run("it should choose nothing", func(t *testing.T) {
+			_, ok := k.Hit(city.Point{X: 5, Y: 5})
+			assert.False(t, ok)
+		})
+	})
+
+	t.Run("when the click lands on the panel but between rows", func(t *testing.T) {
+		t.Run("it should choose nothing rather than the nearest", func(t *testing.T) {
+			_, ok := k.Hit(city.Point{X: k.Rect.Min.X + 2, Y: k.Rect.Min.Y + 2})
+			assert.False(t, ok)
+		})
+	})
+}

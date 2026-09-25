@@ -47,6 +47,7 @@ var footerKeys = []ui.Key{
 	{Key: "wheel", Action: "zoom"},
 	{Key: "click", Action: "attach"},
 	{Key: "tab", Action: "next needs-you"},
+	{Key: "v", Action: "views"},
 	{Key: "b", Action: "sidebar"},
 	{Key: "f", Action: "fit"},
 	{Key: "?", Action: "help"},
@@ -139,6 +140,10 @@ func (g *Game) handleKeys() error {
 		g.help = false
 		return nil
 	}
+	if just(ebiten.KeyEscape) && g.viewKey {
+		g.viewKey = false
+		return nil
+	}
 	if just(ebiten.KeyEscape) && g.scene.View() != city.ViewAttention {
 		// Escape is back before it is quit: leave the view first.
 		g.setView(city.ViewAttention)
@@ -152,18 +157,16 @@ func (g *Game) handleKeys() error {
 	if (just(ebiten.KeySlash) && g.shifted()) || just(ebiten.KeyF1) {
 		g.help = !g.help
 	}
-	// v walks the views; 1 to 9 jump to one; Escape leaves for Attention
-	// before it offers to quit, which is handled above.
+	// v opens the key to the views; 1 to 9 jump to one; Escape leaves for
+	// Attention before it offers to quit, which is handled above.
+	//
+	// v used to walk the views one at a time, which worked only for
+	// someone who already knew the nine existed and what order they came
+	// in. The key says what there is, marks where you are, and takes a
+	// click — and the numbers still work whether it is open or not, so
+	// nothing is slower once you know them.
 	if just(ebiten.KeyV) {
-		views := city.Views
-		next := views[0]
-		for i, v := range views {
-			if v == g.scene.View() {
-				next = views[(i+1)%len(views)]
-				break
-			}
-		}
-		g.setView(next)
+		g.viewKey = !g.viewKey
 	}
 	for i, key := range []ebiten.Key{
 		ebiten.KeyDigit1, ebiten.KeyDigit2, ebiten.KeyDigit3, ebiten.KeyDigit4, ebiten.KeyDigit5,
@@ -171,6 +174,7 @@ func (g *Game) handleKeys() error {
 	} {
 		if just(key) && i < len(city.Views) {
 			g.setView(city.Views[i])
+			g.viewKey = false
 		}
 	}
 	if just(ebiten.KeyH) {

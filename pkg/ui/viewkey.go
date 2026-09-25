@@ -1,0 +1,102 @@
+package ui
+
+import (
+	"strconv"
+
+	"github.com/auroq/botropolis/pkg/city"
+)
+
+// The key to the views: what there is to look at, and how to get there.
+//
+// The nine views were reachable only by keys you had to know existed,
+// which is the same failure the movers had one level up — a thing on
+// screen that cannot be asked what it is. A legend tells you what the
+// view you are already in means; it cannot tell you what else there is.
+//
+// So this lists all nine with their numbers and their questions, marks
+// the one you are in, and each row is clickable, because a reader who
+// does not know the number should not have to learn one to move.
+
+// ViewKeyRow is one view in the key.
+type ViewKeyRow struct {
+	View     city.View
+	Key      string
+	Name     string
+	Question string
+	// Row is the whole band, so a click anywhere along it counts rather
+	// than only on the words.
+	Row        city.Rect
+	Chip       city.Rect
+	KeyAt      city.Point
+	NameAt     city.Point
+	QuestionAt city.Point
+	Current    bool
+}
+
+// ViewKey is the panel placed for one window.
+type ViewKey struct {
+	Rect  city.Rect
+	Title Text
+	Size  Size
+	Rows  []ViewKeyRow
+}
+
+// LayoutViewKey centres the key in a width×height window and marks the
+// view that is up.
+func LayoutViewKey(th Theme, width, height float64, current city.View, measure Measure) ViewKey {
+	grid := th.Grid()
+	pad := 3 * grid
+	_, lineH := measure("", Small)
+	title := "Views"
+	_, titleH := measure(title, Title)
+	chipH := lineH + grid
+
+	var chipW, nameW, questionW float64
+	for _, v := range city.Views {
+		if w, _ := measure(v.Name(), Small); w > nameW {
+			nameW = w
+		}
+		if w, _ := measure(v.Question(), Small); w > questionW {
+			questionW = w
+		}
+	}
+	if w, _ := measure("9", Small); w+grid > chipW {
+		chipW = w + grid
+	}
+	rowStep := chipH + grid/2
+	w := pad + chipW + grid + nameW + 2*grid + questionW + pad
+	h := pad + titleH + grid + rowStep*float64(len(city.Views)) - grid/2 + pad
+	k := ViewKey{Rect: city.RectAt((width-w)/2, (height-h)/2, w, h), Size: Small}
+	k.Title = Text{Text: title, At: k.Rect.Min.Add(city.Point{X: pad, Y: pad}), Size: Title}
+
+	y := k.Rect.Min.Y + pad + titleH + grid
+	for i, v := range city.Views {
+		chip := city.RectAt(k.Rect.Min.X+pad, y, chipW, chipH)
+		k.Rows = append(k.Rows, ViewKeyRow{
+			View:       v,
+			Key:        strconv.Itoa(i + 1),
+			Name:       v.Name(),
+			Question:   v.Question(),
+			Row:        city.RectAt(k.Rect.Min.X+grid, y, k.Rect.Width()-2*grid, chipH),
+			Chip:       chip,
+			KeyAt:      city.Point{X: chip.Min.X + grid/2, Y: y + grid/2},
+			NameAt:     city.Point{X: chip.Max.X + grid, Y: y + grid/2},
+			QuestionAt: city.Point{X: chip.Max.X + grid + nameW + 2*grid, Y: y + grid/2},
+			Current:    v == current,
+		})
+		y += rowStep
+	}
+	return k
+}
+
+// Hit is the view a click lands on, if it lands on a row at all. A click
+// between rows chooses nothing rather than the nearest, because a menu
+// that acts on a near miss is worse than one that ignores it.
+func (k ViewKey) Hit(at city.Point) (city.View, bool) {
+	for _, r := range k.Rows {
+		if r.Row.Contains(at) {
+			return r.View, true
+		}
+	}
+	return city.ViewAttention, false
+}

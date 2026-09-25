@@ -509,6 +509,13 @@ It is also the hardware-independent number: it counts the work of issuing the dr
 The catch is that `--record` costs about three seconds a frame, and none of that is drawing: `frame(screen)` reads the framebuffer back off the card, which stalls the pipeline.
 That cost lands outside the timer, so the ms/frame figure is clean, but a twelve-second recording takes six minutes of wall clock.
 
+**A guard clause can be false for every case the new code was written to handle.**
+Making the five moving things hoverable was finished, tested and would have done nothing: `hoverSprites` consulted the sprite hits only when the world hover was open ground, and `Hit.ground()` is false whenever a building is under the pointer.
+A rover stands at a door, a drone circles a roof, a flag stands on one and smoke rises off it — all four are inside or above the footprint of the building they belong to, so the guard excluded every case the change existed for.
+It was invisible to the tests, which exercised the new code directly and passed, and invisible to a frame, which would have shown four cards that never appear and sent the search to `noteHit`, where nothing was wrong.
+It was visible only by reading the path the call actually takes.
+**When adding a case to a function, check what the existing guards say about that case — not only that the case is handled once it is inside one.**
+
 **The instrument must not be inside the thing it measures.**
 That has now cost this project three times: a focus gate measured under Xvfb, where nothing is ever focused, so the app idled and the number recorded an app that was not running; a zero-gap measurement of the plant that could not tell *resting on* from *occluded by*, because the plaza is drawn over whatever it covers; and a `pgrep -f "make sprites"` waiter whose own command line contains the string `make sprites`, so it matched itself and could never exit.
 The last one has a rule worth stating flatly: **a waiter must never match on a string its own command line contains.**
