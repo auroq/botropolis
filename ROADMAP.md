@@ -664,6 +664,49 @@ The phase's own summary, because it did not go the way the plan assumed: **item 
    Met 2026-09-23 (r182). Nine frames, `docs/screenshots/r180-view-*.png`. Attention is 26% cheaper a frame on a live city, seven paired samples, all in the same direction. Build, vet, lint clean; tests green.
    **One deviation to call, because it is a design choice rather than an omission.** The aggregate is not in the top strip; it is in the legend row above the key row, with the view's name and its scale. The top strip is the state summary and answers Attention's question — who wants me — and it is the one row that means the same thing in every mode. Putting a second, view-dependent number in it would make that row mean different things at different times, which is the promise the state tones are built on. The legend row sits where a mode's own information belongs, next to the keys, and it takes no height at all when no view is up. **If the strip is what you meant literally, say so and it moves** — it is a dozen lines either way.
 
+## 10. Phase 20 — the map has to explain itself (Aria, 2026-09-25, from r188 frames)
+
+Eight items. Two of them are not bugs and are the most important thing here.
+
+### The legibility failure, which is the headline
+
+Aria wrote: *"I don't understand the difference between the drones and cars"* and *"Not sure what the flags are either."*
+
+She designed this map. If the person who set the rules cannot read three of the things on it, §1's first principle — *every object means one datum, and hovering it shows the number it stands for* — is failing in practice rather than in theory. It fails because the principle was only ever half implemented: the **solid** things carry cards, and the **moving** things do not. `City.Near` hit-tests roads, beams and power lines; buildings, districts and landmarks have `Card()`; a car, a drone, a rover, a flag and a plume of smoke have nothing. They are the five objects on the map that cannot be asked what they mean.
+
+For the record, the intended meanings, which is itself the evidence — if this list is needed, the map is not carrying it:
+
+| | means | today |
+| --- | --- | --- |
+| Rover at a door | the session's main thread; a trip to the kerb and back is one tool call | not hoverable |
+| Drone circling a roof | one subagent in flight | not hoverable |
+| Car on a street | traffic between two repos — messages plus file touches | not hoverable |
+| Flag on a roof | one PR: accent open, green merged, slate closed, up to three | not hoverable |
+| Smoke | an API error | not hoverable |
+
+Three of the five are vehicles, which is most of why they blur. **Make all five hoverable before anything else in this phase** — that is the fix for items 6 and 7, and it is the fix Aria did not ask for because she asked the question instead.
+
+### 1. Overlay key (asked for)
+A key listing the nine views with their numbers, **clickable**, not only a legend for the view already up. It is the same failure one level higher: the views are discoverable only by pressing keys you have to know exist.
+
+### 2. Plants float and grow out of concrete
+In `r188` frames, bushes sit on building roofs and in mid-air beside the cooling tower, and plaza planters read as growing from the concrete. Scatter is placing decoration on cells that are already occupied, and in front of or behind buildings without regard to what is there. Decoration must be placed by the plan on cells the plan knows are empty — §9's rule that a tree exists because the plan put a park there.
+
+### 3. The power plant sits oddly
+The cooling tower reads as standing on the industrial slab rather than beside it on the plaza. Related to bug 23 — the tower is correctly grounded but the two pieces are composed as one landmark, and the result does not read as a building with a stack.
+
+### 4. Billboards do not work
+Session titles are drawn as vertical text up a building's flank. They cannot be read, they do not look like signage, and at distance they read as floating text with no surface. The water-tower treatment is better and still poor. The design brief said fascia over the door, rooftop billboard for long titles, up the side only for a tall building; in practice almost everything is taking the side. Either signage earns a real surface — a panel with a background, contrast and a size floor — or titles go back to plates on hover only.
+
+### 5. Cars do not say which repos they connect
+A car drives a street between two districts, but the street is routed on the grid and passes along the edge of whichever districts are adjacent, so a viewer cannot tell which pair it belongs to. Either the car carries its pair (colour, or a label on hover) or traffic stops being drawn as cars and becomes something anchored to both ends.
+
+### 6. Clicking a building should open the menu, not attach
+Today a click attaches immediately. That is a destructive-by-surprise action — it opens a terminal. A click should select and show the card with its actions; attach is one of them, and `Enter` can stay the shortcut.
+
+### Order
+The five hover cards first, because they answer two of Aria's questions and cost the least. Then the overlay key, then click-to-select. Then the art: plants, plant placement, billboards, cars. Exit: every object on the map answers when pointed at, and a frame per fix.
+
 
 ### Worth knowing, not bugs
 
