@@ -348,6 +348,14 @@ or the foot of the piece when it never reaches the ground, as the drone does not
 A model's own origin is not trusted for this, because a kit is free to put it anywhere and one kit does:
 the Space Kit models its rover two tiles east and one and a half south of its origin, which is how workers came to stand in the avenue.
 z is clamped at the ground rather than taken as the lowest point, because the Nature Kit sets its trees and bushes slightly into the earth on purpose.
+
+That anchor is a fact about a mesh standing in for a fact about a picture, which is a species of inference worth naming because it has already gone wrong once elsewhere.
+Bug 23 argued from `chimney-large` being a hollow shell — and it is, its 120 vertices put the lowest twelve on a ring of radius 0.5 with no filled disc — to a conclusion about why the piece reads as floating.
+The inference failed because an isometric camera never sees an underside, so no property of the underside can explain anything the camera shows.
+The anchors are the same shape of claim and are sound for a reason that has to be stated rather than assumed: they were validated against the rendered sprites, not against the meshes they came from.
+Bug 20 measured how far every one of the 67 pieces moved when the derivation replaced the old anchors, and read the result off the frames — which is what caught the Space Kit's rover sitting two and a half tiles from its origin.
+A derived anchor that had never been checked against a drawn sprite would be exactly as trustworthy as the hollow-shell premise was.
+
 The render is reproducible to within a handful of pixels, and `make sprites-check` is built around that number rather than around a hope.
 It re-cuts every atlas and runs `tools/atlas-diff.py`, which holds the manifests to a byte — every number in them is a decision the pipeline made —
 and compares the pages as decoded pixels, passing a page while fewer than 400 of its 16,777,216 bytes differ.
@@ -500,6 +508,11 @@ So the honest position is that whole-process CPU for a *non-capturing* window ca
 It is also the hardware-independent number: it counts the work of issuing the drawing rather than the fill rate a software display would charge for.
 The catch is that `--record` costs about three seconds a frame, and none of that is drawing: `frame(screen)` reads the framebuffer back off the card, which stalls the pipeline.
 That cost lands outside the timer, so the ms/frame figure is clean, but a twelve-second recording takes six minutes of wall clock.
+
+**The instrument must not be inside the thing it measures.**
+That has now cost this project three times: a focus gate measured under Xvfb, where nothing is ever focused, so the app idled and the number recorded an app that was not running; a zero-gap measurement of the plant that could not tell *resting on* from *occluded by*, because the plaza is drawn over whatever it covers; and a `pgrep -f "make sprites"` waiter whose own command line contains the string `make sprites`, so it matched itself and could never exit.
+The last one has a rule worth stating flatly: **a waiter must never match on a string its own command line contains.**
+`pgrep -x`, a pidfile, or `wait` on the job are immune; `pgrep -f "<the thing I am also called>"` never is.
 
 **A run that draws nothing still reports a plausible CPU figure**, which is the trap worth naming: a quarter of a core, spent sleeping, looks exactly like a cheap frame.
 Three of eight runs on one desk did that.

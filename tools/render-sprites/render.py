@@ -16,6 +16,7 @@ the renderer can set it on a cell.
 """
 
 import argparse
+import glob
 import json
 import math
 import os
@@ -47,10 +48,25 @@ PAGE_BUDGET = 8
 PAD = 2
 
 # Every piece the map draws, by kit: the atlas is cut from this list.
+# Every piece cut here is paid for four times over — once per heading —
+# in atlas area, page count and the size of the client binary that embeds
+# it. A piece nothing draws is also a piece nothing validates: two of the
+# four whose anchors moved most when bug 20 derived them were pieces no
+# code named, so that fix was partly measured against art nobody looks
+# at. Ten were dropped on 2026-09-25 for exactly that reason (bug 24):
+# four industrial building variants, the tank, the windmill, the solar
+# panels, two train wagons and the rowing boat.
+#
+# The seven kept but not yet drawn are kept on purpose, each with a use
+# in view: electricity-pole and electricity-wires are what the power
+# lines should become (they are vector strokes today), chimney-medium is
+# a candidate for the plant's stack, traffic-light, construction-cone and
+# light-curved are street furniture the `detail` setting now gives a home
+# to, and the truck is a second vehicle for Traffic. If one of those
+# still has no caller a phase from now, it should go the same way.
 PIECES = {
     "city-kit-commercial": [f"building-{c}" for c in "abcdefghijklmn"] + [f"building-skyscraper-{c}" for c in "abcde"],
-    "city-kit-industrial": ["building-a", "building-b", "building-e", "building-h", "building-k", "chimney-large", "chimney-medium",
-                            "detail-tank-large", "water-tower", "windmill", "solar-panel-landscape-group",
+    "city-kit-industrial": ["building-a", "chimney-large", "chimney-medium", "water-tower",
                             "shipping-container-a", "shipping-container-b", "shipping-container-c"],
     "city-kit-roads": ["road-straight", "road-bend", "road-crossroad", "road-intersection", "road-end", "road-square",
                        "light-square", "light-curved", "electricity-pole", "electricity-wires", "traffic-light", "construction-cone"],
@@ -60,9 +76,8 @@ PIECES = {
     "car-kit": ["sedan", "van", "taxi", "suv", "hatchback-sports", "truck", "delivery"],
     "space-kit": ["rover"],
     "train-kit": ["train-diesel-a", "train-diesel-b", "train-diesel-c",
-                  "train-carriage-container-red", "train-carriage-container-blue", "train-carriage-container-green",
-                  "train-carriage-box", "train-carriage-tank"],
-    "watercraft-kit": ["boat-tug-a", "boat-tug-b", "boat-row-small"],
+                  "train-carriage-container-red", "train-carriage-container-blue", "train-carriage-container-green"],
+    "watercraft-kit": ["boat-tug-a", "boat-tug-b"],
     "botropolis": ["drone", "fountain-a", "fountain-b", "fountain-c"],
 }
 
@@ -595,6 +610,16 @@ def atlas(args):
                 remove(root)
         stem = f"kits-z{zoom:g}"
         names = pages.save(out, stem)
+        # A re-cut that needs fewer pages than the last one leaves the
+        # surplus behind, and nothing notices: the manifest stops naming
+        # it, but it is still on disk, still tracked, and still embedded
+        # by go:embed into every client binary. Dropping ten pieces in
+        # bug 24 orphaned kits-z2-6.png exactly this way — 922 KB of a
+        # page nothing could reach.
+        for stale in sorted(glob.glob(os.path.join(out, f"{stem}-*.png"))):
+            if os.path.basename(stale) not in names:
+                os.remove(stale)
+                print(f"STALE removed {os.path.basename(stale)}, no longer in the atlas", file=sys.stderr)
         if len(names) > PAGE_BUDGET:
             print(f"BUDGET zoom {zoom:g} needs {len(names)} pages; the budget is {PAGE_BUDGET}", file=sys.stderr)
             sys.exit(1)

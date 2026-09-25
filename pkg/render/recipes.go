@@ -12,12 +12,30 @@ import (
 // piece, with a little variety from the session id so a block of equals
 // is not a row of clones.
 var (
+	// The commercial kit's buildings, banded by how full the context
+	// window is. The band each piece sits in is its sprite height at z2,
+	// which is the only thing that decides whether two buildings read as
+	// the same size — so the bands are derived from the atlas rather
+	// than chosen, and the heights are here so the next person can
+	// check rather than trust. Eight of these were cut into every atlas
+	// but named nowhere, which left band 0 with a single variant and
+	// every low-context session drawn as the same building.
 	fillClasses = [][]string{
-		{"city-kit-commercial/building-c"},
-		{"city-kit-commercial/building-a", "city-kit-commercial/building-d", "city-kit-commercial/building-h"},
-		{"city-kit-commercial/building-f", "city-kit-commercial/building-g"},
-		{"city-kit-commercial/building-l", "city-kit-commercial/building-skyscraper-a"},
-		{"city-kit-commercial/building-skyscraper-b", "city-kit-commercial/building-skyscraper-c"},
+		// 253, 253
+		{"city-kit-commercial/building-c", "city-kit-commercial/building-e"},
+		// 265, 317, 318, 319
+		{"city-kit-commercial/building-d", "city-kit-commercial/building-h",
+			"city-kit-commercial/building-b", "city-kit-commercial/building-a"},
+		// 382, 383, 397
+		{"city-kit-commercial/building-g", "city-kit-commercial/building-f",
+			"city-kit-commercial/building-k"},
+		// 436, 489, 500, 594, 626
+		{"city-kit-commercial/building-i", "city-kit-commercial/building-j",
+			"city-kit-commercial/building-l", "city-kit-commercial/building-m",
+			"city-kit-commercial/building-skyscraper-a"},
+		// 770, 824, 884, 1017
+		{"city-kit-commercial/building-skyscraper-c", "city-kit-commercial/building-skyscraper-e",
+			"city-kit-commercial/building-skyscraper-b", "city-kit-commercial/building-skyscraper-d"},
 	}
 	fillSteps = []float64{0.2, 0.45, 0.7, 0.9}
 	sheds     = []string{"city-kit-industrial/shipping-container-a", "city-kit-industrial/shipping-container-b", "city-kit-industrial/shipping-container-c"}
