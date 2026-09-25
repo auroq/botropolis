@@ -555,6 +555,9 @@ Two additions to the plan as written:
 
 ### Phase 19 — Info views
 
+**Done 2026-09-23 (r182).** Items 1–5 plus the reverted item 0; bug 30 fixed on the way. Build, vet, lint clean; tests green. Nine frames in `docs/screenshots/`.
+The phase's own summary, because it did not go the way the plan assumed: **item 0 was taken first to find the cheap structural win, and its job turned out to be proving there wasn't one** — 2% for a softer map, reverted. What replaced it is two levers that do work, both measured on the live city and both larger: taking the networks out of Attention is **26% of a frame**, and `detail: plain` is another **19%** on top. Neither is visible on the sample fixture, which has no networks and is the reason the first measurement said nothing at all.
+
 0. ~~**The sorted list, cached, with its own ordering guard.**~~ **Reverted 2026-09-23 (r170).** Built, measured, and not worth it — which is what taking it first was for.
    On Aria's desk it bought 19.8% → 19.5% of a core, about 2%, and cost 29,597 changed pixels of softened edges across the whole map.
    The fallback was tried before reverting: buildings per-frame, only trees, lamps and landmarks cached. It is *faster* than the full version on the agent's rig (1.35 ms a frame against 1.8, and phase 18's 2.7) because the cascade no longer drags whole buildings and their signage back over the layer — but it still changed 19,218 pixels.
@@ -601,6 +604,8 @@ Two additions to the plan as written:
    **It is worth 19% of an Attention frame** on the live city: 1.65 → 1.33 ms/frame over four paired samples (−0.65, −0.36, +0.01, −0.28). That is on top of the 26% the networks bought, and it is the largest single thing in a frame by count that carries no information at all — which is exactly why it is a setting and not a default.
    Note the name collision worth keeping straight: `Scene.Detail` is this setting and holds at every zoom; `Scene.Detailed` is the older question of whether the camera is close enough for sprites to read at all. Both are commented to say so.
 6. Exit: a frame per view in `docs/screenshots/`, each view's aggregate visible in the strip, and the Attention view measurably cheaper than today's map because it no longer draws four networks.
+   Met 2026-09-23 (r182). Nine frames, `docs/screenshots/r180-view-*.png`. Attention is 26% cheaper a frame on a live city, seven paired samples, all in the same direction. Build, vet, lint clean; tests green.
+   **One deviation to call, because it is a design choice rather than an omission.** The aggregate is not in the top strip; it is in the legend row above the key row, with the view's name and its scale. The top strip is the state summary and answers Attention's question — who wants me — and it is the one row that means the same thing in every mode. Putting a second, view-dependent number in it would make that row mean different things at different times, which is the promise the state tones are built on. The legend row sits where a mode's own information belongs, next to the keys, and it takes no height at all when no view is up. **If the strip is what you meant literally, say so and it moves** — it is a dozen lines either way.
 
 
 ### Worth knowing, not bugs
