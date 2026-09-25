@@ -220,6 +220,10 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 	if !ok {
 		return fmt.Errorf("unknown projection %q: use iso or top", c.config.Projection)
 	}
+	detail, ok := city.ParseDetail(c.config.Detail)
+	if !ok {
+		return fmt.Errorf("unknown detail %q: use full or plain", c.config.Detail)
+	}
 	recordDir, recordSeconds := cli.Record(cmd)
 	hoverX, hoverY, hoverSet := cli.Hover(cmd)
 	hoverPoint := city.Point{X: hoverX, Y: hoverY}
@@ -241,6 +245,7 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		Scale:         c.config.RenderScale,
 		ReducedMotion: c.config.ReducedMotion,
 		DailyBudget:   c.config.DailyBudget,
+		Detail:        detail,
 		Settings:      settingsFor(c.config),
 		Apply: func(s ui.Setting) error {
 			key, value := settingValue(s)
@@ -285,6 +290,7 @@ func settingsFor(cfg *config.Config) ui.Settings {
 		{Key: config.KeyReducedMotion, Label: "reduced motion", Options: []string{"off", "on"}, Value: onOff},
 		{Key: config.KeyRenderScale, Label: "render scale", Options: withValue([]string{autoValue, "1", "1.25", "1.5", "2"}, scale), Value: scale},
 		{Key: config.KeyProjection, Label: "projection", Options: []string{"iso", "top"}, Value: cfg.Projection},
+		{Key: config.KeyDetail, Label: "detail", Options: []string{"full", "plain"}, Value: cfg.Detail},
 		{Key: config.KeyParkedDays, Label: "parked days", Options: withValue([]string{"0", "1", "3", "7", "14", "30", "90"}, strconv.Itoa(cfg.ParkedDays)), Value: strconv.Itoa(cfg.ParkedDays)},
 		{Key: config.KeyTerminal, Label: "terminal", Options: withValue(append([]string{autoValue}, control.KnownTerminals()...), terminal), Value: terminal},
 	})

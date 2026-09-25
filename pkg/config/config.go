@@ -26,11 +26,16 @@ const (
 	KeyRenderScale   = "render_scale"
 	KeyReducedMotion = "reduced_motion"
 	KeyDailyBudget   = "daily_budget_usd"
+	KeyDetail        = "detail"
 
 	DefaultParkedDays = 7
 )
 
 const DefaultProjection = "iso"
+
+// DefaultDetail draws the whole city; see city.Detail for why the
+// scenery is the part that can go.
+const DefaultDetail = "full"
 
 type Config struct {
 	Home          string
@@ -45,6 +50,7 @@ type Config struct {
 	RenderScale   float64
 	ReducedMotion bool
 	DailyBudget   float64
+	Detail        string
 	File          string
 }
 
@@ -62,6 +68,7 @@ func NewViper() *viper.Viper {
 	v.SetDefault(KeyRenderScale, 0.0)
 	v.SetDefault(KeyReducedMotion, false)
 	v.SetDefault(KeyDailyBudget, 0.0)
+	v.SetDefault(KeyDetail, DefaultDetail)
 	v.SetConfigName(configName)
 	v.AddConfigPath(filepath.Join(configHome(), appDir))
 	return v
@@ -75,6 +82,7 @@ func BindFlags(v *viper.Viper, flags *pflag.FlagSet) {
 	flags.Float64(KeyRenderScale, 0, "chrome and pixel scale (default: follow the display)")
 	flags.Bool(KeyReducedMotion, false, "stop every animation and keep the colours")
 	flags.Float64(KeyDailyBudget, 0, "a daily spend to measure the strip and the plant against, in USD (0 for none)")
+	flags.String(KeyDetail, DefaultDetail, "how much of the city to draw: full or plain (plain drops the scenery)")
 	_ = v.BindPFlag(KeyHome, flags.Lookup(KeyHome))
 	_ = v.BindPFlag(KeySocket, flags.Lookup(KeySocket))
 	_ = v.BindPFlag(KeyParkedDays, flags.Lookup(KeyParkedDays))
@@ -82,6 +90,7 @@ func BindFlags(v *viper.Viper, flags *pflag.FlagSet) {
 	_ = v.BindPFlag(KeyRenderScale, flags.Lookup(KeyRenderScale))
 	_ = v.BindPFlag(KeyReducedMotion, flags.Lookup(KeyReducedMotion))
 	_ = v.BindPFlag(KeyDailyBudget, flags.Lookup(KeyDailyBudget))
+	_ = v.BindPFlag(KeyDetail, flags.Lookup(KeyDetail))
 }
 
 func New(v *viper.Viper) (*Config, error) {
@@ -104,6 +113,7 @@ func New(v *viper.Viper) (*Config, error) {
 		RenderScale:   v.GetFloat64(KeyRenderScale),
 		ReducedMotion: v.GetBool(KeyReducedMotion),
 		DailyBudget:   v.GetFloat64(KeyDailyBudget),
+		Detail:        v.GetString(KeyDetail),
 		File:          v.ConfigFileUsed(),
 	}
 	if cfg.Home == "" {

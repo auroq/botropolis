@@ -55,6 +55,10 @@ func (g *Game) applySetting(s ui.Setting) {
 		if p, ok := city.ParseProjection(s.Value); ok {
 			g.scene.SetProjection(p)
 		}
+	case config.KeyDetail:
+		if d, ok := city.ParseDetail(s.Value); ok {
+			g.scene.SetDetail(d)
+		}
 	case config.KeyParkedDays:
 		note += " (the daemon reads it when it restarts)"
 	}

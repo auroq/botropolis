@@ -293,6 +293,10 @@ Taking the networks out of Attention is worth **26% of a frame** on a live city 
 It is worth nothing at all on the sample fixture, which has no wires, no roads, two beams and one freight carriage.
 That is the same fact twice: the size of the win is the size of your networks, so the number belongs beside the city it was taken on.
 
+The `detail` setting is the other lever, and a blunter one: `plain` drops the trees, the lamps and the planting, which is the largest single thing in a frame by count and the only part of the map whose absence costs no information.
+It is worth 19% of an Attention frame on the live city, on top of the networks.
+One setting, not a checkbox per kind — three boxes would be three ways to ask the same question.
+
 Contextual highlight is the other half of how a view stays legible, and the half that does not need colour at all.
 Put the pointer on a water tower and the sessions that call that server stay lit while the rest of the city fades.
 That is what makes Servers readable with three colours and thirteen servers: colour carries the top three, and the pointer carries the rest.

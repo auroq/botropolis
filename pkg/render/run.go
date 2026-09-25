@@ -48,6 +48,8 @@ type Options struct {
 	Scale float64
 	// ReducedMotion stops every animation and keeps the colours.
 	ReducedMotion bool
+	// Detail is how much of the city is drawn; plain drops the scenery.
+	Detail city.Detail
 	// DailyBudget is the daily spend in USD the strip and plant measure
 	// against; 0 for none.
 	DailyBudget float64
@@ -96,6 +98,7 @@ func Run(ctx context.Context, opts Options) error {
 	game.record = opts.Record
 	game.recordFrames = int(opts.RecordSeconds * 30)
 	game.reduced = opts.ReducedMotion
+	scene.SetDetail(opts.Detail)
 	game.settings = opts.Settings
 	game.apply = opts.Apply
 

@@ -291,3 +291,14 @@ func TestDailyBudgetKey(t *testing.T) {
 		})
 	})
 }
+
+func TestDetailSetting(t *testing.T) {
+	t.Run("when nothing sets it", func(t *testing.T) {
+		t.Run("it should draw the whole city", func(t *testing.T) {
+			v := config.NewViper()
+			cfg, err := config.New(v)
+			require.NoError(t, err)
+			assert.Equal(t, "full", cfg.Detail)
+		})
+	})
+}

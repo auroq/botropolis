@@ -105,6 +105,8 @@ type Scene struct {
 	// the snapshots taken, so the renderer can tell one city from the next.
 	view       View
 	generation int
+	// detail is how much scenery is drawn; see detail.go.
+	detail Detail
 	// viewTop is the largest value each ramped view found in the city,
 	// and viewCats the categories each categorical one sorts it into.
 	// Both are worked out once a snapshot and thrown away with it.

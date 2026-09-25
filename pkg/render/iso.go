@@ -587,6 +587,9 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		}})
 	}
 	for _, l := range c.Lamps {
+		if !g.scene.Scenery() {
+			break
+		}
 		l := l
 		items = append(items, drawable{depth: cam.DepthOf(l.Rect()), draw: func() {
 			g.lamp(screen, cam, l, c.Night)
@@ -625,6 +628,9 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		}})
 	}
 	for _, t := range c.Trees {
+		if !g.scene.Scenery() {
+			break
+		}
 		t := t
 		items = append(items, drawable{depth: cam.Depth(t.At), draw: func() {
 			g.isoTree(screen, cam, t, g.scenery())
