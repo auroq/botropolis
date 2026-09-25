@@ -119,3 +119,66 @@ func TestLayoutCard(t *testing.T) {
 		})
 	})
 }
+
+// Now that a click selects rather than attaches, the card it raises has
+// stop on it, two buttons from the left. A second click in the same
+// place — a double-click out of habit from every other application —
+// must not land on that. So the pinned card may not cover the building
+// it belongs to: the worst a second click can then do is select the same
+// building again.
+func TestPinnedCardKeepsOffItsBuilding(t *testing.T) {
+	th := ui.NewTheme(1)
+	card := ui.LayoutCard(th, city.Card{
+		Title: "a session",
+		Lines: []string{"state    working", "branch   main"},
+	}, city.RectAt(0, 0, 1000, 800), measure7)
+
+	cases := map[string]city.Rect{
+		"room to the right":           city.RectAt(100, 100, 80, 80),
+		"hard against the right edge": city.RectAt(880, 100, 80, 80),
+		"hard against the left edge":  city.RectAt(0, 100, 80, 80),
+		"in the bottom corner":        city.RectAt(880, 700, 80, 80),
+		"dead centre":                 city.RectAt(460, 360, 80, 80),
+	}
+	bounds := city.RectAt(0, 0, 1000, 800)
+	for name, b := range cases {
+		t.Run("when the building is "+name, func(t *testing.T) {
+			pinned := card.PinTo(b, bounds, th.Grid())
+
+			t.Run("it should not cover the building it belongs to", func(t *testing.T) {
+				assert.False(t, pinned.Rect.Overlaps(b),
+					"card %v covers building %v", pinned.Rect, b)
+			})
+
+			t.Run("it should stay inside the window", func(t *testing.T) {
+				require.GreaterOrEqual(t, pinned.Rect.Min.X, bounds.Min.X)
+				require.LessOrEqual(t, pinned.Rect.Max.X, bounds.Max.X)
+			})
+		})
+	}
+}
+
+// The case that actually bites: a window too narrow for the card on
+// either side of the building. PinTo used to clamp to the window edge,
+// which puts the card straight over the thing it describes.
+func TestPinnedCardInANarrowWindow(t *testing.T) {
+	th := ui.NewTheme(1)
+	bounds := city.RectAt(0, 0, 360, 800)
+	card := ui.LayoutCard(th, city.Card{
+		Title: "a session with a long enough name",
+		Lines: []string{"state    working", "branch   main"},
+	}, bounds, measure7)
+	b := city.RectAt(150, 300, 80, 80)
+	pinned := card.PinTo(b, bounds, th.Grid())
+
+	t.Run("when the card fits on neither side of the building", func(t *testing.T) {
+		t.Run("it should go above or below rather than over it", func(t *testing.T) {
+			assert.False(t, pinned.Rect.Overlaps(b), "card %v covers building %v", pinned.Rect, b)
+		})
+
+		t.Run("it should still be on screen", func(t *testing.T) {
+			require.GreaterOrEqual(t, pinned.Rect.Min.Y, bounds.Min.Y)
+			require.LessOrEqual(t, pinned.Rect.Max.Y, bounds.Max.Y)
+		})
+	})
+}

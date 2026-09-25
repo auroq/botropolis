@@ -579,7 +579,7 @@ Conflating these is how an options menu grows twenty checkboxes nobody touches.
 
 ### The views worth having
 
-Each answers a question, tints the city by one number, and puts its aggregate in the strip. `v` cycles; the number keys jump; the same key leaves.
+Each answers a question, tints the city by one number, and puts its aggregate in the strip. `v` opens the key to all nine; the number keys jump; Escape leaves. (`v` cycled when this was written — see phase 20 item 1 for why that was the wrong control for the reader it was meant to serve.)
 
 | View | Tints by | Reveals | Answers |
 | --- | --- | --- | --- |
@@ -629,7 +629,7 @@ The phase's own summary, because it did not go the way the plan assumed: **item 
    **Draining the base needed a colour matrix, not a scale.** `ebiten.ColorScale` multiplies each channel on its own, which can only darken; taking the colour out mixes channels, so the base blit and every sprite the view has nothing to say about go through `colorm.ChangeHSV`.
    **The palette, and a decision Aria owns.** The dataviz skill was not installed in the session that built this, so `pkg/ui/ramp.go` is a proposal rather than a citation — in one file, replaceable in one edit. It meets the four conditions and the tests prove three of them rather than asserting them: `pkg/ui/colourblind_test.go` simulates deuteranopia and protanopia by the Viénot–Brettel–Mollon method and checks the sequential ramp still climbs in lightness under both, and that no two categories collapse.
    **Six categories, not nine.** The state palette already spends amber, blue, teal, violet, slate, red and green, and a seventh colour told apart from the other six, from the state tones *and* from the ramp does not exist. Past the sixth kind everything is one `other`. That matters for Servers: this machine has 13 MCP servers, so most of them will share a bucket, and colour is the wrong carrier for that view's long tail — worth knowing before item 3 draws it.
-2. ~~`v` cycles, `1`–`9` jump, the same key or Escape leaves, the current view and its legend sit in the strip, and the view is remembered in `layout.json`.~~ Done 2026-09-23 (r178). Frame `docs/screenshots/r178-view-legend.png`.
+2. ~~`v` cycles, `1`–`9` jump, the same key or Escape leaves, the current view and its legend sit in the strip, and the view is remembered in `layout.json`.~~ Done 2026-09-23 (r178). **`v` was changed in phase 20 item 1 to open the key rather than cycle**, because cycling only serves a reader who already knows the nine exist. Frame `docs/screenshots/r178-view-legend.png`.
    The legend is its own row above the key row, drawn for as long as the view is up rather than flashed as a status. `Scene.Legend` returns a structure now, not a sentence, because the chrome draws swatches and a gradient rather than text: a ramp view gets the ramp itself with both ends written out, a categorical view gets a swatch per category with `other` in the neutral. The status line keeps the announcement — the view's name and the question it answers — and gets out of the way. When no view is up the legend has no height at all, so entering and leaving never moves the map.
    The view is remembered by name, not by number, so reordering `Views` cannot silently change what a saved layout means; a name this build does not know opens on Attention rather than refusing to start.
    **The strip gives the state tones back while a view is up** (`ui.Drained`). This is the correctness requirement bug 30 turned up, not polish — with seven tones spent, no view palette can stay clear of them in colour, so the promise that one colour means one thing is kept by the mode instead. The counts and their jumps stay; only the dots go.
@@ -709,8 +709,10 @@ Session titles are drawn as vertical text up a building's flank. They cannot be 
 ### 5. Cars do not say which repos they connect
 A car drives a street between two districts, but the street is routed on the grid and passes along the edge of whichever districts are adjacent, so a viewer cannot tell which pair it belongs to. Either the car carries its pair (colour, or a label on hover) or traffic stops being drawn as cars and becomes something anchored to both ends.
 
-### 6. Clicking a building should open the menu, not attach
+### 6. ~~Clicking a building should open the menu, not attach~~ Done 2026-09-25 (r197)
 Today a click attaches immediately. That is a destructive-by-surprise action — it opens a terminal. A click should select and show the card with its actions; attach is one of them, and `Enter` can stay the shortcut.
+Frame `docs/screenshots/r197-click-to-select.png`. `Scene.Click` selects and raises the card and returns no action; `Enter` still activates, and the footer says `click select` rather than `click attach`, which it had been saying while doing something else.
+**The trap this opens, and what closes it.** The card now raised by a click carries `stop` two buttons from the left, so a double-click out of habit from every other application could press it. Selection happens on mouse *release* and card buttons on *press*, so a single click can never press the card it just opened — but a second one could, and `PinTo` used to clamp the card to the window edge when it fitted on neither side of the building, which puts it straight over the thing it describes. It now tries beside, then under, then over, and only overlaps when nothing clear of the building fits on screen at all. `TestPinnedCardInANarrowWindow` is the case that bit: a 360 px window put the card squarely on its own building.
 
 ### Order
 The five hover cards first, because they answer two of Aria's questions and cost the least. Then the overlay key, then click-to-select. Then the art: plants, plant placement, billboards, cars. Exit: every object on the map answers when pointed at, and a frame per fix.

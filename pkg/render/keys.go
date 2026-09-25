@@ -21,7 +21,7 @@ var bindings = []ui.Key{
 	{Key: "arrows", Action: "pan"},
 	{Key: "wheel", Action: "zoom"},
 	{Key: "+ / -", Action: "zoom"},
-	{Key: "click", Action: "attach"},
+	{Key: "click", Action: "select"},
 	{Key: "enter", Action: "attach the selection"},
 	{Key: "tab", Action: "next needs-you"},
 	{Key: "c", Action: "new session here"},
@@ -45,7 +45,7 @@ var bindings = []ui.Key{
 var footerKeys = []ui.Key{
 	{Key: "drag", Action: "pan"},
 	{Key: "wheel", Action: "zoom"},
-	{Key: "click", Action: "attach"},
+	{Key: "click", Action: "select"},
 	{Key: "tab", Action: "next needs-you"},
 	{Key: "v", Action: "views"},
 	{Key: "b", Action: "sidebar"},

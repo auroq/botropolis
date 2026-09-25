@@ -211,13 +211,21 @@ func TestScene(t *testing.T) {
 		s := scene(t, session("a", cinders, state.NeedsYou))
 		action := s.Click(centreOf(t, s, "a"))
 
-		t.Run("it should ask to attach that session", func(t *testing.T) {
-			assert.Equal(t, city.Action{Kind: city.ActionAttach, SessionID: "a"}, action)
+		// A click used to attach, which opens a terminal — a
+		// destructive-by-surprise action for anyone who clicked to look
+		// rather than to enter. It selects now, and the card it raises
+		// offers attach among the rest.
+		t.Run("it should do nothing on its own", func(t *testing.T) {
+			assert.Equal(t, city.Action{}, action)
 		})
 
 		t.Run("it should select the building", func(t *testing.T) {
 			require.NotNil(t, s.Selected())
 			assert.Equal(t, "a", s.Selected().Session.ID)
+		})
+
+		t.Run("it should still attach when the selection is activated", func(t *testing.T) {
+			assert.Equal(t, city.Action{Kind: city.ActionAttach, SessionID: "a"}, s.Activate())
 		})
 	})
 
@@ -251,8 +259,12 @@ func TestScene(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Parked))
 		action := s.Click(centreOf(t, s, "a"))
 
-		t.Run("it should ask to resume that session", func(t *testing.T) {
-			assert.Equal(t, city.Action{Kind: city.ActionResume, SessionID: "a"}, action)
+		t.Run("it should do nothing on its own, as a live one does not", func(t *testing.T) {
+			assert.Equal(t, city.Action{}, action)
+		})
+
+		t.Run("it should offer resume when the selection is activated", func(t *testing.T) {
+			assert.Equal(t, city.Action{Kind: city.ActionResume, SessionID: "a"}, s.Activate())
 		})
 	})
 

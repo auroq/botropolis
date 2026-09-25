@@ -646,7 +646,11 @@ func (s *Scene) Click(screen Point) Action {
 	}
 	s.hover = hit
 	s.selected = hit.Building
-	return s.Activate()
+	// A click selects and raises the card; it does not attach. Attaching
+	// opens a terminal, which is not something to do to someone who
+	// clicked a building to find out what it was. Attach is on the card,
+	// and Enter is still the shortcut.
+	return Action{}
 }
 
 // Actions is what the selection's card offers, in order: the way in

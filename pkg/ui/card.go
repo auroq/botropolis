@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/auroq/botropolis/pkg/city"
+	"math"
 )
 
 // Card is a hover or selection card laid out on a panel: a title at the
@@ -67,20 +68,37 @@ func LayoutCard(th Theme, card city.Card, bounds city.Rect, measure Measure) Car
 // PinTo places the card beside a screen rect: to its right when there is
 // room, else to its left, kept inside bounds.
 func (c Card) PinTo(beside city.Rect, bounds city.Rect, gap float64) Card {
-	at := city.Point{X: beside.Max.X + gap, Y: beside.Min.Y}
-	if at.X+c.Rect.Width() > bounds.Max.X {
-		at.X = beside.Min.X - gap - c.Rect.Width()
+	w, h := c.Rect.Width(), c.Rect.Height()
+	clampY := func(y float64) float64 {
+		return math.Min(math.Max(y, bounds.Min.Y), math.Max(bounds.Min.Y, bounds.Max.Y-h))
 	}
-	if at.X < bounds.Min.X {
-		at.X = bounds.Min.X
+	clampX := func(x float64) float64 {
+		return math.Min(math.Max(x, bounds.Min.X), math.Max(bounds.Min.X, bounds.Max.X-w))
 	}
-	if at.Y+c.Rect.Height() > bounds.Max.Y {
-		at.Y = bounds.Max.Y - c.Rect.Height()
+	// Beside first, on whichever side has room, then under, then over.
+	// The card must not land on the building it describes: a click
+	// selects now rather than attaching, so the card it raises carries
+	// stop two buttons from the left, and a second click out of
+	// double-click habit would otherwise press it. Kept off the
+	// building, the worst a second click can do is select the same
+	// building again.
+	for _, at := range []city.Point{
+		{X: beside.Max.X + gap, Y: clampY(beside.Min.Y)},
+		{X: beside.Min.X - gap - w, Y: clampY(beside.Min.Y)},
+		{X: clampX(beside.Min.X), Y: beside.Max.Y + gap},
+		{X: clampX(beside.Min.X), Y: beside.Min.Y - gap - h},
+	} {
+		if at.X < bounds.Min.X || at.X+w > bounds.Max.X {
+			continue
+		}
+		if at.Y < bounds.Min.Y || at.Y+h > bounds.Max.Y {
+			continue
+		}
+		return c.MoveTo(at)
 	}
-	if at.Y < bounds.Min.Y {
-		at.Y = bounds.Min.Y
-	}
-	return c.MoveTo(at)
+	// Nowhere clear of it fits on screen. Stay in the window and accept
+	// the overlap; a window this small has worse problems.
+	return c.MoveTo(city.Point{X: clampX(beside.Max.X + gap), Y: clampY(beside.Min.Y)})
 }
 
 // MoveTo puts the card's top-left corner at a point, carrying its text.
