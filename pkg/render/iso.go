@@ -624,7 +624,17 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	if c.Plant.Rect.Area() > 0 {
 		items = append(items, drawable{depth: cam.DepthOf(c.Plant.Rect), draw: func() {
 			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, g.scenery(), city.Hit{Landmark: city.LandmarkPlant})
-			g.kit(screen, cam, kitStack, 0, city.Point{X: c.Plant.Rect.Max.X - city.Tile, Y: c.Plant.Rect.Max.Y - city.Tile}, nil)
+		}})
+		// The stack is its own drawable at its own ground point, not a
+		// second sprite welded to the plant's. Sharing one depth is what
+		// made it hang: its ground point sits behind the plant's slab,
+		// so the slab should hide its base, and instead the base was
+		// painted over the slab afterwards. A tower standing on ground
+		// the viewer cannot see, drawn in front of the thing hiding that
+		// ground, reads as floating by exactly the slab's height.
+		stack := plantStackAt(c.Plant.Rect)
+		items = append(items, drawable{depth: cam.Depth(stack), draw: func() {
+			g.kit(screen, cam, kitStack, 0, stack, nil)
 		}})
 	}
 	for _, t := range c.Trees {
@@ -1059,4 +1069,13 @@ func (g *Game) freight(c *city.City, seconds float64) []carriage {
 		return nil
 	}
 	return g.carriages(c, seconds)
+}
+
+// plantStackAt is where the plant's stack stands: one tile in from the
+// far corner of the plant's footprint. It is a function so the point the
+// stack is drawn at and the point it is sorted by cannot drift apart —
+// they were the same expression written twice before, and that is the
+// shape the bug hid in.
+func plantStackAt(plant city.Rect) city.Point {
+	return city.Point{X: plant.Max.X - city.Tile, Y: plant.Max.Y - city.Tile}
 }
