@@ -117,10 +117,33 @@ func pickPiece(pieces []string, variant int) string {
 }
 
 // roadPiece is the road piece and its turn for a street cell's joins.
-// A straight at turn 0 runs east–west; a bend at turn 0 joins north and
-// west (its arc bulges to the south-east; the kit's road-curve is the
-// 2×2 piece and does not fit a cell); a T at turn 0 has its bar
-// east–west and its stem south; an end at turn 0 is open to the east.
+//
+// The kit's own geometry, measured off the atlas rather than assumed —
+// each sprite read at all four baked headings, its open sides taken from
+// the tile diamond's edge midpoints, where a closed side carries the
+// raised kerb (near-white) and an open one is road surface (mid grey).
+// At camera heading 0 the projection is screen = ((x-y)s, (x+y)s/2) with
+// +X east and +Y south, so the diamond's upper-right edge faces north,
+// lower-right east, lower-left south, upper-left west.
+//
+// At turn 0:
+//   - a straight runs east–west
+//   - a bend joins SOUTH and WEST, its arc bulging to the north-east
+//   - a T has its bar east–west and its stem south (open E, S, W)
+//   - an end is open to the east
+//
+// and every +90 of turn takes each open side one step along
+// E -> N -> W -> S.
+//
+// The bend's line above used to read "joins north and west", which is a
+// quarter turn out, and the table was built on it. Worse, it was built
+// assuming turn rotates the other way round, which is invisible on the
+// straight and the crossroad because both are symmetric under a half
+// turn, and wrong on everything else — including the end piece, which
+// nobody had noticed because a dead end is rare on a generated plan.
+// Eight of the sixteen masks were wrong. TestRoadPieceOpensWhereItJoins
+// holds all sixteen against the measured geometry, which is the check
+// that would have caught it.
 func roadPiece(mask int) (string, int) {
 	n, e, s, w := mask&city.DirN != 0, mask&city.DirE != 0, mask&city.DirS != 0, mask&city.DirW != 0
 	count := 0
@@ -133,10 +156,12 @@ func roadPiece(mask int) (string, int) {
 	case 4:
 		return "city-kit-roads/road-crossroad", 0
 	case 3:
+		// The stem is the side that is missing: south at turn 0, then
+		// west, north, east as the turn comes round.
 		switch {
 		case !n:
 			return "city-kit-roads/road-intersection", 0
-		case !e:
+		case !w:
 			return "city-kit-roads/road-intersection", 90
 		case !s:
 			return "city-kit-roads/road-intersection", 180
@@ -149,20 +174,20 @@ func roadPiece(mask int) (string, int) {
 			return "city-kit-roads/road-straight", 0
 		case n && s:
 			return "city-kit-roads/road-straight", 90
-		case s && e:
-			return "city-kit-roads/road-bend", 180
 		case s && w:
-			return "city-kit-roads/road-bend", 270
-		case n && w:
 			return "city-kit-roads/road-bend", 0
-		default:
+		case s && e:
 			return "city-kit-roads/road-bend", 90
+		case n && e:
+			return "city-kit-roads/road-bend", 180
+		default:
+			return "city-kit-roads/road-bend", 270
 		}
 	case 1:
 		switch {
 		case e:
 			return "city-kit-roads/road-end", 0
-		case s:
+		case n:
 			return "city-kit-roads/road-end", 90
 		case w:
 			return "city-kit-roads/road-end", 180
