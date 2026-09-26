@@ -764,6 +764,24 @@ Decided: **render two or three through the pipeline on a real district and compa
 ### Order
 37 and 35 first (both are defects and 35 may change how 36 reads), then 36, then 38's prototypes.
 
+### 39. The chimney stands on the plaza, not on the building (Aria, 2026-09-26, on the r203 frame)
+
+Her words: *"it reads like it's tangentially attached, but that doesn't feel real for physics — I'd expect the chimney to be sliced into the building, and I don't see that."*
+She is right, and the cause is narrower than "it looks detached".
+
+`plantStackAt` (`pkg/render/iso.go:1128`) returns `{plant.Max.X - Tile, plant.Max.Y - Tile}` — **a point on the ground**, and the stack is drawn as a free-standing object standing there, sorted by `cam.Depth(stack)`.
+So the chimney does not sit on the roof at all.
+It stands on the plaza in front of the slab, and because it is tall it rises past the building; in the r203 crop its foot hangs in open air above the plaza, below the roofline and in front of the wall.
+The cooling tower did exactly this and read as floating; the slim chimney does exactly this and reads as leaning.
+Swapping the piece changed how the error looks, not what it is.
+
+**A chimney is a roof feature, not a ground object.** Three things follow:
+- Anchor it inside the building's footprint, on the roof plane, rather than one tile in from the rect's corner on the ground.
+- Raise it by the building's height so its base is at the roof, not at the pavement.
+- Draw it so the roof's own near parapet occludes its base — that is what makes it read as passing *through* the roof instead of resting on it. Note this is the opposite of bug 23's remedy: that gave the stack its own ground depth because it was being treated as a welded sprite. It is neither welded nor free-standing; it belongs to the building's depth with its foot hidden by the building's own geometry.
+
+Worth noting for the taxonomy of how this was found: bug 23 measured a zero-pixel gap at the stack's base and concluded it was grounded. It was — on the plaza. The measurement was of the right quantity in the wrong place, which is the same family as §"A number can be right and mean nothing": correct arithmetic about an object nobody meant.
+
 
 ### Worth knowing, not bugs
 
