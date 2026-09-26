@@ -1494,6 +1494,31 @@ Nothing on disk in the container carries it either — its `~/.claude.json` has 
 
 **What was changed in her container:** a native Claude Code install at `~/.local/bin/claude` (2.1.283) that is *not* on PATH, so the default `claude` there is still 2.1.69 and nothing about the container's normal behaviour moved.
 
+### 49e. No self-service usage endpoint exists, and on enterprise there is no per-user limit to report (Aria, 2026-09-26)
+
+Her ruling: *"for the enterprise usage, I don't want to add any admin controls. But each user should be able to query their own usage through an endpoint."*
+
+**The endpoint she wants does not exist.**
+Anthropic's Enterprise Analytics API does have a per-user route — `/users/{id}/usage` — but it requires **Primary Owner** access and a key carrying `read:analytics`.
+There is no self-service route an ordinary seat can call for its own figures.
+Handing every user a key that satisfies those requirements *is* an admin control, distributed, which is the thing she has ruled out.
+So the answer is not "find the right endpoint"; there is not one.
+
+**And there is a deeper reason than access.**
+Measured in 49d: the CLI on an enterprise account prints a header and no data.
+That is consistent with enterprise seats not *having* a per-seat limit at all — the cap is the organisation's monthly spend, which is a property of the org, not of the user.
+So a per-user usage percentage on enterprise is not merely unavailable, it is **not a well-defined quantity**.
+There is no denominator because there is no per-user limit.
+A boat drawn against an invented one would be the right-but-meaningless failure in its purest form.
+
+**What a user can honestly see on enterprise is their own consumption against a ceiling they set themselves.**
+That is the scoped configured budget from 49d, and it now stands as the answer rather than a fallback:
+the daemon already aggregates local spend from transcripts, the user sets a monthly figure, and the boat reads one against the other.
+No endpoint, no key, no admin, no org data — and it works for every seat on every plan.
+It must say what it is: **a local estimate of this machine's spend against a budget you set**, not an organisational limit.
+
+**If Aria later wants the real org numbers**, the Analytics API is the only route and it is an admin key on a work account. Recorded in 49d, still hers alone, still not started.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
