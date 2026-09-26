@@ -1336,6 +1336,29 @@ Take configured budgets. If the weekly or monthly budget is unset, the boat shou
 
 More importantly: **the river already carries tugs whose meaning is sessions arriving and leaving** (`drawVoyage`). Adding boats that mean "usage against a budget" gives one kind of object on one waterway two unrelated meanings. That is precisely what DESIGN.md's *"Two things that must agree"* section is about. Resolve it before building — different hull silhouettes at minimum, and the key has to name both.
 
+
+**Measured before building, and two of the five premises do not hold. Nothing built yet — this is Aria's to rule on.**
+
+**Confirmed: there is no denominator.** No limit, quota or cap anywhere in `~/.claude`; `modelUsage` carries `maxOutputTokens: 0` for every model. `config` has `daily_budget_usd` and nothing else. Configured budgets are the only honest route, and an unset budget means an absent boat rather than a boat at zero.
+
+**Not confirmed: `stats-cache.json` is not a usable numerator.** Its `lastComputedDate` is **2026-07-02**, it was last written on 3 July, and its `dailyActivity` is empty. It is 86 days stale. A boat driven by it would sit frozen at a July figure, which is worse than no boat.
+
+**The live numerator is elsewhere and already in use.** The status chips and the breakdown are computed by the daemon from the session transcripts, over `city.Window` — `LastHour`, `LastDay`, `LastWeek`. That is the source a boat should read.
+
+**The monthly boat has no numerator either.** There are 177 transcripts totalling 0.54 GB, and the oldest is **26 days old**; none reach past 30 days. There is no month of history to measure, so "monthly usage" cannot be computed today whatever budget is configured. `Window` having no month is the smaller half of that problem.
+
+**So the buildable set is two boats, not three**, and a third is available if the reading changes:
+
+| boat | numerator | denominator | buildable |
+| --- | --- | --- | --- |
+| session (context) | `ContextPercent`, already on the building card | the context window itself | **yes, today** |
+| weekly | `LastWeek` | a new `weekly_budget_usd` | **yes**, one config key |
+| monthly | *none* — 26 days of history | a new `monthly_budget_usd` | **no** |
+| daily (instead of monthly) | `LastDay` | `daily_budget_usd`, which exists | **yes, today** |
+
+**Recommendation to put to Aria: day, week, session** — three boats, one new config key, every number live and already trusted by the chips beside them. Monthly needs history the machine does not keep, and inventing it by scaling a shorter window would be a number that is right and means nothing, which this project has paid for five times.
+
+The other three questions — the reading inverting at 180°, three boats colliding on one axis, and the river already meaning arrivals and departures — stand as filed and are worth answering once the numbers are settled.
 ### 49a. What the usage numbers actually are, measured (2026-09-26)
 
 Aria sent `/usage` from Claude Code and the same panel from the desktop UI, and asked for research.
