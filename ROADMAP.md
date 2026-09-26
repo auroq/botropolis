@@ -1462,6 +1462,36 @@ Writing a parser against a format guessed from a *web UI screenshot* is how a fo
 **Get the real text before building shape B** — Aria has a work account; `claude -p "/usage"` under it, pasted verbatim, is a two-minute task that turns a guess into a specification.
 Until then, build shape A fully, and let shape B fall through to the visible "not recognised" state.
 
+### 49d. Enterprise reports no usage to the CLI at all, measured in Aria's container (2026-09-26)
+
+Aria offered a container signed into her enterprise plan. Two findings, and the first one hid the second.
+
+**"Unknown skill: usage" was a version artifact, not the answer.**
+The container shipped Claude Code **2.1.69** against the host's **2.1.273** — the slash command simply did not exist yet.
+Installing the current build inside it (2.1.283) makes the command resolve, so the original error said nothing about plans.
+
+**The real answer, on the current build, on the enterprise account:**
+
+```
+You are currently using your subscription to power your Claude Code usage
+```
+
+That is the entire output. **A header and no data** — no percentages, no reset times, no spend, no limit.
+Compare the subscription plan on the same version, which prints three gauge lines with resets.
+
+So Aria was right in substance: **usage figures are not available to the CLI on an enterprise plan.**
+The monthly spend she screenshotted lives in the web console and nowhere the daemon can reach.
+Nothing on disk in the container carries it either — its `~/.claude.json` has `oauthAccount` with org name and role, `hasExtraUsageEnabled`, and no usage or limit fields at all.
+
+**What this settles for item 49.**
+
+- **Detection is easy and is now specified by real output.** Gauge lines present means shape A. Header alone means shape B. Neither means unrecognised. All three states are distinguishable from one command.
+- **Shape B gets no authoritative boats**, because there is no authoritative number. Saying so is the honest outcome and the hover should say it.
+- **Configured budgets become the fallback for shape B only** — not the general answer 49b overrode, but the right answer in the one case where nothing authoritative exists to contradict them. The daemon already aggregates local spend from transcripts; a configured monthly budget gives it a denominator. It must be labelled a local estimate for this machine, the same caveat Claude's own panel carries for its local analysis.
+- **One avenue not pursued:** Aria is `organizationRole: owner` of her work org, and the Anthropic Admin API can report org usage and cost. That needs an admin key on a work account — a credentials decision on a work machine, and hers alone to make. Recorded, not started.
+
+**What was changed in her container:** a native Claude Code install at `~/.local/bin/claude` (2.1.283) that is *not* on PATH, so the default `claude` there is still 2.1.69 and nothing about the container's normal behaviour moved.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
