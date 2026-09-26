@@ -1635,6 +1635,30 @@ So size is now stated as a target extent and the scale is worked back from the a
 **The tug question is answered and the answer is yes.** At `MinZoom` the four hulls draw at 20×17 (tug), 16×18 (liner), 12×7 (cargo) and 6×7 (sail). The tug is the *largest* and the only bright orange one; the sail is the smallest and the only one with a mast. Colour separates them before silhouette has to. Frame `docs/screenshots/r252-hulls-at-min-zoom.png` is the four at true size.
 
 **No atlas pieces were dropped.** The swap was offered to pay for these, but z2 came out at 7 pages of 8 with all five new pieces in, so nothing had to go — and whether the 25 unnamed pieces are a reserve or an oversight is still Aria's call rather than a thing to settle in passing.
+### 52. The gauge axes are swapped, and that was my misreading from the start (Aria, 2026-09-26, on r252)
+
+Her words: *"I'm confused by the boat placement. Where is 0% and 100%? The boats should be going bottom to top and face that direction. They shouldn't all be in the same line. They should be spread out left to right as well."*
+
+**The two axes are the wrong way round, and it is my error in item 49, not the build's.**
+
+Go back to what she asked for originally: *"add a boat that runs from one end of the river to the other. It will track usage... bottom of the window is 0% and the top means we've hit 100%."*
+The run from one end to the other **is** the 0-to-100 axis.
+I read it as two separate things — travel as ambience, a lateral offset as the reading — and specified it that way, and everything since has been built on that.
+It is why "where is 0% and 100%" has no answer on the frame: the reading runs across a two-cell river, which is the shortest dimension available, while the long axis carries nothing.
+
+**Swap them.**
+
+- **Along the river is the percentage.** One end is 0%, the other 100%, and the boats **face the direction of travel**, bow toward 100%. This is the long axis, so the resolution problem that forced the widening stops existing — a 25% step becomes tens of cells instead of tens of pixels.
+- **Across the river is separation.** Three fixed lanes, one per boat, side by side, so they never overlap and can be compared directly. That is her *"spread out left to right"*.
+
+**The buoys move with the axes.** They now mark **0%, 50% and 100% along the run** — and the 0% and 100% stations directly answer the question she asked, which the current across-river pair cannot. Put a mark at each end rather than only at halfway and the limit; the ends are the thing that was missing.
+
+**Which end is 0% has to be recomputed per heading**, exactly as the monument's near corner is: 0% is the end nearest the viewer on screen. A gauge whose direction reverses when the camera turns is worse than no gauge, and this is the same ruling as bug 45's, for the same reason.
+
+**What survives.** The two-cell river is still needed, now for three lanes rather than for resolution. The hulls, the buoy objects, the rank-to-hull mapping, reading `cachedUsageUtilization` off disk, and the view key naming boats against tugs are all unaffected.
+
+**What this costs:** the boats stop travelling. Their along-river position is the reading, so they hold station. That is what a gauge should do, and the ambience was mine rather than hers.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
