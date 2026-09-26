@@ -2,6 +2,7 @@ package render
 
 import (
 	"image/color"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -10,80 +11,122 @@ import (
 	"github.com/auroq/botropolis/pkg/ui"
 )
 
-// Bug 44. A project's name stands in its plaza as a monument sign: an
-// object on the ground, not a plate drawn over the scene. The base is
-// the kit's planter — 87 x 59 px, a tile square, already cut and
-// already planted on the plaza rim — so the sign is literally a panel
-// rising out of a planting bed, which is what a monument sign is.
+// Bug 45. A project's name stands at the near corner of its lot as a
+// monument sign, built to the grammar of the references in
+// docs/references: coursed piers either side of a recessed panel, a
+// cornice oversailing them, a base course at the ground.
 //
-// It is drawn inside drawIso as a drawable on its own footprint, so it
-// occludes and is occluded like everything else. That only became
-// possible with bug 42; a plate could be painted last because it was
-// chrome, and an object cannot.
+// It faces the viewer. Type sheared into a 2:1 plane is hard to read at
+// any size, so making the sign bigger would only have produced bigger
+// slanted type; turning the face square to the screen is what fixes it.
+//
+// Facing the viewer is also what got the item 4 billboards and the item
+// 40 plate rejected, so the difference has to be earned rather than
+// assumed. A decal is what was rejected, not a head-on object. Three
+// things keep this a solid: the piers and cornice keep visible returns,
+// the cornice keeps a darker underside, and the sign casts a contact
+// shadow on the ground. It is a drawable on its own footprint, so it
+// occludes and is occluded like anything else — it is not painted last,
+// which is the thing that made the plate chrome.
 const (
-	// monumentSpan is how wide the sign is against its bed, which is one
-	// planter. A monument is a piece of the plaza's architecture rather
-	// than a marker, and once the height is split three ways — cap,
-	// panel, base — a one-planter sign leaves a panel too short to
-	// carry a name at all. The first cut declined every sign in the
-	// city for exactly that reason.
-	monumentSpan = 1.5
-	// bedForward is how far in front of the sign its planting bed sits,
-	// in cells. The bed is set at the monument's foot; it is not what
-	// meets the ground. That is the base's job, and confusing the two
-	// is what made the first cut a signboard standing in a flowerbed.
-	bedForward = 0.32
-	// monumentInset is how far inside the district's street-facing edge
-	// the sign stands, clear of the kerb and of the buildings behind it.
+	// monumentSpan is how wide the sign is against its planting bed.
+	monumentSpan = 1.9
+	// monumentDepth is how far the returns step back, as a share of the
+	// sign's width. A head-on object with no visible depth is a sticker.
+	monumentDepth = 0.05
+	// bedForward is how far in front of the sign its planting sits, and
+	// bedAside how far to one side. It goes beside the base rather than
+	// dead in front of it: the references plant *around* a monument,
+	// and a bed centred on the panel just masks the name.
+	bedForward = 0.22
+	bedAside   = 0.62
+	// monumentInset is how far inside the lot's corner it stands.
 	monumentInset = city.DistrictPadding / 2
-	// monumentLean is the gradient of the face the sign stands in, the
-	// same one a board on the map stands in.
-	monumentLean = -ui.BoardLean
 )
 
-// The masonry, in the kit's own greys so the sign reads as architecture
-// belonging to the plaza rather than signage applied to it.
+// The masonry, in the references' palette: pale coursed stone, a dark
+// bronze panel, pale copy on it. Two materials, not one.
 var (
-	colorMonument     = color.NRGBA{0xd4, 0xd2, 0xca, 0xff}
-	colorMonumentBase = color.NRGBA{0x9a, 0x9b, 0xa2, 0xff}
-	colorMonumentCap  = color.NRGBA{0x6f, 0x70, 0x78, 0xff}
-	colorMonumentSide = color.NRGBA{0x74, 0x76, 0x7e, 0xff}
-	colorMonumentCopy = color.NRGBA{0x35, 0x37, 0x3f, 0xff}
-	colorMonumentLamp = color.NRGBA{0xf0, 0xd8, 0x9c, 0x38}
+	colorMonumentStone   = color.NRGBA{0xcf, 0xc9, 0xbb, 0xff}
+	colorMonumentCornice = color.NRGBA{0xdd, 0xd8, 0xcb, 0xff}
+	colorMonumentReturn  = color.NRGBA{0x9d, 0x97, 0x8a, 0xff}
+	colorMonumentSoffit  = color.NRGBA{0x77, 0x72, 0x68, 0xff}
+	colorMonumentCourse  = color.NRGBA{0xb3, 0xac, 0x9d, 0xff}
+	colorMonumentPanel   = color.NRGBA{0x4a, 0x3b, 0x31, 0xff}
+	colorMonumentReveal  = color.NRGBA{0x2c, 0x22, 0x1c, 0xff}
+	colorMonumentCopy    = color.NRGBA{0xf0, 0xe9, 0xdc, 0xff}
+	colorMonumentShadow  = color.NRGBA{0x18, 0x18, 0x1c, 0x66}
+	colorMonumentLamp    = color.NRGBA{0xf0, 0xd8, 0x9c, 0x38}
 )
 
-// monumentSite is where a project's sign stands: the middle of its
-// district's street-facing edge, a little inside it.
+// monumentSite is where a project's sign stands: the corner of its lot
+// nearest the viewer, a little inside it, where nothing of its own
+// district is in front of it.
 //
-// This is a world point and it does not move with the heading. A sign
-// is a thing standing on the ground, and things standing on the ground
-// keep their place when you walk round them — the lesson bug 40's plate
-// had to learn the other way about, where "the bottom of the block" is
-// a property of the view and had to be found per heading.
-func monumentSite(d *city.District) city.Point {
-	return city.Point{X: d.Rect.Center().X, Y: d.Rect.Max.Y - monumentInset}
+// This one *is* recomputed as the camera turns, and that is the
+// opposite of the chimney, which must not be. A chimney is a fixture of
+// its building and keeps its place when you walk round it. A sign is
+// sited to be read, and a fixed corner would spend two of the four
+// headings behind its own buildings. The cost is that it relocates on a
+// quarter turn, which reads as the city re-orienting.
+func monumentSite(cam *city.Camera, d *city.District) city.Point {
+	r := d.Rect.Inset(monumentInset)
+	best := r.Min
+	for _, p := range [4]city.Point{
+		{X: r.Max.X, Y: r.Min.Y}, r.Max, {X: r.Min.X, Y: r.Max.Y},
+	} {
+		if cam.Depth(p) > cam.Depth(best) {
+			best = p
+		}
+	}
+	return best
 }
 
-// leaning fills an upright rectangle sheared into the world's face, so
-// a panel stands in the scene rather than on the glass.
-func (g *Game) leaning(screen *ebiten.Image, r city.Rect, lean float64, c color.NRGBA) {
-	drop := r.Width() * lean
+// bedOf is where the sign's planting sits: just in front of its foot.
+func bedOf(cam *city.Camera, at city.Point, width float64) city.Point {
+	on := cam.Project(at)
+	on.X -= width * bedAside / 2
+	on.Y += bedForward * city.Tile
+	return cam.Unproject(on)
+}
+
+// ellipse fills a flattened disc, for the contact patch a sign makes on
+// the ground it stands on.
+func ellipse(screen *ebiten.Image, r city.Rect, c color.NRGBA) {
+	cx, cy := r.Center().X, r.Center().Y
+	rx, ry := r.Width()/2, r.Height()/2
 	var path vector.Path
-	path.MoveTo(float32(r.Min.X), float32(r.Min.Y))
-	path.LineTo(float32(r.Max.X), float32(r.Min.Y+drop))
-	path.LineTo(float32(r.Max.X), float32(r.Max.Y+drop))
-	path.LineTo(float32(r.Min.X), float32(r.Max.Y))
+	for i := 0; i <= 24; i++ {
+		t := 2 * math.Pi * float64(i) / 24
+		x, y := cx+rx*math.Cos(t), cy+ry*math.Sin(t)
+		if i == 0 {
+			path.MoveTo(float32(x), float32(y))
+		} else {
+			path.LineTo(float32(x), float32(y))
+		}
+	}
 	path.Close()
 	op := &vector.DrawPathOptions{AntiAlias: true}
 	op.ColorScale.ScaleWithColor(c)
 	vector.FillPath(screen, &path, nil, op)
 }
 
-// districtMonument stands the project's sign in its plaza.
-// bedOf is where the sign's planting sits: just in front of it, at its
-// foot.
-func bedOf(at city.Point) city.Point {
-	return city.Point{X: at.X + bedForward*city.Tile, Y: at.Y + bedForward*city.Tile}
+// returnOf draws the side of a block stepping back from its right edge,
+// so a face-on element still shows its depth.
+func (g *Game) returnOf(screen *ebiten.Image, r city.Rect, depth float64, c color.NRGBA) {
+	var path vector.Path
+	path.MoveTo(float32(r.Max.X), float32(r.Min.Y))
+	path.LineTo(float32(r.Max.X+depth), float32(r.Min.Y-depth/2))
+	path.LineTo(float32(r.Max.X+depth), float32(r.Max.Y-depth/2))
+	path.LineTo(float32(r.Max.X), float32(r.Max.Y))
+	path.Close()
+	op := &vector.DrawPathOptions{AntiAlias: true}
+	op.ColorScale.ScaleWithColor(c)
+	vector.FillPath(screen, &path, nil, op)
+}
+
+func (g *Game) fill(screen *ebiten.Image, r city.Rect, c color.NRGBA) {
+	vector.FillRect(screen, float32(r.Min.X), float32(r.Min.Y), float32(r.Width()), float32(r.Height()), c, false)
 }
 
 func (g *Game) districtMonument(screen *ebiten.Image, cam *city.Camera, d *city.District, night bool) {
@@ -91,36 +134,40 @@ func (g *Game) districtMonument(screen *ebiten.Image, cam *city.Camera, d *city.
 	if size.X == 0 {
 		return
 	}
-	at := monumentSite(d)
+	at := monumentSite(cam, d)
 	ground := cam.WorldToScreen(at)
-	sign, ok := ui.LayoutMonument(d.Name, ground, float64(size.X)*monumentSpan, monumentLean, g.faces.Measure)
+	sign, ok := ui.LayoutMonument(d.Name, ground, float64(size.X)*monumentSpan, g.faces.Measure)
 	if !ok {
-		// Still plant the bed: it is one of the rim planters either way.
-		g.kit(screen, cam, kitPlanter, 0, bedOf(at), nil)
+		g.kit(screen, cam, kitPlanter, 0, bedOf(cam, at, float64(size.X)), nil)
 		return
 	}
+	depth := sign.Whole().Width() * monumentDepth
+
+	// The ground first: the contact patch is what stops a head-on
+	// object hovering, and it is the thing the Oak Hollow reference has.
+	ellipse(screen, sign.Shadow, colorMonumentShadow)
 	if night {
-		// Ground-lit from the base. This goes through lit and boost,
-		// which are item 37's radius floor and zoom compensation — the
-		// first cut called glow directly and was a second, independent
-		// night-light path, which is the shape that has cost this
-		// project six bugs.
 		lamp := city.Point{X: ground.X, Y: ground.Y - sign.Base.Height()*0.4}
-		glow(screen, lamp, lit(sign.Base.Width()*0.45, minPlantGlow), boost(colorMonumentLamp, cam.Zoom))
+		glow(screen, lamp, lit(sign.Base.Width()*0.4, minPlantGlow), boost(colorMonumentLamp, cam.Zoom))
 	}
-	// A slab set back behind the whole sign, so it reads as a solid
-	// with a side to it rather than as a cut-out standing on edge.
-	depth := sign.Whole().Width() * ui.MonumentThickness
-	whole := sign.Whole()
-	g.leaning(screen, city.Rect{
-		Min: city.Point{X: whole.Min.X + depth, Y: whole.Min.Y - depth/2},
-		Max: city.Point{X: whole.Max.X + depth, Y: whole.Max.Y - depth/2},
-	}, monumentLean, colorMonumentSide)
-	g.leaning(screen, sign.Base, monumentLean, colorMonumentBase)
-	g.leaning(screen, sign.Panel, monumentLean, colorMonument)
-	g.leaning(screen, sign.Cap, monumentLean, colorMonumentCap)
+
+	// Returns before faces, so each face laps over the side it shows.
+	for _, r := range [3]city.Rect{sign.Base, sign.Right, sign.Cornice} {
+		g.returnOf(screen, r, depth, colorMonumentReturn)
+	}
+
+	g.fill(screen, sign.Base, colorMonumentStone)
+	g.fill(screen, sign.Left, colorMonumentStone)
+	g.fill(screen, sign.Right, colorMonumentStone)
+	for _, c := range sign.Courses {
+		g.fill(screen, c, colorMonumentCourse)
+	}
+	g.fill(screen, sign.Panel, colorMonumentPanel)
+	g.fill(screen, sign.Reveal, colorMonumentReveal)
+	g.fill(screen, sign.Soffit, colorMonumentSoffit)
+	g.fill(screen, sign.Cornice, colorMonumentCornice)
 	g.sign(screen, sign.Copy, colorMonumentCopy)
-	// The planting goes on last, in front, so it sits at the base's
-	// foot rather than standing in for it.
-	g.kit(screen, cam, kitPlanter, 0, bedOf(at), nil)
+
+	// The planting last, in front, at the sign's foot.
+	g.kit(screen, cam, kitPlanter, 0, bedOf(cam, at, sign.Whole().Width()), nil)
 }

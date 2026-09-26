@@ -1062,7 +1062,7 @@ The capacity changes from about eleven characters to about **thirteen** — `Lay
 That does not revive the gantry for **session** titles at twenty to thirty characters, which is what item 38 was measuring. It does mean the gantry was never ruled out for a **project** name: `avesta`, `mullet` and `botropolis` are six to ten. If the monument is ever rejected, the gantry is a live option for this job and item 38's number should not be quoted against it.
 A panel floating clear of its base is the failure mode, and it is the one that has already been rejected twice.
 
-### 45. The monument faces the viewer, stands at the lot's near corner, and is built of stone (Aria, 2026-09-26, on r216)
+### 45. ~~The monument faces the viewer, stands at the lot's near corner, and is built of stone~~ Built 2026-09-26 (r222); the corner is Aria's to rule on
 
 Her words: *"they look completely flat and are hard to read at an angle. Can we try putting them at the bottom middle corner of the lot and make them face the user directly? It admittedly makes less sense with the world but makes them readable. They're just rotated 45 degrees. Alternatively, put them in that corner and make them bigger? Either way, make them actually look like stone signs in front of buildings so they don't look flat."*
 
@@ -1095,6 +1095,20 @@ If those three hold it will read as a monument photographed square on, which is 
 
 **One consequence to rule on.** With four headings, "the near corner" changes when the camera turns.
 Recommendation: **recompute the corner on turn** so the sign is always the near one. A sign that stays put would spend two headings behind its own building, and a sign relocating on a discrete quarter-turn reads as the city re-orienting, which is the lesser cost. Worth showing Aria both before it is fixed.
+
+**Built. Frames `docs/screenshots/r222-monument-facing.png` (day and night) and `r222-monument-corner-choice.png` (the corner question, both ways, four headings each).**
+
+The rotation was taken and the size left alone, for the reason this entry gives: the face is square to the screen, so the copy is level and `Copy.Lean` is zero. The old sign leaned with `BoardLean` and no amount of scale would have helped it.
+
+**The three things that keep it from being a decal are in the code, not in the intention.** The piers, cornice and base course each draw a return stepping back from their right edge, so the silhouette is stepped rather than flat. The cornice oversails on every side with a darker soffit under it. And the sign casts a contact patch on the ground — *drawn before the base*, sitting mostly below the foot, because a shadow hidden behind the thing casting it is no shadow, which is exactly what the first cut of it was: a 3-pixel band, half of it behind the base, invisible in the frame.
+
+It remains a drawable on its own footprint, so it occludes and is occluded. Nothing about facing the viewer changed that.
+
+Construction as listed: two piers flanking a panel recessed between them with a reveal along its top; a cornice oversailing with a visible soffit; a base course wider than the body and running the full width; score lines on piers and base, two per pier and one on the base, as value shifts rather than texture; a dark bronze panel against pale stone with pale copy on it.
+
+**The planting moved.** It had been dead in front, which masked the name — the references plant *around* a monument, so it now sits beside the base.
+
+**The corner is not decided.** Frame B is one fixed world corner: at some headings the sign ends up on the far side of its lot, away from the reader. Frame A recomputes it so it is always the near one, at the cost of relocating on a quarter turn. A is the recommendation and what is built, but the switch is one function — `monumentSite` — if Aria prefers B.
 
 ### Worth knowing, not bugs
 

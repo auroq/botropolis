@@ -2,68 +2,88 @@ package ui
 
 import "github.com/auroq/botropolis/pkg/city"
 
-// Monument is the sign that stands outside an office plaza: a base that
-// meets the ground, a panel carrying the copy, and a cap. Bug 44.
+// Monument is the sign that stands outside an office plaza, built to
+// the grammar of Aria's references in docs/references: coursed stone
+// piers either side of a recessed panel, a cornice oversailing them,
+// and a base course at the ground. Bugs 44 and 45.
 //
-// It is defined by two rules rather than by taste, and they are what
-// separates it from the billboard mocks that were rejected in item 4
-// and from the text plate that was rejected in item 40. A monument is
-// low and landscape, and it is a mass sitting on the earth: a panel
-// floating clear of its base is a pylon sign, which is the failure
-// mode. Both rules are enforced here so they cannot become decoration.
+// It faces the viewer rather than lying in the world's plane. Type
+// sheared into a 2:1 projection is hard to read at any size, so the
+// face is a rectangle in screen space and the copy sits level. What
+// stops that reading as a decal is not the angle but the depth: the
+// piers keep their returns, the cornice keeps a visible underside, and
+// the whole thing casts a contact shadow onto the ground it stands on.
+//
+// Two rules define the object and are asserted rather than commented. A
+// monument is low and landscape, and it is a mass sitting on the earth
+// — a panel floating clear of its base is a pylon sign, which is the
+// failure mode.
 type Monument struct {
-	// The three elements a monument sign is made of, bottom to top, as
-	// upright rectangles at the sign's leading edge; the lean shears
-	// them into the world. Base is the masonry that meets the ground
-	// and is the element that makes this a monument rather than a
-	// board: the planting sits at its foot, it does not replace it.
-	Base  city.Rect
-	Panel city.Rect
-	Cap   city.Rect
-	// Copy is the project's name, painted on the panel.
+	// Shadow is the contact patch on the ground at its foot, which is
+	// what the Oak Hollow reference has that keeps it from hovering.
+	Shadow city.Rect
+	// The masonry, ground upwards. Base is the course that meets the
+	// earth and is the widest element; Left and Right are the piers;
+	// Cornice oversails them and Soffit is its underside, which stays
+	// visible and darker because that is the strongest single cue that
+	// a thing is solid.
+	Base    city.Rect
+	Left    city.Rect
+	Right   city.Rect
+	Cornice city.Rect
+	Soffit  city.Rect
+	// Panel is the smooth field recessed between the piers, and Reveal
+	// is the one-pixel shadow along its top and inside edge that sells
+	// the recess. Flush reads as printed; recessed reads as built.
+	Panel  city.Rect
+	Reveal city.Rect
+	// Courses are the score lines that make the stone read as coursed.
+	// At this size that is a few lines with a value shift, not a
+	// texture and not noise.
+	Courses []city.Rect
+	// Copy is the project's name, level on the panel.
 	Copy Sign
 }
 
-// Whole is the sign's full extent, base to cap.
+// Whole is the sign's full extent, base to cornice.
 func (m Monument) Whole() city.Rect {
-	// The plinth is the widest element and the one that meets the
-	// ground, so it is what the sign's extent is measured by.
-	return city.Rect{Min: city.Point{X: m.Base.Min.X, Y: m.Cap.Min.Y}, Max: city.Point{X: m.Base.Max.X, Y: m.Base.Max.Y}}
+	return city.Rect{
+		Min: city.Point{X: m.Base.Min.X, Y: m.Cornice.Min.Y},
+		Max: city.Point{X: m.Base.Max.X, Y: m.Base.Max.Y},
+	}
 }
 
 const (
 	// MonumentAspect is width against height. Real monument signs run
-	// 4-6 ft by 8-12 ft; 2:1 is the middle of that and is what "low and
-	// landscape" means in a number.
+	// 4-6 ft by 8-12 ft; 2:1 is the middle of that.
 	MonumentAspect = 2.0
 	// MonumentGround is how much of the sign's width has to meet the
 	// ground. Codes commonly require 40%, and it is the rule that makes
 	// this a monument rather than a board on posts.
 	MonumentGround = 0.4
-	// The three elements' shares of the sign's height, bottom to top.
-	// A monument is mostly base and panel with a thin coping; the base
-	// is what carries the mass down to the ground, so it is the biggest
-	// single element after the panel.
-	MonumentBaseShare = 0.34
-	MonumentCapShare  = 0.10
-	// MonumentCopyAbove is the copy's margin inside the panel — a foot
-	// above grade, as a fraction of the panel's height.
-	MonumentCopyAbove = 0.16
-	// MonumentThickness is how deep the sign is, as a share of its
-	// width: enough to read as a solid rather than a cut-out.
-	MonumentThickness = 0.07
-	// MonumentFlare is how far the base oversails the panel on each
-	// side. A plinth is wider than what stands on it; without that it
-	// reads as a band painted across the bottom of a board.
-	MonumentFlare = 0.06
+
+	// The elements' shares of the sign's height, ground upwards.
+	monumentBaseShare    = 0.17
+	monumentCorniceShare = 0.13
+	monumentSoffitShare  = 0.04
+	// The elements' shares of its width. The body is inset from the
+	// base course so the base reads as wider than what stands on it,
+	// and the cornice oversails the body on every side.
+	monumentBodyInset = 0.06
+	monumentOversail  = 0.035
+	monumentPier      = 0.15
+	// monumentReveal is the recess's shadow, and monumentCourse the
+	// score lines' thickness, both as shares of the height.
+	monumentReveal = 0.035
+	monumentCourse = 0.022
+	// MonumentCopyAbove is the copy's margin inside the panel.
+	MonumentCopyAbove = 0.18
 )
 
 // MonumentWidest is the widest panel a base of this width could carry
 // without breaking the 40% rule. It is the limit, not the design: a
 // sign built to it has a base two fifths of its width, which is a board
-// on a plinth and is the shape the rule exists to keep out. The sign
-// this file builds is as wide as its base, so all of its width meets
-// the ground.
+// on a plinth and is the shape the rule exists to keep out.
 func MonumentWidest(base float64) float64 {
 	return base / MonumentGround
 }
@@ -77,34 +97,75 @@ func MonumentOnGround(base, width float64) float64 {
 	return base / width
 }
 
-// LayoutMonument places a project's sign on a base. foot is the middle
-// of the base's top edge on screen, base is how wide that base is, and
-// lean is the gradient of the face it stands in.
-//
-// It declines when the copy would be too small to read, exactly as a
-// tower's sign does, and the hover plate carries the name instead.
-func LayoutMonument(name string, foot city.Point, base, lean float64, measure Measure) (Monument, bool) {
-	if name == "" || base <= 0 {
+// LayoutMonument builds the sign standing on a ground point, facing the
+// viewer, width wide. It declines when the copy would be too small to
+// read, exactly as a tower's sign does, and the hover plate carries the
+// name instead.
+func LayoutMonument(name string, foot city.Point, width float64, measure Measure) (Monument, bool) {
+	if name == "" || width <= 0 {
 		return Monument{}, false
 	}
-	// The 2:1 is the whole sign's, plinth included, so the height comes
-	// from the full width rather than from the panel's.
-	flare := base * MonumentFlare
-	width := base - 2*flare
-	height := base / MonumentAspect
+	height := width / MonumentAspect
 	left, top := foot.X-width/2, foot.Y-height
-	capH, baseH := height*MonumentCapShare, height*MonumentBaseShare
-	cap := city.RectAt(left, top, width, capH)
-	panel := city.RectAt(left, top+capH, width, height-capH-baseH)
-	plinth := city.RectAt(left-flare, foot.Y-baseH, base, baseH)
-	inset := panel.Height() * MonumentCopyAbove
-	copyIn := city.Rect{
-		Min: city.Point{X: panel.Min.X + inset, Y: panel.Min.Y + inset},
-		Max: city.Point{X: panel.Max.X - inset, Y: panel.Max.Y - inset},
+	baseH := height * monumentBaseShare
+	cornH := height * monumentCorniceShare
+	soffH := height * monumentSoffitShare
+
+	inset := width * monumentBodyInset
+	bodyW := width - 2*inset
+	over := width * monumentOversail
+	pierW := width * monumentPier
+
+	m := Monument{
+		Base:    city.RectAt(left, foot.Y-baseH, width, baseH),
+		Cornice: city.RectAt(left+inset-over, top, bodyW+2*over, cornH),
 	}
-	sign, ok := LayoutPlaque(name, copyIn, lean, measure)
+	m.Soffit = city.RectAt(m.Cornice.Min.X, m.Cornice.Max.Y, m.Cornice.Width(), soffH)
+
+	bodyTop, bodyBottom := m.Soffit.Max.Y, m.Base.Min.Y
+	m.Left = city.RectAt(left+inset, bodyTop, pierW, bodyBottom-bodyTop)
+	m.Right = city.RectAt(left+inset+bodyW-pierW, bodyTop, pierW, bodyBottom-bodyTop)
+	m.Panel = city.Rect{
+		Min: city.Point{X: m.Left.Max.X, Y: bodyTop},
+		Max: city.Point{X: m.Right.Min.X, Y: bodyBottom},
+	}
+	m.Reveal = city.RectAt(m.Panel.Min.X, m.Panel.Min.Y, m.Panel.Width(), height*monumentReveal)
+
+	// The contact patch. It sits mostly *below* the foot, on the ground
+	// in front of the base, because the base is drawn over it and a
+	// shadow hidden behind the thing casting it is no shadow at all —
+	// which is what the first cut of this was.
+	shadowH := baseH * 1.7
+	m.Shadow = city.RectAt(left-over, foot.Y-shadowH*0.32, width+2*over, shadowH)
+
+	m.Courses = courseLines(m, height)
+
+	pad := m.Panel.Height() * MonumentCopyAbove
+	field := city.Rect{
+		Min: city.Point{X: m.Panel.Min.X + pad, Y: m.Panel.Min.Y + pad},
+		Max: city.Point{X: m.Panel.Max.X - pad, Y: m.Panel.Max.Y - pad},
+	}
+	// Level, not leaning: the whole point of turning the face to the
+	// viewer is that the type stops being sheared.
+	sign, ok := LayoutPlaque(name, field, 0, measure)
 	if !ok {
 		return Monument{}, false
 	}
-	return Monument{Base: plinth, Panel: panel, Cap: cap, Copy: sign}, true
+	m.Copy = sign
+	return m, true
+}
+
+// courseLines scores the piers and the base so the stone reads as
+// coursed rather than poured.
+func courseLines(m Monument, height float64) []city.Rect {
+	thick := height * monumentCourse
+	var out []city.Rect
+	for _, pier := range [2]city.Rect{m.Left, m.Right} {
+		for i := 1; i <= 2; i++ {
+			y := pier.Min.Y + pier.Height()*float64(i)/3
+			out = append(out, city.RectAt(pier.Min.X, y, pier.Width(), thick))
+		}
+	}
+	out = append(out, city.RectAt(m.Base.Min.X, m.Base.Min.Y+m.Base.Height()/2, m.Base.Width(), thick))
+	return out
 }
