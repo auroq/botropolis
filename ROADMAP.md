@@ -1229,6 +1229,45 @@ Keep what is already right: only the near arc of anything wrapping the pipe is d
 **The bottom line is the curb's inner rim**, which is the stack's own radius — so the curb meets the wall with no gap, and the thing that closes fault 3 is the same thing that closes fault 2.
 
 `kitThroughPlace` was split out of `kitThrough` because the curb goes down partly before the stack and partly after, so it needs the rect in advance. One placement expression, two readers.
+### 47. The curb is narrower than the sprite it has to cover, and the stack is not sunk past its skirt (Aria, 2026-09-26, on r230)
+
+Her words: *"it's still overlapping the other pipes on the roof. Just slide it up a bit... Also it looks like there are 2 white squares poking out from the chminey itself being cut square at the bottom."*
+
+**Both faults come from one measurement being taken on the wrong row.**
+I pulled the sprite out of the atlas and measured every row of its base; the annotated crop is at `docs/references/chimney-skirt.png`.
+`city-kit-industrial/chimney-medium` at z2 is 87 x 351, and from the bottom up it is:
+
+| rows above the sprite's bottom | widest ink | what it is |
+|---|---|---|
+| 0-15 | 5 -> 75 | the underside of the base ellipse, curving away |
+| 15-44 | **85** | the flared octagonal skirt |
+| 48 and up | **75** | the pipe |
+
+`StackPipeShare` is 63/87, and **63 px is row 343 — inside the base ellipse, not the pipe**.
+The pipe is **75 px**, so the share should be **75/87 = 0.862**.
+A curb built to 63 is narrower than the 75 px pipe it is meant to meet and far narrower than the 85 px skirt, so the sprite's square-cut corners stand outside the arc on both sides.
+Those are Aria's two white squares — the near-white lit edge of the pipe at x≈10 is `(228, 231, 255)`, which is why they read as white.
+
+**The stack is also not sunk far enough.** The cut currently lands in the base ellipse, so the whole flared skirt is *above* the roof line. It should sit **below** it: the skirt is the part of a chimney that would be inside the building. Sink until the cut is at or above the skirt's top edge — row 303, 48 rows above the sprite's bottom at z2 — where the silhouette is round and 75 px, which is also the only place the bottom line can be a true ellipse.
+
+**The overlap is fixed by moving the chimney, not by shrinking the curb.**
+She said so plainly, and it is right: a curb is *supposed* to be wider than its pipe, and at 1.32 x 75 it is about 99 px, wider than the sprite. So the clearance has to come from the perch.
+Slide it back — up-screen — until the curb clears the roof's pipe run.
+**The offset has to stay sprite-relative**, as bug 40 established, or it walks across the roof as the camera turns.
+
+### 48. Cars belong on the main view (Aria, 2026-09-26)
+
+Her words: *"I think I want cars on the main view not just on their own view."*
+
+One line: `shown` in `pkg/city/network.go` has no entry for `ViewAttention`, so the base view draws no networks.
+Adding `ViewAttention: {NetworkTraffic}` puts the cars back.
+
+**What needs deciding with it.** The info-view model is subtractive on purpose — the base view stays quiet so a view can say something by taking things away.
+On the traffic view a car is explained by the view it is in. On the base view it is unexplained motion, and unexplained motion on the map is the exact complaint that started this project.
+So item 5 in section 10 — *"the cars don't really make sense which repos they connect"* — stops being a nice-to-have and becomes load-bearing.
+Either a car on the base view means something and hover says what, or it is declared ambience and reads as life rather than as data.
+Decide which, say which in DESIGN.md, and make the hover agree.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
