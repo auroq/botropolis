@@ -14,7 +14,7 @@ func TestMonumentMeetsTheGround(t *testing.T) {
 		require.True(t, ok)
 
 		t.Run("it should put all of its width on the ground, not the two fifths the code allows", func(t *testing.T) {
-			assert.InDelta(t, 1.0, MonumentOnGround(80, m.Panel.Width()), 0.0001)
+			assert.InDelta(t, 1.0, MonumentOnGround(m.Base.Width(), m.Whole().Width()), 0.0001)
 		})
 	})
 
@@ -35,20 +35,32 @@ func TestLayoutMonument(t *testing.T) {
 			assert.True(t, ok)
 		})
 
-		t.Run("it should be twice as wide as it is tall", func(t *testing.T) {
-			assert.InDelta(t, MonumentAspect, m.Panel.Width()/m.Panel.Height(), 0.0001)
-		})
-
-		t.Run("it should stand on the base rather than float above it", func(t *testing.T) {
-			assert.InDelta(t, foot.Y, m.Panel.Max.Y, 0.0001)
+		t.Run("it should be twice as wide as the whole sign is tall", func(t *testing.T) {
+			assert.InDelta(t, MonumentAspect, m.Whole().Width()/m.Whole().Height(), 0.0001)
 		})
 
 		t.Run("it should centre the panel on the base", func(t *testing.T) {
 			assert.InDelta(t, foot.X, m.Panel.Center().X, 0.0001)
 		})
 
-		t.Run("it should cap the panel across its top", func(t *testing.T) {
-			assert.InDelta(t, m.Panel.Min.Y, m.Cap.Min.Y, 0.0001)
+		t.Run("it should stack cap, panel and base with no gap between them", func(t *testing.T) {
+			assert.InDelta(t, m.Cap.Max.Y, m.Panel.Min.Y, 0.0001)
+		})
+
+		t.Run("it should seat the panel on the base", func(t *testing.T) {
+			assert.InDelta(t, m.Panel.Max.Y, m.Base.Min.Y, 0.0001)
+		})
+
+		t.Run("it should put masonry on the ground, not the panel", func(t *testing.T) {
+			assert.InDelta(t, foot.Y, m.Base.Max.Y, 0.0001)
+		})
+
+		t.Run("it should give the base real mass rather than a lip", func(t *testing.T) {
+			assert.Greater(t, m.Base.Height(), m.Cap.Height())
+		})
+
+		t.Run("it should oversail the panel, the way a plinth does", func(t *testing.T) {
+			assert.Greater(t, m.Base.Width(), m.Panel.Width())
 		})
 
 		t.Run("it should lift the copy clear of the panel's foot", func(t *testing.T) {

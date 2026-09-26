@@ -12,13 +12,23 @@ import "github.com/auroq/botropolis/pkg/city"
 // floating clear of its base is a pylon sign, which is the failure
 // mode. Both rules are enforced here so they cannot become decoration.
 type Monument struct {
-	// Panel is the sign's face as an upright rectangle at its leading
-	// edge; the lean carried by Copy shears it into the world.
+	// The three elements a monument sign is made of, bottom to top, as
+	// upright rectangles at the sign's leading edge; the lean shears
+	// them into the world. Base is the masonry that meets the ground
+	// and is the element that makes this a monument rather than a
+	// board: the planting sits at its foot, it does not replace it.
+	Base  city.Rect
 	Panel city.Rect
-	// Cap is the band across the top of the panel.
-	Cap city.Rect
+	Cap   city.Rect
 	// Copy is the project's name, painted on the panel.
 	Copy Sign
+}
+
+// Whole is the sign's full extent, base to cap.
+func (m Monument) Whole() city.Rect {
+	// The plinth is the widest element and the one that meets the
+	// ground, so it is what the sign's extent is measured by.
+	return city.Rect{Min: city.Point{X: m.Base.Min.X, Y: m.Cap.Min.Y}, Max: city.Point{X: m.Base.Max.X, Y: m.Base.Max.Y}}
 }
 
 const (
@@ -30,11 +40,22 @@ const (
 	// ground. Codes commonly require 40%, and it is the rule that makes
 	// this a monument rather than a board on posts.
 	MonumentGround = 0.4
-	// MonumentCap is the cap's share of the panel's height, and
-	// MonumentCopyAbove is how far the copy sits above the panel's foot
-	// — a foot above grade, as a fraction of the panel.
-	MonumentCap       = 0.14
+	// The three elements' shares of the sign's height, bottom to top.
+	// A monument is mostly base and panel with a thin coping; the base
+	// is what carries the mass down to the ground, so it is the biggest
+	// single element after the panel.
+	MonumentBaseShare = 0.34
+	MonumentCapShare  = 0.10
+	// MonumentCopyAbove is the copy's margin inside the panel — a foot
+	// above grade, as a fraction of the panel's height.
 	MonumentCopyAbove = 0.16
+	// MonumentThickness is how deep the sign is, as a share of its
+	// width: enough to read as a solid rather than a cut-out.
+	MonumentThickness = 0.07
+	// MonumentFlare is how far the base oversails the panel on each
+	// side. A plinth is wider than what stands on it; without that it
+	// reads as a band painted across the bottom of a board.
+	MonumentFlare = 0.06
 )
 
 // MonumentWidest is the widest panel a base of this width could carry
@@ -66,21 +87,24 @@ func LayoutMonument(name string, foot city.Point, base, lean float64, measure Me
 	if name == "" || base <= 0 {
 		return Monument{}, false
 	}
-	width := base
-	height := width / MonumentAspect
-	panel := city.RectAt(foot.X-width/2, foot.Y-height, width, height)
-	inset := height * MonumentCopyAbove
+	// The 2:1 is the whole sign's, plinth included, so the height comes
+	// from the full width rather than from the panel's.
+	flare := base * MonumentFlare
+	width := base - 2*flare
+	height := base / MonumentAspect
+	left, top := foot.X-width/2, foot.Y-height
+	capH, baseH := height*MonumentCapShare, height*MonumentBaseShare
+	cap := city.RectAt(left, top, width, capH)
+	panel := city.RectAt(left, top+capH, width, height-capH-baseH)
+	plinth := city.RectAt(left-flare, foot.Y-baseH, base, baseH)
+	inset := panel.Height() * MonumentCopyAbove
 	copyIn := city.Rect{
-		Min: city.Point{X: panel.Min.X + inset, Y: panel.Min.Y + height*MonumentCap},
+		Min: city.Point{X: panel.Min.X + inset, Y: panel.Min.Y + inset},
 		Max: city.Point{X: panel.Max.X - inset, Y: panel.Max.Y - inset},
 	}
 	sign, ok := LayoutPlaque(name, copyIn, lean, measure)
 	if !ok {
 		return Monument{}, false
 	}
-	return Monument{
-		Panel: panel,
-		Cap:   city.RectAt(panel.Min.X, panel.Min.Y, width, height*MonumentCap),
-		Copy:  sign,
-	}, true
+	return Monument{Base: plinth, Panel: panel, Cap: cap, Copy: sign}, true
 }

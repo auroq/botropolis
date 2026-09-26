@@ -21,13 +21,18 @@ import (
 // possible with bug 42; a plate could be painted last because it was
 // chrome, and an object cannot.
 const (
-	// planterRise is how far above the bed's ground point the panel's
-	// foot sits, as a fraction of the planter's sprite height. It is
-	// deliberately low — the foot is *inside* the bed, and the planter
-	// is drawn over it so the mass of the bed hides where the panel
-	// enters it. A panel whose foot is visible above its base is a
-	// pylon sign, which is the shape Aria has now rejected twice.
-	planterRise = 0.20
+	// monumentSpan is how wide the sign is against its bed, which is one
+	// planter. A monument is a piece of the plaza's architecture rather
+	// than a marker, and once the height is split three ways — cap,
+	// panel, base — a one-planter sign leaves a panel too short to
+	// carry a name at all. The first cut declined every sign in the
+	// city for exactly that reason.
+	monumentSpan = 1.5
+	// bedForward is how far in front of the sign its planting bed sits,
+	// in cells. The bed is set at the monument's foot; it is not what
+	// meets the ground. That is the base's job, and confusing the two
+	// is what made the first cut a signboard standing in a flowerbed.
+	bedForward = 0.32
 	// monumentInset is how far inside the district's street-facing edge
 	// the sign stands, clear of the kerb and of the buildings behind it.
 	monumentInset = city.DistrictPadding / 2
@@ -36,9 +41,13 @@ const (
 	monumentLean = -ui.BoardLean
 )
 
+// The masonry, in the kit's own greys so the sign reads as architecture
+// belonging to the plaza rather than signage applied to it.
 var (
 	colorMonument     = color.NRGBA{0xd4, 0xd2, 0xca, 0xff}
+	colorMonumentBase = color.NRGBA{0x9a, 0x9b, 0xa2, 0xff}
 	colorMonumentCap  = color.NRGBA{0x6f, 0x70, 0x78, 0xff}
+	colorMonumentSide = color.NRGBA{0x74, 0x76, 0x7e, 0xff}
 	colorMonumentCopy = color.NRGBA{0x35, 0x37, 0x3f, 0xff}
 	colorMonumentLamp = color.NRGBA{0xf0, 0xd8, 0x9c, 0x38}
 )
@@ -71,6 +80,12 @@ func (g *Game) leaning(screen *ebiten.Image, r city.Rect, lean float64, c color.
 }
 
 // districtMonument stands the project's sign in its plaza.
+// bedOf is where the sign's planting sits: just in front of it, at its
+// foot.
+func bedOf(at city.Point) city.Point {
+	return city.Point{X: at.X + bedForward*city.Tile, Y: at.Y + bedForward*city.Tile}
+}
+
 func (g *Game) districtMonument(screen *ebiten.Image, cam *city.Camera, d *city.District, night bool) {
 	size := g.kitSize(cam, kitPlanter)
 	if size.X == 0 {
@@ -78,21 +93,34 @@ func (g *Game) districtMonument(screen *ebiten.Image, cam *city.Camera, d *city.
 	}
 	at := monumentSite(d)
 	ground := cam.WorldToScreen(at)
-	foot := city.Point{X: ground.X, Y: ground.Y - float64(size.Y)*planterRise}
-	sign, ok := ui.LayoutMonument(d.Name, foot, float64(size.X), monumentLean, g.faces.Measure)
+	sign, ok := ui.LayoutMonument(d.Name, ground, float64(size.X)*monumentSpan, monumentLean, g.faces.Measure)
 	if !ok {
 		// Still plant the bed: it is one of the rim planters either way.
-		g.kit(screen, cam, kitPlanter, 0, at, nil)
+		g.kit(screen, cam, kitPlanter, 0, bedOf(at), nil)
 		return
 	}
 	if night {
-		// Ground-lit from the bed, which is how these are lit at night.
-		glow(screen, foot, sign.Panel.Width()*0.55, colorMonumentLamp)
+		// Ground-lit from the base. This goes through lit and boost,
+		// which are item 37's radius floor and zoom compensation — the
+		// first cut called glow directly and was a second, independent
+		// night-light path, which is the shape that has cost this
+		// project six bugs.
+		lamp := city.Point{X: ground.X, Y: ground.Y - sign.Base.Height()*0.4}
+		glow(screen, lamp, lit(sign.Base.Width()*0.45, minPlantGlow), boost(colorMonumentLamp, cam.Zoom))
 	}
+	// A slab set back behind the whole sign, so it reads as a solid
+	// with a side to it rather than as a cut-out standing on edge.
+	depth := sign.Whole().Width() * ui.MonumentThickness
+	whole := sign.Whole()
+	g.leaning(screen, city.Rect{
+		Min: city.Point{X: whole.Min.X + depth, Y: whole.Min.Y - depth/2},
+		Max: city.Point{X: whole.Max.X + depth, Y: whole.Max.Y - depth/2},
+	}, monumentLean, colorMonumentSide)
+	g.leaning(screen, sign.Base, monumentLean, colorMonumentBase)
 	g.leaning(screen, sign.Panel, monumentLean, colorMonument)
 	g.leaning(screen, sign.Cap, monumentLean, colorMonumentCap)
 	g.sign(screen, sign.Copy, colorMonumentCopy)
-	// The bed goes on last, over the panel's foot, so the panel rises
-	// out of the planting rather than standing behind it.
-	g.kit(screen, cam, kitPlanter, 0, at, nil)
+	// The planting goes on last, in front, so it sits at the base's
+	// foot rather than standing in for it.
+	g.kit(screen, cam, kitPlanter, 0, bedOf(at), nil)
 }

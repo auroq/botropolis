@@ -1016,6 +1016,16 @@ The sign is a drawable on its own footprint inside `drawIso`, so it occludes and
 
 **The second miss was the one this entry warned about.** With the panel's foot set above the bed it floated clear of it — a pylon sign, the failure mode named in the entry, rejected twice already. The fix is the chimney's trick from bug 40: the panel is drawn *first* and the planter over it, so the mass of the bed hides where the panel enters and the panel rises out of the planting instead of standing behind it.
 
+**Refined after Aria's *"I love where that is going"*, against three gaps read off the r216 frame.**
+
+*It was a flat quad with no thickness.* The sign is now three elements with a slab set back behind the whole of it, so it has a side and reads as a solid rather than a cut-out standing on edge.
+
+*There was no masonry base, and this was the one that mattered.* `MonumentOnGround` passed because the panel was as wide as its bed — but the rule exists to put **stone** on the ground, not planting, and a panel whose only mass is a box of shrubs is a signboard standing in a flowerbed. There is now a plinth: a third of the sign's height, oversailing the panel on each side the way a plinth does, and it is what meets the ground. The bed sits *in front of* it, at its foot, rather than standing in for it.
+
+*The night glow was a second, independent path.* The first cut called `glow` directly with a raw radius and a raw colour; the plant's ground light goes through `lit` and `boost`, which are item 37's radius floor and zoom compensation. That is the `size.Y*0.6` shape again and it was caught the same way. It now goes through both. **What is not fixed is that `glow` paints a uniform additive disc with no falloff**, so it still reads flat — but that is the shared primitive's behaviour and the plant wears it too, so it is one problem in one place rather than two.
+
+Sizing moved twice and both moves were wrong first. The panel was built to `MonumentWidest(base)`, the legal maximum, which puts only two fifths of the width on the ground — a board on a plinth, the shape the rule exists to exclude. Then, once the height was split three ways, a sign one planter wide left a panel too short to carry any name and **declined every sign in the city**. It spans one and a half planters now, and the 2:1 is measured across the plinth, since the plinth is the widest element and the one that meets the ground.
+
 **On re-checking the gantry, as asked — both measurements were right and mine was the misleading one.**
 51 x 62 px is the axis-aligned bounding box of a board that leans; in its own plane the face is **56 x 36, landscape at 1.55:1**, against the model's 1.41:1, and foreshortening is the difference. So the model is not contradicted.
 The capacity changes from about eleven characters to about **thirteen** — `LayoutPlaque` was fitting text into that bounding box, which understates the width and overstates the height.
