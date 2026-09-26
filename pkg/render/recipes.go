@@ -41,7 +41,7 @@ var (
 	sheds     = []string{"city-kit-industrial/shipping-container-a", "city-kit-industrial/shipping-container-b", "city-kit-industrial/shipping-container-c"}
 
 	kitPlant   = "city-kit-industrial/building-a"
-	kitStack   = "city-kit-industrial/chimney-large"
+	kitStack   = "city-kit-industrial/chimney-medium"
 	kitHall    = "city-kit-commercial/building-n"
 	kitLibrary = "city-kit-commercial/building-l"
 	kitTower   = "city-kit-industrial/water-tower"

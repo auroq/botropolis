@@ -734,10 +734,14 @@ So `MaxZoom` is 2 and `ZoomSteps` ends there. Nothing is ever upscaled now. Fram
 **The cost, stated rather than buried: the map no longer zooms as close.** Two steps are gone from the wheel. That is the trade for never drawing a stretched sprite, and it is reversible the day the budget can take z3.
 `TestZoomLadderStopsWhereTheAtlasDoes` in `pkg/assets` holds the ladder against the shipped manifests — the two had nothing forcing them to agree, which is the taxonomy's shape again, and here it is closed by test because the ladder lives in `pkg/city` and the atlas in `pkg/assets`. Checked that it fails with `MaxZoom` back at 4.
 
-### 36. The cooling tower is oversized for a civic plaza
+### 36. ~~The cooling tower is oversized for a civic plaza~~ Done 2026-09-26 (r203) — swapped, and the stated numbers did not hold up
 At z2 it is 198×357 against a 264 tile — 0.75 tiles wide and **1.35 tall, taller than a four-storey commercial building** (0.9 × 0.96).
 It is an industrial-scale piece standing on the civic plaza beside three-storey offices, which is what Aria means by "it doesn't match".
 Decided: **resize it to civic scale**, or swap to `chimney-medium` (87 px wide against its 198) if scaling alone does not settle it.
+Took the second option, which costs no re-cut because `chimney-medium` was kept in the atlas by bug 24 as a candidate for exactly this. Frame `docs/screenshots/r203-plant-stack.png`.
+**The measurement in this entry does not hold up, and it is worth correcting rather than quietly acting on.** Measured off `kits-z2` against its 264 tile, `chimney-large` is 0.75 × **1.35** tiles — which makes it *shorter* than its own host building `industrial/building-a` (1.63 × 1.61), shorter than the library (1.25 × 1.89) and shorter than city hall (1.86 × 2.09), and outside the atlas's fourteen tallest pieces. There is no commercial building at 0.9 × 0.96; the nearest by width is `building-f` at 0.89 × 1.45. So "taller than a four-storey commercial building" is not what the art says.
+**What is true is the idiom and the composition, which is what "it doesn't match" was pointing at.** The wide cooling tower stands in front of the plant's slab and hides it, so the plant reads as one free-standing industrial object on a civic square — which is exactly why Aria had been reading the tower alone as the power plant. The slim chimney stands *on* the building: the slab reads as a building and the chimney as a detail of it.
+**This likely resolves item 3 as well, and probably bug 33 with it** — the fountain is no longer under a wide convex flange, which was bug 33's mechanism for the tower reading as elevated. Both are Aria's to confirm from the frame; nothing else was changed for them.
 Note that the plant is the *building plus* the stack — Aria had been reading the tower alone as the whole plant, which is itself a sign the composition does not read.
 
 ### 37. ~~Night lamps are large overlapping discs at zoom~~ Done 2026-09-26 (r201)
