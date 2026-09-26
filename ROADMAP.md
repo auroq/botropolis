@@ -808,12 +808,12 @@ Swapping the piece changed how the error looks, not what it is.
 - Raise it by the building's height so its base is at the roof, not at the pavement.
 - Draw it so the roof's own near parapet occludes its base — that is what makes it read as passing *through* the roof instead of resting on it. Note this is the opposite of bug 23's remedy: that gave the stack its own ground depth because it was being treated as a welded sprite. It is neither welded nor free-standing; it belongs to the building's depth with its foot hidden by the building's own geometry.
 
-**Fixed, and the cause was one step worse than this entry says.**
-The perch was not merely a ground point that wanted lifting: it was not under the building at all.
-`Plant.Rect` is a 7.5 x 4 tile *reservation* — 120 x 64 world units against a 16-unit tile — and `isoLandmark` draws `building-a` at its natural size, 431 px against the 264 px tile, which is a little over 1.6 tiles, centred in that reservation.
-So a point one tile in from `Max` is most of three tiles clear of the slab, out on open pavement.
-The reservation is not the building, and deriving the chimney's place from the reservation's corner is what put it on the plaza.
-That is why the r203 frame shows its foot beside the fountain.
+**Fixed.**
+*(Corrected 2026-09-26, and the correction is a retraction: what stood here claimed the cause was "one step worse than this entry says" — that the perch was not under the building at all, "most of three tiles clear of the slab". That was wrong, and it was wrong because I quoted two different units as "tiles" in the same sentence.* **The atlas's 264 px cell is not `city.Tile`.** *`IsoTileWidth` is the width of a `BuildingSize` square, and `BuildingSize = 3 * Tile`, so one atlas cell is three city tiles. `building-a` at 431 px is 1.63 atlas cells, which is* **4.9 city tiles**, *not 1.6 of them. Measured consistently: the footprint is a 78.4-unit square, its half-side is 39.2, and the old perch sat 44 units east of centre — outside the slab by* **4.8 world units, 0.30 of a city tile**, *and comfortably inside it north-south. Marginally off the edge, not three tiles out on the plaza. The original report had it right and the amendment inflated it.)*
+
+The cause is the one this entry gave: the perch was a ground point that was never lifted.
+Its horizontal error is worth 77 x 82 px on screen at z2; the missing lift is worth **206 px**, and that is what put the chimney's foot down beside the fountain in the r203 frame.
+Moving the perch was still worth doing — it was outside the slab, and it was derived from the reservation's corner rather than from the building — but it is the small term.
 
 Three expressions now, in `pkg/render/iso.go`:
 - `plantStackPerch` returns `plant.Center()` — the same expression `isoLandmark` draws the building at, so the two cannot be moved apart.

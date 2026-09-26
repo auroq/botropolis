@@ -502,6 +502,13 @@ The guard is a question asked before the sentence is written: *what is the set?*
 For a ratio — what is the comparison class, and is the thing on the other side representative of it or an extreme of it.
 For a negative — was the search over the whole set, or over a set some earlier sort or filter had already narrowed.
 
+**A fourth, and this one is mine twice over.**
+Writing bug 39 up I said the plant's sprite was "a little over 1.6 tiles wide" and its reservation "7.5 x 4 tiles", and concluded the chimney had stood "most of three tiles clear of the slab".
+Both numbers were correct.
+They were in different units: the atlas's 264 px cell is a `BuildingSize` square, which is **three** `city.Tile`, so the sprite was 1.63 atlas cells and 4.9 city tiles, and the two figures could not be subtracted from one another.
+Measured in one unit the chimney was 0.30 of a city tile off the slab, not three tiles, and the horizontal error was the small term beside a missing 206 px lift.
+A ratio needs its comparison class; a length needs its unit; both are the same question — *what is this number measured against?* — and the answer has to be the same for both sides before they are allowed to meet.
+
 **A third instance, found the same week, and it is the same shape without any sorting in it.**
 Bug 23 measured the gap between the plant's stack and the ground it stood on, got zero pixels, and concluded the stack was grounded.
 It was grounded.
