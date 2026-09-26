@@ -1388,7 +1388,17 @@ I doubted the shape before I checked it properly and was wrong: my first dump tr
 
 **Three shapes still, now on fields rather than lines:** `limits` non-empty is a subscription, `spend.enabled` is a spend plan, neither is unreadable. A missing or malformed cache stays distinct from a plan that reports nothing.
 
-**Still to do:** the river is one cell wide, so a 0% boat and a 21% boat sit about six world units apart and the reading is hard to see — Aria offered to widen it and the frame says she was right. The lanes are drawn but too faint to read at that width. And the view key does not yet name the boats against the tugs.
+**The river is two cells wide, derived rather than chosen. Frame `docs/screenshots/r-usage-boats.png`: day, zoomed out, and night.**
+
+Worked back from the worst case. At `MinZoom` one world unit is 0.384 screen pixels across the river, so a 25% step that reads at 8 px needs 21 world units, a full reach needs 83, and the hull wants 20 more — 103 against a 48-unit cell, so two. The one-cell river gave a step of **1.6 px**, which is why the first frame showed three hulls at what looked like the same distance out. The lanes were faint for the same reason and not a separate one, so widening fixed both.
+
+**What else the width fed, checked before changing it.** No bridges exist. The mask on a river cell is read by exactly one caller, which discards it. The rails are laid from `eastRoad` and stayed put. The belts are sized from `riverCol` and followed it correctly.
+
+**One thing did break, and it was a test rather than the city.** The rail loop's east corner was written as `cols-3`, which equalled the belt's east side *only while the river was one cell wide* — an arithmetic coincidence, not a relationship. It is derived from `RiverCols` now.
+
+**`City.RiverBand` is one expression for where the river is**, because two readers want it: the voyages sail along it and the boats are read across it. A river that grew from one cell to two is exactly where two copies of that would have parted company — the tugs now sail the centre line rather than the middle of the western column, which is why two voyage tests moved.
+
+**Still to do:** the view key does not yet name the boats against the tugs.
 ### 49a. What the usage numbers actually are, measured (2026-09-26)
 
 Aria sent `/usage` from Claude Code and the same panel from the desktop UI, and asked for research.

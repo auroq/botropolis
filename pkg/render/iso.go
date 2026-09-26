@@ -657,10 +657,10 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	// the same water — one river, two meanings, told apart by
 	// silhouette and by what each says when pointed at. Item 49.
 	if gauges, age := g.usageGauges(); len(gauges) > 0 {
-		if from, to, ok := riverRun(c); ok {
+		if from, to, reach, ok := riverRun(c); ok {
 			for _, gauge := range gauges {
 				gauge := gauge
-				at := gaugeAt(cam, from, to, gaugeReach, gauge)
+				at := gaugeAt(cam, from, to, reach, gauge)
 				items = append(items, standingAt(cam, at, func() {
 					r := g.drawGauge(screen, cam, at, gauge.Size)
 					g.noteHit(r, city.Hit{Gauge: &city.GaugeHit{Gauge: gauge, Age: age}})

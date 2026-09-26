@@ -46,25 +46,27 @@ func gaugeAcross(cam *city.Camera) city.Point {
 }
 
 // gaugeAt is where a boat floats: along the river by its berth, across
-// it by its reading.
-func gaugeAt(cam *city.Camera, from, to city.Point, width float64, g city.Gauge) city.Point {
+// it by its reading. Nothing at one bank, everything at the other.
+func gaugeAt(cam *city.Camera, from, to city.Point, reach float64, g city.Gauge) city.Point {
 	along := city.Point{
 		X: from.X + (to.X-from.X)*g.Phase,
 		Y: from.Y + (to.Y-from.Y)*g.Phase,
 	}
 	across := gaugeAcross(cam)
-	reach := width * min(1, max(0, g.Percent/100))
-	return city.Point{X: along.X + across.X*reach, Y: along.Y + across.Y*reach}
+	// The centre line is the halfway reading, so a boat runs from half
+	// a reach behind it to half a reach in front.
+	out := reach * (min(1, max(0, g.Percent/100)) - 0.5)
+	return city.Point{X: along.X + across.X*out, Y: along.Y + across.Y*out}
 }
 
 // gaugeLanes are the marks the boats are read against: the same axis at
 // a quarter, a half, three quarters and full. A boat high on the water
 // with nothing to read it against is not a gauge.
-func gaugeLanes(cam *city.Camera, from, to city.Point, width float64) []([2]city.Point) {
+func gaugeLanes(cam *city.Camera, from, to city.Point, reach float64) []([2]city.Point) {
 	across := gaugeAcross(cam)
 	var out [][2]city.Point
 	for _, share := range [4]float64{0.25, 0.5, 0.75, 1} {
-		reach := width * share
+		reach := reach * (share - 0.5)
 		out = append(out, [2]city.Point{
 			{X: from.X + across.X*reach, Y: from.Y + across.Y*reach},
 			{X: to.X + across.X*reach, Y: to.Y + across.Y*reach},
@@ -82,30 +84,36 @@ var gaugeShrink = map[city.GaugeSize]float64{
 	city.GaugeSmall:  0.13,
 }
 
-// gaugeReach is how far across the river a full reading carries, in
-// world units: not the whole cell, so a boat at 100% is still on water.
-const gaugeReach = city.BuildingSize * 0.34
+// gaugeMargin is how much water is left at each bank, so a boat at 0%
+// or 100% is still afloat rather than beached.
+const gaugeMargin = 14.0
+
+// gaugeReachOf is how far a full reading carries across a river of this
+// width — the whole of it bar a margin at each bank. Derived from the
+// river rather than fixed, so widening the river widens the gauge
+// instead of leaving it reading across a strip of it.
+func gaugeReachOf(width float64) float64 {
+	return max(0, width-2*gaugeMargin)
+}
 
 var colorGaugeLane = color.NRGBA{0xe8, 0xf1, 0xff, 0x4c}
 
 // riverRun is the stretch of river the gauges are read along: its first
 // cell's centre to its last.
-func riverRun(c *city.City) (from, to city.Point, ok bool) {
-	if len(c.RiverCells) < 2 {
-		return city.Point{}, city.Point{}, false
-	}
-	return c.RiverCells[0].Cell.Center(), c.RiverCells[len(c.RiverCells)-1].Cell.Center(), true
+func riverRun(c *city.City) (from, to city.Point, reach float64, ok bool) {
+	from, to, width, ok := c.RiverBand()
+	return from, to, gaugeReachOf(width), ok
 }
 
 // drawGaugeLanes marks the water at a quarter, a half, three quarters
 // and full, so a boat is read against a scale rather than against the
 // window's edge.
 func (g *Game) drawGaugeLanes(screen *ebiten.Image, cam *city.Camera, c *city.City) {
-	from, to, ok := riverRun(c)
+	from, to, reach, ok := riverRun(c)
 	if !ok {
 		return
 	}
-	for _, lane := range gaugeLanes(cam, from, to, gaugeReach) {
+	for _, lane := range gaugeLanes(cam, from, to, reach) {
 		a, b := cam.WorldToScreen(lane[0]), cam.WorldToScreen(lane[1])
 		vector.StrokeLine(screen, float32(a.X), float32(a.Y), float32(b.X), float32(b.Y), 1, colorGaugeLane, true)
 	}

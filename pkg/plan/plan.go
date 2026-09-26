@@ -123,6 +123,19 @@ const TreeJitter = 0.3
 // towards the street from there.
 const KerbOffset = 0.42
 
+// RiverCols is how many cells wide the river runs.
+//
+// Derived rather than chosen. The usage boats read across the river, so
+// the width has to keep the gauge legible at the *smallest* zoom the
+// ladder allows, which is where the spread collapses. At MinZoom one
+// world unit is 0.384 screen pixels across the river, so a 25% step
+// that reads at 8 px needs 21 world units, a full 0-100% reach needs
+// 83, and the hull needs about 20 more. That is 103 units against a
+// 48-unit cell: two cells. One cell gave 1.6 px a step, which is why
+// the first frame of the boats showed three hulls at what looked like
+// the same distance out.
+const RiverCols = 2
+
 // StreetTreeSpacing is how many cells apart street trees stand. A city
 // plants a street at a fixed pitch, not wherever there is room.
 const StreetTreeSpacing = 3
@@ -364,7 +377,7 @@ func (p *Plan) place(in Input) {
 	}
 	eastRoad := x - 1
 	p.span = eastRoad - p.colX[-p.rings]
-	cols := eastRoad + 1 + belt + 1
+	cols := eastRoad + 1 + belt + RiverCols
 
 	ridge := belt
 	y := ridge + 1 + 1
@@ -397,7 +410,7 @@ func (p *Plan) place(in Input) {
 			}
 		}
 	}
-	riverCol := cols - 1
+	riverCol := cols - RiverCols
 	p.Belt = []Block{
 		{Min: Cell{}, Cols: riverCol, Rows: belt},
 		{Min: Cell{Row: lastRoad + 1}, Cols: riverCol, Rows: belt},
@@ -421,14 +434,22 @@ func (p *Plan) place(in Input) {
 		p.Towers = append(p.Towers, Cell{Col: westRoad + 1 + 2*i, Row: ridge})
 	}
 	for row := 0; row < rows; row++ {
-		mask := DirN | DirS
-		if row == 0 {
-			mask = DirS
+		for col := riverCol; col < riverCol+RiverCols; col++ {
+			mask := DirN | DirS
+			if row == 0 {
+				mask = DirS
+			}
+			if row == rows-1 {
+				mask = DirN
+			}
+			if col > riverCol {
+				mask |= DirW
+			}
+			if col < riverCol+RiverCols-1 {
+				mask |= DirE
+			}
+			p.River = append(p.River, RiverCell{Cell: Cell{col, row}, Mask: mask})
 		}
-		if row == rows-1 {
-			mask = DirN
-		}
-		p.River = append(p.River, RiverCell{Cell: Cell{riverCol, row}, Mask: mask})
 	}
 
 	streetCols := []int{westRoad}

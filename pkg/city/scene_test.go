@@ -1267,20 +1267,25 @@ func TestVoyages(t *testing.T) {
 		voyages := s.Voyages()
 		require.Len(t, voyages, 1)
 		v := voyages[0]
-		river := s.City().RiverCells
 
 		t.Run("it should sail an arrival for the new session", func(t *testing.T) {
 			assert.Equal(t, city.Arrival, v.Kind)
 			assert.Equal(t, "b", v.SessionID)
 		})
 
+		// The river is plan.RiverCols wide now, so a tug sails its
+		// centre line rather than the middle of its western column.
 		t.Run("it should start at the river's north end", func(t *testing.T) {
-			assert.Equal(t, river[0].Cell.Center(), v.From)
+			north, _, _, ok := s.City().RiverBand()
+			require.True(t, ok)
+			assert.Equal(t, north, v.From)
 		})
 
 		t.Run("it should dock beside the session's district", func(t *testing.T) {
 			d := s.City().Districts[0]
-			assert.InDelta(t, river[0].Cell.Center().X, v.To.X, 1e-9)
+			north, _, _, ok := s.City().RiverBand()
+			require.True(t, ok)
+			assert.InDelta(t, north.X, v.To.X, 1e-9)
 			assert.InDelta(t, d.Rect.Center().Y, v.To.Y, 1e-9)
 		})
 
@@ -1319,7 +1324,6 @@ func TestVoyages(t *testing.T) {
 		voyages := s.Voyages()
 		require.Len(t, voyages, 1)
 		v := voyages[0]
-		river := s.City().RiverCells
 
 		t.Run("it should sail a departure carrying the title", func(t *testing.T) {
 			assert.Equal(t, city.Departure, v.Kind)
@@ -1327,7 +1331,9 @@ func TestVoyages(t *testing.T) {
 		})
 
 		t.Run("it should leave downriver", func(t *testing.T) {
-			assert.Equal(t, river[len(river)-1].Cell.Center(), v.To)
+			_, south, _, ok := s.City().RiverBand()
+			require.True(t, ok)
+			assert.Equal(t, south, v.To)
 		})
 
 		t.Run("it should be named on its card", func(t *testing.T) {

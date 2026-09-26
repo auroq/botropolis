@@ -1,6 +1,7 @@
 package city_test
 
 import (
+	"github.com/auroq/botropolis/pkg/plan"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,15 +18,22 @@ func TestRiver(t *testing.T) {
 		c := city.Build(snap, city.NewLayout())
 		require.NotEmpty(t, c.RiverCells)
 
+		// The river is plan.RiverCols wide now, for the usage boats to
+		// be read across.
 		t.Run("it should run down the east edge of the map", func(t *testing.T) {
-			edge := c.Bounds().Max.X - city.CellSize
+			west := c.Bounds().Max.X - city.CellSize*plan.RiverCols
 			for _, r := range c.RiverCells {
-				assert.InDelta(t, edge, r.Cell.Rect().Min.X, 1e-9, "river at %v", r.Cell)
+				assert.GreaterOrEqual(t, r.Cell.Rect().Min.X, west-1e-9, "river at %v", r.Cell)
+				assert.LessOrEqual(t, r.Cell.Rect().Max.X, c.Bounds().Max.X+1e-9, "river at %v", r.Cell)
 			}
 		})
 
 		t.Run("it should run the full height", func(t *testing.T) {
-			assert.Len(t, c.RiverCells, int(c.Bounds().Height()/city.CellSize))
+			rows := map[int]bool{}
+			for _, r := range c.RiverCells {
+				rows[r.Cell.Row] = true
+			}
+			assert.Len(t, rows, int(c.Bounds().Height()/city.CellSize))
 		})
 
 		t.Run("it should keep every district off it", func(t *testing.T) {

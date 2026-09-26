@@ -62,10 +62,8 @@ func (v *Voyage) Card() Card {
 
 // riverEnds is where the river enters and leaves the map, and its x.
 func (c *City) riverEnds() (north, south Point, ok bool) {
-	if len(c.RiverCells) == 0 {
-		return Point{}, Point{}, false
-	}
-	return c.RiverCells[0].Cell.Center(), c.RiverCells[len(c.RiverCells)-1].Cell.Center(), true
+	from, to, _, ok := c.RiverBand()
+	return from, to, ok
 }
 
 // dock is the river point beside a project's district, or beside the

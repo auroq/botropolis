@@ -57,26 +57,34 @@ func TestGaugeAt(t *testing.T) {
 	cam.Projection = city.Isometric
 	from := city.Point{X: 100, Y: 0}
 	to := city.Point{X: 100, Y: 400}
-	const width = 40
+	const reach = 80
+
+	t.Run("when a boat reads half", func(t *testing.T) {
+		at := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 50, Phase: 0.5})
+
+		t.Run("it should sit on the river's own centre line", func(t *testing.T) {
+			assert.InDelta(t, 100.0, at.X, 0.0001)
+		})
+	})
 
 	t.Run("when a boat reads nothing yet", func(t *testing.T) {
-		at := gaugeAt(cam, from, to, width, city.Gauge{Percent: 0, Phase: 0.5})
+		at := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 0, Phase: 0.5})
 
-		t.Run("it should sit on the river's own line", func(t *testing.T) {
-			assert.Equal(t, 100.0, at.X)
+		t.Run("it should sit at the near bank rather than mid-stream", func(t *testing.T) {
+			assert.NotEqual(t, 100.0, at.X)
 		})
 	})
 
 	t.Run("when a boat reads full", func(t *testing.T) {
-		full := gaugeAt(cam, from, to, width, city.Gauge{Percent: 100, Phase: 0.5})
-		half := gaugeAt(cam, from, to, width, city.Gauge{Percent: 50, Phase: 0.5})
+		full := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 100, Phase: 0.5})
+		half := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 50, Phase: 0.5})
 
 		t.Run("it should be further up the screen than one reading half", func(t *testing.T) {
 			assert.Less(t, cam.Project(full).Y, cam.Project(half).Y)
 		})
 
 		t.Run("it should reach the last lane", func(t *testing.T) {
-			lanes := gaugeLanes(cam, from, to, width)
+			lanes := gaugeLanes(cam, from, to, reach)
 			require.Len(t, lanes, 4)
 			assert.InDelta(t, lanes[3][0].X, full.X, 0.0001)
 		})
@@ -84,16 +92,16 @@ func TestGaugeAt(t *testing.T) {
 
 	t.Run("when a reading somehow exceeds its limit", func(t *testing.T) {
 		t.Run("it should stop at the far lane rather than sail off the river", func(t *testing.T) {
-			over := gaugeAt(cam, from, to, width, city.Gauge{Percent: 140, Phase: 0.5})
-			full := gaugeAt(cam, from, to, width, city.Gauge{Percent: 100, Phase: 0.5})
+			over := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 140, Phase: 0.5})
+			full := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 100, Phase: 0.5})
 			assert.Equal(t, full, over)
 		})
 	})
 
 	t.Run("when two boats are berthed apart", func(t *testing.T) {
 		t.Run("it should keep them apart along the river however their readings move", func(t *testing.T) {
-			a := gaugeAt(cam, from, to, width, city.Gauge{Percent: 50, Phase: 0.22})
-			b := gaugeAt(cam, from, to, width, city.Gauge{Percent: 50, Phase: 0.82})
+			a := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 50, Phase: 0.22})
+			b := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 50, Phase: 0.82})
 			assert.NotEqual(t, a.Y, b.Y)
 		})
 	})

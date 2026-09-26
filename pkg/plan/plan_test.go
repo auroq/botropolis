@@ -140,15 +140,28 @@ func TestMake(t *testing.T) {
 			assert.Equal(t, plan.Cell{}, p.Bounds.Min)
 		})
 
+		// The river widened to plan.RiverCols for the usage gauges: the
+		// boats read across it, and at MinZoom a one-cell river put a
+		// 25% step at 1.6 screen pixels.
 		t.Run("it should run the river down the east edge", func(t *testing.T) {
 			require.NotEmpty(t, p.River)
+			east := p.Bounds.Min.Col + p.Bounds.Cols
 			for _, r := range p.River {
-				assert.Equal(t, p.Bounds.Min.Col+p.Bounds.Cols-1, r.Cell.Col)
+				assert.GreaterOrEqual(t, r.Cell.Col, east-plan.RiverCols)
+				assert.Less(t, r.Cell.Col, east)
 			}
 		})
 
 		t.Run("it should run the river the full height", func(t *testing.T) {
-			assert.Len(t, p.River, p.Bounds.Rows)
+			rows := map[int]bool{}
+			for _, r := range p.River {
+				rows[r.Cell.Row] = true
+			}
+			assert.Len(t, rows, p.Bounds.Rows)
+		})
+
+		t.Run("it should run it the full width at every row", func(t *testing.T) {
+			assert.Len(t, p.River, p.Bounds.Rows*plan.RiverCols)
 		})
 
 		t.Run("it should wrap the west edge in park", func(t *testing.T) {
@@ -238,8 +251,16 @@ func TestMake(t *testing.T) {
 
 	t.Run("when the rail loop is laid", func(t *testing.T) {
 		p := plan.Make(plan.Input{Districts: live(3), Towers: 2, StorageRows: 2}, plan.NewMemory())
+		// The loop rings the belt, west of the river. Its east edge used
+		// to be written as cols-3, which equalled the belt's east side
+		// only while the river was one cell wide — an arithmetic
+		// coincidence, not a relationship. Widening the river for the
+		// usage boats broke the coincidence and left the loop exactly
+		// where it belongs, so the corner is derived from the river now
+		// rather than from the map's width.
 		cols, rows := p.Bounds.Cols, p.Bounds.Rows
-		corners := []plan.Cell{{Col: 1, Row: 1}, {Col: cols - 3, Row: 1}, {Col: cols - 3, Row: rows - 2}, {Col: 1, Row: rows - 2}}
+		east := cols - plan.RiverCols - 2
+		corners := []plan.Cell{{Col: 1, Row: 1}, {Col: east, Row: 1}, {Col: east, Row: rows - 2}, {Col: 1, Row: rows - 2}}
 
 		t.Run("it should start at the north-west corner of the inner belt", func(t *testing.T) {
 			require.NotEmpty(t, p.Rails)
@@ -253,7 +274,7 @@ func TestMake(t *testing.T) {
 		})
 
 		t.Run("it should be one closed loop of adjacent cells", func(t *testing.T) {
-			perimeter := 2*(cols-3-1) + 2*(rows-2-1)
+			perimeter := 2*(east-1) + 2*(rows-2-1)
 			require.Len(t, p.Rails, perimeter)
 			for i := range p.Rails {
 				a, b := p.Rails[i], p.Rails[(i+1)%len(p.Rails)]
