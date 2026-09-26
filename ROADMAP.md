@@ -721,6 +721,37 @@ Frame `docs/screenshots/r197-click-to-select.png`. `Scene.Click` selects and rai
 ### Order
 The five hover cards first, because they answer two of Aria's questions and cost the least. Then the overlay key, then click-to-select. Then the art: plants, plant placement, billboards, cars. Exit: every object on the map answers when pointed at, and a frame per fix.
 
+## 11. Phase 21 — the art batch (Aria, 2026-09-26, decided on r200 frames)
+
+### 35. The atlas stops at z2 and the zoom ladder goes to 4
+`ZoomSteps` is `0.25 … 2, 3, 4` and `MaxZoom` is 4, but `pkg/assets/kits` holds **two levels only**, `kits-z1` (tile 132) and `kits-z2` (tile 264).
+At zoom 3 and 4 there is no sprite to draw, so z2 is upscaled 1.5× and 2×.
+Every piece blurs at close zoom; the cooling tower shows it worst because it is a large smooth curved surface where a box hides it.
+Aria read this as "the tower is low res" and she was describing a map-wide defect — the tower is simply where it is most visible.
+**Cut z3 and z4.** Budget it first with `atlas-cost.py`: pages scale with the square of the zoom, so z4 alone could be four times z2's seven pages. If the budget will not take it, cap `MaxZoom` at the highest level that exists rather than upscaling — a ladder that promises a zoom the art cannot serve is the same lie as a label that does not match its behaviour.
+
+### 36. The cooling tower is oversized for a civic plaza
+At z2 it is 198×357 against a 264 tile — 0.75 tiles wide and **1.35 tall, taller than a four-storey commercial building** (0.9 × 0.96).
+It is an industrial-scale piece standing on the civic plaza beside three-storey offices, which is what Aria means by "it doesn't match".
+Decided: **resize it to civic scale**, or swap to `chimney-medium` (87 px wide against its 198) if scaling alone does not settle it.
+Note that the plant is the *building plus* the stack — Aria had been reading the tower alone as the whole plant, which is itself a sign the composition does not read.
+
+### 37. Night lamps are large overlapping discs at zoom
+Each lit storey draws a glow with a pixel floor that brightens as you zoom out (phase 10, bug 8).
+It does not scale *down* as you zoom in, so at zoom 2+ a five-storey building wears five overlapping white discs and the building is washed out entirely.
+Evidence: the r200 night frame at zoom, botropolis and mullet both unreadable.
+The floor should be a floor, not a constant: clamp the glow to the smaller of (pixel floor, storey height in screen space).
+
+### 38. Signage: prototype before choosing
+The current treatment — ~10 px vertical text floating beside the building with no surface — is rejected, and so were four mocks of flat panels.
+**Why the mocks failed is the lesson**: they drew UI chrome into a 3D scene, unlit, in a world where everything else has a sun on it.
+The Roads kit already carries real sign objects: `sign-highway`, `sign-highway-detailed` (gantry billboards with boards on posts), `road-sign-empty`, `road-sign-empty-hanging`.
+A board the pipeline lights reads as signage; a flat panel reads as a tooltip that forgot to hide.
+Decided: **render two or three through the pipeline on a real district and compare frames before committing** — a gantry beside the plot, a smaller post-mounted board, and a wall plaque. Text painted on the board face, sheared to it. Aria picks from frames, not from description.
+
+### Order
+37 and 35 first (both are defects and 35 may change how 36 reads), then 36, then 38's prototypes.
+
 
 ### Worth knowing, not bugs
 
