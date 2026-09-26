@@ -1157,7 +1157,7 @@ A stack through a flat roof is not bare. Two separate elements, and they do diff
 The collar and braces have to scale with zoom exactly as the sprite does, or they will drift off the join at some zooms — the same class as the perch bugs.
 And the braces go sub-pixel at low zoom: drop them below a threshold and keep the collar, rather than letting them become noise. Say what the threshold is and why.
 
-### 46a. The guy braces are the wrong object — it wants a curb (Aria, 2026-09-26, on r226)
+### 46a. ~~The guy braces are the wrong object — it wants a curb~~ Done 2026-09-26 (r228)
 
 Her words: *"The braces look excessive because they go almost to the top of the chimney and then don't actually touch it. I was thinking like something small at the base."*
 
@@ -1181,6 +1181,16 @@ If anything diagonal survives, it is two short gussets no taller than the curb, 
 
 Keep what item 46 got right: only the **near arc** of anything wrapping the pipe is drawn, and the bottom line stays an ellipse.
 
+
+**Done. Frame `docs/screenshots/r228-chimney-curb.png`, the rejected braces beside the curb.**
+
+The braces are gone, the support band with them, and the flashing plate is gone too. What is there now is a **curb**: a ring 15% wider than the stack and an eighth of its height, drawn as the band between the near arcs of two ellipses — its top rim catching the light, its foot a narrow dark rim rather than a pale saucer. The foot's near arc is the round bottom line, so the thing bug 46 was for is carried by the curb rather than by a plate.
+
+**`MinStackBracePx` is deleted rather than left orphaned.** It existed because a hairline diagonal turns to noise when it is short; a curb is a filled shape and survives being small, so there is no size below which it needs dropping and no threshold to keep. `LayoutStackFittings` has no zoom term at all now.
+
+Kept from bug 46: only the near half of anything wrapping the pipe is drawn, and every measurement comes from the rect `kitThrough` returns, so the curb scales with the sprite.
+
+**Aria's second complaint was a straight defect and it is worth keeping the lesson.** The guys ran to a band drawn as an arc, and the arc did not visibly land, so they read as wires passing near the chimney rather than bearing on it. A thing drawn to prove a connection argues against itself if it does not make the connection at both ends — which is the same failure as a label that does not match its behaviour, in a different medium.
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:

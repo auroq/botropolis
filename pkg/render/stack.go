@@ -11,66 +11,76 @@ import (
 	"github.com/auroq/botropolis/pkg/ui"
 )
 
-// Bug 46. The stack passes through the roof rather than resting on it,
-// and the fittings are what say so.
+// Bug 46a. The stack passes through the roof rather than resting on it,
+// and a low curb round the opening is what says so.
 //
-// They are drawn *after* the stack and measured entirely from the rect
-// the stack was drawn into, so they scale with the sprite instead of
-// drifting off the join at some zoom — which is the failure that cost
-// bugs 39 and 40 twice over, in the other direction.
+// The curb is drawn after the stack and measured entirely from the rect
+// the stack was drawn into, so it scales with the sprite instead of
+// drifting off the join at some zoom.
 var (
-	colorStackFlash  = color.NRGBA{0x8e, 0x92, 0x99, 0xff}
-	colorStackCollar = color.NRGBA{0x5e, 0x62, 0x6a, 0xff}
-	colorStackBand   = color.NRGBA{0x4f, 0x53, 0x5a, 0xff}
-	colorStackBrace  = color.NRGBA{0x45, 0x49, 0x50, 0xff}
+	colorStackCurb = color.NRGBA{0x5b, 0x5f, 0x67, 0xff}
+	colorStackCap  = color.NRGBA{0x9a, 0x9f, 0xa8, 0xff}
+	colorStackRim  = color.NRGBA{0x3c, 0x40, 0x47, 0xff}
 )
 
 // nearArc walks the near half of an ellipse — the half that bulges
 // towards the viewer, which is the only half of a ring round a pipe
-// that is not hidden by the pipe itself.
-func nearArc(box city.Rect) vector.Path {
+// that is not hidden by the pipe itself. It runs left to right.
+func nearArc(box city.Rect, steps int) []city.Point {
 	cx, cy := box.Center().X, box.Center().Y
 	rx, ry := box.Width()/2, box.Height()/2
+	out := make([]city.Point, 0, steps+1)
+	for i := 0; i <= steps; i++ {
+		t := math.Pi * float64(i) / float64(steps)
+		out = append(out, city.Point{X: cx - rx*math.Cos(t), Y: cy + ry*math.Sin(t)})
+	}
+	return out
+}
+
+func pathThrough(points []city.Point) vector.Path {
 	var path vector.Path
-	for i := 0; i <= 16; i++ {
-		t := math.Pi * float64(i) / 16
-		x, y := cx-rx*math.Cos(t), cy+ry*math.Sin(t)
+	for i, p := range points {
 		if i == 0 {
-			path.MoveTo(float32(x), float32(y))
+			path.MoveTo(float32(p.X), float32(p.Y))
 		} else {
-			path.LineTo(float32(x), float32(y))
+			path.LineTo(float32(p.X), float32(p.Y))
 		}
 	}
 	return path
 }
 
-func fillNear(screen *ebiten.Image, box city.Rect, c color.NRGBA) {
-	path := nearArc(box)
+func fillPoints(screen *ebiten.Image, points []city.Point, c color.NRGBA) {
+	path := pathThrough(points)
 	path.Close()
 	op := &vector.DrawPathOptions{AntiAlias: true}
 	op.ColorScale.ScaleWithColor(c)
 	vector.FillPath(screen, &path, nil, op)
 }
 
-func strokeNear(screen *ebiten.Image, box city.Rect, width float32, c color.NRGBA) {
-	path := nearArc(box)
+func strokePoints(screen *ebiten.Image, points []city.Point, width float32, c color.NRGBA) {
+	path := pathThrough(points)
 	op := &vector.DrawPathOptions{AntiAlias: true}
 	op.ColorScale.ScaleWithColor(c)
 	vector.StrokePath(screen, &path, &vector.StrokeOptions{Width: width}, op)
 }
 
-// stackFittings draws the flashing, collar, support band and guy braces
-// on a stack that has been cut off at the roof plane.
+// reversed is a near arc walked the other way, for closing a band.
+func reversed(points []city.Point) []city.Point {
+	out := make([]city.Point, len(points))
+	for i, p := range points {
+		out[len(points)-1-i] = p
+	}
+	return out
+}
+
+// stackFittings draws the curb on a stack that has been cut off at the
+// roof plane.
 //
-// Only the near half of each ring is drawn, because that is all there
-// is to see: the far half of a band round a pipe is behind the pipe.
-// The first cut filled them as whole discs, which painted over the
-// chimney and left a sliver of it showing between two grey pancakes.
-//
-// The flashing's near half is the point of the whole exercise. A
-// cylinder meets a flat roof in a circle, so the stack's bottom
-// boundary is an ellipse bulging downward, and the straight edge the
-// sprite was cut on is the one shape it cannot be.
+// Only the near half of the curb is drawn. The far half is behind the
+// pipe, and the near half is in front of it, so the band between the
+// two near arcs is both the curb's visible wall and the thing that
+// hides where the sprite was cut. Its lower edge is the ellipse the
+// cylinder really meets the roof on, which is the whole point.
 func (g *Game) stackFittings(screen *ebiten.Image, stack city.Rect) {
 	if stack.Area() == 0 {
 		return
@@ -79,18 +89,17 @@ func (g *Game) stackFittings(screen *ebiten.Image, stack city.Rect) {
 	if !ok {
 		return
 	}
-	r := stack.Width() / 2
-	fillNear(screen, f.Flashing, colorStackFlash)
-	strokeNear(screen, f.Collar, float32(math.Max(1, r*0.18)), colorStackCollar)
-	if len(f.Braces) == 0 {
-		return
-	}
-	strokeNear(screen, f.Band, float32(math.Max(1, r*0.12)), colorStackBand)
-	width := float32(math.Max(1, r*0.09))
-	for _, b := range f.Braces {
-		// Game.line takes world points and projects them; these are
-		// already screen points, so this calls the same primitive it
-		// does rather than adding a second method beside it.
-		vector.StrokeLine(screen, float32(b[0].X), float32(b[0].Y), float32(b[1].X), float32(b[1].Y), width, colorStackBrace, true)
-	}
+	const steps = 20
+	top := nearArc(f.Top, steps)
+	foot := nearArc(f.Foot, steps)
+
+	// The wall: down the near face of the curb, from its top rim to the
+	// roof line.
+	fillPoints(screen, append(append([]city.Point{}, top...), reversed(foot)...), colorStackCurb)
+	// The top rim catches the light; the foot is the flashing, a narrow
+	// darker rim rather than the pale plate this used to sit in like a
+	// jar in a dish.
+	hair := float32(math.Max(1, stack.Width()*0.05))
+	strokePoints(screen, top, hair, colorStackCap)
+	strokePoints(screen, foot, hair, colorStackRim)
 }
