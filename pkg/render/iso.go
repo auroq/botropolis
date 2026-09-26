@@ -651,7 +651,11 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	// everything else rather than being painted over the scene. Bug 44.
 	for _, d := range c.Districts {
 		d := d
-		items = append(items, standingAt(cam, monumentSite(cam, d), func() {
+		at, _, _, ok := g.monumentOf(cam, d)
+		if !ok {
+			continue
+		}
+		items = append(items, standingAt(cam, at, func() {
 			g.districtMonument(screen, cam, d, c.Night)
 		}))
 	}

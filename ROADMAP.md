@@ -1062,7 +1062,7 @@ The capacity changes from about eleven characters to about **thirteen** — `Lay
 That does not revive the gantry for **session** titles at twenty to thirty characters, which is what item 38 was measuring. It does mean the gantry was never ruled out for a **project** name: `avesta`, `mullet` and `botropolis` are six to ten. If the monument is ever rejected, the gantry is a live option for this job and item 38's number should not be quoted against it.
 A panel floating clear of its base is the failure mode, and it is the one that has already been rejected twice.
 
-### 45. ~~The monument faces the viewer, stands at the lot's near corner, and is built of stone~~ Built 2026-09-26 (r222); the corner is Aria's to rule on
+### 45. ~~The monument faces the viewer, stands at the lot's near corner, and is built of stone~~ Done 2026-09-26 (r222, set back r224)
 
 Her words: *"they look completely flat and are hard to read at an angle. Can we try putting them at the bottom middle corner of the lot and make them face the user directly? It admittedly makes less sense with the world but makes them readable. They're just rotated 45 degrees. Alternatively, put them in that corner and make them bigger? Either way, make them actually look like stone signs in front of buildings so they don't look flat."*
 
@@ -1108,7 +1108,21 @@ Construction as listed: two piers flanking a panel recessed between them with a 
 
 **The planting moved.** It had been dead in front, which masked the name — the references plant *around* a monument, so it now sits beside the base.
 
-**The corner is not decided.** Frame B is one fixed world corner: at some headings the sign ends up on the far side of its lot, away from the reader. Frame A recomputes it so it is always the near one, at the cost of relocating on a quarter turn. A is the recommendation and what is built, but the switch is one function — `monumentSite` — if Aria prefers B.
+**Aria ruled A**, the near corner recomputed on turn, which is what was built. B is dead.
+
+**Set back from the kerb, 2026-09-26. Frame `docs/screenshots/r224-monument-setback.png`, all four headings.**
+
+Her words: *"move it just a bit back from the corner so it's not on the sidewalk/road."*
+
+**The inset was not bumped until the frame looked right, because the inset was the wrong kind of thing.** `monumentInset` guarded the *anchor*; what stood on the pavement was a wide object around it — half the sign's width, plus the contact patch oversailing the base, plus the planting bed, none of which an anchor knows about. That is the third time on this project: bug 39's `Plant.Rect` was a reservation and not the building, bug 41's guard was on a cell and the tree was at a position, and this was a point standing in for a footprint.
+
+`monumentGround` now derives the world box the sign covers from the sign's own screen footprint, and `monumentSite` pulls the corner in by exactly that, asymmetrically, plus `kerbClear`. `ui.MonumentFootprint` is one expression for how wide the ground it covers is, used by both the layout's contact patch and the siting, so the two cannot drift.
+
+**It had to be per-heading, and the test is.** The sign faces the viewer, so the ground it covers runs across the *screen* and turns in the world with the heading.  asserts every corner of that footprint is on the lot at all four, the way the draw-order test does.
+
+**A second defect fell out of working the units through.** `bedOf` was subtracting screen pixels from a map-plane coordinate, so the planting bed drifted away from its sign as the zoom changed. It is screen space throughout now.
+
+**No lot is too small, and that is measured rather than assumed.** Probing the real plan at every heading from `MinZoom` up: the narrowest district is 9 x 15 tiles and holds the sign with clearance at all four. The world footprint grows as the camera pulls back, so `MinZoom` is the worst case and it was the one checked.
 
 ### 46. The chimney meets the roof on a straight line, and a cylinder cannot (Aria, 2026-09-26, on r212)
 

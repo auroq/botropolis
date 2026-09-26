@@ -80,6 +80,14 @@ const (
 	MonumentCopyAbove = 0.18
 )
 
+// MonumentFootprint is how wide the ground a sign of this width covers.
+// It is wider than the sign, because the contact patch oversails the
+// base course, and the siting has to pull back by what the sign really
+// covers rather than by what it nominally is.
+func MonumentFootprint(width float64) float64 {
+	return width * (1 + 2*monumentOversail)
+}
+
 // MonumentWidest is the widest panel a base of this width could carry
 // without breaking the 40% rule. It is the limit, not the design: a
 // sign built to it has a base two fifths of its width, which is a board
@@ -136,7 +144,8 @@ func LayoutMonument(name string, foot city.Point, width float64, measure Measure
 	// shadow hidden behind the thing casting it is no shadow at all —
 	// which is what the first cut of this was.
 	shadowH := baseH * 1.7
-	m.Shadow = city.RectAt(left-over, foot.Y-shadowH*0.32, width+2*over, shadowH)
+	patch := MonumentFootprint(width)
+	m.Shadow = city.RectAt(foot.X-patch/2, foot.Y-shadowH*0.32, patch, shadowH)
 
 	m.Courses = courseLines(m, height)
 
