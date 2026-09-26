@@ -1359,6 +1359,20 @@ More importantly: **the river already carries tugs whose meaning is sessions arr
 **Recommendation to put to Aria: day, week, session** — three boats, one new config key, every number live and already trusted by the chips beside them. Monthly needs history the machine does not keep, and inventing it by scaling a shorter window would be a number that is right and means nothing, which this project has paid for five times.
 
 The other three questions — the reading inverting at 180°, three boats colliding on one axis, and the river already meaning arrivals and departures — stand as filed and are worth answering once the numbers are settled.
+
+**The usage source is built and tested; the boats are not. 2026-09-26.**
+
+`claude -p "/usage"` works and gives the real percentages in about four seconds — verified on this machine, three windows, session and two weeks. That settles the denominator problem: there is nothing to derive or configure.
+
+**But it does not leave nothing behind, and that nearly sank it.** Every run writes a transcript, and Botropolis builds its city out of transcripts, so a poller adds a **parked session to the city each time it asks the city its own usage** — the measurement perturbing the measured. Measured on the real machine: three polls took the strip from **22 parked to 25**, and three more took it to 29.
+
+The fix is that the probe runs in a directory of its own — `<state>/botropolis/usage-probe` — so its transcripts land in a project folder of their own, which the loader skips by name. `TestUsageProbeIsNotASession` fails without the guard and passes with it.
+
+`ProjectFolder` moved into `pkg/claude` and the test helpers' `ProjectSlug` now calls it. There were two encodings of Claude Code's folder-naming convention — the helpers' general rule and a narrower copy I had just written that only replaced slashes and dots. They agree on the probe's path and would have diverged on any other, which is the shape that has cost this project six bugs.
+
+**Shape A is parsed, shape B falls through visibly.** `ParseLimits` reads the percentage lines and `Limits.Shape()` reports `ShapeSubscription`; anything it does not recognise, including a credit plan's spend line, is `ShapeUnknown` with no readings — absent rather than zero. The regex tolerates a missing reset clause so a change there costs the reset time and not the percentage.
+
+**Still to build:** the cache with its age, the refresh, and the boats themselves — including the three questions that are still open (the reading inverting at 180°, three boats colliding on one axis, and the river already meaning arrivals and departures).
 ### 49a. What the usage numbers actually are, measured (2026-09-26)
 
 Aria sent `/usage` from Claude Code and the same panel from the desktop UI, and asked for research.

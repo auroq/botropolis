@@ -223,3 +223,34 @@ func sessionByID(t *testing.T, snapshot state.Snapshot, id string) state.Session
 	t.Fatalf("no session %s in snapshot", id)
 	return state.Session{}
 }
+
+// Item 49. `claude -p "/usage"` writes a transcript on every run, and
+// the city is built out of transcripts, so a usage poller running in an
+// ordinary directory adds a parked session to the city each time it
+// asks the city what its usage is. Measured on the real machine before
+// this guard: three polls took it from 22 parked to 25.
+func TestUsageProbeIsNotASession(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	probe := claude.UsageProbeDir()
+	home := liveHome(t)
+	const probeID = "cccccccc-0000-0000-0000-000000000009"
+	home.Transcript(probeID, probe,
+		helpers.UserPrompt(probeID, probe, "2026-09-10T12:00:00.000Z"),
+		helpers.AssistantReply(probeID, "msg_probe", "2026-09-10T12:00:02.000Z"))
+
+	loader := state.NewLoader(home.Path, alive)
+	snapshot, err := loader.Load(now)
+	require.NoError(t, err)
+
+	t.Run("when the usage probe has left a transcript of its own", func(t *testing.T) {
+		t.Run("it should not become a session in the city it measures", func(t *testing.T) {
+			for _, s := range snapshot.Sessions {
+				assert.NotEqual(t, probeID, s.ID, "the probe was counted as a session")
+			}
+		})
+
+		t.Run("it should leave the real sessions alone", func(t *testing.T) {
+			assert.NotEmpty(t, snapshot.Sessions)
+		})
+	})
+}

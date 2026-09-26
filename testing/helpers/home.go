@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"fmt"
+	"github.com/auroq/botropolis/pkg/claude"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -93,17 +94,11 @@ func (h *Home) write(rel, content string) string {
 	return path
 }
 
+// ProjectSlug is Claude Code's transcript folder for a working
+// directory. The rule lives in pkg/claude now so the loader's skip and
+// the fixtures that exercise it cannot disagree about it.
 func ProjectSlug(cwd string) string {
-	var b strings.Builder
-	for _, r := range cwd {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-':
-			b.WriteRune(r)
-		default:
-			b.WriteRune('-')
-		}
-	}
-	return b.String()
+	return claude.ProjectFolder(cwd)
 }
 
 func UserPrompt(sessionID, cwd, ts string) string {

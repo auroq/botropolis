@@ -230,6 +230,16 @@ func (l *Loader) catalogue(projectsDir string, live map[string]bool, now time.Ti
 		if entry.transcript.IsBridgeStub || entry.transcript.SessionID == "" || entry.transcript.LastAt.Before(cutoff) {
 			continue
 		}
+		// The usage probe's own transcripts are not sessions. `claude
+		// -p` writes one on every run and the city is built out of
+		// transcripts, so without this a poller adds a parked session
+		// to the city each time it asks the city's own usage —
+		// measured at three polls taking it from 22 parked to 25. The
+		// probe runs in a directory of its own so the folder name is
+		// the whole test. Item 49.
+		if entry.transcript.Project == claude.UsageProbeProject() {
+			continue
+		}
 		parked = append(parked, entry.transcript)
 	}
 	l.parked = cache
