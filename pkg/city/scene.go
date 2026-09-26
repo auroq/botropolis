@@ -306,24 +306,17 @@ func (s *Scene) TitlesVisible() bool {
 	return s.camera.Zoom >= TitleZoom
 }
 
-// DistrictLabelVisible reports whether the district's name plate shows:
-// it must be wide enough on screen, and the district must have something
-// happening in it, be hovered, or hold the selection.
+// DistrictLabelVisible reports whether the district's name plate shows.
+//
+// Bug 40: a project's name is permanent, and the only gate left is
+// whether there is room to read it. A session's title is the one that
+// went hover-only — a repo name is short, there are few of them, and it
+// is the label you navigate by rather than the one you read. It used to
+// wait for the district to be busy, hovered or holding the selection,
+// which meant the labels you needed in order to find your way were the
+// ones that vanished when nothing was happening.
 func (s *Scene) DistrictLabelVisible(d *District) bool {
-	if d.Rect.Width()*s.camera.Zoom < DistrictLabelMinWidth {
-		return false
-	}
-	if d.Busy() || s.hover.District == d {
-		return true
-	}
-	if s.selected != nil {
-		for _, b := range d.Buildings {
-			if b == s.selected {
-				return true
-			}
-		}
-	}
-	return false
+	return d.Rect.Width()*s.camera.Zoom >= DistrictLabelMinWidth
 }
 
 // DistrictLabelAt is where the district's name goes on screen: on the
@@ -333,7 +326,19 @@ func (s *Scene) DistrictLabelVisible(d *District) bool {
 func (s *Scene) DistrictLabelAt(d *District, lineHeight, width float64) Point {
 	top := s.camera.WorldToScreen(d.Rect.Min)
 	if s.camera.Projection == Isometric {
-		return top.Add(Point{X: -width / 2, Y: -lineHeight - 4})
+		// Under the block's near vertex, which Aria asked for as "the
+		// bottom" and which is also the emptiest part of a block in this
+		// projection — buildings sit back from it and nothing else is
+		// drawn there. Which of the four world corners is nearest
+		// changes with the heading, so it is found rather than named:
+		// the corner that lands lowest on screen.
+		low := top
+		for _, p := range [3]Point{{X: d.Rect.Max.X, Y: d.Rect.Min.Y}, d.Rect.Max, {X: d.Rect.Min.X, Y: d.Rect.Max.Y}} {
+			if q := s.camera.WorldToScreen(p); q.Y > low.Y {
+				low = q
+			}
+		}
+		return low.Add(Point{X: -width / 2, Y: 4})
 	}
 	if DistrictPadding*s.camera.Zoom >= lineHeight+4 {
 		return top.Add(Point{X: 6, Y: 4})

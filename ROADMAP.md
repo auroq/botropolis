@@ -833,12 +833,23 @@ Three expressions now, in `pkg/render/iso.go`:
 
 Worth noting for the taxonomy of how this was found: bug 23 measured a zero-pixel gap at the stack's base and concluded it was grounded. It was — on the plaza. The measurement was of the right quantity in the wrong place, which is the same family as §"A number can be right and mean nothing": correct arithmetic about an object nobody meant.
 
-### 40. Signage ruled, and the chimney wants two more adjustments (Aria, 2026-09-26, on r205 and r204) — chimney done r212, signage next
+### 40. ~~Signage ruled, and the chimney wants two more adjustments~~ Done 2026-09-26 (r212 chimney, r213 signage)
 
 **Signage: hover for session names, plates for the project.** Her words: *"let's do hover for now but I like plates for the name of the project/repo."*
 So the two labels separate. A session's title is hover-only — the mover and building cards already carry it, and the gantry is measurably dead at ten characters against titles of twenty to thirty.
 A **district's** name keeps a permanent plate, because a repo name is short, there are few of them, and it is the label you navigate by rather than the one you read.
 *"Just put it in a good spot — maybe at the bottom."* The floor label from phase 8 and the plate are two treatments of one thing; pick one. Her instinct is the bottom of the district, which is also where it will not collide with buildings, since the near edge of a block is the emptiest part of it in this projection.
+
+**Done. Frame `docs/screenshots/r213-project-plates.png`.**
+A session's title is hover-only and is now the default: `--signage` still carries the four prototypes, but `hover` is what ships.
+A project's plate is permanent, and the only gate left on it is whether there is room to read it.
+What it used to wait for is worth naming, because it was backwards: a plate appeared only when its district was busy, hovered or held the selection, so the labels you needed in order to *find* your way were exactly the ones that vanished when the city went quiet.
+
+**There was nothing to pick between.** The "floor label" and the "plate" are one function — `floorLabel` lays out a plate and draws it — so the two treatments this entry expected to find were already one.
+
+The plate hangs under the block's **near vertex**, which is what "the bottom" means on screen. Which of the four world corners that is changes with the heading, so it is found rather than named: project all four and take the one that lands lowest. Naming a corner would have been bug 25's family — right at one heading and wrong at three.
+
+Two existing tests asserted the old rule and were changed rather than deleted, with the reversal written beside them: `TestNamePlates` said a quiet district should hide its plate, and `TestSceneProjection` said the name sat above the block's top corner.
 
 **The chimney, two adjustments.** She likes it on the roof. Two changes:
 - *"move it down and to the right, like centered in between the little corner thing on top of the roof."* Down-and-right in this projection is +X, so she is asking for it east of centre and placed against the roof's own fixtures rather than at the geometric middle. Note this argues with bug 39's centre-only reasoning — the centre was chosen because an off-centre perch walks across the roof as the camera turns. If the rooftop fixtures are part of the same sprite they turn with it, so a perch defined *relative to the sprite* rather than to the world does not walk. Work out which, and if the two genuinely conflict, say so and show her rather than silently keeping the centre.

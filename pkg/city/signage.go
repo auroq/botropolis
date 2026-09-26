@@ -19,13 +19,20 @@ const (
 	// arm likewise carries no panel of its own.
 	SignagePlaque
 	// SignageHover draws no title at all; the pointer asks for it.
+	// Aria's ruling on bug 40, and the default: "let's do hover for
+	// now but I like plates for the name of the project/repo". The
+	// building and mover cards already carry a session's title, and
+	// the kit route was measured dead at ten characters against titles
+	// of twenty to thirty.
 	SignageHover
 )
 
 // ParseSignage reads the --signage flag.
 func ParseSignage(s string) (Signage, bool) {
 	switch s {
-	case "", "plates":
+	case "", "hover":
+		return SignageHover, true
+	case "plates":
 		return SignagePlates, true
 	case "gantry":
 		return SignageGantry, true
@@ -33,8 +40,6 @@ func ParseSignage(s string) (Signage, bool) {
 		return SignageBoard, true
 	case "plaque":
 		return SignagePlaque, true
-	case "hover":
-		return SignageHover, true
 	}
 	return SignagePlates, false
 }

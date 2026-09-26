@@ -75,7 +75,7 @@ func Headless(cmd *cobra.Command) bool {
 const SignageFlag = "signage"
 
 func AddSignageFlag(flags *pflag.FlagSet) {
-	flags.String(SignageFlag, "plates", "how titles are shown: plates, gantry, board, plaque or hover")
+	flags.String(SignageFlag, "hover", "how a session's title is shown: hover (the default), plates, gantry, board or plaque")
 }
 
 func Signage(cmd *cobra.Command) string {

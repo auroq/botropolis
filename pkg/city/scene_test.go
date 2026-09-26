@@ -404,12 +404,20 @@ func TestSceneProjection(t *testing.T) {
 			assert.True(t, s.Detailed())
 		})
 
-		t.Run("it should put the district's name above its top corner", func(t *testing.T) {
+		// Bug 40 moved this from the block's top corner to its bottom
+		// one: Aria asked for the plate "at the bottom", and the near
+		// vertex is the emptiest part of a block in this projection.
+		t.Run("it should put the project's name below its near corner", func(t *testing.T) {
 			d := s.City().Districts[0]
 			at := s.DistrictLabelAt(d, 16, 60)
-			top := s.Camera().WorldToScreen(d.Rect.Min)
-			assert.Less(t, at.Y, top.Y)
-			assert.InDelta(t, top.X-30, at.X, 1e-9)
+			near := s.Camera().WorldToScreen(d.Rect.Max)
+			assert.Greater(t, at.Y, near.Y)
+		})
+
+		t.Run("it should centre that plate on the corner it hangs from", func(t *testing.T) {
+			d := s.City().Districts[0]
+			near := s.Camera().WorldToScreen(d.Rect.Max)
+			assert.InDelta(t, near.X-30, s.DistrictLabelAt(d, 16, 60).X, 1e-9)
 		})
 
 		t.Run("it should reserve no side insets for labels", func(t *testing.T) {
@@ -781,22 +789,28 @@ func TestNamePlates(t *testing.T) {
 		})
 	})
 
+	// Bug 40 reversed this. A plate used to wait for the district to be
+	// busy, hovered or selected, so the labels you needed in order to
+	// find your way were the ones that disappeared when the city went
+	// quiet. Aria's ruling is that a project's name is permanent and a
+	// session's title is the hover-only one.
 	t.Run("when storage holds only parked sessions", func(t *testing.T) {
 		s := scene(t, session("a", cinders, state.Working), session("b", cinders, state.Parked))
 		s.Wheel(s.Size().Scale(0.5), 3)
 		s.Animate(1)
 		storage := storageOf(t, s.City())
 
-		t.Run("it should hide its plate", func(t *testing.T) {
-			assert.False(t, s.DistrictLabelVisible(storage))
+		t.Run("it should still show its plate, with nothing happening in it", func(t *testing.T) {
+			assert.True(t, s.DistrictLabelVisible(storage))
 		})
+	})
 
-		t.Run("and it is hovered", func(t *testing.T) {
-			s.PointerMove(s.Camera().WorldToScreen(storage.Rect.Min.Add(city.Point{X: 2, Y: 2})))
+	t.Run("when a district is too narrow on screen to read", func(t *testing.T) {
+		s := scene(t, session("a", cinders, state.Working))
+		s.Camera().Zoom = 0.01
 
-			t.Run("it should show its plate", func(t *testing.T) {
-				assert.True(t, s.DistrictLabelVisible(storage))
-			})
+		t.Run("it should drop its plate rather than crowd the map", func(t *testing.T) {
+			assert.False(t, s.DistrictLabelVisible(s.City().Districts[0]))
 		})
 	})
 }
