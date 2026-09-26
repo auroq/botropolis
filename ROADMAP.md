@@ -833,6 +833,17 @@ Three expressions now, in `pkg/render/iso.go`:
 
 Worth noting for the taxonomy of how this was found: bug 23 measured a zero-pixel gap at the stack's base and concluded it was grounded. It was — on the plaza. The measurement was of the right quantity in the wrong place, which is the same family as §"A number can be right and mean nothing": correct arithmetic about an object nobody meant.
 
+### 40. Signage ruled, and the chimney wants two more adjustments (Aria, 2026-09-26, on r205 and r204)
+
+**Signage: hover for session names, plates for the project.** Her words: *"let's do hover for now but I like plates for the name of the project/repo."*
+So the two labels separate. A session's title is hover-only — the mover and building cards already carry it, and the gantry is measurably dead at ten characters against titles of twenty to thirty.
+A **district's** name keeps a permanent plate, because a repo name is short, there are few of them, and it is the label you navigate by rather than the one you read.
+*"Just put it in a good spot — maybe at the bottom."* The floor label from phase 8 and the plate are two treatments of one thing; pick one. Her instinct is the bottom of the district, which is also where it will not collide with buildings, since the near edge of a block is the emptiest part of it in this projection.
+
+**The chimney, two adjustments.** She likes it on the roof. Two changes:
+- *"move it down and to the right, like centered in between the little corner thing on top of the roof."* Down-and-right in this projection is +X, so she is asking for it east of centre and placed against the roof's own fixtures rather than at the geometric middle. Note this argues with bug 39's centre-only reasoning — the centre was chosen because an off-centre perch walks across the roof as the camera turns. If the rooftop fixtures are part of the same sprite they turn with it, so a perch defined *relative to the sprite* rather than to the world does not walk. Work out which, and if the two genuinely conflict, say so and show her rather than silently keeping the centre.
+- *"maybe we shorten the chimney because most of it would be inside the building."* This is the physical reading and it is right: a chimney rising from inside a building shows only the part above the roof, and the whole sprite is currently drawn above the roof plane, so it reads as a full-length chimney balanced there. Sinking the perch below the roof plane shortens the visible part *and* strengthens the passing-through read — one change, both effects, and no new art.
+
 
 ### Worth knowing, not bugs
 
