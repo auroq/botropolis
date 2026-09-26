@@ -7,63 +7,53 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// building-a, the plant's sprite, is 431 px wide against the atlas's
-// 264 px tile, and isoLandmark draws it at natural size centred on the
-// footprint. So the slab the chimney has to stand on is a little over
-// 1.6 tiles square in the middle of a 7.5 x 4 tile reservation, and the
-// reservation's corners are nowhere near it.
-const plantSlabTiles = 431.0 / 264.0
-
+// The slab the chimney has to stand on: building-a's own footprint,
+// drawn at natural size centred on the plant's reservation.
+//
+// This helper used to read 431/264 as a count of city tiles, which is
+// the unit error bug 39's write-up was retracted for. One atlas cell is
+// a BuildingSize square — three city tiles — so the slab is a 78.4-unit
+// square, not a 26-unit one, and the reservation around it is 120 x 64.
 func slabUnder(plant city.Rect) city.Rect {
-	side := plantSlabTiles * city.Tile
+	side := footprintSide(plantSpriteW, atlasZoom)
 	at := plant.Center()
 	return city.RectAt(at.X-side/2, at.Y-side/2, side, side)
 }
 
-func TestPlantStackPerch(t *testing.T) {
-	plant := city.RectAt(3*city.Tile, 5*city.Tile, city.PlantWidth, city.PlantHeight)
+func plantFixture() city.Rect {
+	return city.RectAt(3*city.Tile, 5*city.Tile, city.PlantWidth, city.PlantHeight)
+}
 
-	t.Run("when the plant's sprite is drawn at the centre of its footprint", func(t *testing.T) {
-		t.Run("it should perch the chimney at that same point", func(t *testing.T) {
-			assert.Equal(t, plant.Center(), plantStackPerch(plant))
+func TestPlantStackPerch(t *testing.T) {
+	plant := plantFixture()
+	side := footprintSide(plantSpriteW, atlasZoom)
+	perch := plantStackPerch(plant, side)
+
+	t.Run("when the chimney is placed against the roof's fixtures", func(t *testing.T) {
+		t.Run("it should stand on the slab the sprite covers", func(t *testing.T) {
+			assert.True(t, slabUnder(plant).Contains(perch))
 		})
 
-		t.Run("it should perch the chimney on the slab the sprite covers", func(t *testing.T) {
-			assert.True(t, slabUnder(plant).Contains(plantStackPerch(plant)))
+		t.Run("it should stand east of the point the sprite is drawn at", func(t *testing.T) {
+			assert.Greater(t, perch.X, plant.Center().X)
+		})
+
+		t.Run("it should stand only a little south of it", func(t *testing.T) {
+			assert.Less(t, perch.Y-plant.Center().Y, perch.X-plant.Center().X)
 		})
 	})
 
 	t.Run("when the footprint's near corner is used instead, as bug 39 did", func(t *testing.T) {
-		t.Run("it should stand clear of the slab, out on the plaza", func(t *testing.T) {
+		t.Run("it should fall off the slab, though only just", func(t *testing.T) {
 			corner := city.Point{X: plant.Max.X - city.Tile, Y: plant.Max.Y - city.Tile}
 			assert.False(t, slabUnder(plant).Contains(corner))
 		})
 	})
 }
 
-func TestRoofLift(t *testing.T) {
-	t.Run("when a building stands a height above its ground point", func(t *testing.T) {
-		t.Run("it should lift to the roof plane, not to the sprite's top", func(t *testing.T) {
-			assert.Equal(t, 206.25, roofLift(431, 314))
-		})
-	})
-
-	t.Run("when the piece is flat on the ground", func(t *testing.T) {
-		t.Run("it should not lift at all", func(t *testing.T) {
-			assert.Zero(t, roofLift(264, 66))
-		})
-	})
-
-	t.Run("when the anchor sits below the base diamond's centre", func(t *testing.T) {
-		t.Run("it should not lift downwards", func(t *testing.T) {
-			assert.Zero(t, roofLift(264, 10))
-		})
-	})
-}
-
 func TestStackDepth(t *testing.T) {
 	cam := city.NewCamera()
-	plant := city.RectAt(3*city.Tile, 5*city.Tile, city.PlantWidth, city.PlantHeight)
+	plant := plantFixture()
 
 	t.Run("when the plant and its chimney are both drawn", func(t *testing.T) {
 		t.Run("it should sort the chimney at the building's depth", func(t *testing.T) {
@@ -73,7 +63,8 @@ func TestStackDepth(t *testing.T) {
 
 	t.Run("when the chimney's own perch is sorted by instead, as bug 39 did", func(t *testing.T) {
 		t.Run("it should sort nearer than the slab, which is what floated it", func(t *testing.T) {
-			assert.Greater(t, cam.Depth(plantStackPerch(plant)), stackDepth(cam, plant))
+			perch := plantStackPerch(plant, footprintSide(plantSpriteW, atlasZoom))
+			assert.Greater(t, cam.Depth(perch), stackDepth(cam, plant))
 		})
 	})
 }

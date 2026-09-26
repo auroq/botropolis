@@ -647,10 +647,10 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		// chimney over it, foot on the roof plane instead of the
 		// pavement. Order here is load-bearing: swap these two appends
 		// and the slab paints over the chimney's base. Bug 39.
-		perch := plantStackPerch(c.Plant.Rect)
-		lift := g.kitRoofLift(cam, kitPlant)
+		perch := plantStackPerch(c.Plant.Rect, g.kitFootprint(cam, kitPlant))
+		roof := g.kitRoofLift(cam, kitPlant)
 		items = append(items, drawable{depth: stackDepth(cam, c.Plant.Rect), draw: func() {
-			g.kitLifted(screen, cam, kitStack, 0, perch, lift, nil)
+			g.kitThrough(screen, cam, kitStack, perch, roof, nil)
 		}})
 	}
 	for _, t := range c.Trees {
@@ -1141,8 +1141,51 @@ func (g *Game) freight(c *city.City, seconds float64) []carriage {
 //
 // isoLandmark draws the building at r.Center(); the chimney reads the
 // same expression, so the two cannot be moved apart.
-func plantStackPerch(plant city.Rect) city.Point {
-	return plant.Center()
+func plantStackPerch(plant city.Rect, side float64) city.Point {
+	at := plant.Center()
+	off := roofPerch(side)
+	return city.Point{X: at.X + off.X, Y: at.Y + off.Y}
+}
+
+// footprintSide is how wide a piece's footprint is in world units, from
+// the width of its sprite in the atlas.
+//
+// The unit here has bitten once already: one atlas cell is a
+// BuildingSize square, which is three city tiles, so a 431 px sprite at
+// the zoom-2 cut is a 78.4-unit square and not "1.6 tiles" of anything.
+func footprintSide(spriteW, atlasZoom float64) float64 {
+	return spriteW / (2 * city.IsoScale * atlasZoom)
+}
+
+// Where the plant's chimney stands on its roof, as a fraction of the
+// building's own footprint: east and a little south of centre, between
+// the two blocks of the roof's duct. Read off building-a's sprite at
+// heading 0 — the duct's blocks sit at 190 and 335 px against a roof
+// centre at 213 — and turned back into world units through the
+// projection.
+//
+// This is a *world* offset, and that is what makes it safe. Bug 39
+// claimed an off-centre perch would walk across the roof as the camera
+// turns. That was wrong: the building does not turn, the camera does,
+// so a world offset is rigidly attached to the roof and the chimney
+// stays on the same physical spot from all four headings. It is a
+// fraction of the *sprite box* that would walk, because the same
+// fraction is a different physical point at each heading.
+const (
+	roofPerchEast  = 0.295
+	roofPerchSouth = 0.068
+)
+
+func roofPerch(side float64) city.Point {
+	return city.Point{X: side * roofPerchEast, Y: side * roofPerchSouth}
+}
+
+// sunkRows is how much of a piece is inside the building it rises
+// through: everything below the roof plane, in the atlas's own pixels.
+// cut is the roof's height above the piece's ground point on screen,
+// and the rows below the anchor are the piece's own base.
+func sunkRows(cut, scale, height, anchorY float64) float64 {
+	return cut/scale + (height - anchorY)
 }
 
 // roofLift is how far above a piece's ground anchor its roof plane sits,

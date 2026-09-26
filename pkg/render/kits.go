@@ -105,6 +105,54 @@ func (g *Game) kitLifted(screen *ebiten.Image, cam *city.Camera, name string, tu
 	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
 }
 
+// kitThrough draws a piece standing on a world point but cut off at a
+// plane cut screen pixels above that point, so only the part above the
+// plane shows: a chimney rising from inside a building through its
+// roof. The piece stands on the building's floor, which is why the cut
+// and the lift are the same number.
+func (g *Game) kitThrough(screen *ebiten.Image, cam *city.Camera, name string, at city.Point, cut float64, tint *ebiten.ColorScale) city.Rect {
+	if g.kits == nil || cut <= 0 {
+		return city.Rect{}
+	}
+	atlas := g.kits.pick(cam.Zoom)
+	if atlas == nil {
+		return city.Rect{}
+	}
+	sprite, ok := atlas.Sprite(name, cam.Heading)
+	if !ok || sprite.Page >= len(atlas.pages) {
+		return city.Rect{}
+	}
+	scale := cam.Zoom / atlas.Zoom
+	hidden := sunkRows(cut, scale, float64(sprite.Rect.Dy()), float64(sprite.Anchor.Y))
+	shown := sprite.Rect
+	shown.Max.Y -= int(hidden + 0.5)
+	if shown.Dy() <= 0 {
+		return city.Rect{}
+	}
+	foot := cam.WorldToScreen(at)
+	origin := city.Point{X: foot.X - float64(sprite.Anchor.X)*scale, Y: foot.Y - float64(sprite.Anchor.Y)*scale}
+	img := atlas.pages[sprite.Page].SubImage(shown).(*ebiten.Image)
+	g.drawSprite(screen, img, origin, scale, tint)
+	return city.RectAt(origin.X, origin.Y, float64(shown.Dx())*scale, float64(shown.Dy())*scale)
+}
+
+// kitFootprint is a piece's footprint in world units, for standing
+// something on it.
+func (g *Game) kitFootprint(cam *city.Camera, name string) float64 {
+	if g.kits == nil {
+		return 0
+	}
+	atlas := g.kits.pick(cam.Zoom)
+	if atlas == nil {
+		return 0
+	}
+	sprite, ok := atlas.Sprite(name, cam.Heading)
+	if !ok {
+		return 0
+	}
+	return footprintSide(float64(sprite.Rect.Dx()), atlas.Zoom)
+}
+
 // kitGround draws a ground tile a hair larger than its cell, so two tiles
 // side by side overlap by their anti-aliased rims instead of letting the
 // grass show through as a seam.

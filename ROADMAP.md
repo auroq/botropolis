@@ -833,7 +833,7 @@ Three expressions now, in `pkg/render/iso.go`:
 
 Worth noting for the taxonomy of how this was found: bug 23 measured a zero-pixel gap at the stack's base and concluded it was grounded. It was — on the plaza. The measurement was of the right quantity in the wrong place, which is the same family as §"A number can be right and mean nothing": correct arithmetic about an object nobody meant.
 
-### 40. Signage ruled, and the chimney wants two more adjustments (Aria, 2026-09-26, on r205 and r204)
+### 40. Signage ruled, and the chimney wants two more adjustments (Aria, 2026-09-26, on r205 and r204) — chimney done r212, signage next
 
 **Signage: hover for session names, plates for the project.** Her words: *"let's do hover for now but I like plates for the name of the project/repo."*
 So the two labels separate. A session's title is hover-only — the mover and building cards already carry it, and the gantry is measurably dead at ten characters against titles of twenty to thirty.
@@ -843,6 +843,25 @@ A **district's** name keeps a permanent plate, because a repo name is short, the
 **The chimney, two adjustments.** She likes it on the roof. Two changes:
 - *"move it down and to the right, like centered in between the little corner thing on top of the roof."* Down-and-right in this projection is +X, so she is asking for it east of centre and placed against the roof's own fixtures rather than at the geometric middle. Note this argues with bug 39's centre-only reasoning — the centre was chosen because an off-centre perch walks across the roof as the camera turns. If the rooftop fixtures are part of the same sprite they turn with it, so a perch defined *relative to the sprite* rather than to the world does not walk. Work out which, and if the two genuinely conflict, say so and show her rather than silently keeping the centre.
 - *"maybe we shorten the chimney because most of it would be inside the building."* This is the physical reading and it is right: a chimney rising from inside a building shows only the part above the roof, and the whole sprite is currently drawn above the roof plane, so it reads as a full-length chimney balanced there. Sinking the perch below the roof plane shortens the visible part *and* strengthens the passing-through read — one change, both effects, and no new art.
+
+**Both done 2026-09-26 (r212). Frame `docs/screenshots/r212-chimney-through-roof.png`, all four headings.**
+
+**There was no conflict, because bug 39's reasoning was wrong.**
+It claimed an off-centre perch would walk across the roof as the camera turns. It would not.
+The building does not turn — the camera does — so a point expressed as a **world** offset from the building's centre is rigidly attached to the roof and lands on the same physical spot from every heading.
+It is a fraction of the **sprite box** that would walk, because the same fraction of the box is a different physical point in each of the four cuts.
+The frame is the evidence: the chimney sits between the same two blocks of the roof's duct at all four headings while the tank and the pipes rotate around it.
+So the centre was never required, and Aria's placement costs nothing.
+
+`roofPerch` is `0.295, 0.068` of the building's own footprint, east and slightly south.
+Read off `building-a` at heading 0 — the duct's end blocks sit at 190 and 335 px against a roof centre at 213 — and turned back into world units through the projection.
+`footprintSide` gets the footprint from the sprite's width, and carries the unit that bug 39's retraction was about: one atlas cell is a `BuildingSize` square, three city tiles, so 431 px is a 78.4-unit square.
+
+**The shortening has a derived length rather than a chosen one.**
+A chimney standing on the building's floor is hidden by exactly the building's height, which is the number `roofLift` already computes.
+So the lift and the sink are the same quantity and cancel: `kitThrough` stands the piece on its ground point and cuts everything below the roof plane.
+`sunkRows` is `cut/scale + (height - anchorY)` — the roof's height plus the piece's own base — which hides 228 of the chimney's 351 px and leaves 123 showing, a little over a third.
+No new constant, no new art, and the chimney now reads as passing through the roof rather than balanced on it.
 
 
 ### 41. Street trees stand on the carriageway, not on a verge (Aria, 2026-09-26, on r205)
