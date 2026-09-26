@@ -1118,7 +1118,7 @@ Her words: *"move it just a bit back from the corner so it's not on the sidewalk
 
 `monumentGround` now derives the world box the sign covers from the sign's own screen footprint, and `monumentSite` pulls the corner in by exactly that, asymmetrically, plus `kerbClear`. `ui.MonumentFootprint` is one expression for how wide the ground it covers is, used by both the layout's contact patch and the siting, so the two cannot drift.
 
-**It had to be per-heading, and the test is.** The sign faces the viewer, so the ground it covers runs across the *screen* and turns in the world with the heading.  asserts every corner of that footprint is on the lot at all four, the way the draw-order test does.
+**It had to be per-heading, and the test is.** The sign faces the viewer, so the ground it covers runs across the *screen* and turns in the world with the heading. `TestMonumentStandsOnItsOwnLot` asserts every corner of that footprint is on the lot at all four, the way the draw-order test does.
 
 **A second defect fell out of working the units through.** `bedOf` was subtracting screen pixels from a map-plane coordinate, so the planting bed drifted away from its sign as the zoom changed. It is screen space throughout now.
 
