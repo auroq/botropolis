@@ -80,7 +80,13 @@ PIECES = {
     "space-kit": ["rover"],
     "train-kit": ["train-diesel-a", "train-diesel-b", "train-diesel-c",
                   "train-carriage-container-red", "train-carriage-container-blue", "train-carriage-container-green"],
-    "watercraft-kit": ["boat-tug-a", "boat-tug-b"],
+    # The gauge boats need a hull that is not a tug: the river already
+    # carries tugs for sessions arriving and leaving, and two meanings on
+    # one waterway only work if the silhouettes differ at a glance. The
+    # kit has no sternwheeler, so this liner stands in for Aria's
+    # steamboat -- long hull and funnels against the tug's stubby
+    # wheelhouse. Item 49.
+    "watercraft-kit": ["boat-tug-a", "boat-tug-b", "ship-ocean-liner-small"],
     "botropolis": ["drone", "fountain-a", "fountain-b", "fountain-c"],
 }
 
