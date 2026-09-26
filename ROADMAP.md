@@ -947,6 +947,44 @@ Her reason is the requirement, so build to it: *"it enables things to be discove
 A footer verb that can only be typed teaches nothing; one that can be clicked teaches its own shortcut.
 So every clickable thing should still show its key, and clicking it should do exactly what the key does — one code path, not two.
 
+### 44. The district plate is a monument sign standing in the plaza (Aria, 2026-09-26, revising item 40)
+
+Her words: *"The project plates should look like signs/billboards (research what signs outside office building plazas look like) not like textboxes/labels. Also, they should be inside the plaza not below."*
+
+This supersedes item 40's siting and its treatment.
+Item 40 said "the bottom of the district"; that is now **inside the plaza**.
+Item 40 left the treatment open; it is now **a monument sign**, an object in the world, not chrome drawn over it.
+
+This is the second time a label has failed for the same reason.
+The billboard mocks in item 4 were rejected because they were UI chrome floating in a 3D scene, and a text plate at the district's foot is the same mistake in a different position.
+**If it does not cast into the scene as a thing standing on ground, it will be rejected again.**
+
+**What an office-plaza sign actually is.**
+The term is a *monument sign*, and it is a specific, codified object rather than a board:
+
+- **Low and landscape.** Typically 4–6 ft tall by 8–12 ft wide — call it **2:1** — with municipal codes commonly capping height at 6–8 ft for sightlines.
+- **It meets the ground.** Codes typically require **at least 40% of the sign's width to meet the ground plane**, and the copy to sit at least a foot above grade. This is the rule that separates a monument from a pylon or a billboard: it is a solid mass sitting on the earth, not a panel held up on posts. It is also exactly what Aria means by "not like textboxes".
+- **Three elements: top, middle, bottom** — a cap, the panel carrying the copy, and a base. Many codes require all three.
+- **Masonry in the building's palette** — stone, brick, concrete or steel — so it reads as architecture belonging to the plaza rather than signage applied to it.
+- **Set in a planting bed.** Commonly required at the sign's footprint plus three feet in every direction. The bed is what makes it read as a monument; without it the same geometry reads as a sign someone dropped.
+- **Sited at the approach**, facing the path of travel, at the entrance to the drive or the landscaped frontage.
+- Usually **ground-lit from uplights at the base**, which is a night treatment we already have machinery for.
+
+**What the kit can build it from, measured rather than assumed.**
+I took bounding boxes off the source `.obj` files in `tools/kits`:
+
+- **`planter`** — 0.40 W × 0.18 H × 0.30 D, an aspect of **2.2:1** and low to the ground. That is monument proportion almost exactly, it is already cut into the atlas, and it is already drawn: `kitPlanter` is a `TreeKind` on the plaza rim.
+  **A planter with a panel rising from it, standing among the planters already on that rim, is a monument sign in a planting bed** — the real object, with no new art and no new pipeline run.
+- `statue_block` (0.40 cube) and `platform_stone` (0.89 × 0.08 × 0.72) are plinth and pad if the planter proves too small; **neither is currently cut**, so either costs an atlas run.
+- `sign` in the nature kit is 0.30 × 0.41 — **portrait**, a trail sign. Wrong object.
+- `sign-highway` and `sign-highway-wide` both measure 0.13 × 0.71 × 1.00, so the board spans Z, not X. **`sign-highway-wide` is not in `PIECES`** and was not among the four prototyped in item 38.
+  Note this against item 38's finding that the gantry board is 51 × 62 px and holds about ten characters: that was measured on the rendered sprite, this is model space, and a board that is 1.00 × 0.71 in the model should not render portrait.
+  The two measurements may both be right if the projection foreshortens it, but **one of them should be re-checked before the gantry stays written off**, and it is cheap to check.
+
+**The build.** Panel on the planter, copy in dimensional letters, standing inside the plaza at its street-facing edge among the rim planting, uplit at night.
+Hold it to the two rules that define the object: **2:1 landscape**, and **40% of its width meeting the ground**.
+A panel floating clear of its base is the failure mode, and it is the one that has already been rejected twice.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
