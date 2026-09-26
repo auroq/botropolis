@@ -29,6 +29,10 @@ type Limits struct {
 	// Readings are the windows the CLI reported, in the order it
 	// reported them.
 	Readings []Reading
+	// Header records that the CLI answered at all — the one line every
+	// plan prints. Without readings it is what separates "this plan
+	// reports no limits" from "the output was not understood".
+	Header bool
 	// At is when this was read, so the age can be shown beside it. A
 	// cached percentage with no age on it is a number that is right and
 	// means nothing.
@@ -54,23 +58,43 @@ type Reading struct {
 type Shape int
 
 const (
-	// ShapeUnknown is output this build does not recognise — including
-	// a credit or enterprise plan, whose monthly spend limit prints
-	// differently. Nobody on this project has seen that text from the
-	// CLI rather than the web panel, so it is left unrecognised on
-	// purpose rather than parsed against a guessed format.
+	// ShapeUnknown is output this build does not recognise at all —
+	// not even the header. The format has moved, and the honest thing
+	// to draw is nothing, with a reason.
 	ShapeUnknown Shape = iota
 	// ShapeSubscription is percentages over rolling windows: a session
 	// window, a week across all models, and a per-model week.
 	ShapeSubscription
+	// ShapeNoLimits is the header and nothing else. Measured on an
+	// enterprise plan running the same Claude Code build that prints
+	// three gauges on a subscription: it reports no percentages, no
+	// resets, no spend and no limit. The monthly spend limit such a
+	// plan has lives in the web console, which a local daemon cannot
+	// reach, and nothing on disk carries it either.
+	//
+	// So there is no authoritative gauge to draw, and that is a fact to
+	// state rather than a hole to fill. A local estimate against a
+	// configured budget is defensible *here specifically*, because it
+	// is the one case where nothing authoritative exists to contradict
+	// it — but it has to be labelled an estimate for this machine.
+	ShapeNoLimits
 )
 
-// Shape reports which plan shape the readings came from.
+// usageHeader is the line every plan prints, and the only line an
+// enterprise plan prints.
+const usageHeader = "to power your Claude Code usage"
+
+// Shape reports which plan shape the output came from. The three states
+// are distinguishable from the one command, which is what makes the
+// detection testable rather than inferred.
 func (u Limits) Shape() Shape {
-	if len(u.Readings) == 0 {
-		return ShapeUnknown
+	switch {
+	case len(u.Readings) > 0:
+		return ShapeSubscription
+	case u.Header:
+		return ShapeNoLimits
 	}
-	return ShapeSubscription
+	return ShapeUnknown
 }
 
 // Find returns the reading whose label contains all of the given words.
@@ -108,7 +132,7 @@ var usageLine = regexp.MustCompile(`^Current\s+(.+?):\s*([0-9]+(?:\.[0-9]+)?)%\s
 // skipped rather than guessed at, and a run that yields no readings
 // yields no Usage.
 func ParseLimits(out string, at time.Time) (Limits, bool) {
-	u := Limits{At: at}
+	u := Limits{At: at, Header: strings.Contains(out, usageHeader)}
 	scan := bufio.NewScanner(strings.NewReader(out))
 	scan.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scan.Scan() {
@@ -126,7 +150,7 @@ func ParseLimits(out string, at time.Time) (Limits, bool) {
 			Resets:  strings.TrimSpace(m[3]),
 		})
 	}
-	if len(u.Readings) == 0 {
+	if len(u.Readings) == 0 && !u.Header {
 		return Limits{}, false
 	}
 	return u, true

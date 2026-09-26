@@ -1370,6 +1370,8 @@ The fix is that the probe runs in a directory of its own — `<state>/botropolis
 
 `ProjectFolder` moved into `pkg/claude` and the test helpers' `ProjectSlug` now calls it. There were two encodings of Claude Code's folder-naming convention — the helpers' general rule and a narrower copy I had just written that only replaced slashes and dots. They agree on the probe's path and would have diverged on any other, which is the shape that has cost this project six bugs.
 
+**Three shapes, all measured, all distinguishable from the one command.** `Limits.Shape()` reports `ShapeSubscription` when gauge lines parse, `ShapeNoLimits` when only the header comes back — which is what an enterprise plan prints on the same build that gives a subscription three gauges — and `ShapeUnknown` when neither, which is a format this build does not know rather than a plan without limits. Telling the last two apart is the whole point: one is a fact about the plan and the other is a fact about the parser, and drawing nothing for the right reason matters more here than drawing something.
+
 **Shape A is parsed, shape B falls through visibly.** `ParseLimits` reads the percentage lines and `Limits.Shape()` reports `ShapeSubscription`; anything it does not recognise, including a credit plan's spend line, is `ShapeUnknown` with no readings — absent rather than zero. The regex tolerates a missing reset clause so a change there costs the reset time and not the percentage.
 
 **Still to build:** the cache with its age, the refresh, and the boats themselves — including the three questions that are still open (the reading inverting at 180°, three boats colliding on one axis, and the river already meaning arrivals and departures).

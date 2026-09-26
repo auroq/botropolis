@@ -113,3 +113,40 @@ func TestUsageProbeProject(t *testing.T) {
 		})
 	})
 }
+
+// Item 49d. Three states out of one command, measured rather than
+// inferred: a subscription prints three gauges, an enterprise plan on
+// the same build prints the header alone, and anything else is a format
+// this build does not know.
+func TestLimitShapes(t *testing.T) {
+	at := time.Now()
+
+	t.Run("when a subscription answers", func(t *testing.T) {
+		u, ok := ParseLimits(realOutput, at)
+		require.True(t, ok)
+
+		t.Run("it should read it as a subscription", func(t *testing.T) {
+			assert.Equal(t, ShapeSubscription, u.Shape())
+		})
+	})
+
+	t.Run("when an enterprise plan answers with the header and no data", func(t *testing.T) {
+		u, ok := ParseLimits("You are currently using your subscription to power your Claude Code usage\n", at)
+		require.True(t, ok)
+
+		t.Run("it should say the plan reports no limits, not that nothing was understood", func(t *testing.T) {
+			assert.Equal(t, ShapeNoLimits, u.Shape())
+		})
+
+		t.Run("it should offer no readings to draw gauges from", func(t *testing.T) {
+			assert.Empty(t, u.Readings)
+		})
+	})
+
+	t.Run("when the command answers with something else entirely", func(t *testing.T) {
+		t.Run("it should refuse the reading rather than call it an empty plan", func(t *testing.T) {
+			_, ok := ParseLimits("Unknown skill: usage\n", at)
+			assert.False(t, ok)
+		})
+	})
+}
