@@ -361,9 +361,29 @@ func TestPlanting(t *testing.T) {
 		street := treesOf(p, plan.StreetTree)
 		require.NotEmpty(t, street)
 
-		t.Run("it should stand every street tree on an avenue cell", func(t *testing.T) {
+		// Bug 41 reversed this. Standing on an avenue cell was the
+		// defect, not the invariant: a street cell is carriageway edge
+		// to edge, so every tree that satisfied this assertion was
+		// standing in the road. The tree now stands on the cell across
+		// the kerb and leans back towards the street it lines.
+		t.Run("it should stand every street tree off the carriageway", func(t *testing.T) {
 			for _, tree := range street {
-				assert.True(t, p.IsStreet(tree.Cell), tree)
+				assert.False(t, p.IsStreet(tree.Cell), tree)
+			}
+		})
+
+		t.Run("it should still stand each of them beside the avenue it lines", func(t *testing.T) {
+			for _, tree := range street {
+				beside := false
+				for _, n := range [4]plan.Cell{
+					{Col: tree.Cell.Col + 1, Row: tree.Cell.Row},
+					{Col: tree.Cell.Col - 1, Row: tree.Cell.Row},
+					{Col: tree.Cell.Col, Row: tree.Cell.Row + 1},
+					{Col: tree.Cell.Col, Row: tree.Cell.Row - 1},
+				} {
+					beside = beside || p.IsStreet(n)
+				}
+				assert.True(t, beside, tree)
 			}
 		})
 

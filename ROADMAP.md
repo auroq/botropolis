@@ -875,7 +875,7 @@ So the lift and the sink are the same quantity and cancel: `kitThrough` stands t
 No new constant, no new art, and the chimney now reads as passing through the roof rather than balanced on it.
 
 
-### 41. Street trees stand on the carriageway, not on a verge (Aria, 2026-09-26, on r205)
+### 41. ~~Street trees stand on the carriageway, not on a verge~~ Done 2026-09-26 (r218)
 
 Her words: *"Several trees still land in concrete at the edge of properties."*
 
@@ -889,6 +889,20 @@ The constant's comment says *"out on the verge, clear of the carriageway"* — b
 It is a road tile, carriageway edge to edge, so 0.42 does not reach a verge; it reaches the far edge of the tarmac.
 Every street tree in the city is standing in the road, hard against the property line.
 That is exactly what "in concrete at the edge of properties" describes, and it is why there are several of them rather than one.
+
+**Confirmed before fixing: 84 of 84 street trees stood in the road.** Not several — all of them.
+
+The tree now stands on the cell **across the kerb**, chosen by `Plan.verge`, and `KerbOffset` leans it back towards the street from there. `Plan.plantable` is the guard: not carriageway, not inside a block, not the plaza or the storage yard, not on the freight loop. Where neither side is open ground the stretch goes unplanted, because a tree there would be standing in the road.
+
+**The guard is on where the tree ends up, not on its cell**, as this entry asked — `lands()` applies the offset and asserts the result is not a street cell. Bug 20's guard tested cells and these trees were on a legal cell, which is exactly why it missed them.
+
+**Two things fell out that were not in the report.**
+
+*A test asserted the defect.* `TestPlanting` said "it should stand every street tree on an avenue cell", and every tree that satisfied it was standing in the road. Reversed, with the reason written beside it, and a second assertion added that the tree is still *beside* the avenue it lines — otherwise the fix could drift a tree anywhere.
+
+*Moving the trees broke determinism, and the cause is worth keeping.* `p.Trees` is sorted **stably** by cell, and two stretches of street can want the same verge cell — five pairs collided on the test plan. Stable order among ties is insertion order, and insertion came from ranging a map, so the plan stopped reproducing. `plantStreets` now walks its cells in sorted order and will not plant a verge twice. The old code never collided, because every tree stayed on its own street cell, so the map range only became load-bearing when the trees started moving.
+
+Frame `docs/screenshots/r218-street-trees.png`.
 
 The comment was describing a verge that was never built. **The constant is not wrong; the cell it is applied to is.**
 

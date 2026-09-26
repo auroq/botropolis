@@ -109,8 +109,18 @@ type Tree struct {
 // TreeJitter is how far a tree may stand from its cell's centre, in cells.
 const TreeJitter = 0.3
 
-// KerbOffset is how far off a street cell's centre a street tree
-// stands: out on the verge, clear of the carriageway.
+// KerbOffset is how far a street tree stands from the centre of its
+// verge cell, back towards the kerb it lines.
+//
+// Bug 41. This used to be an offset within the *street* cell, and its
+// comment said "out on the verge, clear of the carriageway" — but a
+// street cell is carriageway edge to edge and has no verge, and 0.42 is
+// less than the half-cell of 0.5, so it never left the road. Every
+// street tree in the city stood on tarmac against the property line,
+// which is what "trees land in concrete at the edge of properties"
+// was. The comment described a verge that was never built. The tree now
+// stands on the cell across the kerb, and this offset leans it back
+// towards the street from there.
 const KerbOffset = 0.42
 
 // StreetTreeSpacing is how many cells apart street trees stand. A city
@@ -483,8 +493,58 @@ func (p *Plan) plantBlock(b Block, species []int, onRails map[Cell]bool) {
 // plantStreets lines every avenue with trees at a fixed pitch, out on
 // the verge and only along the straights, so nothing stands in a
 // junction. A street is planted in one species the whole way down.
+// verge is the cell a street tree stands on: the one across the kerb on
+// the given side, or the one opposite if that side is built on. It
+// reports false when neither side is ground a tree could stand on.
+func (p *Plan) verge(from Cell, dcol, drow int, taken map[Cell]bool) (Cell, bool) {
+	for _, try := range [2]Cell{
+		{Col: from.Col + dcol, Row: from.Row + drow},
+		{Col: from.Col - dcol, Row: from.Row - drow},
+	} {
+		if !taken[try] && p.plantable(try) {
+			return try, true
+		}
+	}
+	return Cell{}, false
+}
+
+// plantable reports whether a cell is open ground: not carriageway, not
+// inside a block, not the plaza or the storage yard, and not on the
+// freight loop.
+func (p *Plan) plantable(c Cell) bool {
+	if _, road := p.street[c]; road {
+		return false
+	}
+	if p.Plaza.Contains(c) || p.Storage.Contains(c) {
+		return false
+	}
+	for _, b := range p.Blocks {
+		if b.Contains(c) {
+			return false
+		}
+	}
+	for _, rail := range p.Rails {
+		if rail == c {
+			return false
+		}
+	}
+	return true
+}
+
 func (p *Plan) plantStreets() {
-	for cell, mask := range p.street {
+	// In cell order, not map order. Two stretches of street can want
+	// the same verge cell, and p.Trees is sorted *stably* by cell, so
+	// whoever was visited first won the tie — which a map range makes
+	// random. The old code never collided, because every tree stayed on
+	// its own street cell, so this only became load-bearing with bug 41.
+	cells := make([]Cell, 0, len(p.street))
+	for cell := range p.street {
+		cells = append(cells, cell)
+	}
+	sort.Slice(cells, func(i, j int) bool { return less(cells[i], cells[j]) })
+	taken := make(map[Cell]bool, len(cells))
+	for _, cell := range cells {
+		mask := p.street[cell]
 		vertical := mask == DirN|DirS
 		if !vertical && mask != DirE|DirW {
 			continue
@@ -501,11 +561,28 @@ func (p *Plan) plantStreets() {
 		if mod(along, 2*StreetTreeSpacing) != 0 {
 			side = -1
 		}
-		tree := Tree{Cell: cell, Kind: StreetTree, Variant: species}
+		dcol, drow := 0, 0
 		if vertical {
-			tree.DX = side * KerbOffset
+			dcol = int(side)
 		} else {
-			tree.DY = side * KerbOffset
+			drow = int(side)
+		}
+		verge, ok := p.verge(cell, dcol, drow, taken)
+		if !ok {
+			// Nothing to plant on either side: this stretch of street
+			// runs between two built cells, and a tree there would be
+			// standing in the road. Bug 41.
+			continue
+		}
+		if verge.Col != cell.Col+dcol || verge.Row != cell.Row+drow {
+			side = -side
+		}
+		taken[verge] = true
+		tree := Tree{Cell: verge, Kind: StreetTree, Variant: species}
+		if vertical {
+			tree.DX = -side * KerbOffset
+		} else {
+			tree.DY = -side * KerbOffset
 		}
 		p.Trees = append(p.Trees, tree)
 	}
