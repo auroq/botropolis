@@ -1110,6 +1110,29 @@ Construction as listed: two piers flanking a panel recessed between them with a 
 
 **The corner is not decided.** Frame B is one fixed world corner: at some headings the sign ends up on the far side of its lot, away from the reader. Frame A recomputes it so it is always the near one, at the cost of relocating on a quarter turn. A is the recommendation and what is built, but the switch is one function — `monumentSite` — if Aria prefers B.
 
+### 46. The chimney meets the roof on a straight line, and a cylinder cannot (Aria, 2026-09-26, on r212)
+
+Her words: *"The building cuts it right across, but the chimney is circular, so the bottom line of the chimney should be round where it cuts into the building. Also, adding a little brace or something there might make it more clear that it's not just things rendering on top of each other."*
+
+**The geometry, which is the whole bug.**
+A cylinder meeting a horizontal plane intersects it in a circle, and a circle on the ground plane of a 2:1 isometric projection is an **ellipse as wide as the stack and half as tall**.
+The visible bottom boundary of the stack is the **near half of that ellipse, bulging downward** — the far half is hidden behind the stack itself.
+What is drawn today is the sprite's own bottom edge, straight across, because `kitLifted` places the whole sprite with its foot on the roof plane and nothing cuts it.
+A straight line is the one thing the intersection cannot be, which is why it reads as two sprites stacked rather than one passing through the other.
+This is the third treatment of this join (bugs 39, 40, now 46) and the first to name what the join actually is.
+
+**The real detail, which gives us the brace for free.**
+A stack through a flat roof is not bare. Two separate elements, and they do different jobs on screen:
+
+1. **At the roof line: flashing and a storm collar.** The flashing is a plate that makes the penetration weathertight; the storm collar is a band clamped round the pipe just above it, sealing the top of the flashing. On screen the collar is a ring at the base — and **its silhouette is the ellipse**, so drawing it satisfies Aria's first ask and hides the straight cut in one move.
+2. **At about two thirds of the height above the roof: a support band with guy braces down to the roof.** This is the manufacturers' own rule for a stack standing more than about five feet proud, and it is the "brace" she is asking for. It reads harder than the collar at small sizes, because the braces are **diagonals connecting the stack to the roof** — a line that only exists if the two things are joined, which is exactly the ambiguity she is complaining about.
+
+**Build.** Sink the stack so the roof plane cuts it, then draw the flashing ellipse over the join; the ellipse becomes the round bottom line. Add the collar as a short band above it, and three braces from a support band at two thirds height down to the roof. Draw them with the stack, at the stack's depth, after it — `vector.FillPath` is already used this way in `monument.go`.
+
+**Two things to get right.**
+The collar and braces have to scale with zoom exactly as the sprite does, or they will drift off the join at some zooms — the same class as the perch bugs.
+And the braces go sub-pixel at low zoom: drop them below a threshold and keep the collar, rather than letting them become noise. Say what the threshold is and why.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
