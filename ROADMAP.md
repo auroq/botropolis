@@ -1287,6 +1287,37 @@ The inventory of "things Escape should close" has to be the inventory of **thing
 **Done.** `Scene.Deselect` is new — nothing in the codebase cleared `selected` except the hide action, so the card had no way to close at all. Escape now clears it at the **top** of the ladder, above help and the view key, because it is the most modal thing on screen and it carries the verbs. Everything below is unchanged and quit stays on `q`.
 
 **Why bug 43 missed it is worth keeping.** That inventory was taken from the keyboard's side — help, the view key, the view, settings — and the card is the one surface the *mouse* opens. The list of things Escape closes has to be the list of things that are **open**, whatever opened them.
+### 49. Three boats on the river as usage gauges (Aria, 2026-09-26)
+
+Her words: *"add a boat (maybe classic steamboat like mark twain era) that runs from one end of the river to the other. It will track usage session usage. Actually let's do 3 boats. Big boat is monthly model usage percentage, medium boat is weekly, and small boat is session model usage. bottom of the window is 0% and the top means we've hit 100% of usage. That way I can track that at a glance. Of course, hovering them tells the percentage. We can make the river wider if needed to fit 3 boats."*
+
+A good mechanic: the boat travels along the river as ambience, and its position **across** the river is the reading. Three sizes on one shared axis means you can compare them against each other without hovering, which is the part that makes it glanceable.
+
+Five things have to be settled before it is built. The first is blocking.
+
+**1. There is no denominator, and a percentage cannot exist without one.**
+I looked: `config` has a single `daily_budget_usd`; `Window` is `LastHour`, `LastDay`, `LastWeek` — **no month**.
+`~/.claude/stats-cache.json` carries `modelUsage` with real per-model token counts, so the **numerator exists**.
+Nothing on disk carries Claude's own weekly or session limits — the figures `/usage` reports are not cached anywhere I could find, so a local daemon cannot read them today.
+
+Three ways to get a denominator, and only one of them is honest right now:
+- **Configured budgets.** Extend `daily_budget_usd` with weekly and monthly siblings; the boats read against those. Local, honest, and the same shape as the budget chip that already exists. The boat then means "of the budget you set", which has to be what the hover says.
+- **Claude's published limits.** What `/usage` shows. Needs investigating and may not be reachable from a third-party daemon at all. Worth a separate look; not a blocker for the first cut.
+- **Relative to peak.** Normalise against the highest usage seen. **Do not.** 100% would mean "your busiest ever", which is a number that is right and means nothing — the exact failure this project has hit five times.
+
+Take configured budgets. If the weekly or monthly budget is unset, the boat should be **absent**, not sitting at zero — an unset budget is not 0% usage.
+
+**2. The session boat's denominator is the one real ambiguity.** "Session model usage" has no obvious limit. The only session-level percentage that already exists and is already displayed is **context** — *"25% of 1.0M"* on the building card. Assume that until Aria says otherwise, and say so in the hover.
+
+**3. The reading flips when the camera turns.** The river runs down the east side, so at 180° the near bank becomes the far bank and "up the screen is 100%" inverts. A gauge that reverses with heading is worse than no gauge. Define the offset in **screen space** so it reads identically at all four headings — the same ruling as the monument's facing — and put **tick marks on the bank** so the value is read against a reference in the world rather than against the window edge.
+
+**4. Three boats on one axis collide** whenever two readings are close, which is exactly when you most want to compare them. Stagger their along-river phase so they never occupy the same stretch.
+
+**5. There is no paddle steamer in the kit, and the river already means something else.**
+`watercraft-kit` ships tug, tow, speed, sail, house, row, ship and ocean liner — **no sternwheeler**. Closest in spirit is `boat-tow-a`, a river pushboat. Either use that at three scales, or find a CC0 low-poly paddle steamer elsewhere and put it through the same Blender pipeline. Say which, and do not pretend a tug is a steamboat.
+
+More importantly: **the river already carries tugs whose meaning is sessions arriving and leaving** (`drawVoyage`). Adding boats that mean "usage against a budget" gives one kind of object on one waterway two unrelated meanings. That is precisely what DESIGN.md's *"Two things that must agree"* section is about. Resolve it before building — different hull silhouettes at minimum, and the key has to name both.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
