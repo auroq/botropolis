@@ -1724,6 +1724,33 @@ Looking to confirm is not looking. A frame checked *after* the conclusion is for
 
 **Frames.** `docs/screenshots/r255-gauge-bows-flipped.png` is all four headings with the bows leading upstream; `r255-gauge-lanes-abreast.png` is the forced 61/58/55 case again. r254's two frames are left in place and show the backwards facing.
 
+### 53. The boats halve when the atlas switches, because `kitSized` cancels the sprite out (Aria, 2026-09-26, on r255)
+
+Her words: *"The boats get smaller at a certain zoom. We don't need to do that."*
+
+**Exact cause, and it is one line of algebra.**
+
+`kitSized` computes `shrink = target / longest`, where `longest` is the sprite's pixel size **in whichever atlas `pick` returned**.
+`kitScaled` then draws at `scale = cam.Zoom / atlas.Zoom * shrink`.
+Multiply through:
+
+```
+drawn = longest * scale = longest * (cam.Zoom/atlas.Zoom) * (target/longest)
+      = target * cam.Zoom / atlas.Zoom
+```
+
+**`longest` cancels.** The sprite's own size drops out of the answer entirely, and the drawn size depends only on `cam.Zoom / atlas.Zoom`.
+
+`atlas.Zoom` is a **step function** of `cam.Zoom` — `pick` returns the highest atlas whose zoom is at or below the camera's. So inside one band the boat grows smoothly, and **at the instant the atlas steps up from z1 to z2 the ratio halves and the boat halves with it.** That is the "certain zoom": it is the atlas boundary, not a threshold anyone wrote.
+
+**Why nothing else does this.** Every other piece goes through `kit`/`kitLifted`, which applies `cam.Zoom/atlas.Zoom` to the sprite's *own* pixel size. The z2 sprite is about twice the z1 sprite, so the two effects cancel and the drawn size is continuous — the atlas switch is invisible, which is the whole point of the ladder. `kitSized` normalises the sprite's size away and destroys that cancellation.
+
+**Fix:** make the target a size in world units — a size at zoom 1 — so `shrink = target * atlas.Zoom / longest` and `drawn = target * cam.Zoom`. Continuous through every atlas step, and the 142 / 93 / 60 ratio survives untouched because it is a ratio.
+
+**The buoys go through the same path** (`buoyExtent = 26`) and shrink at the same boundary. One fix covers both, and `kitSized` has no other callers.
+
+**Worth recording as its own lesson:** `kitSized` was added in item 51 to fix two hulls drawing at the same length, and it did. It introduced this by solving that problem in **screen** units, where the rest of the renderer works in world units scaled by zoom. A helper that opts out of the ladder's normalisation will look correct at whatever zoom it was written against and wrong at every atlas boundary — and the boundary is exactly the frame nobody screenshots.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
