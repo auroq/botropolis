@@ -1229,7 +1229,7 @@ Keep what is already right: only the near arc of anything wrapping the pipe is d
 **The bottom line is the curb's inner rim**, which is the stack's own radius — so the curb meets the wall with no gap, and the thing that closes fault 3 is the same thing that closes fault 2.
 
 `kitThroughPlace` was split out of `kitThrough` because the curb goes down partly before the stack and partly after, so it needs the rect in advance. One placement expression, two readers.
-### 47. The curb is narrower than the sprite it has to cover, and the stack is not sunk past its skirt (Aria, 2026-09-26, on r230)
+### 47. ~~The curb is narrower than the sprite it has to cover, and the stack is not sunk past its skirt~~ Done 2026-09-26 (r235)
 
 Her words: *"it's still overlapping the other pipes on the roof. Just slide it up a bit... Also it looks like there are 2 white squares poking out from the chminey itself being cut square at the bottom."*
 
@@ -1255,6 +1255,16 @@ She said so plainly, and it is right: a curb is *supposed* to be wider than its 
 Slide it back — up-screen — until the curb clears the roof's pipe run.
 **The offset has to stay sprite-relative**, as bug 40 established, or it walks across the roof as the camera turns.
 
+
+**Done — and the diagnosis above is wrong on both counts. I measured the sprite row by row before building.** Profile at every row of `chimney-medium`, and the two things that matter:
+
+**The cut is not near the skirt.** `kitThrough` removes `cut/scale + (h − ay)` = 206.27 + 21.75 = 228 rows, so what is drawn is the **top 123 rows** of a 351-row sprite. The skirt at rows 306–334 and the base ellipse below it are already 180 rows *under* the roof line — the stack is sunk far past its skirt, not short of it. Sinking further would eat the pipe.
+
+**63 px is not the base ellipse, it is the cut row.** The sprite tapers continuously: 85 at the skirt, 75 at row 297, and **63 at row 123 where the cut lands**. It happens to pass through 63 twice, once at row 123 and again at row 341 inside the base ellipse, which is where the 75/87 reading came from. `StackPipeShare = 63/87` is right *for the row the cut is on*, and the comment now says which row, because on a tapering sprite "the pipe's width" is not a single number.
+
+**The white squares have a different cause, and it is a hard geometric one.** The curb's near annulus has two jobs: hide the straight cut at the centre, which needs `h ≥ r/2`; and cover the sprite's square-cut corners at `x = ±r`, which needs `h ≤ (R/2)·√(1−(r/R)²)`. Those meet at **R = √2·r** and contradict below it. At R = 1.32r the most a curb can cover is 0.431r against the 0.5r it needs, so **the corners show at every possible height** — no adjustment would have found it, and widening the pipe share to 75/87 would not have either, because the constraint is on the *ratio*, not the radius. `StackCurbRatio` is 1.55, and `CurbFloor`/`CurbCeiling` are exported so both bounds are asserted rather than described.
+
+**The fixture clearance is a perch move, exactly as this entry says.** A curb has to be wider than its pipe, and now provably at least √2 times, so it cannot be shrunk to fit between the duct's blocks. The perch moves to open roof north-east of centre — clear of the tank below x=190, the duct below y=128 and the small pipes above x=310 — as a world offset derived from the sprite, so it does not walk on a camera turn. Frames: `docs/screenshots/r235-chimney-corners.png` and `r235-chimney-headings.png` (all four).
 ### 48. Cars belong on the main view (Aria, 2026-09-26)
 
 Her words: *"I think I want cars on the main view not just on their own view."*

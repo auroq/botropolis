@@ -38,20 +38,41 @@ type StackFittings struct {
 }
 
 const (
-	// StackPipeShare is how much of the chimney sprite's width is
-	// actually pipe where the roof cuts it. Measured off
-	// chimney-medium in the z2 cut: the sprite is 87 px wide and the
-	// pipe at the cut row is 63.
-	//
-	// This is the unit that the first curb got wrong. A curb sized
-	// against the *sprite's* half-width is 38% too wide, because the
-	// sprite's width is set by the flared rim at the top, not by the
-	// pipe at the bottom — which is why it covered the roof's other
-	// fixtures. Same family as reading an atlas cell as a city tile.
+	// StackPipeShare is how much of the chimney sprite's width is ink
+	// **on the row the roof cuts it**. The sprite is 87 px wide in the
+	// z2 cut and tapers all the way up, so the answer depends entirely
+	// on which row is asked: 85 at the skirt, 75 a little above it, and
+	// 63 at row 123, which is where the cut actually lands. The sprite
+	// is 351 rows and the cut takes the top 123 of them, so the skirt
+	// and the base ellipse are already far below the roof line.
 	StackPipeShare = 63.0 / 87.0
-	// StackCurbRatio is the curb's radius against the pipe's.
-	StackCurbRatio = 1.32
+	// StackCurbRatio is the curb's radius against the pipe's, and it
+	// cannot be less than √2.
+	//
+	// The curb's near annulus has two jobs at once. It has to hide the
+	// sprite's straight cut at the centre, which needs its inner rim at
+	// or above the cut: h ≥ r/2. And it has to cover the sprite's
+	// square-cut corners at x = ±r, which needs its outer rim at or
+	// below them: h ≤ (R/2)·√(1−(r/R)²). Those two meet at R = √2·r and
+	// are contradictory below it — at 1.32 the most a curb can cover is
+	// 0.431r against the 0.5r it needs, so the corners show whatever
+	// height is chosen. They are Aria's two white squares, and no
+	// adjustment of the height would have found them.
+	StackCurbRatio = 1.55
 )
+
+// CurbFloor is the least tall a curb may be and still hide the sprite's
+// straight cut: its inner rim has to reach the cut line.
+func CurbFloor(r float64) float64 { return r / 2 }
+
+// CurbCeiling is the tallest a curb may be and still cover the sprite's
+// square-cut corners: its outer rim has to reach down to them.
+func CurbCeiling(r, outer float64) float64 {
+	if outer <= r {
+		return 0
+	}
+	return outer / 2 * math.Sqrt(1-(r/outer)*(r/outer))
+}
 
 // HiddenArc is how much of a ring of radius R round a stack of radius r
 // passes behind the stack, in radians. Exported so the drawing's
@@ -87,7 +108,7 @@ func LayoutStackFittings(stack city.Rect, roof float64) (StackFittings, bool) {
 	cx := stack.Center().X
 	r := stack.Width() / 2 * StackPipeShare
 	outer := r * StackCurbRatio
-	height := (r + outer) / 4
+	height := (CurbFloor(r) + CurbCeiling(r, outer)) / 2
 	top := roof - height
 	return StackFittings{
 		OuterFoot: ellipseAt(cx, roof, outer),

@@ -21,14 +21,19 @@ func stackRect(width float64) (city.Rect, float64) {
 }
 
 func TestHiddenArc(t *testing.T) {
-	t.Run("when the ring is a third wider than the stack", func(t *testing.T) {
-		t.Run("it should hide 98 degrees of ring, not 180", func(t *testing.T) {
-			assert.InDelta(t, 98.5, degrees(HiddenArc(1, StackCurbRatio)), 0.1)
+	t.Run("when the ring is half again as wide as the stack", func(t *testing.T) {
+		t.Run("it should hide 80 degrees of ring, not 180", func(t *testing.T) {
+			assert.InDelta(t, 80.4, degrees(HiddenArc(1, StackCurbRatio)), 0.1)
 		})
 
 		t.Run("it should leave the ring's ends tucking behind the stack, not stopping in mid air", func(t *testing.T) {
-			ends := 180 - degrees(math.Asin(1/StackCurbRatio))
-			assert.InDelta(t, 130.7, ends, 0.1)
+			assert.InDelta(t, 139.8, 180-degrees(math.Asin(1/StackCurbRatio)), 0.1)
+		})
+	})
+
+	t.Run("when the ring is only a third wider, as bug 46b had it", func(t *testing.T) {
+		t.Run("it should still hide less than half, which was never the problem", func(t *testing.T) {
+			assert.InDelta(t, 98.5, degrees(HiddenArc(1, 1.32)), 0.1)
 		})
 	})
 
@@ -50,8 +55,12 @@ func TestLayoutStackFittings(t *testing.T) {
 			assert.InDelta(t, pipe*StackCurbRatio, f.OuterFoot.Width()/2, 0.0001)
 		})
 
-		t.Run("it should stay inside the sprite's own width, so it clears the roof's fixtures", func(t *testing.T) {
-			assert.Less(t, f.OuterFoot.Width(), stack.Width())
+		t.Run("it should be at least root two wider than the pipe, or the corners cannot be covered", func(t *testing.T) {
+			assert.GreaterOrEqual(t, StackCurbRatio, math.Sqrt2)
+		})
+
+		t.Run("it should have a feasible height band at all, which below root two it does not", func(t *testing.T) {
+			assert.Greater(t, CurbCeiling(pipe, pipe*StackCurbRatio), CurbFloor(pipe))
 		})
 
 		t.Run("it should meet the stack wall with no gap", func(t *testing.T) {
@@ -65,13 +74,14 @@ func TestLayoutStackFittings(t *testing.T) {
 
 	t.Run("when the curb has to hide the sprite's straight cut", func(t *testing.T) {
 		height := f.OuterFoot.Center().Y - f.OuterTop.Center().Y
+		outer := f.OuterFoot.Width() / 2
 
-		t.Run("it should stand tall enough that its inner rim clears the cut", func(t *testing.T) {
-			assert.GreaterOrEqual(t, height, f.InnerTop.Height()/2)
+		t.Run("it should stand tall enough to hide the cut at the centre", func(t *testing.T) {
+			assert.GreaterOrEqual(t, height, CurbFloor(pipe))
 		})
 
-		t.Run("it should stay low enough that its outer rim does not rise past it", func(t *testing.T) {
-			assert.LessOrEqual(t, height, f.OuterTop.Height()/2)
+		t.Run("it should stay low enough to cover the sprite's square corners", func(t *testing.T) {
+			assert.LessOrEqual(t, height, CurbCeiling(pipe, outer))
 		})
 
 		t.Run("it should put the new bottom line below the cut at its lowest, which is the bulge", func(t *testing.T) {

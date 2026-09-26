@@ -1168,11 +1168,18 @@ func footprintSide(spriteW, atlasZoom float64) float64 {
 }
 
 // Where the plant's chimney stands on its roof, as a fraction of the
-// building's own footprint: east and a little south of centre, between
-// the two blocks of the roof's duct. Read off building-a's sprite at
-// heading 0 — the duct's blocks sit at 190 and 335 px against a roof
-// centre at 213 — and turned back into world units through the
-// projection.
+// building's own footprint. Read off building-a's sprite at heading 0
+// and turned back into world units through the projection.
+//
+// It used to sit between the duct's two blocks, which was fine while
+// the chimney was bare. Bug 47: the curb round the join has to be at
+// least √2 times the pipe's radius to work at all, so it is wider than
+// the duct is clear, and the clearance has to come from moving the
+// chimney rather than from shrinking the curb — a curb narrower than
+// that cannot cover the sprite's square corners at any height. The
+// perch is now the open ground north-east of the roof's centre, clear
+// of the tank at x<190, the duct below y=128 and the small pipes at
+// x>310.
 //
 // This is a *world* offset, and that is what makes it safe. Bug 39
 // claimed an off-centre perch would walk across the roof as the camera
@@ -1182,8 +1189,8 @@ func footprintSide(spriteW, atlasZoom float64) float64 {
 // fraction of the *sprite box* that would walk, because the same
 // fraction is a different physical point at each heading.
 const (
-	roofPerchEast  = 0.295
-	roofPerchSouth = 0.068
+	roofPerchEast  = 0.039
+	roofPerchSouth = -0.132
 )
 
 func roofPerch(side float64) city.Point {
