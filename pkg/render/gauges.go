@@ -31,14 +31,26 @@ import (
 // cannot be read.
 
 // bowHome is the world direction a hull's bow points when it is drawn
-// untigirned, which is a fact about the models rather than a choice.
+// unturned.
 //
-// Measured off the atlas rather than assumed. The cargo ship's bridge
-// is at its stern, which reads unambiguously at all four cut
-// rotations: bow right at 0, bottom-right at 90, left at 180, top-left
-// at 270. Checked against the projection at each heading, the only
-// world direction consistent with all four is north.
-var bowHome = city.Point{X: 0, Y: -1}
+// Set by eye against a frame, and it has to be. The geometry does not
+// determine it: on ship-cargo-a the tallest structure and the hull's
+// narrowest slice point in opposite directions, so "the bridge is aft"
+// and "the hull tapers forward" disagree, and the liner tapers at both
+// ends so its outline has no bow to find at all. For "which way does
+// this face", a person looking at the picture is the specification.
+//
+// It is south, and r254 shipped it as north. I decided the cargo ship's
+// yellow deckhouse was its stern by convention, then read a frame
+// expecting to see that and saw it. Aria looked once: "the boats are
+// faced backwards". Taking the deckhouse as the BOW instead, the four
+// cut rotations agree — it sits left at rotation 0, top-left at 90,
+// right at 180 and bottom-right at 270, and south is the one world
+// direction that projects to all four of those at their headings.
+//
+// If this ever looks wrong again, check it against a frame rather than
+// against the model. The model cannot settle it.
+var bowHome = city.Point{X: 0, Y: 1}
 
 // rotate turns a world direction by a quarter per 90 degrees, the same
 // sense as the camera's own heading.

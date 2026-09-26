@@ -1698,6 +1698,32 @@ It is the test that caught the two-cell overlap, with the same numbers worked ou
 
 **Also removed:** `kitThrough`, dead since `stackThrough` moved to `kitThroughPlace` in r230 and failing the lint gate on main.
 
+### 52a. ~~The boats face backwards~~ Done 2026-09-26 (r255)
+
+Aria on r254: *"Much better except the boats are faced backwards. Rotate 180."*
+
+`bowHome` was north and is south. One constant, one flip, and the four-heading behaviour comes with it unchanged.
+
+**The method was right and the premise was not.**
+I worked the bow direction out from the cut rotations and checked it against the projection at all four headings, which is the correct shape of argument.
+But it rests on knowing which end of the model is the bow, and I supplied that from a convention — a cargo ship's deckhouse is aft — rather than from the picture.
+Taking the deckhouse as the **bow**, the same four rotations agree just as cleanly on south. The argument was never able to tell the two apart.
+
+**The model cannot settle it, so no amount of care with the geometry would have.**
+On `ship-cargo-a` the tallest structure and the hull's narrowest slice point in opposite directions, so "the bridge is aft" and "the hull tapers forward" disagree on the same model.
+The ocean liner tapers at both ends and has no bow to find in its outline at all.
+**For "which way does this face", the reader's eye is the specification.** Aria settled in one second what the geometry could not settle at all.
+
+**The part worth keeping.** I did look at a frame before shipping r254, and I saw the bow pointing the way I had already decided it would.
+Looking to confirm is not looking. A frame checked *after* the conclusion is formed is worth much less than one checked before, which is most of why this reached her at all.
+`TestBowTurn` did not help either: it pins the mapping from a direction to a rotation *given* a home, so with the home backwards every case was self-consistently wrong. A test of a convention against itself cannot catch the convention being wrong.
+
+**Guard.** `bowHome`'s comment and a note beside the hull recipes both say the facing is set by eye against a frame, that the model does not determine it, and not to re-derive it from the geometry — so the next person does not reason their way back to north.
+
+**Also fixed:** a typo, `untigirned`, that shipped in r254's comment. An earlier one-line correction never matched because the word had wrapped.
+
+**Frames.** `docs/screenshots/r255-gauge-bows-flipped.png` is all four headings with the bows leading upstream; `r255-gauge-lanes-abreast.png` is the forced 61/58/55 case again. r254's two frames are left in place and show the backwards facing.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:

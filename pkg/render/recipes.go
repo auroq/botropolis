@@ -98,6 +98,11 @@ var (
 	// everything else collapses to a smudge. It also settles the tug
 	// question: it is within a few tenths of a tug in length and cannot
 	// be mistaken for one, because one of them has a sail.
+	// Which way these face is set by eye against a frame, not derived:
+	// see bowHome in gauges.go. The models do not determine a bow — the
+	// liner tapers at both ends, and on the cargo ship the deckhouse and
+	// the hull's taper point opposite ways. r254 shipped them backwards
+	// on a reasoned guess, so do not re-derive this from the geometry.
 	kitGaugeLiner = "watercraft-kit/ship-ocean-liner-small"
 	kitGaugeCargo = "watercraft-kit/ship-cargo-a"
 	kitGaugeSail  = "watercraft-kit/boat-sail-a"

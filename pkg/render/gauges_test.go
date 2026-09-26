@@ -99,19 +99,22 @@ func TestGaugeFacesTheWayItReads(t *testing.T) {
 	})
 }
 
-// bowHome is art, measured off the atlas rather than assumed, so the
-// mapping from a world direction to a sprite rotation gets a test of
-// its own.
+// bowHome is art and cannot be derived from the model, so what is
+// pinned here is the mapping from a world direction to a rotation given
+// that home — not the home itself, which only a frame can settle. r254
+// had the home backwards and every one of these cases was self
+// consistently wrong, which is exactly what a test of a convention
+// against itself cannot catch.
 func TestBowTurn(t *testing.T) {
 	for _, tc := range []struct {
 		dir  city.Point
 		turn int
 		what string
 	}{
-		{city.Point{X: 0, Y: -1}, 0, "north, which is the way the hull is modelled"},
-		{city.Point{X: -1, Y: 0}, 90, "west"},
-		{city.Point{X: 0, Y: 1}, 180, "south"},
-		{city.Point{X: 1, Y: 0}, 270, "east"},
+		{city.Point{X: 0, Y: 1}, 0, "south, which is the way the hull is modelled"},
+		{city.Point{X: 1, Y: 0}, 90, "east"},
+		{city.Point{X: 0, Y: -1}, 180, "north"},
+		{city.Point{X: -1, Y: 0}, 270, "west"},
 	} {
 		t.Run("when the bow should point "+tc.what, func(t *testing.T) {
 			t.Run(fmt.Sprintf("it should draw the hull turned %d", tc.turn), func(t *testing.T) {
