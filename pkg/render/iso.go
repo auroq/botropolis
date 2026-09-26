@@ -1005,6 +1005,27 @@ func lit(radius, floor float64) float64 {
 	return math.Max(radius, floor)
 }
 
+// windowGlow is lit for a window, held to the storey it lights.
+//
+// The discs are additive — two that overlap are brighter than either,
+// and a column of them saturates to white. That is deliberate at fit,
+// where what matters is which lights are on rather than their size. It
+// stops being deliberate as the view comes in: the radius grows with the
+// zoom while the storeys between the discs do not grow faster, so a
+// five-storey building came to wear five merged discs and disappeared
+// behind its own windows.
+//
+// So the radius is capped at half a storey, which is what keeps two of
+// them apart, and the floor is itself held to the storey — a floor that
+// is taller than the thing it lights is not a floor, it is the whole
+// building.
+func windowGlow(radius, floor, storey float64) float64 {
+	if storey <= 0 {
+		return math.Max(radius, floor)
+	}
+	return math.Min(math.Max(radius, math.Min(floor, storey/2)), storey/2)
+}
+
 // boost brightens a light's alpha as the view zooms out past
 // glowBoostZoom, up to glowBoostMax times.
 func boost(c color.NRGBA, zoom float64) color.NRGBA {
@@ -1025,11 +1046,14 @@ func (g *Game) nightLights(screen *ebiten.Image, cam *city.Camera, c *city.City)
 		size := g.kitSize(cam, buildingPiece(b))
 		w, h := float64(size.X), float64(size.Y)
 		storeys := max(1, int(h/(38*cam.Zoom)))
+		storey := h * 0.7 / float64(storeys)
 		for i := 0; i < storeys; i++ {
 			y := foot.Y - h*0.15 - (h*0.7)*(float64(i)+0.5)/float64(storeys)
-			glow(screen, city.Point{X: foot.X - w*0.2, Y: y}, lit(w*0.16, minWindowGlow), boost(colorWindowGlow, cam.Zoom))
-			glow(screen, city.Point{X: foot.X + w*0.2, Y: y}, lit(w*0.16, minWindowGlow), boost(colorWindowGlow, cam.Zoom))
-			glow(screen, city.Point{X: foot.X, Y: y}, lit(w*0.1, minWindowGlow*0.6), boost(colorWindowCore, cam.Zoom))
+			side := windowGlow(w*0.16, minWindowGlow, storey)
+			core := windowGlow(w*0.1, minWindowGlow*0.6, storey)
+			glow(screen, city.Point{X: foot.X - w*0.2, Y: y}, side, boost(colorWindowGlow, cam.Zoom))
+			glow(screen, city.Point{X: foot.X + w*0.2, Y: y}, side, boost(colorWindowGlow, cam.Zoom))
+			glow(screen, city.Point{X: foot.X, Y: y}, core, boost(colorWindowCore, cam.Zoom))
 		}
 	}
 	if c.Plant.Rect.Area() > 0 {
