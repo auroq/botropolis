@@ -845,6 +845,78 @@ A **district's** name keeps a permanent plate, because a repo name is short, the
 - *"maybe we shorten the chimney because most of it would be inside the building."* This is the physical reading and it is right: a chimney rising from inside a building shows only the part above the roof, and the whole sprite is currently drawn above the roof plane, so it reads as a full-length chimney balanced there. Sinking the perch below the roof plane shortens the visible part *and* strengthens the passing-through read — one change, both effects, and no new art.
 
 
+### 41. Street trees stand on the carriageway, not on a verge (Aria, 2026-09-26, on r205)
+
+Her words: *"Several trees still land in concrete at the edge of properties."*
+
+**This is not the jitter.**
+That was my first reading and it is wrong, so do not spend time on it: `TreeJitter` is 0.3 and a cell's half-width is 0.5, so a park tree's seeded step off centre cannot leave its own cell.
+Bug 20's cell-level guard still holds.
+
+The mechanism is `plantStreets` in `pkg/plan/plan.go:486`.
+A street tree is planted **on a street cell** and then pushed `KerbOffset` = 0.42 off its centre, toward the block.
+The constant's comment says *"out on the verge, clear of the carriageway"* — but the street cell has no verge.
+It is a road tile, carriageway edge to edge, so 0.42 does not reach a verge; it reaches the far edge of the tarmac.
+Every street tree in the city is standing in the road, hard against the property line.
+That is exactly what "in concrete at the edge of properties" describes, and it is why there are several of them rather than one.
+
+The comment was describing a verge that was never built. **The constant is not wrong; the cell it is applied to is.**
+
+The fix worth trying: plant the street tree on the **first cell of the adjoining block** — ground the block owns — and offset it back *toward* the street by `1 - KerbOffset` so it still reads as lining the avenue.
+Guard it with `p.Plots.Taken(cell)` the way `plantPlazaEdge` already does, and drop the tree when the neighbouring cell is a building plot rather than shoving it somewhere.
+Fewer street trees is the correct outcome; a real city does not plant one where there is no room.
+
+The test that would have caught this is not a cell test.
+It is: **for every tree, the ground under its final position is plantable**, resolved through whatever the renderer actually paints on that cell.
+Bug 20 tested the cell and this tree is on a legal cell — the guard has to run on the position, and it has to ask about the drawn surface, not the plan's category.
+
+### 42. Anything keyed by a point draws over every building it stands behind (Aria, 2026-09-26, on r205)
+
+Her words: *"some trees still render through buildings"*, with a frame of a conifer painted across a four-storey facade.
+
+**Confirmed by measurement, and it is general.**
+`Camera.DepthOf` (`pkg/city/camera.go:138`) keys a footprint at its **back-most** corner — the minimum of `x+y` over the four corners.
+`Camera.Depth` keys a point at its own `x+y`.
+The sort at `pkg/render/iso.go:683` puts these two keys in one order.
+
+A 4×4 building at (5,10)–(9,14) spans depths **15 to 23** and is keyed at **15**.
+I probed seven points around it at heading 0; **all seven sort after it**, including `{7, 9}`, which is a cell directly *behind* its back edge and should be hidden by it.
+A building eight units deep is being compared as though it were a point at its far corner, so essentially every point-keyed thing draws over essentially every building.
+
+Trees are the visible symptom because they are tall and still.
+The same exposure is on voyages, freight, cars and lamps — `iso.go:625`, `:631`, `:637`, `:611` — which is probably why moving bots have read oddly around blocks.
+
+**Do not just swap min for max.**
+I checked: keying the footprint at its front corner fixes the tree behind the building and breaks the tree in front of it (a point at `{7,15}` is nearer in y but further in x, and keys at 22 against the building's 23, so the building paints over it).
+No single scalar orders a point against a box correctly in this projection — that is the actual finding, and the comment at `camera.go:130` chose min to solve a tie between neighbouring landmarks, which is a real problem that a naive fix would reintroduce.
+
+What is correct on a grid of non-overlapping footprints is a pairwise predicate and a topological sort.
+Treat every drawable as an axis-aligned box in turned space; **A is behind B** if `A.Max.X <= B.Min.X` or `A.Max.Y <= B.Min.Y`.
+Points become cell-sized boxes so there is one rule.
+Sort by minimum depth first and only compare pairs whose depth intervals overlap — on this map that is near-linear, not the O(n²) the worst case suggests.
+Measure the frame cost before and after and put the number in DESIGN.md; the renderer is at 14% and I would rather know than guess.
+
+The invariant to test: **no drawable that is behind another by the separating-axis rule is drawn after it.**
+Assert it over the real plan, not a fixture, and over all four headings — a depth bug that only shows at one heading is the same family as bug 25.
+
+### 43. Escape ends in quit, and the chrome answers only the keyboard (Aria, 2026-09-26)
+
+Her words: *"escape should close open dialogs or open the settings menu if there are no open dialogs (and close the settings menu (as a dialog)) if it's open. I like that everything is keyboard navigatable, but we should allow mouse as well. It enables things to be discovered while learning controls and such."*
+
+**Escape.** The ladder in `pkg/render/keys.go:139` closes help, then the view key, then leaves a non-default view — and then, with nothing open, **arms the quit prompt** (`:152`).
+She wants that last rung to open settings instead.
+Quit stays on `q`, which already reaches it.
+Keep the view rung: leaving a view *is* closing something, and it sits above settings in her ordering even though she did not name it.
+With settings open, Escape closes it, which `settings.go:20` already does.
+
+**Mouse.** The map is fully clickable — `noteHit` covers buildings, workers, drones, towers, cars, trains and voyages — and the view key already remembers its own layout so a click lands on a row (`g.viewKeyRows`, `pkg/render/viewkey.go:25`).
+That is the pattern; the rest of the chrome does not have it.
+Inventory every panel that answers the keyboard — settings, breakdown, timeline, search, help, the sidebar, the footer verbs — and give each row, entry and verb a click target using the `viewKeyRows` approach.
+
+Her reason is the requirement, so build to it: *"it enables things to be discovered while learning controls."*
+A footer verb that can only be typed teaches nothing; one that can be clicked teaches its own shortcut.
+So every clickable thing should still show its key, and clicking it should do exactly what the key does — one code path, not two.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
