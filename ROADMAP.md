@@ -1268,6 +1268,21 @@ So item 5 in section 10 — *"the cars don't really make sense which repos they 
 Either a car on the base view means something and hover says what, or it is declared ambience and reads as life rather than as data.
 Decide which, say which in DESIGN.md, and make the hover agree.
 
+### 43a. Escape does not close the selection card, which is the menu she meant (Aria, 2026-09-26, on r228)
+
+Her words, with a frame of an open building card: *"escape should close menus like these. That's what I meant earlier."*
+
+Bug 43 read "dialogs" as the overlays — help, the view key, settings — and built the ladder out of those.
+The card the pointer opens on a building is the menu she was describing, and Escape does not touch it: nothing in `keys.go` clears `Scene.Selected()`.
+
+**Escape should clear the selection first**, above help and the view key.
+It is the most recently opened thing and the most modal — it sits over the map and carries the verbs — so it is the first thing Escape should take back.
+The rest of the ladder from bug 43 is unchanged below it: help, view key, leave the view, open settings.
+Quit stays on `q`.
+
+Worth noting why this was missed: bug 43 was written from the keyboard's point of view, and the card is the one surface that is opened by the mouse.
+The inventory of "things Escape should close" has to be the inventory of **things that are open**, whatever opened them.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
