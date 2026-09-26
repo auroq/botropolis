@@ -39,7 +39,16 @@ type ViewKey struct {
 	Title Text
 	Size  Size
 	Rows  []ViewKeyRow
+	// Note names the two things that share the river, because they look
+	// alike enough to need telling apart and the key is where the map
+	// explains its own vocabulary. Item 49.
+	Note Text
 }
+
+// RiverNote is what the key says about the river. Two meanings on one
+// waterway are only allowed if each says what it is, and this is the
+// half of that which does not require hovering.
+const RiverNote = "on the river: liners gauge your usage, tugs are sessions arriving and leaving"
 
 // LayoutViewKey centres the key in a width×height window and marks the
 // view that is up.
@@ -64,8 +73,12 @@ func LayoutViewKey(th Theme, width, height float64, current city.View, measure M
 		chipW = w + grid
 	}
 	rowStep := chipH + grid/2
+	noteW, noteH := measure(RiverNote, Small)
 	w := pad + chipW + grid + nameW + 2*grid + questionW + pad
-	h := pad + titleH + grid + rowStep*float64(len(city.Views)) - grid/2 + pad
+	if want := pad + noteW + pad; want > w {
+		w = want
+	}
+	h := pad + titleH + grid + rowStep*float64(len(city.Views)) - grid/2 + grid + noteH + pad
 	k := ViewKey{Rect: city.RectAt((width-w)/2, (height-h)/2, w, h), Size: Small}
 	k.Title = Text{Text: title, At: k.Rect.Min.Add(city.Point{X: pad, Y: pad}), Size: Title}
 
@@ -86,6 +99,7 @@ func LayoutViewKey(th Theme, width, height float64, current city.View, measure M
 		})
 		y += rowStep
 	}
+	k.Note = Text{Text: RiverNote, At: city.Point{X: k.Rect.Min.X + pad, Y: y - grid/2 + grid}, Size: Small}
 	return k
 }
 

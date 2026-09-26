@@ -43,6 +43,7 @@ func (g *Game) drawViewKey(screen *ebiten.Image, width, height float64) {
 		g.text(screen, r.NameAt, r.Name, k.Size, name)
 		g.text(screen, r.QuestionAt, r.Question, k.Size, th.Palette.Dim)
 	}
+	g.text(screen, k.Note.At, k.Note.Text, k.Size, th.Palette.Dim)
 }
 
 // clickViewKey chooses a view when the key is open and the click lands

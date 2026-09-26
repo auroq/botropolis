@@ -1398,7 +1398,9 @@ Worked back from the worst case. At `MinZoom` one world unit is 0.384 screen pix
 
 **`City.RiverBand` is one expression for where the river is**, because two readers want it: the voyages sail along it and the boats are read across it. A river that grew from one cell to two is exactly where two copies of that would have parted company — the tugs now sail the centre line rather than the middle of the western column, which is why two voyage tests moved.
 
-**Still to do:** the view key does not yet name the boats against the tugs.
+**The view key names both.** `on the river: liners gauge your usage, tugs are sessions arriving and leaving` sits under the nine views, which is where the map explains its own vocabulary. Two meanings on one waterway are allowed only if each says what it is; the hover is one half of that and this is the half that does not require hovering.
+
+Item 49 is built: three boats off the real limits, read across a river widened to suit them, told apart from the tugs by hull and by name, answering when pointed at, and refreshed on `u`.
 ### 49a. What the usage numbers actually are, measured (2026-09-26)
 
 Aria sent `/usage` from Claude Code and the same panel from the desktop UI, and asked for research.
