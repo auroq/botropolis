@@ -1157,6 +1157,30 @@ A stack through a flat roof is not bare. Two separate elements, and they do diff
 The collar and braces have to scale with zoom exactly as the sprite does, or they will drift off the join at some zooms — the same class as the perch bugs.
 And the braces go sub-pixel at low zoom: drop them below a threshold and keep the collar, rather than letting them become noise. Say what the threshold is and why.
 
+### 46a. The guy braces are the wrong object — it wants a curb (Aria, 2026-09-26, on r226)
+
+Her words: *"The braces look excessive because they go almost to the top of the chimney and then don't actually touch it. I was thinking like something small at the base."*
+
+Two separate faults, and the second is a straight defect.
+
+**The braces are the wrong object, and that is my error in item 46, not the build's.**
+I cited the manufacturers' rule that a stack standing more than about five feet proud carries a support band at two thirds height with guys down to the roof.
+That rule is for a **tall free-standing metal flue**, which this is not.
+This is a short stack on a flat roof, and what a flat roof actually has at a penetration is a **curb**: a low raised ring round the opening, a little wider than the stack, that the roofing is turned up against.
+It is small, it is at the base, and it is exactly what she is describing.
+
+**The braces do not touch the stack.** They run to a band drawn as an arc, and the arc does not visually land, so they read as wires passing near the chimney rather than bearing on it.
+Anything that is drawn as a connection has to *make* the connection at both ends, or it argues against the very thing it was added to prove.
+
+**Also fix the saucer.** The flashing is drawn as a broad pale disc and the stack now sits in it like a jar in a dish.
+Flashing at this size should barely be visible: a narrow rim, a touch wider than the stack, in a darker metal tone — not a plate.
+The round bottom line comes from the rim's near arc, which costs no extra width.
+
+**Build.** Drop the high band and the guy braces. Shrink the flashing to a rim. Add a curb at the base: a low ring, slightly wider than the stack, with an elliptical top and a short visible side — on the order of a tenth of the visible stack height, not more.
+If anything diagonal survives, it is two short gussets no taller than the curb, and both ends must visibly land.
+
+Keep what item 46 got right: only the **near arc** of anything wrapping the pipe is drawn, and the bottom line stays an ellipse.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
