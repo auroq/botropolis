@@ -113,6 +113,13 @@ func (g *Game) handleKeys() error {
 		g.breakdown, g.window = true, city.LastDay
 		return nil
 	}
+	// u asks the CLI for the real usage again. It costs about four
+	// seconds, so it runs off the frame and the boats keep their last
+	// reading until it lands. Item 49.
+	if just(ebiten.KeyU) {
+		g.refreshUsage()
+		g.SetStatus("reading usage…")
+	}
 	if just(ebiten.KeyS) {
 		g.settingsOpen = true
 		return nil

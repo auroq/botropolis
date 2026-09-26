@@ -87,7 +87,11 @@ var (
 	// one away.
 	kitTugIn  = "watercraft-kit/boat-tug-a"
 	kitTugOut = "watercraft-kit/boat-tug-b"
-	kitWagons = []string{"train-kit/train-carriage-container-red", "train-kit/train-carriage-container-blue", "train-kit/train-carriage-container-green"}
+	// The usage gauges' hull. Deliberately not a tug: the river already
+	// means arrivals and departures, and two meanings on one waterway
+	// need silhouettes that differ at a glance. Item 49.
+	kitGaugeBoat = "watercraft-kit/ship-ocean-liner-small"
+	kitWagons    = []string{"train-kit/train-carriage-container-red", "train-kit/train-carriage-container-blue", "train-kit/train-carriage-container-green"}
 )
 
 func hashID(id string) uint32 {

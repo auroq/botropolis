@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -8,101 +9,130 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Item 49. The output is prose from a tool that can change between
-// versions, so what matters as much as parsing it is failing cleanly
-// when it changes.
+// Item 49. The figures come out of Claude Code's own cache in
+// ~/.claude.json: real limits, already fetched, already structured.
 
-const realOutput = `You are currently using your subscription to power your Claude Code usage
-
-Current session: 7% used · resets Sep 26, 7:20pm (America/Denver)
-Current week (all models): 20% used · resets Sep 29, 7am (America/Denver)
-Current week (Fable): 0% used · resets Sep 29, 7am (America/Denver)
-
-What's contributing to your limits usage?
-Last 24h · 1074 requests · 4 sessions
-  97% of your usage was at >150k context
-`
-
-func TestParseLimits(t *testing.T) {
-	at := time.Date(2026, 9, 26, 15, 0, 0, 0, time.UTC)
-	u, ok := ParseLimits(realOutput, at)
+func fixture(t *testing.T, name string) Utilization {
+	t.Helper()
+	data, err := os.ReadFile("testdata/" + name)
+	require.NoError(t, err)
+	u, ok := ParseUtilization(data)
 	require.True(t, ok)
+	return u
+}
 
-	t.Run("when the CLI reports its three windows", func(t *testing.T) {
-		t.Run("it should read all three and no more", func(t *testing.T) {
-			assert.Len(t, u.Readings, 3)
+func TestParseUtilizationSubscription(t *testing.T) {
+	u := fixture(t, "utilization-subscription.json")
+
+	t.Run("when a subscription's cache is read", func(t *testing.T) {
+		t.Run("it should read one limit per gauge the plan has", func(t *testing.T) {
+			assert.Len(t, u.Limits, 3)
 		})
 
-		t.Run("it should not mistake the contributing-usage lines for windows", func(t *testing.T) {
-			_, found := u.Find("24h")
-			assert.False(t, found)
+		t.Run("it should read it as a subscription", func(t *testing.T) {
+			assert.Equal(t, ShapeSubscription, u.Shape())
 		})
 
-		t.Run("it should read the session's percentage", func(t *testing.T) {
-			r, _ := u.Find("session")
-			assert.Equal(t, 7.0, r.Percent)
+		t.Run("it should name each window by its own kind rather than a hardcoded set", func(t *testing.T) {
+			assert.Equal(t, "session", u.Limits[0].Kind)
 		})
 
-		t.Run("it should read the week across all models", func(t *testing.T) {
-			r, _ := u.Find("week", "all models")
-			assert.Equal(t, 20.0, r.Percent)
+		t.Run("it should group the two weeklies together", func(t *testing.T) {
+			assert.Equal(t, u.Limits[1].Group, u.Limits[2].Group)
 		})
 
-		t.Run("it should keep a window reading zero, which is not the same as absent", func(t *testing.T) {
-			r, found := u.Find("week", "fable")
-			require.True(t, found)
-			assert.Zero(t, r.Percent)
+		t.Run("it should carry the model a scoped limit applies to", func(t *testing.T) {
+			assert.Equal(t, "Fable", u.Limits[2].Model)
 		})
 
-		t.Run("it should keep the reset time verbatim, timezone and all", func(t *testing.T) {
-			r, _ := u.Find("session")
-			assert.Equal(t, "Sep 26, 7:20pm (America/Denver)", r.Resets)
+		t.Run("it should leave an unscoped limit's model empty", func(t *testing.T) {
+			assert.Empty(t, u.Limits[1].Model)
 		})
-	})
 
-	t.Run("when the reading is cached", func(t *testing.T) {
-		t.Run("it should carry when it was taken, so its age can be shown", func(t *testing.T) {
-			assert.Equal(t, 90*time.Minute, u.Age(at.Add(90*time.Minute)))
+		t.Run("it should read the reset as a real time, not a localised string", func(t *testing.T) {
+			assert.False(t, u.Limits[1].ResetsAt.IsZero())
+		})
+
+		t.Run("it should carry Claude's own severity, which beats a bare percentage", func(t *testing.T) {
+			assert.NotEmpty(t, u.Limits[1].Severity)
+		})
+
+		t.Run("it should know when the figures were fetched, so their age can be shown", func(t *testing.T) {
+			assert.False(t, u.FetchedAt.IsZero())
+		})
+
+		t.Run("it should keep a limit reading zero, because zero is a reading", func(t *testing.T) {
+			assert.Zero(t, u.Limits[2].Percent)
 		})
 	})
 }
 
-func TestParseLimitsFailsCleanly(t *testing.T) {
-	at := time.Now()
+func TestParseUtilizationSpend(t *testing.T) {
+	u := fixture(t, "utilization-spend.json")
 
-	t.Run("when the format has changed and nothing matches", func(t *testing.T) {
-		t.Run("it should report nothing rather than zero", func(t *testing.T) {
-			_, ok := ParseLimits("Usage: 7 of 100 this session\n", at)
+	t.Run("when a plan caps monthly spend instead", func(t *testing.T) {
+		t.Run("it should read it as a spend plan", func(t *testing.T) {
+			assert.Equal(t, ShapeSpend, u.Shape())
+		})
+
+		t.Run("it should offer no per-window gauges, because the plan has none", func(t *testing.T) {
+			assert.Empty(t, u.Limits)
+		})
+
+		t.Run("it should read the spend in whole currency units", func(t *testing.T) {
+			assert.InDelta(t, 484.18, u.Spend.Used(), 0.001)
+		})
+
+		t.Run("it should read the cap the same way", func(t *testing.T) {
+			assert.InDelta(t, 500.0, u.Spend.Cap(), 0.001)
+		})
+
+		t.Run("it should carry the percentage the account itself reports", func(t *testing.T) {
+			assert.Equal(t, 97.0, u.Spend.Percent)
+		})
+	})
+}
+
+func TestParseUtilizationFailsCleanly(t *testing.T) {
+	t.Run("when the file is not JSON at all", func(t *testing.T) {
+		t.Run("it should refuse the reading", func(t *testing.T) {
+			_, ok := ParseUtilization([]byte("not json"))
 			assert.False(t, ok)
 		})
 	})
 
-	t.Run("when one line of three has moved", func(t *testing.T) {
-		u, ok := ParseLimits("Current session: 7% used · resets now\nWeekly usage is 20 percent\n", at)
-		require.True(t, ok)
-
-		t.Run("it should keep the line it understood", func(t *testing.T) {
-			assert.Len(t, u.Readings, 1)
-		})
-
-		t.Run("it should leave the one it did not absent, not zero", func(t *testing.T) {
-			_, found := u.Find("week")
-			assert.False(t, found)
+	t.Run("when the cache is simply absent", func(t *testing.T) {
+		t.Run("it should refuse rather than report a plan with no limits", func(t *testing.T) {
+			_, ok := ParseUtilization([]byte(`{"someOtherKey":1}`))
+			assert.False(t, ok)
 		})
 	})
 
-	t.Run("when the reset clause is missing but the percentage is not", func(t *testing.T) {
-		u, ok := ParseLimits("Current session: 42% used\n", at)
+	t.Run("when the cache is there but empty", func(t *testing.T) {
+		u, ok := ParseUtilization([]byte(`{"cachedUsageUtilization":{"fetchedAtMs":1790461289510,"utilization":{"limits":[]}}}`))
 		require.True(t, ok)
 
-		t.Run("it should still read the percentage", func(t *testing.T) {
-			assert.Equal(t, 42.0, u.Readings[0].Percent)
+		t.Run("it should say the plan reports nothing, which is not the same as unreadable", func(t *testing.T) {
+			assert.Equal(t, ShapeUnknown, u.Shape())
+		})
+
+		t.Run("it should still know when it was fetched", func(t *testing.T) {
+			assert.False(t, u.FetchedAt.IsZero())
+		})
+	})
+}
+
+func TestUtilizationAge(t *testing.T) {
+	u := Utilization{FetchedAt: time.Now().Add(-90 * time.Minute)}
+	t.Run("when the figures are cached", func(t *testing.T) {
+		t.Run("it should say how old they are", func(t *testing.T) {
+			assert.InDelta(t, 90.0, u.Age(time.Now()).Minutes(), 0.5)
 		})
 	})
 }
 
 func TestUsageProbeProject(t *testing.T) {
-	t.Run("when the probe runs in its own directory", func(t *testing.T) {
+	t.Run("when the refresh probe runs in its own directory", func(t *testing.T) {
 		t.Run("it should name the project folder the way Claude Code does", func(t *testing.T) {
 			assert.Equal(t, "-home-avesta--claude-jobs-x-tmp-usageprobe",
 				ProjectFolder("/home/avesta/.claude/jobs/x/tmp/usageprobe"))
@@ -110,43 +140,6 @@ func TestUsageProbeProject(t *testing.T) {
 
 		t.Run("it should give the probe a folder of its own to be skipped by", func(t *testing.T) {
 			assert.Contains(t, UsageProbeProject(), "usage-probe")
-		})
-	})
-}
-
-// Item 49d. Three states out of one command, measured rather than
-// inferred: a subscription prints three gauges, an enterprise plan on
-// the same build prints the header alone, and anything else is a format
-// this build does not know.
-func TestLimitShapes(t *testing.T) {
-	at := time.Now()
-
-	t.Run("when a subscription answers", func(t *testing.T) {
-		u, ok := ParseLimits(realOutput, at)
-		require.True(t, ok)
-
-		t.Run("it should read it as a subscription", func(t *testing.T) {
-			assert.Equal(t, ShapeSubscription, u.Shape())
-		})
-	})
-
-	t.Run("when an enterprise plan answers with the header and no data", func(t *testing.T) {
-		u, ok := ParseLimits("You are currently using your subscription to power your Claude Code usage\n", at)
-		require.True(t, ok)
-
-		t.Run("it should say the plan reports no limits, not that nothing was understood", func(t *testing.T) {
-			assert.Equal(t, ShapeNoLimits, u.Shape())
-		})
-
-		t.Run("it should offer no readings to draw gauges from", func(t *testing.T) {
-			assert.Empty(t, u.Readings)
-		})
-	})
-
-	t.Run("when the command answers with something else entirely", func(t *testing.T) {
-		t.Run("it should refuse the reading rather than call it an empty plan", func(t *testing.T) {
-			_, ok := ParseLimits("Unknown skill: usage\n", at)
-			assert.False(t, ok)
 		})
 	})
 }

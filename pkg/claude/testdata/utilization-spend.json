@@ -1,0 +1,21 @@
+{
+ "cachedUsageUtilization": {
+  "fetchedAtMs": 1790461289510,
+  "utilization": {
+   "limits": [],
+   "spend": {
+    "used": {
+     "amount_minor": 48418,
+     "currency": "USD",
+     "exponent": 2
+    },
+    "limit": {
+     "amount_minor": 50000
+    },
+    "percent": 97,
+    "severity": "critical",
+    "enabled": true
+   }
+  }
+ }
+}

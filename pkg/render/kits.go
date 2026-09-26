@@ -166,6 +166,29 @@ func (g *Game) kitFootprint(cam *city.Camera, name string) float64 {
 	return footprintSide(float64(sprite.Rect.Dx()), atlas.Zoom)
 }
 
+// kitScaled draws a piece at a fraction of its natural size, for a
+// sprite that is bigger than the thing it has to sit in — the liner is
+// nearly two cells wide and the river is one.
+func (g *Game) kitScaled(screen *ebiten.Image, cam *city.Camera, name string, at city.Point, shrink float64, tint *ebiten.ColorScale) city.Rect {
+	if g.kits == nil || shrink <= 0 {
+		return city.Rect{}
+	}
+	atlas := g.kits.pick(cam.Zoom)
+	if atlas == nil {
+		return city.Rect{}
+	}
+	sprite, ok := atlas.Sprite(name, cam.Heading)
+	if !ok || sprite.Page >= len(atlas.pages) {
+		return city.Rect{}
+	}
+	scale := cam.Zoom / atlas.Zoom * shrink
+	foot := cam.WorldToScreen(at)
+	origin := city.Point{X: foot.X - float64(sprite.Anchor.X)*scale, Y: foot.Y - float64(sprite.Anchor.Y)*scale}
+	img := atlas.pages[sprite.Page].SubImage(sprite.Rect).(*ebiten.Image)
+	g.drawSprite(screen, img, origin, scale, tint)
+	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
+}
+
 // kitGround draws a ground tile a hair larger than its cell, so two tiles
 // side by side overlap by their anti-aliased rims instead of letting the
 // grass show through as a seam.

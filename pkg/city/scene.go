@@ -508,7 +508,7 @@ func (h Hit) Ground() bool {
 // resolves to the building first in world space; a mover has to be
 // allowed to win or it can never be pointed at at all.
 func (h Hit) Mover() bool {
-	return h.Worker != nil || h.Subagent != nil || h.Smoke != nil || h.Car != nil || h.Flag != nil
+	return h.Worker != nil || h.Subagent != nil || h.Smoke != nil || h.Car != nil || h.Flag != nil || h.Gauge != nil
 }
 
 func (h Hit) ground() bool {
@@ -879,6 +879,8 @@ func (s *Scene) Card() (Card, bool) {
 	// The movers first: a drone circles a roof and a flag stands on one,
 	// so the building's hit rect covers both. Pointing at the drone has
 	// to answer about the drone.
+	case s.hover.Gauge != nil:
+		return GaugeCard(s.hover.Gauge.Gauge, s.hover.Gauge.Age), true
 	case s.hover.Car != nil:
 		return CarCard(s.hover.Car.Road, s.hover.Car.From, s.hover.Car.To), true
 	case s.hover.Flag != nil:

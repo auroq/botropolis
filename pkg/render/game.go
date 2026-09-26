@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"github.com/auroq/botropolis/pkg/claude"
 	"image"
 	"image/color"
 	"image/png"
@@ -114,8 +115,12 @@ type Game struct {
 	settingsPanel ui.SettingsPanel
 	helpPanel     ui.Help
 	searchPlate   city.Rect
-	clicked       ebiten.Key
-	hidden        bool
+	// usage is Claude Code's own cached view of the account's limits,
+	// re-read off disk because reading a file is free. u makes Claude
+	// Code refetch. Item 49.
+	usage   claude.Utilization
+	clicked ebiten.Key
+	hidden  bool
 	// live is whether anyone was watching the window last tick, so the
 	// tick is only changed when that changes. ticks counts Update calls
 	// and painted the tick the last frame was painted for, so a repeat

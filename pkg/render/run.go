@@ -103,6 +103,9 @@ func Run(ctx context.Context, opts Options) error {
 	game.reduced = opts.ReducedMotion
 	scene.SetDetail(opts.Detail)
 	game.signage = opts.Signage
+	// Read the cache at startup so the river is not empty on the first
+	// frame. No probe: this is a file read. Item 49.
+	game.readUsage()
 	game.settings = opts.Settings
 	game.apply = opts.Apply
 

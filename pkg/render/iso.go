@@ -116,6 +116,7 @@ func (g *Game) isoGround(screen *ebiten.Image, cam *city.Camera, c *city.City, w
 	for _, rc := range c.RiverCells {
 		g.poly(screen, cam, rc.Cell.Rect(), water)
 	}
+	g.drawGaugeLanes(screen, cam, c)
 	g.isoRails(screen, cam, c)
 }
 
@@ -650,6 +651,22 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 			// meet a roof on. Bug 46.
 			g.stackThrough(screen, cam, kitStack, perch, roof)
 		}))
+	}
+	// The usage boats. They sort with the city like anything else, and
+	// they are deliberately a different hull from the voyage tugs on
+	// the same water — one river, two meanings, told apart by
+	// silhouette and by what each says when pointed at. Item 49.
+	if gauges, age := g.usageGauges(); len(gauges) > 0 {
+		if from, to, ok := riverRun(c); ok {
+			for _, gauge := range gauges {
+				gauge := gauge
+				at := gaugeAt(cam, from, to, gaugeReach, gauge)
+				items = append(items, standingAt(cam, at, func() {
+					r := g.drawGauge(screen, cam, at, gauge.Size)
+					g.noteHit(r, city.Hit{Gauge: &city.GaugeHit{Gauge: gauge, Age: age}})
+				}))
+			}
+		}
 	}
 	// A project's sign is an object on the ground, so it sorts with
 	// everything else rather than being painted over the scene. Bug 44.

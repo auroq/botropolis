@@ -1,170 +1,218 @@
 package claude
 
 import (
-	"bufio"
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
 	"time"
 )
 
-// Limits is what `claude -p "/usage"` reports: the share of each limit
-// already spent, and when each window resets. Item 49.
+// Utilization is Claude Code's own cached view of the account's limits,
+// read straight out of ~/.claude.json. Item 49.
 //
-// The percentages are the real limits rather than a budget somebody
-// configured, which is why this is worth shelling out for: there is no
-// denominator to derive, calibrate or keep in a config file. Nothing on
-// disk carries these figures — `stats-cache.json` has token counts but
-// no limit, and on this machine it had not been written for 86 days.
+// This is the whole feature's denominator problem solved: the figures
+// are the real limits, already fetched, already structured, and already
+// timestamped. The first cut of this shelled out to `claude -p
+// "/usage"` and parsed its prose — which worked, but wrote a transcript
+// on every run, and the city is built out of transcripts, so polling it
+// added a parked session to the city each time it asked. Reading a file
+// is passive and costs nothing.
 //
-// A reading that could not be parsed is **absent**, never zero. The
-// output is prose from a tool that can change between versions, and a
-// gauge reading zero because a line moved is worse than a gauge that
-// says it does not know.
-type Limits struct {
-	// Readings are the windows the CLI reported, in the order it
-	// reported them.
-	Readings []Reading
-	// Header records that the CLI answered at all — the one line every
-	// plan prints. Without readings it is what separates "this plan
-	// reports no limits" from "the output was not understood".
-	Header bool
-	// At is when this was read, so the age can be shown beside it. A
-	// cached percentage with no age on it is a number that is right and
-	// means nothing.
-	At time.Time
+// The probe survives for exactly one job: making Claude Code refetch
+// when the user asks for fresh figures. That is rare and explicit,
+// which is the only place it was ever worth its cost.
+type Utilization struct {
+	// FetchedAt is when Claude Code last refreshed these figures, so
+	// the age can be shown beside them. A cached percentage with no age
+	// on it is a number that is right and means nothing.
+	FetchedAt time.Time
+	// Limits is one entry per gauge the plan has. Nothing here is
+	// hardcoded to session-or-week: a plan with a different set
+	// generalises for free.
+	Limits []Limit
+	// Spend is a credit or enterprise plan's monthly cap.
+	Spend Spend
 }
 
-// Reading is one window's usage.
-type Reading struct {
-	// Label is the window as the CLI names it: "session", "week (all
-	// models)", "week (Fable)".
-	Label string
-	// Percent is how much of the limit is spent, 0 to 100.
+// Limit is one window's usage.
+type Limit struct {
+	// Kind and Group name the window: "session", "weekly_all",
+	// "weekly_scoped", grouped as "session" or "weekly".
+	Kind  string
+	Group string
+	// Percent is how much of the limit is spent.
 	Percent float64
-	// Resets is the reset moment, verbatim from the CLI, because the
-	// timezone it prints is the user's own.
-	Resets string
+	// Severity is Claude's own judgement of it — "normal", "critical".
+	// A better signal than the bare number and free with it.
+	Severity string
+	// Model is the model a scoped limit applies to, empty when it
+	// applies to all of them.
+	Model string
+	// ResetsAt is when the window turns over.
+	ResetsAt time.Time
+	// Active is whether this is the limit currently binding.
+	Active bool
 }
 
-// Shape is which kind of plan the CLI described. The limits a plan has
-// decide how many gauges there are, and inventing the missing ones
-// would be the derived-denominator trap: an absent gauge is the honest
-// answer, exactly as an unset budget would be.
+// Spend is a monthly spend cap, in the account's own currency.
+type Spend struct {
+	Enabled    bool
+	Percent    float64
+	Severity   string
+	UsedMinor  int64
+	LimitMinor int64
+	Currency   string
+	Exponent   int
+}
+
+// Used and Limit are the spend in whole currency units.
+func (s Spend) Used() float64 { return minor(s.UsedMinor, s.Exponent) }
+func (s Spend) Cap() float64  { return minor(s.LimitMinor, s.Exponent) }
+func minor(v int64, exp int) float64 {
+	f := float64(v)
+	for i := 0; i < exp; i++ {
+		f /= 10
+	}
+	return f
+}
+
+// Shape is which kind of plan the cache describes.
 type Shape int
 
 const (
-	// ShapeUnknown is output this build does not recognise at all —
-	// not even the header. The format has moved, and the honest thing
-	// to draw is nothing, with a reason.
+	// ShapeUnknown is no readable cache at all: the file is missing,
+	// malformed, or has no utilization in it. Distinct from a plan that
+	// reports no limits, and the distinction matters — one is a fact
+	// about the plan and the other a fact about the reading.
 	ShapeUnknown Shape = iota
-	// ShapeSubscription is percentages over rolling windows: a session
-	// window, a week across all models, and a per-model week.
+	// ShapeSubscription has per-window percentages.
 	ShapeSubscription
-	// ShapeNoLimits is the header and nothing else. Measured on an
-	// enterprise plan running the same Claude Code build that prints
-	// three gauges on a subscription: it reports no percentages, no
-	// resets, no spend and no limit. The monthly spend limit such a
-	// plan has lives in the web console, which a local daemon cannot
-	// reach, and nothing on disk carries it either.
-	//
-	// So there is no authoritative gauge to draw, and that is a fact to
-	// state rather than a hole to fill. A local estimate against a
-	// configured budget is defensible *here specifically*, because it
-	// is the one case where nothing authoritative exists to contradict
-	// it — but it has to be labelled an estimate for this machine.
-	ShapeNoLimits
+	// ShapeSpend has a monthly spend cap instead.
+	ShapeSpend
 )
 
-// usageHeader is the line every plan prints, and the only line an
-// enterprise plan prints.
-const usageHeader = "to power your Claude Code usage"
-
-// Shape reports which plan shape the output came from. The three states
-// are distinguishable from the one command, which is what makes the
-// detection testable rather than inferred.
-func (u Limits) Shape() Shape {
+// Shape reports which plan shape this is.
+func (u Utilization) Shape() Shape {
 	switch {
-	case len(u.Readings) > 0:
+	case len(u.Limits) > 0:
 		return ShapeSubscription
-	case u.Header:
-		return ShapeNoLimits
+	case u.Spend.Enabled:
+		return ShapeSpend
 	}
 	return ShapeUnknown
 }
 
-// Find returns the reading whose label contains all of the given words.
-func (u Limits) Find(words ...string) (Reading, bool) {
-	for _, r := range u.Readings {
-		ok := true
-		for _, w := range words {
-			if !strings.Contains(strings.ToLower(r.Label), strings.ToLower(w)) {
-				ok = false
-				break
-			}
-		}
-		if ok {
-			return r, true
-		}
-	}
-	return Reading{}, false
-}
-
-// Age is how long ago the reading was taken.
-func (u Limits) Age(now time.Time) time.Duration {
-	if u.At.IsZero() {
+// Age is how long ago Claude Code fetched these figures.
+func (u Utilization) Age(now time.Time) time.Duration {
+	if u.FetchedAt.IsZero() {
 		return 0
 	}
-	return now.Sub(u.At)
+	return now.Sub(u.FetchedAt)
 }
 
-// usageLine matches "Current session: 7% used · resets Sep 26, 7:20pm"
-// and "Current week (all models): 20% used · resets ...". The reset
-// clause is optional so a format change there costs the reset time
-// rather than the percentage.
-var usageLine = regexp.MustCompile(`^Current\s+(.+?):\s*([0-9]+(?:\.[0-9]+)?)%\s*used(?:\s*·\s*resets\s*(.*))?$`)
+// the on-disk shape, named so the JSON tags stay out of the model.
+type cachedUsage struct {
+	Cached struct {
+		FetchedAtMs int64 `json:"fetchedAtMs"`
+		Utilization struct {
+			Limits []struct {
+				Kind     string  `json:"kind"`
+				Group    string  `json:"group"`
+				Percent  float64 `json:"percent"`
+				Severity string  `json:"severity"`
+				ResetsAt string  `json:"resets_at"`
+				Active   bool    `json:"is_active"`
+				Scope    *struct {
+					Model *struct {
+						DisplayName string `json:"display_name"`
+					} `json:"model"`
+				} `json:"scope"`
+			} `json:"limits"`
+			Spend *struct {
+				Enabled  bool    `json:"enabled"`
+				Percent  float64 `json:"percent"`
+				Severity string  `json:"severity"`
+				Used     *struct {
+					AmountMinor int64  `json:"amount_minor"`
+					Currency    string `json:"currency"`
+					Exponent    int    `json:"exponent"`
+				} `json:"used"`
+				Limit *struct {
+					AmountMinor int64 `json:"amount_minor"`
+				} `json:"limit"`
+			} `json:"spend"`
+		} `json:"utilization"`
+	} `json:"cachedUsageUtilization"`
+}
 
-// ParseUsage reads the CLI's prose. Lines it does not recognise are
-// skipped rather than guessed at, and a run that yields no readings
-// yields no Usage.
-func ParseLimits(out string, at time.Time) (Limits, bool) {
-	u := Limits{At: at, Header: strings.Contains(out, usageHeader)}
-	scan := bufio.NewScanner(strings.NewReader(out))
-	scan.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for scan.Scan() {
-		m := usageLine.FindStringSubmatch(strings.TrimSpace(scan.Text()))
-		if m == nil {
-			continue
+// ParseUtilization reads the cache out of ~/.claude.json's bytes.
+func ParseUtilization(data []byte) (Utilization, bool) {
+	var raw cachedUsage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return Utilization{}, false
+	}
+	c := raw.Cached
+	out := Utilization{}
+	if c.FetchedAtMs > 0 {
+		out.FetchedAt = time.UnixMilli(c.FetchedAtMs)
+	}
+	for _, l := range c.Utilization.Limits {
+		lim := Limit{Kind: l.Kind, Group: l.Group, Percent: l.Percent, Severity: l.Severity, Active: l.Active}
+		if l.Scope != nil && l.Scope.Model != nil {
+			lim.Model = l.Scope.Model.DisplayName
 		}
-		pct, err := strconv.ParseFloat(m[2], 64)
+		if t, err := time.Parse(time.RFC3339, l.ResetsAt); err == nil {
+			lim.ResetsAt = t
+		}
+		out.Limits = append(out.Limits, lim)
+	}
+	if s := c.Utilization.Spend; s != nil {
+		out.Spend = Spend{Enabled: s.Enabled, Percent: s.Percent, Severity: s.Severity}
+		if s.Used != nil {
+			out.Spend.UsedMinor, out.Spend.Currency, out.Spend.Exponent = s.Used.AmountMinor, s.Used.Currency, s.Used.Exponent
+		}
+		if s.Limit != nil {
+			out.Spend.LimitMinor = s.Limit.AmountMinor
+		}
+	}
+	if len(out.Limits) == 0 && !out.Spend.Enabled && out.FetchedAt.IsZero() {
+		return Utilization{}, false
+	}
+	return out, true
+}
+
+// UtilizationPath is where Claude Code keeps the cache.
+func UtilizationPath(home string) string {
+	if home == "" {
+		h, err := os.UserHomeDir()
 		if err != nil {
-			continue
+			return ".claude.json"
 		}
-		u.Readings = append(u.Readings, Reading{
-			Label:   strings.TrimSpace(m[1]),
-			Percent: pct,
-			Resets:  strings.TrimSpace(m[3]),
-		})
+		home = h
 	}
-	if len(u.Readings) == 0 && !u.Header {
-		return Limits{}, false
-	}
-	return u, true
+	return filepath.Join(home, ".claude.json")
 }
 
-// UsageProbeDir is the working directory the usage probe runs in.
+// ReadUtilization reads the cache off disk. Passive and cheap — no
+// subprocess, no transcript, nothing added to the city.
+func ReadUtilization(home string) (Utilization, bool) {
+	data, err := os.ReadFile(UtilizationPath(home))
+	if err != nil {
+		return Utilization{}, false
+	}
+	return ParseUtilization(data)
+}
+
+// UsageProbeDir is the working directory the refresh probe runs in.
 //
-// It has one job, and it is not tidiness. `claude -p` writes a
-// transcript for every run, and Botropolis builds its city out of
-// transcripts — so a poller running in any ordinary directory adds a
-// parked session to the city on every poll, which is the measurement
-// perturbing the thing measured. Measured: three polls took the city
-// from 22 parked to 25. Running in a directory of its own puts those
-// transcripts in a project of their own, which the loader skips.
+// `claude -p` writes a transcript for every run, and Botropolis builds
+// its city out of transcripts, so a probe running in any ordinary
+// directory adds a parked session to the city — measured at three runs
+// taking the city from 22 parked to 25. Running in a directory of its
+// own puts those transcripts in a project of their own, which the
+// loader skips.
 func UsageProbeDir() string {
 	dir := os.Getenv("XDG_STATE_HOME")
 	if dir == "" {
@@ -178,49 +226,38 @@ func UsageProbeDir() string {
 }
 
 // UsageProbeProject is the project folder Claude Code files the probe's
-// transcripts under: the working directory with every slash and dot
-// turned into a dash, which is how Claude Code names them.
-func UsageProbeProject() string {
-	return ProjectFolder(UsageProbeDir())
-}
+// transcripts under.
+func UsageProbeProject() string { return ProjectFolder(UsageProbeDir()) }
 
 // ProjectFolder is Claude Code's name for a working directory's
 // transcript folder: every character that is not a letter, a digit or a
 // dash becomes a dash.
-//
-// The test helpers had this rule first, validated against real folders,
-// and this started life as a narrower copy that only replaced slashes
-// and dots. Two encodings of one convention is the shape that has cost
-// this project six bugs, so the helpers call this now and there is one.
 func ProjectFolder(dir string) string {
-	var b strings.Builder
+	out := make([]rune, 0, len(dir))
 	for _, r := range dir {
 		switch {
 		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-':
-			b.WriteRune(r)
+			out = append(out, r)
 		default:
-			b.WriteRune('-')
+			out = append(out, '-')
 		}
 	}
-	return b.String()
+	return string(out)
 }
 
-// ReadUsage runs the CLI and parses what it prints. It is slow — about
-// four seconds — so it belongs behind a cache and an explicit refresh,
-// never on a frame.
-func ReadLimits(ctx context.Context, bin string) (Limits, bool) {
+// RefreshUtilization makes Claude Code refetch the figures, by asking
+// it for them. It is slow and it writes a transcript, so it belongs
+// behind an explicit user action and nowhere else. The caller re-reads
+// the file afterwards.
+func RefreshUtilization(ctx context.Context, bin string) bool {
 	dir := UsageProbeDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return Limits{}, false
+		return false
 	}
 	if bin == "" {
 		bin = "claude"
 	}
 	cmd := exec.CommandContext(ctx, bin, "-p", "/usage")
 	cmd.Dir = dir
-	out, err := cmd.Output()
-	if err != nil {
-		return Limits{}, false
-	}
-	return ParseLimits(string(out), time.Now())
+	return cmd.Run() == nil
 }

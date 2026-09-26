@@ -1375,6 +1375,20 @@ The fix is that the probe runs in a directory of its own — `<state>/botropolis
 **Shape A is parsed, shape B falls through visibly.** `ParseLimits` reads the percentage lines and `Limits.Shape()` reports `ShapeSubscription`; anything it does not recognise, including a credit plan's spend line, is `ShapeUnknown` with no readings — absent rather than zero. The regex tolerates a missing reset clause so a change there costs the reset time and not the percentage.
 
 **Still to build:** the cache with its age, the refresh, and the boats themselves — including the three questions that are still open (the reading inverting at 180°, three boats colliding on one axis, and the river already meaning arrivals and departures).
+
+**Built on the file, not the CLI. 2026-09-26.**
+
+`~/.claude.json` carries `cachedUsageUtilization`: `utilization.limits[]` with `kind`, `group`, `percent`, `severity`, `resets_at`, `scope` and `is_active`, plus a `spend` block and `fetchedAtMs`. Verified on this machine. That is strictly better than parsing the CLI's prose on every count — structured instead of prose, timestamped instead of needing bookkeeping, and **passive**, so the transcript pollution stops being a problem to fence and becomes a problem that does not arise.
+
+I doubted the shape before I checked it properly and was wrong: my first dump truncated before reaching `limits`, and I nearly reported the finding as mistaken. The second look settled it.
+
+**The probe survives for one job.** Reading the cache is free, so the boats follow whatever Claude Code last fetched with no schedule at all. `u` runs the fenced probe to make it refetch and then re-reads. That is the only place the probe's cost was ever worth paying, and it keeps the loader guard earning its place.
+
+**Nothing is keyed to session-or-week.** The boats are built from whatever windows the cache names. Ordering is the only judgement: a limit scoped to one model sorts last because it is the narrowest claim, then the longer window before the shorter, then the fuller reading first. On this account that gives the week across all models big, the session medium, and the Fable week small — which is the ordering that was asked for, arrived at generically rather than hardcoded. A plan with a different set generalises; a spend-capped plan floats one boat and says the money.
+
+**Three shapes still, now on fields rather than lines:** `limits` non-empty is a subscription, `spend.enabled` is a spend plan, neither is unreadable. A missing or malformed cache stays distinct from a plan that reports nothing.
+
+**Still to do:** the river is one cell wide, so a 0% boat and a 21% boat sit about six world units apart and the reading is hard to see — Aria offered to widen it and the frame says she was right. The lanes are drawn but too faint to read at that width. And the view key does not yet name the boats against the tugs.
 ### 49a. What the usage numbers actually are, measured (2026-09-26)
 
 Aria sent `/usage` from Claude Code and the same panel from the desktop UI, and asked for research.

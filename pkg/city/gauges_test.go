@@ -1,6 +1,7 @@
 package city_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -13,16 +14,13 @@ import (
 // Item 49. Three boats on the river, one per limit the plan actually
 // has. A limit that does not exist gets no boat.
 
-func subscription(t *testing.T) claude.Limits {
+func subscription(t *testing.T) claude.Utilization {
 	t.Helper()
-	l, ok := claude.ParseLimits(
-		"You are currently using your subscription to power your Claude Code usage\n"+
-			"Current session: 7% used · resets Sep 26, 7:20pm (America/Denver)\n"+
-			"Current week (all models): 20% used · resets Sep 29, 7am (America/Denver)\n"+
-			"Current week (Fable): 0% used · resets Sep 29, 7am (America/Denver)\n",
-		time.Now())
+	data, err := os.ReadFile("../claude/testdata/utilization-subscription.json")
+	require.NoError(t, err)
+	u, ok := claude.ParseUtilization(data)
 	require.True(t, ok)
-	return l
+	return u
 }
 
 func TestGauges(t *testing.T) {
@@ -38,7 +36,7 @@ func TestGauges(t *testing.T) {
 		})
 
 		t.Run("it should read that week's percentage", func(t *testing.T) {
-			assert.Equal(t, 20.0, g[0].Percent)
+			assert.Equal(t, 21.0, g[0].Percent)
 		})
 
 		t.Run("it should name the per-model week by its model", func(t *testing.T) {
@@ -47,6 +45,10 @@ func TestGauges(t *testing.T) {
 
 		t.Run("it should keep a boat at zero, because zero is a reading", func(t *testing.T) {
 			assert.Zero(t, g[2].Percent)
+		})
+
+		t.Run("it should say so on the card rather than showing a dash", func(t *testing.T) {
+			assert.Contains(t, city.GaugeCard(g[2], 0).Lines[0], "0%")
 		})
 	})
 
@@ -65,11 +67,28 @@ func TestGauges(t *testing.T) {
 	})
 
 	t.Run("when the plan reports no limits at all", func(t *testing.T) {
-		l, ok := claude.ParseLimits("You are currently using your subscription to power your Claude Code usage\n", time.Now())
-		require.True(t, ok)
-
 		t.Run("it should float no boats rather than three at zero", func(t *testing.T) {
-			assert.Empty(t, city.Gauges(l))
+			assert.Empty(t, city.Gauges(claude.Utilization{}))
+		})
+	})
+
+	t.Run("when the plan caps monthly spend instead", func(t *testing.T) {
+		data, err := os.ReadFile("../claude/testdata/utilization-spend.json")
+		require.NoError(t, err)
+		u, ok := claude.ParseUtilization(data)
+		require.True(t, ok)
+		boats := city.Gauges(u)
+
+		t.Run("it should float one boat, because the plan has one limit", func(t *testing.T) {
+			assert.Len(t, boats, 1)
+		})
+
+		t.Run("it should read the account's own percentage", func(t *testing.T) {
+			assert.Equal(t, 97.0, boats[0].Percent)
+		})
+
+		t.Run("it should say the money on the card", func(t *testing.T) {
+			assert.Contains(t, city.GaugeCard(boats[0], 0).Lines[1], "484")
 		})
 	})
 }
@@ -83,16 +102,20 @@ func TestGaugeCard(t *testing.T) {
 			assert.Contains(t, card.Title, "this week, every model")
 		})
 
-		t.Run("it should say when the window turns over", func(t *testing.T) {
-			assert.Contains(t, card.Lines[1], "Sep 29")
+		t.Run("it should say how long until the window turns over", func(t *testing.T) {
+			assert.Contains(t, card.Lines[1], "in ")
 		})
 
 		t.Run("it should say how old the reading is, because it is cached", func(t *testing.T) {
 			assert.Contains(t, card.Lines[2], "ago")
 		})
 
-		t.Run("it should say how to get a fresh one", func(t *testing.T) {
-			assert.Contains(t, card.Lines[2], "refresh")
+		t.Run("it should say how to get a fresh one, naming the key that does it", func(t *testing.T) {
+			assert.Contains(t, card.Lines[2], city.RefreshKey+" to refresh")
+		})
+
+		t.Run("it should print the reading as a percentage", func(t *testing.T) {
+			assert.Contains(t, card.Lines[0], "21%")
 		})
 	})
 }

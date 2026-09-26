@@ -131,8 +131,12 @@ type Hit struct {
 	Worker   *Building
 	Subagent *Building
 	Smoke    *Building
-	Car      *CarHit
-	Flag     *FlagHit
+	// Gauge is a usage boat on the river. It carries its reading rather
+	// than pointing at something else, because the reading is a moment
+	// in time and the boat is the only place it lives. Item 49.
+	Gauge *GaugeHit
+	Car   *CarHit
+	Flag  *FlagHit
 }
 
 // CarHit is one car and the road it is driving, so it can name the pair
