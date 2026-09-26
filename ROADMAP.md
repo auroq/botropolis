@@ -1191,7 +1191,7 @@ The braces are gone, the support band with them, and the flashing plate is gone 
 Kept from bug 46: only the near half of anything wrapping the pipe is drawn, and every measurement comes from the rect `kitThrough` returns, so the curb scales with the sprite.
 
 **Aria's second complaint was a straight defect and it is worth keeping the lesson.** The guys ran to a band drawn as an arc, and the arc did not visibly land, so they read as wires passing near the chimney rather than bearing on it. A thing drawn to prove a connection argues against itself if it does not make the connection at both ends — which is the same failure as a label that does not match its behaviour, in a different medium.
-### 46b. The curb is a half circle, and a ring round a cylinder is not (Aria, 2026-09-26, on r228)
+### 46b. ~~The curb is a half circle, and a ring round a cylinder is not~~ Done 2026-09-26 (r230)
 
 Her words: *"It overlaps the other things on the roof. The brace doesn't actually touch the bottom of the chimney, the chimney itself still is cut as a line not an elipse, the brace doesn't wrap around to show it goes behind the chimney, it cuts at exactly a half circle making it look disjointed."*
 
@@ -1217,6 +1217,18 @@ It is too wide. R = 1.32r keeps it clear of them and is also the value the arc m
 
 Keep what is already right: only the near arc of anything wrapping the pipe is drawn, and the curb is low and at the base.
 
+
+**Done. Frame `docs/screenshots/r230-chimney-curb-arc.png`, r228's curb beside this one.**
+
+**The visible arc is not computed.** The ring is drawn whole, the stack is drawn over it, and the near half of the curb's top goes down last. The 98° that really is hidden falls out of that ordering. Computing the arc would have been a second expression of the same fact, free to disagree with the first — `ui.HiddenArc` exists only so the premise can be asserted in a test, not so the drawing can consult it.
+
+**The fourth fault had a unit error behind it, and measuring settled it.** `chimney-medium` is 87 px wide in the z2 cut, but the *pipe where the roof cuts it* is **63 px** — the sprite's width is set by the flared rim at the top, not by the pipe at the bottom. The curb was sized against the sprite's half-width, so it was **38% too wide**, which is why it covered the roof's fixtures. `StackPipeShare` is 63/87 and the 1.32 is applied to the pipe, which against the sprite works out at 0.956 — narrower than the sprite, where 1.15 of it had been wider. Both "1.32" and "too wide" were right, in different units. Same family as reading an atlas cell as a city tile.
+
+**The curb's height is bounded at both ends rather than chosen.** Its top surface has to straddle the cut: if the inner rim sits below it, the sprite's straight edge shows above; if the outer rim sits above it, the straight edge shows below. That puts the height between `r/2` and `R/2`, and the build takes the middle. Both bounds are asserted.
+
+**The bottom line is the curb's inner rim**, which is the stack's own radius — so the curb meets the wall with no gap, and the thing that closes fault 3 is the same thing that closes fault 2.
+
+`kitThroughPlace` was split out of `kitThrough` because the curb goes down partly before the stack and partly after, so it needs the rect in advance. One placement expression, two readers.
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:

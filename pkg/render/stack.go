@@ -11,28 +11,34 @@ import (
 	"github.com/auroq/botropolis/pkg/ui"
 )
 
-// Bug 46a. The stack passes through the roof rather than resting on it,
-// and a low curb round the opening is what says so.
+// Bug 46b. The stack passes through the roof, and a low curb round the
+// opening is what says so.
 //
-// The curb is drawn after the stack and measured entirely from the rect
-// the stack was drawn into, so it scales with the sprite instead of
-// drifting off the join at some zoom.
+// The curb goes down in two passes with the stack between them, and
+// that ordering is the whole trick. The ring is wider than the stack,
+// so it wraps past the horizontal diameter and its ends run behind the
+// stack's silhouette — 262° of it is visible at this radius, not 180°.
+// Drawing the ring whole and letting the stack cover what it covers
+// gets that for nothing; computing the visible arc would be a second
+// expression of the same fact, free to disagree with the first.
 var (
-	colorStackCurb = color.NRGBA{0x5b, 0x5f, 0x67, 0xff}
-	colorStackCap  = color.NRGBA{0x9a, 0x9f, 0xa8, 0xff}
-	colorStackRim  = color.NRGBA{0x3c, 0x40, 0x47, 0xff}
+	colorStackCurb = color.NRGBA{0x54, 0x58, 0x60, 0xff}
+	colorStackTop  = color.NRGBA{0x71, 0x76, 0x7e, 0xff}
+	colorStackRim  = color.NRGBA{0x3a, 0x3e, 0x45, 0xff}
 )
 
-// nearArc walks the near half of an ellipse — the half that bulges
-// towards the viewer, which is the only half of a ring round a pipe
-// that is not hidden by the pipe itself. It runs left to right.
-func nearArc(box city.Rect, steps int) []city.Point {
+const arcSteps = 28
+
+// arc walks an ellipse from one angle to another. Angles run
+// anticlockwise on screen from the ellipse's right-hand end, so
+// [0, π] is the near half and [π, 2π] the far half.
+func arc(box city.Rect, from, to float64) []city.Point {
 	cx, cy := box.Center().X, box.Center().Y
 	rx, ry := box.Width()/2, box.Height()/2
-	out := make([]city.Point, 0, steps+1)
-	for i := 0; i <= steps; i++ {
-		t := math.Pi * float64(i) / float64(steps)
-		out = append(out, city.Point{X: cx - rx*math.Cos(t), Y: cy + ry*math.Sin(t)})
+	out := make([]city.Point, 0, arcSteps+1)
+	for i := 0; i <= arcSteps; i++ {
+		t := from + (to-from)*float64(i)/arcSteps
+		out = append(out, city.Point{X: cx + rx*math.Cos(t), Y: cy + ry*math.Sin(t)})
 	}
 	return out
 }
@@ -64,42 +70,40 @@ func strokePoints(screen *ebiten.Image, points []city.Point, width float32, c co
 	vector.StrokePath(screen, &path, &vector.StrokeOptions{Width: width}, op)
 }
 
-// reversed is a near arc walked the other way, for closing a band.
-func reversed(points []city.Point) []city.Point {
-	out := make([]city.Point, len(points))
-	for i, p := range points {
-		out[len(points)-1-i] = p
-	}
-	return out
+// curbBehind draws the whole ring: the cylinder's silhouette, bounded
+// above by the top ellipse's far arc and below by the foot ellipse's
+// near arc. The stack goes over it next and takes out the 98° that
+// really is hidden.
+func (g *Game) curbBehind(screen *ebiten.Image, f ui.StackFittings, hair float32) {
+	silhouette := append(arc(f.OuterTop, math.Pi, 2*math.Pi), arc(f.OuterFoot, 0, math.Pi)...)
+	fillPoints(screen, silhouette, colorStackCurb)
+	strokePoints(screen, arc(f.OuterFoot, 0, math.Pi), hair, colorStackRim)
 }
 
-// stackFittings draws the curb on a stack that has been cut off at the
-// roof plane.
-//
-// Only the near half of the curb is drawn. The far half is behind the
-// pipe, and the near half is in front of it, so the band between the
-// two near arcs is both the curb's visible wall and the thing that
-// hides where the sprite was cut. Its lower edge is the ellipse the
-// cylinder really meets the roof on, which is the whole point.
-func (g *Game) stackFittings(screen *ebiten.Image, stack city.Rect) {
-	if stack.Area() == 0 {
-		return
-	}
-	f, ok := ui.LayoutStackFittings(stack, stack.Max.Y)
-	if !ok {
-		return
-	}
-	const steps = 20
-	top := nearArc(f.Top, steps)
-	foot := nearArc(f.Foot, steps)
+// curbFront draws the near half of the curb's top surface: the annulus
+// between its outer and inner rims. This is what hides the sprite's
+// straight cut, and its inner edge — the stack's own radius, so there
+// is no gap at the wall — is the stack's visible bottom line.
+func (g *Game) curbFront(screen *ebiten.Image, f ui.StackFittings) {
+	annulus := append(arc(f.OuterTop, math.Pi, 0), arc(f.InnerTop, 0, math.Pi)...)
+	fillPoints(screen, annulus, colorStackTop)
+}
 
-	// The wall: down the near face of the curb, from its top rim to the
-	// roof line.
-	fillPoints(screen, append(append([]city.Point{}, top...), reversed(foot)...), colorStackCurb)
-	// The top rim catches the light; the foot is the flashing, a narrow
-	// darker rim rather than the pale plate this used to sit in like a
-	// jar in a dish.
-	hair := float32(math.Max(1, stack.Width()*0.05))
-	strokePoints(screen, top, hair, colorStackCap)
-	strokePoints(screen, foot, hair, colorStackRim)
+// stackThrough draws a stack rising through a roof, curb and all: the
+// ring behind, the stack, then the ring's near top over the cut.
+func (g *Game) stackThrough(screen *ebiten.Image, cam *city.Camera, name string, at city.Point, cut float64) city.Rect {
+	page, src, origin, scale, rect, ok := g.kitThroughPlace(cam, name, at, cut)
+	if !ok {
+		return city.Rect{}
+	}
+	f, laid := ui.LayoutStackFittings(rect, rect.Max.Y)
+	hair := float32(math.Max(1, rect.Width()*0.035))
+	if laid {
+		g.curbBehind(screen, f, hair)
+	}
+	g.drawSprite(screen, page.SubImage(src).(*ebiten.Image), origin, scale, nil)
+	if laid {
+		g.curbFront(screen, f)
+	}
+	return rect
 }

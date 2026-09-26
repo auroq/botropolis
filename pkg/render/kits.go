@@ -111,29 +111,42 @@ func (g *Game) kitLifted(screen *ebiten.Image, cam *city.Camera, name string, tu
 // roof. The piece stands on the building's floor, which is why the cut
 // and the lift are the same number.
 func (g *Game) kitThrough(screen *ebiten.Image, cam *city.Camera, name string, at city.Point, cut float64, tint *ebiten.ColorScale) city.Rect {
-	if g.kits == nil || cut <= 0 {
+	page, src, origin, scale, rect, ok := g.kitThroughPlace(cam, name, at, cut)
+	if !ok {
 		return city.Rect{}
+	}
+	g.drawSprite(screen, page.SubImage(src).(*ebiten.Image), origin, scale, tint)
+	return rect
+}
+
+// kitThroughPlace works out where kitThrough would draw, without
+// drawing. The curb at the join has to go down partly before the stack
+// and partly after it, so it needs the stack's rect in advance — and
+// this is the one expression both of them read, rather than a second
+// copy of the placement to drift out of step.
+func (g *Game) kitThroughPlace(cam *city.Camera, name string, at city.Point, cut float64) (page *ebiten.Image, src image.Rectangle, origin city.Point, scale float64, rect city.Rect, ok bool) {
+	if g.kits == nil || cut <= 0 {
+		return nil, image.Rectangle{}, city.Point{}, 0, city.Rect{}, false
 	}
 	atlas := g.kits.pick(cam.Zoom)
 	if atlas == nil {
-		return city.Rect{}
+		return nil, image.Rectangle{}, city.Point{}, 0, city.Rect{}, false
 	}
-	sprite, ok := atlas.Sprite(name, cam.Heading)
-	if !ok || sprite.Page >= len(atlas.pages) {
-		return city.Rect{}
+	sprite, found := atlas.Sprite(name, cam.Heading)
+	if !found || sprite.Page >= len(atlas.pages) {
+		return nil, image.Rectangle{}, city.Point{}, 0, city.Rect{}, false
 	}
-	scale := cam.Zoom / atlas.Zoom
+	scale = cam.Zoom / atlas.Zoom
 	hidden := sunkRows(cut, scale, float64(sprite.Rect.Dy()), float64(sprite.Anchor.Y))
-	shown := sprite.Rect
-	shown.Max.Y -= int(hidden + 0.5)
-	if shown.Dy() <= 0 {
-		return city.Rect{}
+	src = sprite.Rect
+	src.Max.Y -= int(hidden + 0.5)
+	if src.Dy() <= 0 {
+		return nil, image.Rectangle{}, city.Point{}, 0, city.Rect{}, false
 	}
 	foot := cam.WorldToScreen(at)
-	origin := city.Point{X: foot.X - float64(sprite.Anchor.X)*scale, Y: foot.Y - float64(sprite.Anchor.Y)*scale}
-	img := atlas.pages[sprite.Page].SubImage(shown).(*ebiten.Image)
-	g.drawSprite(screen, img, origin, scale, tint)
-	return city.RectAt(origin.X, origin.Y, float64(shown.Dx())*scale, float64(shown.Dy())*scale)
+	origin = city.Point{X: foot.X - float64(sprite.Anchor.X)*scale, Y: foot.Y - float64(sprite.Anchor.Y)*scale}
+	rect = city.RectAt(origin.X, origin.Y, float64(src.Dx())*scale, float64(src.Dy())*scale)
+	return atlas.pages[sprite.Page], src, origin, scale, rect, true
 }
 
 // kitFootprint is a piece's footprint in world units, for standing

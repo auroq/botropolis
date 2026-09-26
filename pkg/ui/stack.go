@@ -1,48 +1,67 @@
 package ui
 
-import "github.com/auroq/botropolis/pkg/city"
+import (
+	"math"
 
-// StackFittings is what a flue carries where it passes through a flat
-// roof. Bugs 46 and 46a.
+	"github.com/auroq/botropolis/pkg/city"
+)
+
+// StackFittings is the curb where a flue passes through a flat roof:
+// a low ring round the opening that the roofing turns up against.
+// Bugs 46, 46a and 46b.
 //
-// A cylinder meeting a horizontal plane intersects it in a circle, and
-// a circle on the ground plane of a 2:1 projection is an ellipse as
-// wide as the stack and half as tall. The visible bottom boundary of
-// the stack is the near half of that ellipse, bulging downward. What
-// was drawn before bug 46 was the sprite's own bottom edge, straight
-// across — and a straight line is the one shape that intersection
-// cannot be, which is why it read as two sprites stacked.
+// The geometry, which is the whole of it. A cylinder meeting a
+// horizontal plane intersects it in a circle, and a circle on the
+// ground plane of a 2:1 projection is an ellipse as wide as the stack
+// and half as tall. So the stack's visible bottom boundary is an arc
+// bulging downward, and the sprite's own straight bottom edge is the
+// one shape it cannot be.
 //
-// The fitting that belongs here is a **curb**: a low ring round the
-// opening, a little wider than the stack, that the roofing turns up
-// against. Bug 46 built a support band at two thirds height with guy
-// braces to the roof instead, which is the detail for a *tall
-// free-standing* metal flue and not for a short stack on a flat roof.
-// It was excessive, it reached almost to the top, and the guys did not
-// visibly land on anything — and a thing drawn to prove a connection
-// argues against itself if it does not make the connection at both
-// ends.
-//
-// Only the near half of the ring is described, because that is all
-// there is to see: the far half is behind the pipe.
+// A ring of radius R round a stack of radius r is hidden only where it
+// passes behind the stack, which is 2·asin(r/R) — at R = 1.32r that is
+// 98°, leaving 262° visible. It wraps well past the horizontal diameter
+// and its ends disappear behind the stack's silhouette rather than
+// stopping in mid air, which is what made the first curb read as a
+// detached crescent. None of that is computed here: the ring is drawn
+// whole and the stack is drawn over it, so the occlusion falls out of
+// the ordering.
 type StackFittings struct {
-	// Foot is the ellipse where the stack meets the roof — the round
-	// bottom line — and Top the ellipse at the top of the curb. The
-	// curb's visible side is the band between their near arcs.
-	Foot city.Rect
-	Top  city.Rect
+	// OuterFoot is the ring's outer ellipse where it meets the roof,
+	// and OuterTop the same ellipse at the top of the curb. The curb's
+	// visible wall is the silhouette between them.
+	OuterFoot city.Rect
+	OuterTop  city.Rect
+	// InnerTop is the ring's inner ellipse at the top of the curb. Its
+	// near arc is the stack's new bottom line, and it is the stack's
+	// own radius, so the curb meets the wall with no gap.
+	InnerTop city.Rect
 }
 
 const (
-	// stackCurb is the curb's radius as a multiple of the stack's: a
-	// little wider, enough to read as a ring the stack stands in rather
-	// than a collar clamped to it.
-	stackCurb = 1.15
-	// stackCurbHeight is the curb's height as a share of the stack's
-	// visible height. A curb is low — this is the "something small at
-	// the base" that a roof penetration actually has.
-	stackCurbHeight = 0.12
+	// StackPipeShare is how much of the chimney sprite's width is
+	// actually pipe where the roof cuts it. Measured off
+	// chimney-medium in the z2 cut: the sprite is 87 px wide and the
+	// pipe at the cut row is 63.
+	//
+	// This is the unit that the first curb got wrong. A curb sized
+	// against the *sprite's* half-width is 38% too wide, because the
+	// sprite's width is set by the flared rim at the top, not by the
+	// pipe at the bottom — which is why it covered the roof's other
+	// fixtures. Same family as reading an atlas cell as a city tile.
+	StackPipeShare = 63.0 / 87.0
+	// StackCurbRatio is the curb's radius against the pipe's.
+	StackCurbRatio = 1.32
 )
+
+// HiddenArc is how much of a ring of radius R round a stack of radius r
+// passes behind the stack, in radians. Exported so the drawing's
+// premise can be asserted rather than described.
+func HiddenArc(r, outer float64) float64 {
+	if outer < r || outer == 0 {
+		return 0
+	}
+	return 2 * math.Asin(r/outer)
+}
 
 // ellipseAt is the bounding box of a circle of radius r about a centre,
 // laid on the ground plane: as wide as the circle and half as tall.
@@ -53,18 +72,26 @@ func ellipseAt(cx, cy, r float64) city.Rect {
 // LayoutStackFittings places the curb on a stack drawn into the given
 // screen rect, whose foot has been cut off at the roof plane.
 //
-// Every measurement is taken from that rect, so the curb scales with
-// the sprite exactly rather than drifting off the join at some zoom.
-// There is no size threshold: a curb is a filled shape and survives
-// being small, which a hairline diagonal did not.
+// The curb's height is bounded at both ends by the geometry rather than
+// chosen. Its top surface has to straddle the cut: if the inner rim
+// sits below the cut the sprite's straight edge shows above it, and if
+// the outer rim sits above the cut the straight edge shows below it.
+// That puts the height between r/2 and R/2, and this takes the middle.
+//
+// There is no zoom term. A filled ring survives being small, which the
+// hairline guy braces this replaced did not.
 func LayoutStackFittings(stack city.Rect, roof float64) (StackFittings, bool) {
 	if stack.Width() <= 0 || stack.Height() <= 0 {
 		return StackFittings{}, false
 	}
-	r := stack.Width() / 2 * stackCurb
 	cx := stack.Center().X
+	r := stack.Width() / 2 * StackPipeShare
+	outer := r * StackCurbRatio
+	height := (r + outer) / 4
+	top := roof - height
 	return StackFittings{
-		Foot: ellipseAt(cx, roof, r),
-		Top:  ellipseAt(cx, roof-stack.Height()*stackCurbHeight, r),
+		OuterFoot: ellipseAt(cx, roof, outer),
+		OuterTop:  ellipseAt(cx, top, outer),
+		InnerTop:  ellipseAt(cx, top, r),
 	}, true
 }

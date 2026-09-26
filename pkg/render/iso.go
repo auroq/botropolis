@@ -648,7 +648,7 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 			// edge: the flashing's near rim is what makes the join a
 			// curve instead of the straight line a cylinder cannot
 			// meet a roof on. Bug 46.
-			g.stackFittings(screen, g.kitThrough(screen, cam, kitStack, perch, roof, nil))
+			g.stackThrough(screen, cam, kitStack, perch, roof)
 		}))
 	}
 	// A project's sign is an object on the ground, so it sorts with
