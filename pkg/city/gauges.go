@@ -34,12 +34,17 @@ type Gauge struct {
 	// Spend is set on a boat that measures money rather than a share of
 	// a window.
 	Spend *claude.Spend
-	// Phase is where along the river the boat sits, 0 at one end and 1
-	// at the other. It is fixed per gauge rather than driven by the
-	// window's progress: the two weekly limits share a window, so
-	// anything derived from the window would stack them permanently and
-	// they would collide exactly when their readings converged.
-	Phase float64
+	// Lane is which channel across the river the boat holds, counted
+	// from one bank. Bug 52: the boat's position *along* the river is
+	// now the reading itself, so the separation that stops two boats
+	// stacking had to move to the other axis. That is also what Aria
+	// asked for in as many words — "spread out left to right as well".
+	//
+	// Fixed per gauge rather than derived from the window: the two
+	// weekly limits share a window, so anything driven by the window
+	// would stack them permanently, and they would collide exactly when
+	// their readings converged and comparison mattered most.
+	Lane int
 }
 
 // GaugeSize is how big a boat is drawn.
@@ -81,7 +86,7 @@ func Gauges(u claude.Utilization) []Gauge {
 			Resets:   resetsIn(l.ResetsAt),
 			Severity: l.Severity,
 			Size:     sizeFor(i),
-			Phase:    phaseFor(i),
+			Lane:     i,
 		})
 	}
 	if len(out) == 0 && u.Spend.Enabled {
@@ -91,7 +96,7 @@ func Gauges(u claude.Utilization) []Gauge {
 			Resets:   "",
 			Severity: u.Spend.Severity,
 			Size:     GaugeBig,
-			Phase:    phaseFor(0),
+			Lane:     0,
 			Spend:    &u.Spend,
 		})
 	}
@@ -146,28 +151,15 @@ func resetsIn(at time.Time) string {
 	return "in " + format.Age(d)
 }
 
-// The boats' berths and sizes by position, so however many limits a
-// plan has they are spaced apart and ordered by how much they matter.
-var (
-	gaugeSizes  = [3]GaugeSize{GaugeBig, GaugeMedium, GaugeSmall}
-	gaugePhases = [3]float64{0.22, 0.52, 0.82}
-)
+// The boats' sizes by position, so however many limits a plan has they
+// are ordered by how much the reading matters.
+var gaugeSizes = [3]GaugeSize{GaugeBig, GaugeMedium, GaugeSmall}
 
 func sizeFor(i int) GaugeSize {
 	if i < len(gaugeSizes) {
 		return gaugeSizes[i]
 	}
 	return GaugeSmall
-}
-
-// phaseFor spaces boats along the river. Beyond the three we expect
-// they keep subdividing rather than stacking, because two boats sharing
-// a stretch is the one thing the berths exist to prevent.
-func phaseFor(i int) float64 {
-	if i < len(gaugePhases) {
-		return gaugePhases[i]
-	}
-	return 0.1 + 0.8*float64(i%9)/9
 }
 
 // RefreshKey is the key that asks Claude Code for fresh figures. The

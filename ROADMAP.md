@@ -1635,7 +1635,7 @@ So size is now stated as a target extent and the scale is worked back from the a
 **The tug question is answered and the answer is yes.** At `MinZoom` the four hulls draw at 20×17 (tug), 16×18 (liner), 12×7 (cargo) and 6×7 (sail). The tug is the *largest* and the only bright orange one; the sail is the smallest and the only one with a mast. Colour separates them before silhouette has to. Frame `docs/screenshots/r252-hulls-at-min-zoom.png` is the four at true size.
 
 **No atlas pieces were dropped.** The swap was offered to pay for these, but z2 came out at 7 pages of 8 with all five new pieces in, so nothing had to go — and whether the 25 unnamed pieces are a reserve or an oversight is still Aria's call rather than a thing to settle in passing.
-### 52. The gauge axes are swapped, and that was my misreading from the start (Aria, 2026-09-26, on r252)
+### 52. ~~The gauge axes are swapped, and that was my misreading from the start~~ Done 2026-09-26 (r254)
 
 Her words: *"I'm confused by the boat placement. Where is 0% and 100%? The boats should be going bottom to top and face that direction. They shouldn't all be in the same line. They should be spread out left to right as well."*
 
@@ -1658,6 +1658,45 @@ It is why "where is 0% and 100%" has no answer on the frame: the reading runs ac
 **What survives.** The two-cell river is still needed, now for three lanes rather than for resolution. The hulls, the buoy objects, the rank-to-hull mapping, reading `cachedUsageUtilization` off disk, and the view key naming boats against tugs are all unaffected.
 
 **What this costs:** the boats stop travelling. Their along-river position is the reading, so they hold station. That is what a gauge should do, and the ambience was mine rather than hers.
+
+**Built. The swap is right, but the quote it was argued from is not the one that settles it.**
+
+The original ask is genuinely ambiguous and reading it as travel-plus-an-offset was one of two available readings, not a misreading.
+*"runs from one end of the river to the other"* and *"bottom of the window is 0%"* are two sentences, and the second says **window**, not river.
+What settles it is the new quote: *"The boats should be going bottom to top **and face that direction**."*
+A boat faces the way it travels, so asking for the facing to align with the reading only means anything if the reading axis is the direction of travel.
+That sentence can only be read one way, which is why it is the one cited in the code.
+
+**"Bottom to top" is a 2:1 diagonal, and no amount of care makes it vertical.**
+The along-river axis travels 1.375 px horizontally for every 0.688 vertically.
+There is no vertical axis in the map plane, so up-screen is the best that exists; the reading does rise at every heading, at about 27°.
+
+**The per-heading rule was necessary, confirmed by measurement.**
+World north projects UP at headings 0 and 270 and DOWN at 90 and 180, so a gauge nailed to one end would run backwards at half the headings.
+`gaugeUpstream` picks the end per heading and `gaugeFacing` turns the hull to match — 0 at headings 0 and 270, 180 at 90 and 180.
+
+**The bow direction is art, so it was measured rather than assumed.**
+The cargo ship's bridge is its stern, which reads unambiguously at all four cut rotations: bow right at 0, bottom-right at 90, left at 180, top-left at 270.
+Checked against the projection at each heading, the only world direction consistent with all four is north, so `bowHome` is north and `bowTurn` maps a direction to a rotation.
+
+**The two-cell river did not survive, and the reason it was two no longer existed.**
+It was two cells because the reading ran *across* it and the spread had to stay legible at MinZoom — a derivation that the swap deletes entirely.
+Measured off the cut sprites at z1 the beams are 47.7, 19.8 and 17.2 world units, and three lanes give a spacing of `(width - widest) / 2`.
+Two cells give 24.1 against the 33.8 the big boat beside the medium one needs: the liner overlaps the cargo ship by nearly ten units at **every** zoom and heading, permanently, which is worse than the bug being fixed.
+Three cells give 48.1, clearing by 14.4 units — 22 px at zoom 1 and 5.5 px at MinZoom.
+Aria had pre-authorised exactly this: *"We can make the river wider if needed to fit 3 boats."*
+
+**`TestRiverFitsThreeHullsAbreast` re-derives the beams from the atlas rather than restating them**, so the river width and the hull sizes cannot drift apart.
+It is the test that caught the two-cell overlap, with the same numbers worked out by hand beforehand — the first time in this project that this class of mismatch was caught by a test instead of by Aria looking at a frame.
+
+**Widening cost nothing elsewhere**, because the rail loop's east corner and the belts were derived from `RiverCols` when it last changed. The whole suite passed untouched.
+
+**`kitSized` gained a turn**, since nothing in the gauge path could rotate a piece before; `kitScaled` took the same parameter so the family stays consistent.
+
+**Frames.** `docs/screenshots/r254-gauge-axes-four-headings.png` is the river at all four headings, bows up-river at each.
+`docs/screenshots/r254-gauge-lanes-abreast.png` is the case the lanes exist for: readings forced to 61/58/55 through a temporary `--home`, where the three ride abreast instead of stacking. The live account reads 22/11/0, which never exercises it.
+
+**Also removed:** `kitThrough`, dead since `stackThrough` moved to `kitThroughPlace` in r230 and failing the lint gate on main.
 
 ### Worth knowing, not bugs
 

@@ -4,103 +4,179 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"context"
+	"math"
 	"time"
 
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/claude"
+	"github.com/auroq/botropolis/pkg/ui"
 )
 
-// The usage gauges: boats on the river whose distance across it is the
-// share of a limit already spent. Item 49.
-
-// gaugeAcross is the direction across the river that reads as "more":
-// whichever of the two points up the screen at this heading.
+// The usage gauges: boats on the river. Item 49, axes corrected by bug
+// 52.
 //
-// The reading must not invert when the camera turns, and the river runs
-// down the east side, so an offset fixed in world coordinates reads
-// backwards from the other two headings — the near bank becomes the far
-// bank. Choosing by where the direction lands on screen keeps "up is
-// more" true at all four while keeping the boat on the water, which an
-// offset defined purely in screen space would not.
-func gaugeAcross(cam *city.Camera) city.Point {
-	east := city.Point{X: 1}
-	west := city.Point{X: -1}
-	up, down := cam.Project(east), cam.Project(west)
-	if up.Y != down.Y {
-		if up.Y < down.Y {
-			return east
-		}
-		return west
+// The percentage is read ALONG the river — one end 0%, the other 100%,
+// bow pointing at 100% — and the three boats are held apart ACROSS it,
+// a lane each. Aria: "The boats should be going bottom to top and face
+// that direction. They shouldn't all be in the same line. They should
+// be spread out left to right as well."
+//
+// Item 49 had these the other way round, which is why "where is 0% and
+// 100%?" had no answer on the frame: the reading ran across a river two
+// cells wide, the shortest dimension available, while the long axis
+// carried nothing at all. On this axis the resolution problem that
+// forced the widening stops existing — a 25% step is tens of cells
+// rather than tens of pixels — and the boats stop travelling, because
+// their position along the river IS the reading. A gauge that drifts
+// cannot be read.
+
+// bowHome is the world direction a hull's bow points when it is drawn
+// untigirned, which is a fact about the models rather than a choice.
+//
+// Measured off the atlas rather than assumed. The cargo ship's bridge
+// is at its stern, which reads unambiguously at all four cut
+// rotations: bow right at 0, bottom-right at 90, left at 180, top-left
+// at 270. Checked against the projection at each heading, the only
+// world direction consistent with all four is north.
+var bowHome = city.Point{X: 0, Y: -1}
+
+// rotate turns a world direction by a quarter per 90 degrees, the same
+// sense as the camera's own heading.
+func rotate(p city.Point, deg int) city.Point {
+	switch ((deg/90)%4 + 4) % 4 {
+	case 1:
+		return city.Point{X: -p.Y, Y: p.X}
+	case 2:
+		return city.Point{X: -p.X, Y: -p.Y}
+	case 3:
+		return city.Point{X: p.Y, Y: -p.X}
 	}
-	// The flat map view projects both ways across the river onto the
-	// same screen row, so there is no "up" to grow towards and the
-	// gauge reads sideways instead. It still must not flip, so the tie
-	// is broken the same way every time: towards the right of the
-	// screen, away from the city on the river's west bank.
-	if up.X >= down.X {
-		return east
-	}
-	return west
+	return p
 }
 
-// gaugeAt is where a boat floats: along the river by its berth, across
-// it by its reading. Nothing at one bank, everything at the other.
-func gaugeAt(cam *city.Camera, from, to city.Point, reach float64, g city.Gauge) city.Point {
-	along := city.Point{
-		X: from.X + (to.X-from.X)*g.Phase,
-		Y: from.Y + (to.Y-from.Y)*g.Phase,
+// bowTurn is the rotation to draw a hull at so its bow points along a
+// world direction. Drawing a piece turned by t shows it rotated by -t
+// relative to the camera, so the home direction is turned back.
+func bowTurn(dir city.Point) int {
+	for _, turn := range []int{0, 90, 180, 270} {
+		if r := rotate(bowHome, -turn); nearly(r.X, dir.X) && nearly(r.Y, dir.Y) {
+			return turn
+		}
 	}
-	across := gaugeAcross(cam)
-	// The centre line is the halfway reading, so a boat runs from half
-	// a reach behind it to half a reach in front.
-	out := reach * (min(1, max(0, g.Percent/100)) - 0.5)
-	return city.Point{X: along.X + across.X*out, Y: along.Y + across.Y*out}
+	return 0
+}
+
+func nearly(a, b float64) bool { return math.Abs(a-b) < 1e-9 }
+
+// gaugeUpstream is the way along the river that reads as "more":
+// whichever of the two points up the screen at this heading.
+//
+// It has to be chosen per heading and cannot be fixed to a bank. The
+// river runs north-south, and world north projects UP the screen at
+// headings 0 and 270 but DOWN at 90 and 180 — so a gauge nailed to one
+// end would literally run backwards at half the headings. Same ruling
+// as the monument's near corner, and for the same reason.
+func gaugeUpstream(cam *city.Camera, from, to city.Point) city.Point {
+	along := to.Sub(from)
+	if length := math.Hypot(along.X, along.Y); length > 0 {
+		along = along.Scale(1 / length)
+	}
+	back := city.Point{X: -along.X, Y: -along.Y}
+	if cam.Project(back).Y < cam.Project(along).Y {
+		return back
+	}
+	return along
+}
+
+// gaugeRightward is the way across the river the lanes are laid out
+// along: whichever of the two points right on screen, so the boats keep
+// the same left-to-right order however the camera turns.
+func gaugeRightward(cam *city.Camera) city.Point {
+	east := city.Point{X: 1}
+	west := city.Point{X: -1}
+	if cam.Project(west).X > cam.Project(east).X {
+		return west
+	}
+	return east
+}
+
+// gaugeFacing is the turn that points a hull's bow at 100%.
+func gaugeFacing(cam *city.Camera, from, to city.Point) int {
+	return bowTurn(gaugeUpstream(cam, from, to))
+}
+
+// gaugeWidestBeam is the across-river width of the largest hull, in
+// world units, measured off the cut sprite at z1: the liner's drawn box
+// is 131x142 and the narrow side converts at 2*IsoScale.
+//
+// Stated once here and re-derived from the art by
+// TestRiverFitsThreeHullsAbreast, so the lanes and the hulls cannot
+// drift apart the way a written-down number and its source always do.
+const gaugeWidestBeam = 47.7
+
+// gaugeEndroom keeps a boat reading 0% or 100% on the water rather than
+// hanging off the end of the run — half the longest hull.
+const gaugeEndroom = 26.0
+
+// gaugeMarkInset sets the channel markers just inside the bank, clear
+// of the outermost lane, so a buoy never fouls a boat it is there to be
+// read against.
+const gaugeMarkInset = 6.0
+
+// gaugeLanes is where each of n boats rides across the river.
+func gaugeLanes(width float64, n int) []float64 {
+	return ui.GaugeLanes(width, gaugeWidestBeam, n)
+}
+
+// gaugeRun is the stretch a reading is drawn along: the run's midpoint,
+// the direction of 100%, and how far it is from 0% to 100%.
+func gaugeRun(cam *city.Camera, from, to city.Point) (mid, up city.Point, length float64) {
+	up = gaugeUpstream(cam, from, to)
+	mid = city.Point{X: (from.X + to.X) / 2, Y: (from.Y + to.Y) / 2}
+	length = max(0, math.Hypot(to.X-from.X, to.Y-from.Y)-2*gaugeEndroom)
+	return mid, up, length
+}
+
+// gaugeAt is where a boat holds station: along the river by its
+// reading, across it by its lane.
+func gaugeAt(cam *city.Camera, from, to city.Point, lane float64, g city.Gauge) city.Point {
+	mid, up, length := gaugeRun(cam, from, to)
+	start := mid.Sub(up.Scale(length / 2))
+	along := start.Add(up.Scale(length * ui.GaugeShare(g.Percent)))
+	return along.Add(gaugeRightward(cam).Scale(lane))
 }
 
 // gaugeMark is one channel marker: where it floats, and whether it
-// marks the limit rather than halfway.
+// marks the limit rather than a station on the way.
 type gaugeMark struct {
 	At    city.Point
 	Limit bool
 }
 
-// gaugeStations are the points down the run where markers are set, the
-// way channel markers are placed periodically rather than continuously.
-var gaugeStations = [4]float64{0.12, 0.37, 0.62, 0.87}
+// gaugeStations are the readings the markers stand for. Both ends and
+// the middle: item 49 marked halfway and the limit only, and across the
+// wrong axis, which is why the frame could not say where 0% was. The
+// ends are the thing that was missing.
+var gaugeStations = [3]float64{0, 0.5, 1}
 
-// gaugeMarks are the references a boat is read against.
-//
-// Aria, on the first cut: "why do we have lines in the river?" — the
-// marks had been strokes painted on the water, and painted stripes down
-// a waterway read as road markings. A buoy is the object that marks
-// lateral position on water, so the reference is a thing floating in
-// the river rather than a line drawn over it.
-//
-// Two marks, not four: halfway and the limit. Each is nameable out
-// loud, and a boat out past the last buoy is legible as trouble without
-// reading a number. Four references and three hulls on a two-cell river
-// was heading back towards the clutter this project exists to undo.
-func gaugeMarks(cam *city.Camera, from, to city.Point, reach float64) []gaugeMark {
-	across := gaugeAcross(cam)
-	var out []gaugeMark
-	for _, station := range gaugeStations {
-		along := city.Point{
-			X: from.X + (to.X-from.X)*station,
-			Y: from.Y + (to.Y-from.Y)*station,
-		}
-		for _, share := range [2]float64{0.5, 1} {
-			off := reach * (share - 0.5)
-			out = append(out, gaugeMark{
-				At:    city.Point{X: along.X + across.X*off, Y: along.Y + across.Y*off},
-				Limit: share == 1,
-			})
-		}
+// gaugeMarks are the references a boat is read against, set along the
+// bank so they never sit in a lane.
+func gaugeMarks(cam *city.Camera, from, to city.Point, width float64) []gaugeMark {
+	mid, up, length := gaugeRun(cam, from, to)
+	start := mid.Sub(up.Scale(length / 2))
+	bank := gaugeRightward(cam).Scale(max(0, width/2-gaugeMarkInset))
+	out := make([]gaugeMark, 0, len(gaugeStations))
+	for _, share := range gaugeStations {
+		out = append(out, gaugeMark{
+			At:    start.Add(up.Scale(length * share)).Add(bank),
+			Limit: share == 1,
+		})
 	}
 	return out
 }
 
-// Each rank's hull and how far it is shrunk. The hull carries the
-// difference in profile and the shrink carries the difference in size,
+// Each rank's hull and how long it is drawn. The hull carries the
+// difference in profile and the length carries the difference in size,
 // so a boat is told from its neighbour by shape before scale — which is
 // what survives at the zoom where scale stops being readable.
 //
@@ -129,32 +205,19 @@ var gaugeHulls = map[city.GaugeSize]gaugeHull{
 // reference should be read past, not looked at.
 const buoyExtent = 26.0
 
-// gaugeMargin is how much water is left at each bank, so a boat at 0%
-// or 100% is still afloat rather than beached.
-const gaugeMargin = 14.0
-
-// gaugeReachOf is how far a full reading carries across a river of this
-// width — the whole of it bar a margin at each bank. Derived from the
-// river rather than fixed, so widening the river widens the gauge
-// instead of leaving it reading across a strip of it.
-func gaugeReachOf(width float64) float64 {
-	return max(0, width-2*gaugeMargin)
+// riverRun is the stretch of river the gauges are read along, and how
+// wide the water is for the lanes to spread across.
+func riverRun(c *city.City) (from, to city.Point, width float64, ok bool) {
+	return c.RiverBand()
 }
 
-// riverRun is the stretch of river the gauges are read along: its first
-// cell's centre to its last.
-func riverRun(c *city.City) (from, to city.Point, reach float64, ok bool) {
-	from, to, width, ok := c.RiverBand()
-	return from, to, gaugeReachOf(width), ok
-}
-
-// drawGauge floats one boat at its reading.
-func (g *Game) drawGauge(screen *ebiten.Image, cam *city.Camera, at city.Point, size city.GaugeSize) city.Rect {
+// drawGauge floats one boat at its reading, bow pointing at 100%.
+func (g *Game) drawGauge(screen *ebiten.Image, cam *city.Camera, at city.Point, size city.GaugeSize, turn int) city.Rect {
 	hull, ok := gaugeHulls[size]
 	if !ok {
 		hull = gaugeHulls[city.GaugeSmall]
 	}
-	return g.kitSized(screen, cam, hull.piece, at, hull.extent, nil)
+	return g.kitSized(screen, cam, hull.piece, turn, at, hull.extent, nil)
 }
 
 // usageGauges is what the boats currently read, and how old it is.

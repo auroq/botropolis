@@ -125,16 +125,30 @@ const KerbOffset = 0.42
 
 // RiverCols is how many cells wide the river runs.
 //
-// Derived rather than chosen. The usage boats read across the river, so
-// the width has to keep the gauge legible at the *smallest* zoom the
-// ladder allows, which is where the spread collapses. At MinZoom one
-// world unit is 0.384 screen pixels across the river, so a 25% step
-// that reads at 8 px needs 21 world units, a full 0-100% reach needs
-// 83, and the hull needs about 20 more. That is 103 units against a
-// 48-unit cell: two cells. One cell gave 1.6 px a step, which is why
-// the first frame of the boats showed three hulls at what looked like
-// the same distance out.
-const RiverCols = 2
+// Derived rather than chosen, but from a different requirement than it
+// used to be. It was two cells because the usage boats read their
+// percentage ACROSS the river and the spread had to stay legible at
+// MinZoom. Bug 52 put the reading along the river instead, which is
+// what Aria asked for, so that derivation no longer holds up anything
+// — leaving it here would be a number that is right and means nothing.
+//
+// What sets the width now is three hulls abreast. The boats are held
+// apart in a lane each, and keeping the outer two off the banks leaves
+// a lane spacing of (width - widest hull) / 2. Measured off the cut
+// sprites at z1, the beams are 47.7, 19.8 and 17.2 world units, and the
+// binding pair is the big boat beside the medium one, which needs 33.8
+// between lane centres. Two cells give 24.1 — the liner overlaps the
+// cargo ship by nearly ten units at every zoom and every heading, not
+// just when the readings converge. Three cells give 48.1, clearing it
+// by 14.4 units, which is 22 px at zoom 1 and 5.5 px at MinZoom.
+//
+// Aria pre-authorised exactly this: "We can make the river wider if
+// needed to fit 3 boats."
+//
+// pkg/render's TestRiverFitsThreeHullsAbreast re-derives the beams from
+// the atlas and fails if this width stops clearing them, so the river
+// and the hulls cannot drift apart.
+const RiverCols = 3
 
 // StreetTreeSpacing is how many cells apart street trees stand. A city
 // plants a street at a fixed pitch, not wherever there is room.

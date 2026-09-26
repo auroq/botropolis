@@ -106,22 +106,12 @@ func (g *Game) kitLifted(screen *ebiten.Image, cam *city.Camera, name string, tu
 	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
 }
 
-// kitThrough draws a piece standing on a world point but cut off at a
-// plane cut screen pixels above that point, so only the part above the
-// plane shows: a chimney rising from inside a building through its
-// roof. The piece stands on the building's floor, which is why the cut
-// and the lift are the same number.
-func (g *Game) kitThrough(screen *ebiten.Image, cam *city.Camera, name string, at city.Point, cut float64, tint *ebiten.ColorScale) city.Rect {
-	page, src, origin, scale, rect, ok := g.kitThroughPlace(cam, name, at, cut)
-	if !ok {
-		return city.Rect{}
-	}
-	g.drawSprite(screen, page.SubImage(src).(*ebiten.Image), origin, scale, tint)
-	return rect
-}
-
-// kitThroughPlace works out where kitThrough would draw, without
-// drawing. The curb at the join has to go down partly before the stack
+// kitThroughPlace works out where a piece standing on a world point
+// would draw if it were cut off at a plane cut screen pixels above that
+// point, so only the part above the plane shows: a chimney rising from
+// inside a building through its roof. The piece stands on the
+// building's floor, which is why the cut and the lift are the same
+// number. It places without drawing. The curb at the join has to go down partly before the stack
 // and partly after it, so it needs the stack's rect in advance — and
 // this is the one expression both of them read, rather than a second
 // copy of the placement to drift out of step.
@@ -170,7 +160,11 @@ func (g *Game) kitFootprint(cam *city.Camera, name string) float64 {
 // kitScaled draws a piece at a fraction of its natural size, for a
 // sprite that is bigger than the thing it has to sit in — the liner is
 // nearly two cells wide and the river is one.
-func (g *Game) kitScaled(screen *ebiten.Image, cam *city.Camera, name string, at city.Point, shrink float64, tint *ebiten.ColorScale) city.Rect {
+//
+// turn is the piece's own rotation in the world, in degrees, as
+// everywhere else in this family: the atlas is indexed at heading-turn,
+// so a turned piece keeps facing the same way as the camera goes round.
+func (g *Game) kitScaled(screen *ebiten.Image, cam *city.Camera, name string, turn int, at city.Point, shrink float64, tint *ebiten.ColorScale) city.Rect {
 	if g.kits == nil || shrink <= 0 {
 		return city.Rect{}
 	}
@@ -178,7 +172,7 @@ func (g *Game) kitScaled(screen *ebiten.Image, cam *city.Camera, name string, at
 	if atlas == nil {
 		return city.Rect{}
 	}
-	sprite, ok := atlas.Sprite(name, cam.Heading)
+	sprite, ok := atlas.Sprite(name, cam.Heading-turn)
 	if !ok || sprite.Page >= len(atlas.pages) {
 		return city.Rect{}
 	}
@@ -202,7 +196,7 @@ func (g *Game) kitScaled(screen *ebiten.Image, cam *city.Camera, name string, at
 // the per-kit SCALE have had their say — the same gap that made the
 // chimney's pipe measurement wrong. So the target is stated and the
 // scale is worked back from the art.
-func (g *Game) kitSized(screen *ebiten.Image, cam *city.Camera, name string, at city.Point, target float64, tint *ebiten.ColorScale) city.Rect {
+func (g *Game) kitSized(screen *ebiten.Image, cam *city.Camera, name string, turn int, at city.Point, target float64, tint *ebiten.ColorScale) city.Rect {
 	if g.kits == nil || target <= 0 {
 		return city.Rect{}
 	}
@@ -210,7 +204,7 @@ func (g *Game) kitSized(screen *ebiten.Image, cam *city.Camera, name string, at 
 	if atlas == nil {
 		return city.Rect{}
 	}
-	sprite, ok := atlas.Sprite(name, cam.Heading)
+	sprite, ok := atlas.Sprite(name, cam.Heading-turn)
 	if !ok {
 		return city.Rect{}
 	}
@@ -218,7 +212,7 @@ func (g *Game) kitSized(screen *ebiten.Image, cam *city.Camera, name string, at 
 	if longest <= 0 {
 		return city.Rect{}
 	}
-	return g.kitScaled(screen, cam, name, at, target/longest, tint)
+	return g.kitScaled(screen, cam, name, turn, at, target/longest, tint)
 }
 
 // kitGround draws a ground tile a hair larger than its cell, so two tiles

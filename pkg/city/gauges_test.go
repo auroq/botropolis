@@ -52,16 +52,19 @@ func TestGauges(t *testing.T) {
 		})
 	})
 
+	// Bug 52 moved the separation from along the river to across it.
+	// The berth used to be a phase down the run, which is now the
+	// reading itself, so two boats are held apart by lane instead.
 	t.Run("when two of the boats share a window", func(t *testing.T) {
-		t.Run("it should still berth them apart, so they never stack", func(t *testing.T) {
-			assert.NotEqual(t, g[0].Phase, g[2].Phase)
+		t.Run("it should still lane them apart, so they never stack", func(t *testing.T) {
+			assert.NotEqual(t, g[0].Lane, g[2].Lane)
 		})
 
 		t.Run("it should keep every pair apart", func(t *testing.T) {
-			seen := map[float64]bool{}
+			seen := map[int]bool{}
 			for _, b := range g {
-				require.False(t, seen[b.Phase], "two boats berthed at %v", b.Phase)
-				seen[b.Phase] = true
+				require.False(t, seen[b.Lane], "two boats in lane %v", b.Lane)
+				seen[b.Lane] = true
 			}
 		})
 	})

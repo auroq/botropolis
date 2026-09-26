@@ -2,148 +2,251 @@ package render
 
 import (
 	"fmt"
+	"math"
 	"testing"
 
+	"github.com/auroq/botropolis/pkg/assets"
 	"github.com/auroq/botropolis/pkg/city"
+	"github.com/auroq/botropolis/pkg/plan"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// Item 49, ruling 1: a gauge that flips with the heading is worse than
-// no gauge.
+// Bug 52. The axes are the other way round from item 49: the percentage
+// is read ALONG the river and the boats are separated ACROSS it.
+//
+// Aria: "The boats should be going bottom to top and face that
+// direction. They shouldn't all be in the same line. They should be
+// spread out left to right as well."
+//
+// Every test here that loops the four headings is guarding the same
+// ruling as bug 45's: a gauge whose direction reverses when the camera
+// turns is worse than no gauge. The along-river axis genuinely does
+// point up the screen at two headings and down at the other two, so
+// which end reads 0% is chosen per heading rather than fixed to a bank.
 
-func TestGaugeInTheFlatView(t *testing.T) {
-	t.Run("when the map is drawn flat, where across the river has no up", func(t *testing.T) {
-		cam := city.NewCamera()
-
-		t.Run("it should still pick a direction rather than none", func(t *testing.T) {
-			assert.Equal(t, 1.0, gaugeAcross(cam).X)
-		})
-
-		// The direction across the river does rotate on screen as the
-		// heading turns — that is the projection, not a bug. What must
-		// never happen is that it points *down*, which is the reading
-		// inverting.
-		t.Run("it should never point the growing direction down the screen", func(t *testing.T) {
-			for _, h := range []int{0, 90, 180, 270} {
-				cam.Heading = h
-				assert.LessOrEqual(t, cam.Project(gaugeAcross(cam)).Y, 0.0, "heading %d", h)
-			}
-		})
-	})
+// A run of river to read against: north end first, as city.RiverBand
+// returns it.
+func testRun() (from, to city.Point, width float64) {
+	return city.Point{X: 100, Y: 0}, city.Point{X: 100, Y: 400}, 3 * city.CellSize
 }
 
-func TestGaugeReadsTheSameAtEveryHeading(t *testing.T) {
+func headings(t *testing.T, f func(t *testing.T, cam *city.Camera)) {
+	t.Helper()
 	for _, heading := range []int{0, 90, 180, 270} {
 		t.Run(fmt.Sprintf("when the camera faces %d", heading), func(t *testing.T) {
 			cam := city.NewCamera()
 			cam.Projection = city.Isometric
 			cam.Heading = heading
-			across := gaugeAcross(cam)
+			f(t, cam)
+		})
+	}
+}
 
-			t.Run("it should point the growing direction up the screen", func(t *testing.T) {
-				assert.Less(t, cam.Project(across).Y, 0.0)
-			})
+func TestGaugeRunsUpTheScreen(t *testing.T) {
+	from, to, _ := testRun()
 
-			t.Run("it should still be a direction across the river, so the boat stays on water", func(t *testing.T) {
-				assert.Equal(t, 1.0, across.X*across.X+across.Y*across.Y)
+	headings(t, func(t *testing.T, cam *city.Camera) {
+		empty := gaugeAt(cam, from, to, 0, city.Gauge{Percent: 0})
+		half := gaugeAt(cam, from, to, 0, city.Gauge{Percent: 50})
+		full := gaugeAt(cam, from, to, 0, city.Gauge{Percent: 100})
+
+		// This is the question Aria asked that the frame could not
+		// answer: "Where is 0% and 100%?"
+		t.Run("it should put 0% below 100% on the screen", func(t *testing.T) {
+			assert.Greater(t, cam.Project(empty).Y, cam.Project(full).Y)
+		})
+
+		t.Run("it should carry a rising reading up the screen", func(t *testing.T) {
+			assert.Less(t, cam.Project(half).Y, cam.Project(empty).Y)
+		})
+
+		t.Run("it should keep the boat on the river's centre line in its lane", func(t *testing.T) {
+			assert.InDelta(t, 100.0, half.X, 0.0001)
+		})
+	})
+}
+
+func TestGaugeHoldsStationRatherThanTravelling(t *testing.T) {
+	from, to, _ := testRun()
+	cam := city.NewCamera()
+	cam.Projection = city.Isometric
+
+	t.Run("when the same reading is placed twice", func(t *testing.T) {
+		// The boats used to drift along the river as ambience, which is
+		// the axis the reading now occupies. A gauge that moves on its
+		// own cannot be read.
+		t.Run("it should land in the same place both times", func(t *testing.T) {
+			a := gaugeAt(cam, from, to, 0, city.Gauge{Percent: 40})
+			b := gaugeAt(cam, from, to, 0, city.Gauge{Percent: 40})
+			assert.Equal(t, a, b)
+		})
+	})
+}
+
+func TestGaugeFacesTheWayItReads(t *testing.T) {
+	from, to, _ := testRun()
+
+	headings(t, func(t *testing.T, cam *city.Camera) {
+		// "and face that direction" — the bow points at 100%.
+		t.Run("it should point the bow up the screen", func(t *testing.T) {
+			assert.Less(t, cam.Project(gaugeUpstream(cam, from, to)).Y, 0.0)
+		})
+
+		t.Run("it should turn the hull to match, rather than leaving it broadside", func(t *testing.T) {
+			assert.Equal(t, bowTurn(gaugeUpstream(cam, from, to)), gaugeFacing(cam, from, to))
+		})
+	})
+}
+
+// bowHome is art, measured off the atlas rather than assumed, so the
+// mapping from a world direction to a sprite rotation gets a test of
+// its own.
+func TestBowTurn(t *testing.T) {
+	for _, tc := range []struct {
+		dir  city.Point
+		turn int
+		what string
+	}{
+		{city.Point{X: 0, Y: -1}, 0, "north, which is the way the hull is modelled"},
+		{city.Point{X: -1, Y: 0}, 90, "west"},
+		{city.Point{X: 0, Y: 1}, 180, "south"},
+		{city.Point{X: 1, Y: 0}, 270, "east"},
+	} {
+		t.Run("when the bow should point "+tc.what, func(t *testing.T) {
+			t.Run(fmt.Sprintf("it should draw the hull turned %d", tc.turn), func(t *testing.T) {
+				assert.Equal(t, tc.turn, bowTurn(tc.dir))
 			})
 		})
 	}
 }
 
-func TestGaugeAt(t *testing.T) {
+func TestGaugeLanesSeparateTheBoats(t *testing.T) {
+	from, to, width := testRun()
 	cam := city.NewCamera()
 	cam.Projection = city.Isometric
-	from := city.Point{X: 100, Y: 0}
-	to := city.Point{X: 100, Y: 400}
-	const reach = 80
+	lanes := gaugeLanes(width, 3)
+	require.Len(t, lanes, 3)
 
-	t.Run("when a boat reads half", func(t *testing.T) {
-		at := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 50, Phase: 0.5})
+	t.Run("when three boats read exactly the same", func(t *testing.T) {
+		// The case the lanes exist for: readings converge precisely
+		// when you most want to compare them.
+		same := city.Gauge{Percent: 60}
+		var at []city.Point
+		for _, lane := range lanes {
+			at = append(at, gaugeAt(cam, from, to, lane, same))
+		}
 
-		t.Run("it should sit on the river's own centre line", func(t *testing.T) {
-			assert.InDelta(t, 100.0, at.X, 0.0001)
-		})
-	})
-
-	t.Run("when a boat reads nothing yet", func(t *testing.T) {
-		at := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 0, Phase: 0.5})
-
-		t.Run("it should sit at the near bank rather than mid-stream", func(t *testing.T) {
-			assert.NotEqual(t, 100.0, at.X)
-		})
-	})
-
-	t.Run("when a boat reads full", func(t *testing.T) {
-		full := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 100, Phase: 0.5})
-		half := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 50, Phase: 0.5})
-
-		t.Run("it should be further up the screen than one reading half", func(t *testing.T) {
-			assert.Less(t, cam.Project(full).Y, cam.Project(half).Y)
+		t.Run("it should hold them apart rather than stack them", func(t *testing.T) {
+			assert.NotEqual(t, at[0], at[1])
 		})
 
-		t.Run("it should reach the buoy that marks the limit", func(t *testing.T) {
-			marks := gaugeMarks(cam, from, to, reach)
-			require.NotEmpty(t, marks)
-			var limit gaugeMark
-			for _, m := range marks {
-				if m.Limit {
-					limit = m
-					break
-				}
-			}
-			assert.InDelta(t, limit.At.X, full.X, 0.0001)
+		t.Run("it should separate them across the river, not along it", func(t *testing.T) {
+			assert.InDelta(t, at[0].Y, at[1].Y, 0.0001)
 		})
-	})
 
-	t.Run("when a reading somehow exceeds its limit", func(t *testing.T) {
-		t.Run("it should stop at the far lane rather than sail off the river", func(t *testing.T) {
-			over := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 140, Phase: 0.5})
-			full := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 100, Phase: 0.5})
-			assert.Equal(t, full, over)
-		})
-	})
-
-	t.Run("when two boats are berthed apart", func(t *testing.T) {
-		t.Run("it should keep them apart along the river however their readings move", func(t *testing.T) {
-			a := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 50, Phase: 0.22})
-			b := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 50, Phase: 0.82})
-			assert.NotEqual(t, a.Y, b.Y)
+		t.Run("it should read all three at the same distance up the run", func(t *testing.T) {
+			assert.InDelta(t, cam.Project(at[0]).Y-cam.Project(at[1]).Y,
+				cam.Project(at[1]).Y-cam.Project(at[2]).Y, 0.0001)
 		})
 	})
 }
 
-// Bug 50. Aria: "why do we have lines in the river?" The references are
-// buoys now, because painted stripes down a waterway read as road
-// markings, and two of them rather than four.
-func TestGaugeMarks(t *testing.T) {
+func TestGaugeMarksTheEnds(t *testing.T) {
+	from, to, width := testRun()
 	cam := city.NewCamera()
 	cam.Projection = city.Isometric
-	from := city.Point{X: 100, Y: 0}
-	to := city.Point{X: 100, Y: 400}
-	const reach = 80
-	marks := gaugeMarks(cam, from, to, reach)
+	marks := gaugeMarks(cam, from, to, width)
 
-	t.Run("when the river is marked out", func(t *testing.T) {
-		t.Run("it should set two markers at every station, not four", func(t *testing.T) {
-			assert.Len(t, marks, len(gaugeStations)*2)
+	t.Run("when the run is marked out", func(t *testing.T) {
+		// Item 49's marks sat at halfway and the limit only, across the
+		// river. The ends are what answers "where is 0% and 100%".
+		t.Run("it should set a mark at each end and one at halfway", func(t *testing.T) {
+			assert.Len(t, marks, 3)
 		})
 
-		t.Run("it should mark halfway on the river's own centre line", func(t *testing.T) {
-			assert.InDelta(t, 100.0, marks[0].At.X, 0.0001)
+		t.Run("it should put the 0% mark lowest on the screen", func(t *testing.T) {
+			assert.Greater(t, cam.Project(marks[0].At).Y, cam.Project(marks[2].At).Y)
 		})
 
-		t.Run("it should flag the limit rather than leaving it a plain buoy", func(t *testing.T) {
-			assert.True(t, marks[1].Limit)
+		t.Run("it should flag the limit and leave the others plain", func(t *testing.T) {
+			assert.Equal(t, []bool{false, false, true},
+				[]bool{marks[0].Limit, marks[1].Limit, marks[2].Limit})
 		})
 
-		t.Run("it should set the limit further out than halfway", func(t *testing.T) {
-			assert.Less(t, cam.Project(marks[1].At).Y, cam.Project(marks[0].At).Y)
+		t.Run("it should set the marks off the lanes so they never foul a boat", func(t *testing.T) {
+			assert.Greater(t, math.Abs(marks[0].At.X-100), 1.0)
+		})
+	})
+}
+
+// The guard that keeps RiverCols honest. The river's width and the
+// hulls' sizes are two things that must agree, and this project has
+// paid for that shape repeatedly — so the width is not asserted as a
+// number here, it is re-derived from the art every run.
+func TestRiverFitsThreeHullsAbreast(t *testing.T) {
+	atlases, err := assets.LoadKits()
+	require.NoError(t, err)
+	var z1 assets.KitAtlas
+	for _, a := range atlases {
+		if a.Zoom == 1 {
+			z1 = a
+		}
+	}
+	require.NotZero(t, z1.Zoom)
+
+	beam := func(size city.GaugeSize) float64 {
+		hull := gaugeHulls[size]
+		s, ok := z1.Sprite(hull.piece, 0)
+		require.True(t, ok, hull.piece)
+		w, h := float64(s.Rect.Dx()), float64(s.Rect.Dy())
+		scale := hull.extent / math.Max(w, h)
+		return math.Min(w, h) * scale / (2 * city.IsoScale * z1.Zoom)
+	}
+
+	width := float64(plan.RiverCols) * city.CellSize
+	lanes := gaugeLanes(width, 3)
+	require.Len(t, lanes, 3)
+	spacing := lanes[1] - lanes[0]
+
+	t.Run("when the big boat rides beside the medium one", func(t *testing.T) {
+		// The binding pair. Big and small are never adjacent, so the
+		// widest two that ever sit side by side are these.
+		need := (beam(city.GaugeBig) + beam(city.GaugeMedium)) / 2
+
+		t.Run("it should leave water between their hulls", func(t *testing.T) {
+			assert.Greater(t, spacing, need,
+				"a %.0f-unit river gives %.1f units of lane spacing, and the two hulls need %.1f",
+				width, spacing, need)
+		})
+	})
+
+	t.Run("when the widest hull rides the outer lane", func(t *testing.T) {
+		t.Run("it should stay off the bank", func(t *testing.T) {
+			assert.LessOrEqual(t, math.Abs(lanes[0])+beam(city.GaugeBig)/2, width/2+0.0001)
+		})
+	})
+}
+
+func TestGaugeInTheFlatView(t *testing.T) {
+	from, to, width := testRun()
+
+	t.Run("when the map is drawn flat", func(t *testing.T) {
+		cam := city.NewCamera()
+
+		// Across the river projects onto one screen row in the flat
+		// view, so there is no "right" to fan the lanes along. It still
+		// must not flip, so the tie breaks the same way every time.
+		t.Run("it should still pick a direction to lane the boats along", func(t *testing.T) {
+			assert.Equal(t, 1.0, gaugeRightward(cam).X)
 		})
 
-		t.Run("it should space the stations down the run rather than bunch them", func(t *testing.T) {
-			assert.NotEqual(t, marks[0].At.Y, marks[2].At.Y)
+		t.Run("it should still read the run up the screen", func(t *testing.T) {
+			assert.Less(t, cam.Project(gaugeUpstream(cam, from, to)).Y, 0.0)
+		})
+
+		t.Run("it should still mark both ends", func(t *testing.T) {
+			assert.Len(t, gaugeMarks(cam, from, to, width), 3)
 		})
 	})
 }

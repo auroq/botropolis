@@ -656,24 +656,33 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	// the same water — one river, two meanings, told apart by
 	// silhouette and by what each says when pointed at. Item 49.
 	if gauges, age := g.usageGauges(); len(gauges) > 0 {
-		if from, to, reach, ok := riverRun(c); ok {
+		if from, to, width, ok := riverRun(c); ok {
 			// The channel markers float with everything else, because
 			// a buoy is a thing on the river rather than a mark on it.
-			for _, m := range gaugeMarks(cam, from, to, reach) {
+			for _, m := range gaugeMarks(cam, from, to, width) {
 				m := m
 				items = append(items, standingAt(cam, m.At, func() {
 					piece := kitBuoy
 					if m.Limit {
 						piece = kitBuoyLimit
 					}
-					g.kitSized(screen, cam, piece, m.At, buoyExtent, nil)
+					g.kitSized(screen, cam, piece, 0, m.At, buoyExtent, nil)
 				}))
 			}
+			// One lane per boat, so two boats whose readings converge
+			// are still side by side rather than on top of each other.
+			// Bug 52.
+			lanes := gaugeLanes(width, len(gauges))
+			facing := gaugeFacing(cam, from, to)
 			for _, gauge := range gauges {
 				gauge := gauge
-				at := gaugeAt(cam, from, to, reach, gauge)
+				lane := 0.0
+				if gauge.Lane >= 0 && gauge.Lane < len(lanes) {
+					lane = lanes[gauge.Lane]
+				}
+				at := gaugeAt(cam, from, to, lane, gauge)
 				items = append(items, standingAt(cam, at, func() {
-					r := g.drawGauge(screen, cam, at, gauge.Size)
+					r := g.drawGauge(screen, cam, at, gauge.Size, facing)
 					g.noteHit(r, city.Hit{Gauge: &city.GaugeHit{Gauge: gauge, Age: age}})
 				}))
 			}
