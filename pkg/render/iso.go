@@ -116,7 +116,6 @@ func (g *Game) isoGround(screen *ebiten.Image, cam *city.Camera, c *city.City, w
 	for _, rc := range c.RiverCells {
 		g.poly(screen, cam, rc.Cell.Rect(), water)
 	}
-	g.drawGaugeLanes(screen, cam, c)
 	g.isoRails(screen, cam, c)
 }
 
@@ -658,6 +657,18 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	// silhouette and by what each says when pointed at. Item 49.
 	if gauges, age := g.usageGauges(); len(gauges) > 0 {
 		if from, to, reach, ok := riverRun(c); ok {
+			// The channel markers float with everything else, because
+			// a buoy is a thing on the river rather than a mark on it.
+			for _, m := range gaugeMarks(cam, from, to, reach) {
+				m := m
+				items = append(items, standingAt(cam, m.At, func() {
+					piece := kitBuoy
+					if m.Limit {
+						piece = kitBuoyLimit
+					}
+					g.kitSized(screen, cam, piece, m.At, buoyExtent, nil)
+				}))
+			}
 			for _, gauge := range gauges {
 				gauge := gauge
 				at := gaugeAt(cam, from, to, reach, gauge)

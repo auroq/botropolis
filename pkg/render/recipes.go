@@ -90,7 +90,21 @@ var (
 	// The usage gauges' hull. Deliberately not a tug: the river already
 	// means arrivals and departures, and two meanings on one waterway
 	// need silhouettes that differ at a glance. Item 49.
-	kitGaugeBoat = "watercraft-kit/ship-ocean-liner-small"
+	// One hull per gauge rank, so the three boats differ in profile
+	// rather than only in scale. Item 51: long and tall, long and flat,
+	// small and vertical. The sail is the one that earns its place —
+	// it is the only hull taller than it is long, so the *smallest*
+	// boat keeps the most legible silhouette at the zoom where
+	// everything else collapses to a smudge. It also settles the tug
+	// question: it is within a few tenths of a tug in length and cannot
+	// be mistaken for one, because one of them has a sail.
+	kitGaugeLiner = "watercraft-kit/ship-ocean-liner-small"
+	kitGaugeCargo = "watercraft-kit/ship-cargo-a"
+	kitGaugeSail  = "watercraft-kit/boat-sail-a"
+	// The channel markers the boats are read against: a plain buoy at
+	// halfway, a flagged one at the limit. Bug 50.
+	kitBuoy      = "watercraft-kit/buoy"
+	kitBuoyLimit = "watercraft-kit/buoy-flag"
 	kitWagons    = []string{"train-kit/train-carriage-container-red", "train-kit/train-carriage-container-blue", "train-kit/train-carriage-container-green"}
 )
 

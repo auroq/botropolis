@@ -83,10 +83,17 @@ func TestGaugeAt(t *testing.T) {
 			assert.Less(t, cam.Project(full).Y, cam.Project(half).Y)
 		})
 
-		t.Run("it should reach the last lane", func(t *testing.T) {
-			lanes := gaugeLanes(cam, from, to, reach)
-			require.Len(t, lanes, 4)
-			assert.InDelta(t, lanes[3][0].X, full.X, 0.0001)
+		t.Run("it should reach the buoy that marks the limit", func(t *testing.T) {
+			marks := gaugeMarks(cam, from, to, reach)
+			require.NotEmpty(t, marks)
+			var limit gaugeMark
+			for _, m := range marks {
+				if m.Limit {
+					limit = m
+					break
+				}
+			}
+			assert.InDelta(t, limit.At.X, full.X, 0.0001)
 		})
 	})
 
@@ -103,6 +110,40 @@ func TestGaugeAt(t *testing.T) {
 			a := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 50, Phase: 0.22})
 			b := gaugeAt(cam, from, to, reach, city.Gauge{Percent: 50, Phase: 0.82})
 			assert.NotEqual(t, a.Y, b.Y)
+		})
+	})
+}
+
+// Bug 50. Aria: "why do we have lines in the river?" The references are
+// buoys now, because painted stripes down a waterway read as road
+// markings, and two of them rather than four.
+func TestGaugeMarks(t *testing.T) {
+	cam := city.NewCamera()
+	cam.Projection = city.Isometric
+	from := city.Point{X: 100, Y: 0}
+	to := city.Point{X: 100, Y: 400}
+	const reach = 80
+	marks := gaugeMarks(cam, from, to, reach)
+
+	t.Run("when the river is marked out", func(t *testing.T) {
+		t.Run("it should set two markers at every station, not four", func(t *testing.T) {
+			assert.Len(t, marks, len(gaugeStations)*2)
+		})
+
+		t.Run("it should mark halfway on the river's own centre line", func(t *testing.T) {
+			assert.InDelta(t, 100.0, marks[0].At.X, 0.0001)
+		})
+
+		t.Run("it should flag the limit rather than leaving it a plain buoy", func(t *testing.T) {
+			assert.True(t, marks[1].Limit)
+		})
+
+		t.Run("it should set the limit further out than halfway", func(t *testing.T) {
+			assert.Less(t, cam.Project(marks[1].At).Y, cam.Project(marks[0].At).Y)
+		})
+
+		t.Run("it should space the stations down the run rather than bunch them", func(t *testing.T) {
+			assert.NotEqual(t, marks[0].At.Y, marks[2].At.Y)
 		})
 	})
 }

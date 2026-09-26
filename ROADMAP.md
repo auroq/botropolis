@@ -1585,7 +1585,7 @@ $484.18 of $500.00 at 97% — **exactly her screenshot**, from the user's own ca
 
 **Keep the probe for one job only: refresh.** Reading the file is passive and free, so poll the file. When the user asks for fresh numbers, run the fenced probe to make Claude Code re-fetch, then re-read. That honours Aria's cadence ruling and confines the probe to an explicit, rare, user-initiated action.
 
-### 50. The gauge marks are painted lines on water, and rivers do not have lanes (Aria, 2026-09-26, on r248)
+### 50. ~~The gauge marks are painted lines on water, and rivers do not have lanes~~ Done 2026-09-26 (r252)
 
 Her words: *"This is great, but why do we have lines in the river?"*
 
@@ -1597,7 +1597,11 @@ Her words: *"This is great, but why do we have lines in the river?"*
 
 If the buoys themselves read as busy at low zoom, drop to the 100% line alone. Do not go back to nothing: the hover carries the exact figure, but the reference is what makes the thing glanceable, which is the entire point Aria gave for wanting boats.
 
-### 51. The three gauge boats are one hull at three scales (Aria, 2026-09-26, on r248)
+
+**Done 2026-09-26 (r252).** The references are buoys now — `buoy` at halfway and `buoy-flag` at the limit — set at four stations down the run the way channel markers are placed, and floating with the scene rather than painted on it. Two marks instead of four: each is nameable out loud, and a boat past the last buoy is legible as trouble without reading a number.
+
+Aria was right and the reasoning behind the lanes was not wrong — a boat with no reference is not a gauge. It was the object that was wrong: a stroke on water reads as a road marking. Same shape as specifying "a flashing plate" and getting a saucer.
+### 51. ~~The three gauge boats are one hull at three scales~~ Done 2026-09-26 (r252)
 
 Her words: *"the boats are all identical except for size. Do we have different sprites so we could do different ones for the other two? Something that makes sense for the size."*
 
@@ -1621,6 +1625,16 @@ That last one is the important one. `boat-sail-a` has a height-to-length of **1.
 **Atlas cost, and a swap worth making.** Cut today: `boat-tug-a`, `boat-tug-b`, `ship-ocean-liner-small`. This needs `ship-cargo-a` and `boat-sail-a`, plus `ship-ocean-liner` if the full-size liner is used for the extra separation — 15.20 against 10.55 is only 1.4x, where 21.28 gives a clean 2x. Two or three pieces at four headings and two zoom levels.
 There is headroom without growing the atlas: the roadmap already records **25 cut pieces that no Go code names** — nine commercial buildings, four industrial, the tank, windmill and solar panel, five road pieces, two wagons, the rowing boat and the truck. Dropping a few of those pays for these, and closes a stale item at the same time.
 
+
+**Done 2026-09-26 (r252).** Liner, cargo ship, sailing boat, mapped to gauge *rank* rather than to a named window, so a plan with a different set of limits keeps working.
+
+**Measuring the cut sprites caught a real error before it shipped.** The models are 15.2 and 10.6 long, which looked like a clear step, but the cut sprites are 505 and 429 wide — and per-piece shrink factors chosen from the models drew the liner and the cargo ship at **131 and 129 pixels**, the same length. Model space is not screen space once the projection and the per-kit `SCALE` have had their say, which is the gap that made the chimney's pipe measurement wrong.
+
+So size is now stated as a target extent and the scale is worked back from the art: `kitSized` takes how long the longest side should be drawn and computes the rest. 142 / 93 / 60, which comes out as a liner 131×142, a cargo ship 93×54 and a sail 47×60 — three profiles, not one shape resized.
+
+**The tug question is answered and the answer is yes.** At `MinZoom` the four hulls draw at 20×17 (tug), 16×18 (liner), 12×7 (cargo) and 6×7 (sail). The tug is the *largest* and the only bright orange one; the sail is the smallest and the only one with a mast. Colour separates them before silhouette has to. Frame `docs/screenshots/r252-hulls-at-min-zoom.png` is the four at true size.
+
+**No atlas pieces were dropped.** The swap was offered to pay for these, but z2 came out at 7 pages of 8 with all five new pieces in, so nothing had to go — and whether the 25 unnamed pieces are a reserve or an oversight is still Aria's call rather than a thing to settle in passing.
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:

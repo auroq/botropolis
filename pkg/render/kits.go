@@ -3,6 +3,7 @@ package render
 import (
 	"image"
 	"image/color"
+	"math"
 	"runtime/debug"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -187,6 +188,37 @@ func (g *Game) kitScaled(screen *ebiten.Image, cam *city.Camera, name string, at
 	img := atlas.pages[sprite.Page].SubImage(sprite.Rect).(*ebiten.Image)
 	g.drawSprite(screen, img, origin, scale, tint)
 	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
+}
+
+// kitSized draws a piece scaled so its longest side comes out at
+// target pixels in the atlas's own scale, whatever size the sprite
+// happens to be.
+//
+// Sizing by a per-piece shrink factor does not survive different
+// sprites: the liner and the cargo ship are 15.2 and 10.6 long in the
+// model, which looked like a clear step, but their cut sprites are 505
+// and 429 wide and shrink factors chosen from the model drew them the
+// same length. Model space is not screen space once the projection and
+// the per-kit SCALE have had their say — the same gap that made the
+// chimney's pipe measurement wrong. So the target is stated and the
+// scale is worked back from the art.
+func (g *Game) kitSized(screen *ebiten.Image, cam *city.Camera, name string, at city.Point, target float64, tint *ebiten.ColorScale) city.Rect {
+	if g.kits == nil || target <= 0 {
+		return city.Rect{}
+	}
+	atlas := g.kits.pick(cam.Zoom)
+	if atlas == nil {
+		return city.Rect{}
+	}
+	sprite, ok := atlas.Sprite(name, cam.Heading)
+	if !ok {
+		return city.Rect{}
+	}
+	longest := math.Max(float64(sprite.Rect.Dx()), float64(sprite.Rect.Dy()))
+	if longest <= 0 {
+		return city.Rect{}
+	}
+	return g.kitScaled(screen, cam, name, at, target/longest, tint)
 }
 
 // kitGround draws a ground tile a hair larger than its cell, so two tiles

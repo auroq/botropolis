@@ -86,7 +86,20 @@ PIECES = {
     # kit has no sternwheeler, so this liner stands in for Aria's
     # steamboat -- long hull and funnels against the tug's stubby
     # wheelhouse. Item 49.
-    "watercraft-kit": ["boat-tug-a", "boat-tug-b", "ship-ocean-liner-small"],
+    "watercraft-kit": ["boat-tug-a", "boat-tug-b", "ship-ocean-liner-small",
+                       # Channel markers for the usage gauge. Aria, on
+                       # r248: "why do we have lines in the river?" --
+                       # painted stripes down a waterway read as road
+                       # markings. A buoy is the object that marks
+                       # lateral position on water. Bug 50.
+                       "buoy", "buoy-flag",
+                       # One hull per gauge rank, so the boats differ in
+                       # profile and not only in scale. Item 51: long
+                       # and tall, long and flat, small and vertical.
+                       # The full-size liner is left out -- the shrink
+                       # per rank already separates the sizes, and it is
+                       # a large sprite against one page of headroom.
+                       "ship-cargo-a", "boat-sail-a"],
     "botropolis": ["drone", "fountain-a", "fountain-b", "fountain-c"],
 }
 

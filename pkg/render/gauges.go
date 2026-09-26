@@ -1,12 +1,10 @@
 package render
 
 import (
-	"context"
-	"image/color"
-	"time"
-
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
+
+	"context"
+	"time"
 
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/claude"
@@ -59,30 +57,77 @@ func gaugeAt(cam *city.Camera, from, to city.Point, reach float64, g city.Gauge)
 	return city.Point{X: along.X + across.X*out, Y: along.Y + across.Y*out}
 }
 
-// gaugeLanes are the marks the boats are read against: the same axis at
-// a quarter, a half, three quarters and full. A boat high on the water
-// with nothing to read it against is not a gauge.
-func gaugeLanes(cam *city.Camera, from, to city.Point, reach float64) []([2]city.Point) {
+// gaugeMark is one channel marker: where it floats, and whether it
+// marks the limit rather than halfway.
+type gaugeMark struct {
+	At    city.Point
+	Limit bool
+}
+
+// gaugeStations are the points down the run where markers are set, the
+// way channel markers are placed periodically rather than continuously.
+var gaugeStations = [4]float64{0.12, 0.37, 0.62, 0.87}
+
+// gaugeMarks are the references a boat is read against.
+//
+// Aria, on the first cut: "why do we have lines in the river?" — the
+// marks had been strokes painted on the water, and painted stripes down
+// a waterway read as road markings. A buoy is the object that marks
+// lateral position on water, so the reference is a thing floating in
+// the river rather than a line drawn over it.
+//
+// Two marks, not four: halfway and the limit. Each is nameable out
+// loud, and a boat out past the last buoy is legible as trouble without
+// reading a number. Four references and three hulls on a two-cell river
+// was heading back towards the clutter this project exists to undo.
+func gaugeMarks(cam *city.Camera, from, to city.Point, reach float64) []gaugeMark {
 	across := gaugeAcross(cam)
-	var out [][2]city.Point
-	for _, share := range [4]float64{0.25, 0.5, 0.75, 1} {
-		reach := reach * (share - 0.5)
-		out = append(out, [2]city.Point{
-			{X: from.X + across.X*reach, Y: from.Y + across.Y*reach},
-			{X: to.X + across.X*reach, Y: to.Y + across.Y*reach},
-		})
+	var out []gaugeMark
+	for _, station := range gaugeStations {
+		along := city.Point{
+			X: from.X + (to.X-from.X)*station,
+			Y: from.Y + (to.Y-from.Y)*station,
+		}
+		for _, share := range [2]float64{0.5, 1} {
+			off := reach * (share - 0.5)
+			out = append(out, gaugeMark{
+				At:    city.Point{X: along.X + across.X*off, Y: along.Y + across.Y*off},
+				Limit: share == 1,
+			})
+		}
 	}
 	return out
 }
 
-// How big each boat is drawn, as a fraction of the liner's own sprite.
-// The sprite is nearly two cells wide and the river is one, so even the
-// big one is a shrink.
-var gaugeShrink = map[city.GaugeSize]float64{
-	city.GaugeBig:    0.26,
-	city.GaugeMedium: 0.19,
-	city.GaugeSmall:  0.13,
+// Each rank's hull and how far it is shrunk. The hull carries the
+// difference in profile and the shrink carries the difference in size,
+// so a boat is told from its neighbour by shape before scale — which is
+// what survives at the zoom where scale stops being readable.
+//
+// Mapped to rank rather than to a named window, because the ordering is
+// generic: a plan with a different set of limits keeps working, which
+// hardcoding three hull names would throw away.
+type gaugeHull struct {
+	piece string
+	// extent is how long the boat's longest side is drawn, in the
+	// atlas's own pixels. Stated as a size rather than a scale, because
+	// a scale means different things to sprites of different sizes —
+	// the liner and the cargo ship drew the same length when each had
+	// its own shrink factor chosen from the models.
+	extent float64
 }
+
+// The three ranks step down by a bit under two thirds each, measured on
+// the longest side so a tall hull and a long one are compared fairly.
+var gaugeHulls = map[city.GaugeSize]gaugeHull{
+	city.GaugeBig:    {kitGaugeLiner, 142},
+	city.GaugeMedium: {kitGaugeCargo, 93},
+	city.GaugeSmall:  {kitGaugeSail, 60},
+}
+
+// buoyExtent keeps a marker smaller than the boats it measures: a
+// reference should be read past, not looked at.
+const buoyExtent = 26.0
 
 // gaugeMargin is how much water is left at each bank, so a boat at 0%
 // or 100% is still afloat rather than beached.
@@ -96,8 +141,6 @@ func gaugeReachOf(width float64) float64 {
 	return max(0, width-2*gaugeMargin)
 }
 
-var colorGaugeLane = color.NRGBA{0xe8, 0xf1, 0xff, 0x4c}
-
 // riverRun is the stretch of river the gauges are read along: its first
 // cell's centre to its last.
 func riverRun(c *city.City) (from, to city.Point, reach float64, ok bool) {
@@ -105,27 +148,13 @@ func riverRun(c *city.City) (from, to city.Point, reach float64, ok bool) {
 	return from, to, gaugeReachOf(width), ok
 }
 
-// drawGaugeLanes marks the water at a quarter, a half, three quarters
-// and full, so a boat is read against a scale rather than against the
-// window's edge.
-func (g *Game) drawGaugeLanes(screen *ebiten.Image, cam *city.Camera, c *city.City) {
-	from, to, reach, ok := riverRun(c)
-	if !ok {
-		return
-	}
-	for _, lane := range gaugeLanes(cam, from, to, reach) {
-		a, b := cam.WorldToScreen(lane[0]), cam.WorldToScreen(lane[1])
-		vector.StrokeLine(screen, float32(a.X), float32(a.Y), float32(b.X), float32(b.Y), 1, colorGaugeLane, true)
-	}
-}
-
 // drawGauge floats one boat at its reading.
 func (g *Game) drawGauge(screen *ebiten.Image, cam *city.Camera, at city.Point, size city.GaugeSize) city.Rect {
-	shrink, ok := gaugeShrink[size]
+	hull, ok := gaugeHulls[size]
 	if !ok {
-		shrink = gaugeShrink[city.GaugeMedium]
+		hull = gaugeHulls[city.GaugeSmall]
 	}
-	return g.kitScaled(screen, cam, kitGaugeBoat, at, shrink, nil)
+	return g.kitSized(screen, cam, hull.piece, at, hull.extent, nil)
 }
 
 // usageGauges is what the boats currently read, and how old it is.
