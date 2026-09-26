@@ -777,6 +777,13 @@ func (s *Scene) Celebration(id string) float64 {
 
 // Select picks a session by id and centres on it; false when it is not
 // on the map.
+// Deselect closes the selection, and with it the card that carries the
+// verbs. Bug 43a: nothing cleared it, so the one surface the mouse
+// opens was the one surface Escape could not close.
+func (s *Scene) Deselect() {
+	s.selected = nil
+}
+
 func (s *Scene) Select(id string) bool {
 	for _, b := range s.city.Buildings() {
 		if b.Session.ID == id {

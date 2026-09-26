@@ -136,6 +136,16 @@ func (g *Game) handleKeys() error {
 	} else {
 		g.clearPrompt()
 	}
+	// The selection sits at the top of the ladder: it is the most modal
+	// thing on screen and it carries the verbs. Bug 43a. Bug 43 built
+	// this ladder from the keyboard's point of view and missed the card
+	// because the card is the one surface the mouse opens — the list of
+	// things Escape closes has to be the list of things that are open,
+	// whatever opened them.
+	if just(ebiten.KeyEscape) && g.scene.Selected() != nil {
+		g.scene.Deselect()
+		return nil
+	}
 	if just(ebiten.KeyEscape) && g.help {
 		g.help = false
 		return nil
