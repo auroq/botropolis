@@ -1585,6 +1585,18 @@ $484.18 of $500.00 at 97% — **exactly her screenshot**, from the user's own ca
 
 **Keep the probe for one job only: refresh.** Reading the file is passive and free, so poll the file. When the user asks for fresh numbers, run the fenced probe to make Claude Code re-fetch, then re-read. That honours Aria's cadence ruling and confines the probe to an explicit, rare, user-initiated action.
 
+### 50. The gauge marks are painted lines on water, and rivers do not have lanes (Aria, 2026-09-26, on r248)
+
+Her words: *"This is great, but why do we have lines in the river?"*
+
+**This is my ruling landing badly, not a build error.** I asked for *"tick marks on the far bank at 0/25/50/75/100"* so the gauge is read against a reference rather than against the window edge. The reasoning still holds — without a reference a boat is not a gauge, it is a boat that happens to be high up. But `drawGaugeLanes` strokes them onto the water, and painted stripes down a waterway read as **road markings**. The river stops looking like a river.
+
+**The object that marks lateral position on water is a buoy**, and the kit already models them: `buoy` and `buoy-flag` in `watercraft-kit`. Neither is cut into the atlas — that is a `make sprites` run, about 90 seconds per zoom level and never below 17 GB free on this desk.
+
+**Fewer marks, and each one nameable.** Four stripes was already more than the reading needs. Put buoys at **50% and 100% only**, spaced periodically along the run the way channel markers actually are. Two references instead of four, each one something a person can say out loud — *halfway*, and *the limit* — and a boat sitting out past the last buoy is immediately legible as trouble without reading a number. Clutter was the original complaint that started this whole project; four stripes plus three hulls on a two-cell river was heading back towards it.
+
+If the buoys themselves read as busy at low zoom, drop to the 100% line alone. Do not go back to nothing: the hover carries the exact figure, but the reference is what makes the thing glanceable, which is the entire point Aria gave for wanting boats.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
