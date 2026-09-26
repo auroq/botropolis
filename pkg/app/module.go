@@ -225,6 +225,10 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		return fmt.Errorf("unknown detail %q: use full or plain", c.config.Detail)
 	}
 	recordDir, recordSeconds := cli.Record(cmd)
+	signage, ok := city.ParseSignage(cli.Signage(cmd))
+	if !ok {
+		return fmt.Errorf("unknown signage %q: use plates, gantry, board, plaque or hover", cli.Signage(cmd))
+	}
 	hoverX, hoverY, hoverSet := cli.Hover(cmd)
 	hoverPoint := city.Point{X: hoverX, Y: hoverY}
 	return render.Run(cmd.Context(), render.Options{
@@ -246,6 +250,7 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		ReducedMotion: c.config.ReducedMotion,
 		DailyBudget:   c.config.DailyBudget,
 		Detail:        detail,
+		Signage:       signage,
 		Settings:      settingsFor(c.config),
 		Apply: func(s ui.Setting) error {
 			key, value := settingValue(s)

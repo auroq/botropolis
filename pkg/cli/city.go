@@ -70,6 +70,19 @@ func Headless(cmd *cobra.Command) bool {
 	return headless
 }
 
+// SignageFlag names the flag that picks how a session's title reaches
+// the map: phase 21 item 38's prototypes, for comparison frames.
+const SignageFlag = "signage"
+
+func AddSignageFlag(flags *pflag.FlagSet) {
+	flags.String(SignageFlag, "plates", "how titles are shown: plates, gantry, board, plaque or hover")
+}
+
+func Signage(cmd *cobra.Command) string {
+	raw, _ := cmd.Flags().GetString(SignageFlag)
+	return raw
+}
+
 // HoverFlag names the flag that parks the pointer at a screen position
 // for a scripted frame. Some of what the city does only happens under
 // the pointer — the contextual highlight most of all — and --keys cannot
@@ -123,5 +136,6 @@ func NewCityCLI(load Loader, services CityServices) *cobra.Command {
 	AddRecordFlags(cmd.Flags())
 	AddHeadlessFlag(cmd.Flags())
 	AddHoverFlag(cmd.Flags())
+	AddSignageFlag(cmd.Flags())
 	return cmd
 }

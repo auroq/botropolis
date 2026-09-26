@@ -350,7 +350,10 @@ func (g *Game) isoBuilding(screen *ebiten.Image, cam *city.Camera, b *city.Build
 	// Signage is paint on the building, not chrome: like a tower's name
 	// it stays when h hides the interface.
 	if !b.BoardedUp {
-		g.buildingSign(screen, r, foot, b.Card(g.scene.City().Time).Title)
+		title := b.Card(g.scene.City().Time).Title
+		if !g.buildingSignage(screen, cam, r, foot, title) {
+			g.buildingSign(screen, r, foot, title)
+		}
 	}
 	// The worker: a rover that waits at the door while the session is
 	// mid-turn and drives out to the kerb and back for each tool call,
@@ -522,6 +525,11 @@ func (g *Game) sign(screen *ebiten.Image, s ui.Sign, c color.NRGBA) {
 	op.GeoM.Scale(s.Scale, s.Scale)
 	if s.Vertical {
 		op.GeoM.Rotate(-math.Pi / 2)
+	}
+	// A board standing in the world is not square to the screen, so its
+	// paint leans with it. Skew takes an angle; Lean is a gradient.
+	if s.Lean != 0 {
+		op.GeoM.Skew(0, math.Atan(s.Lean))
 	}
 	op.GeoM.Translate(s.At.X, s.At.Y)
 	op.ColorScale.ScaleWithColor(c)

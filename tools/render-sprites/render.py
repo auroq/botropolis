@@ -69,7 +69,10 @@ PIECES = {
     "city-kit-industrial": ["building-a", "chimney-large", "chimney-medium", "water-tower",
                             "shipping-container-a", "shipping-container-b", "shipping-container-c"],
     "city-kit-roads": ["road-straight", "road-bend", "road-crossroad", "road-intersection", "road-end", "road-square",
-                       "light-square", "light-curved", "electricity-pole", "electricity-wires", "traffic-light", "construction-cone"],
+                       "light-square", "light-curved", "electricity-pole", "electricity-wires", "traffic-light", "construction-cone",
+                       # Phase 21 item 38: signage prototypes. A gantry beside
+                       # the plot, a post-mounted board, a plaque for a wall.
+                       "sign-highway", "sign-highway-detailed", "road-sign-empty", "road-sign-empty-hanging"],
     "city-kit-suburban": ["tree-large", "tree-small", "planter"],
     "nature-kit": ["tree_default", "tree_oak", "tree_thin", "tree_tall", "tree_pineRoundA", "tree_small",
                    "plant_bush", "plant_bushLarge"],

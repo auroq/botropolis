@@ -710,6 +710,11 @@ The cooling tower reads as standing on the industrial slab rather than beside it
 ### 4. Billboards do not work
 Session titles are drawn as vertical text up a building's flank. They cannot be read, they do not look like signage, and at distance they read as floating text with no surface. The water-tower treatment is better and still poor. The design brief said fascia over the door, rooftop billboard for long titles, up the side only for a tall building; in practice almost everything is taking the side. Either signage earns a real surface — a panel with a background, contrast and a size floor — or titles go back to plates on hover only.
 
+**Both built, 2026-09-26 (r205), for Aria to choose between: `--signage` carries the three real-surface treatments and `hover`, which draws no title at all.**
+The fifth panel of `docs/screenshots/r205-signage.png` is the hover-only city.
+What the frames say, without picking: the rooftop billboard that ships today is the only treatment that reads at a glance, and it is also the one this entry calls chrome; the plaque carries the whole title on a real mount; the gantry carries nothing (see item 38); and hover-only is the quietest city by a distance.
+Aria leans permanent without being sure, so nothing is switched.
+
 ### 5. Cars do not say which repos they connect
 A car drives a street between two districts, but the street is routed on the grid and passes along the edge of whichever districts are adjacent, so a viewer cannot tell which pair it belongs to. Either the car carries its pair (colour, or a label on hover) or traffic stops being drawn as cars and becomes something anchored to both ends.
 
@@ -754,12 +759,35 @@ Frame `docs/screenshots/r201-night-glow.png`, botropolis before and after: a sol
 **The mechanism is the additive blend.** `glow` draws with `ebiten.BlendLighter`, so two discs that overlap are brighter than either and a column of them saturates to white. That is deliberate at fit — what matters there is which lights are on, not their size — and stops being deliberate as the view comes in, because the radius grows with the zoom while the gap between storeys does not grow faster.
 `windowGlow` caps the radius at half a storey, which is what keeps two of them apart, and clamps the floor to the storey as well: a floor taller than the thing it lights is not a floor, it is the whole building. Checked at both ends — at fit the lit buildings still read as lit.
 
-### 38. Signage: prototype before choosing
+### 38. ~~Signage: prototype before choosing~~ Prototyped 2026-09-26 (r205) — frames are with Aria
 The current treatment — ~10 px vertical text floating beside the building with no surface — is rejected, and so were four mocks of flat panels.
 **Why the mocks failed is the lesson**: they drew UI chrome into a 3D scene, unlit, in a world where everything else has a sun on it.
 The Roads kit already carries real sign objects: `sign-highway`, `sign-highway-detailed` (gantry billboards with boards on posts), `road-sign-empty`, `road-sign-empty-hanging`.
 A board the pipeline lights reads as signage; a flat panel reads as a tooltip that forgot to hide.
 Decided: **render two or three through the pipeline on a real district and compare frames before committing** — a gantry beside the plot, a smaller post-mounted board, and a wall plaque. Text painted on the board face, sheared to it. Aria picks from frames, not from description.
+
+**Built, all four switchable with `--signage plates|gantry|board|plaque|hover`, and no winner picked.**
+Frame `docs/screenshots/r205-signage.png`: five panels of the same district and the same session, hidden interface, daylight.
+
+**Two of the four pieces have no board.**
+`sign-highway` and `sign-highway-detailed` are gantries with real panels.
+`road-sign-empty` is a bare pole and `road-sign-empty-hanging` is a bracket with nothing on it — "empty" in the kit's names means *no panel at all*, not a blank one.
+So only the gantry paints onto the kit's own face; the post and the plaque draw their panel the way the rooftop billboard already does, on a kit mount.
+That is not what this entry assumed when it called them "a smaller post-mounted board" and "a wall plaque".
+
+**The gantry cannot carry a session title, and this is the finding that matters.**
+Its near board measures **51 x 62 px at the atlas's own scale**, which is full size at `MaxZoom`.
+Against `MinSignPx = 7` and `SignFill = 0.8` that is about **ten characters**.
+Session titles run twenty to thirty — "botropolis roadmap management" is twenty-nine — so the board declines the text at every zoom the city is used at, and the gantry reads as street furniture standing next to an unlabelled building.
+The panel is also dark slate against dark road, so it has little contrast even empty.
+
+**How the board face was measured**, because the first method was wrong and saying so is cheaper than repeating it.
+Thresholding on luminance put the face's top edge at a slope of ±1.4 px per px across.
+A board standing in this 2:1 projection cannot have a top edge steeper than 0.5, so the method was discarded rather than the result.
+Segmenting instead on the panel's own colour — one flat fill of 2,700 px — gives the near board a top edge of **exactly -0.500 px/px**, the projection's own gradient, which is what says the measurement is of the board and not of the posts behind it.
+`ui.Sign` gained a `Lean` so the paint shears with the board it sits on.
+
+**Rough edges, left rough on purpose.** The drawn panel sizes itself at `SignFill` and then lets `LayoutPlaque` refit inside it, so on a long title the text can sit slightly proud of its panel — visible in the `board` panel of the frame. Worth fixing only for whichever treatment Aria keeps.
 
 ### Order
 37 and 35 first (both are defects and 35 may change how 36 reads), then 36, then 38's prototypes.

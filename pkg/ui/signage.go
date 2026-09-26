@@ -15,6 +15,12 @@ type Sign struct {
 	At       city.Point
 	Scale    float64
 	Vertical bool
+	// Lean shears the text vertically about At, in screen pixels of
+	// rise per pixel across, so paint on a board that stands in the
+	// world lies in the board's plane rather than square to the screen.
+	// Zero is flat against the screen, which is every sign but a
+	// signage board's.
+	Lean float64
 }
 
 const (
@@ -24,7 +30,36 @@ const (
 	// MinSignPx is the smallest text height still legible; below it
 	// the sign is left off and the hover plate carries the name.
 	MinSignPx = 7.0
+	// BoardLean is the shear of a board facing along the world's x
+	// axis, in this 2:1 projection: one pixel down for every two
+	// across. A board facing the other way leans the other sign.
+	BoardLean = 0.5
 )
+
+// LayoutPlaque fits a name on a board that stands in the world — a
+// gantry's panel, a post-mounted board, a plaque on a wall — centred on
+// the face and leaning into the board's plane. It declines when the
+// board is too small to read, and the hover plate carries the name
+// instead, exactly as a tower's sign does.
+func LayoutPlaque(name string, face city.Rect, lean float64, measure Measure) (Sign, bool) {
+	w, h := measure(name, Small)
+	if name == "" || w <= 0 || h <= 0 {
+		return Sign{}, false
+	}
+	scale := fit(face.Width(), face.Height(), w, h)
+	if h*scale < MinSignPx {
+		return Sign{}, false
+	}
+	return Sign{
+		Text:  name,
+		Scale: scale,
+		Lean:  lean,
+		At: city.Point{
+			X: face.Center().X - w*scale/2,
+			Y: face.Center().Y - h*scale/2,
+		},
+	}, true
+}
 
 // LayoutSign fits a name on a tower, across the face or up the side,
 // whichever leaves it largest (across the face when equal), and hangs

@@ -50,6 +50,9 @@ type Options struct {
 	ReducedMotion bool
 	// Detail is how much of the city is drawn; plain drops the scenery.
 	Detail city.Detail
+	// Signage is how a session's title reaches the map. Phase 21 item
+	// 38's prototypes, for comparison frames.
+	Signage city.Signage
 	// DailyBudget is the daily spend in USD the strip and plant measure
 	// against; 0 for none.
 	DailyBudget float64
@@ -99,6 +102,7 @@ func Run(ctx context.Context, opts Options) error {
 	game.recordFrames = int(opts.RecordSeconds * 30)
 	game.reduced = opts.ReducedMotion
 	scene.SetDetail(opts.Detail)
+	game.signage = opts.Signage
 	game.settings = opts.Settings
 	game.apply = opts.Apply
 

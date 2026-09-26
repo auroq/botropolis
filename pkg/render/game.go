@@ -122,7 +122,9 @@ type Game struct {
 	settings     ui.Settings
 	settingsOpen bool
 	reduced      bool
-	apply        func(ui.Setting) error
+	// signage is which of phase 21 item 38's title treatments is drawn.
+	signage city.Signage
+	apply   func(ui.Setting) error
 
 	// pinned is the selection's card as last drawn, for clicks on it.
 	pinned      ui.Card

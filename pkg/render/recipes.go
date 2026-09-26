@@ -40,14 +40,19 @@ var (
 	fillSteps = []float64{0.2, 0.45, 0.7, 0.9}
 	sheds     = []string{"city-kit-industrial/shipping-container-a", "city-kit-industrial/shipping-container-b", "city-kit-industrial/shipping-container-c"}
 
-	kitPlant   = "city-kit-industrial/building-a"
-	kitStack   = "city-kit-industrial/chimney-medium"
-	kitHall    = "city-kit-commercial/building-n"
-	kitLibrary = "city-kit-commercial/building-l"
-	kitTower   = "city-kit-industrial/water-tower"
-	kitLamp    = "city-kit-roads/light-square"
-	kitRover   = "space-kit/rover"
-	kitDrone   = "botropolis/drone"
+	kitPlant = "city-kit-industrial/building-a"
+	kitStack = "city-kit-industrial/chimney-medium"
+	// Phase 21 item 38's signage prototypes. Only the gantry carries a
+	// board; the other two are bare mounts.
+	kitSignGantry = "city-kit-roads/sign-highway"
+	kitSignPost   = "city-kit-roads/road-sign-empty"
+	kitSignArm    = "city-kit-roads/road-sign-empty-hanging"
+	kitHall       = "city-kit-commercial/building-n"
+	kitLibrary    = "city-kit-commercial/building-l"
+	kitTower      = "city-kit-industrial/water-tower"
+	kitLamp       = "city-kit-roads/light-square"
+	kitRover      = "space-kit/rover"
+	kitDrone      = "botropolis/drone"
 	// The plaza's fountain, modelled in the pipeline like the drone:
 	// three frames of spray, cycled slowly.
 	kitFountain = []string{"botropolis/fountain-a", "botropolis/fountain-b", "botropolis/fountain-c"}
