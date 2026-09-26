@@ -1519,6 +1519,46 @@ It must say what it is: **a local estimate of this machine's spend against a bud
 
 **If Aria later wants the real org numbers**, the Analytics API is the only route and it is an admin key on a work account. Recorded in 49d, still hers alone, still not started.
 
+### 49f. The usage data is already cached on disk, structured, for both plans (Aria, 2026-09-26)
+
+Aria: *"there is a per user limit, but it's set as a budget by an admin. So that is what we need to query. I know users can see their own budget in their ui, so we should be able to find that endpoint somewhere."*
+
+**She was right and 49e was wrong.** There is a per-user budget on enterprise, and no endpoint needs calling: Claude Code already fetches it and **caches it on disk**.
+
+`~/.claude.json` carries **`cachedUsageUtilization`** — `fetchedAtMs`, `accountUuid`, and a `utilization` object. This supersedes 49b's prose parsing and 49e's conclusion.
+
+**Subscription (this host), `utilization.limits`:**
+
+```json
+[{"kind":"session",       "group":"session","percent":9, "severity":"normal","resets_at":"2026-09-27T01:20:00Z","scope":null,"is_active":false},
+ {"kind":"weekly_all",    "group":"weekly", "percent":21,"severity":"normal","resets_at":"2026-09-29T13:00:00Z","scope":null,"is_active":true},
+ {"kind":"weekly_scoped", "group":"weekly", "percent":0, "severity":"normal","resets_at":"2026-09-29T13:00:00Z","scope":{"model":{"display_name":"Fable"}},"is_active":false}]
+```
+
+`utilization.spend` is there too, `enabled: false`, limit null.
+
+**Enterprise (Aria's container):** `limits` is `[]`, `five_hour` and `seven_day` are null, and `spend` carries the budget:
+
+```json
+{"used":{"amount_minor":48418,"currency":"USD","exponent":2},
+ "limit":{"amount_minor":50000,"currency":"USD","exponent":2},
+ "percent":97,"severity":"critical","enabled":true}
+```
+
+$484.18 of $500.00 at 97% — **exactly her screenshot**, from the user's own cache with no admin key. `extra_usage` carries the same as `monthly_limit` and `used_credits`.
+
+**So the shape is uniform and the parse is trivial.** One boat per entry in `limits[]`, plus a spend boat when `spend.enabled`. Subscription yields three, enterprise yields one. **Do not hardcode session/week/Fable** — `kind`, `group` and `scope.model.display_name` name each gauge generically, so a plan with a different set generalises for free instead of needing a new case.
+
+**This is strictly better than shelling out to `claude -p "/usage"`:**
+
+- **No subprocess and no transcript**, so the pollution the probe caused stops being a design problem instead of being fenced around.
+- **Structured JSON** rather than prose that changes between versions.
+- `severity` and `is_active` arrive free, and are better signals than a raw percentage.
+- `resets_at` is an ISO timestamp rather than a localised string to parse.
+- `fetchedAtMs` **is** the cache age Aria's ruling asked to be displayed, already in the data.
+
+**Keep the probe for one job only: refresh.** Reading the file is passive and free, so poll the file. When the user asks for fresh numbers, run the fenced probe to make Claude Code re-fetch, then re-read. That honours Aria's cadence ruling and confines the probe to an explicit, rare, user-initiated action.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
