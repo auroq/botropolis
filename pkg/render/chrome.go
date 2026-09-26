@@ -151,6 +151,10 @@ func (g *Game) keyRow(screen *ebiten.Image, keys []ui.PlacedKey, size ui.Size) {
 func (g *Game) drawHelp(screen *ebiten.Image, width, height float64) {
 	vector.FillRect(screen, 0, 0, float32(width), float32(height), colorScrim, false)
 	h := ui.LayoutHelp(g.theme, width, height, "Keys", bindings, g.faces.Measure)
+	// Kept so a click lands on the row that was drawn. Bug 43.
+	g.mu.Lock()
+	g.helpPanel = h
+	g.mu.Unlock()
 	g.roundPanel(screen, h.Rect)
 	g.run(screen, h.Title, g.theme.Palette.Text)
 	g.keyRow(screen, h.Rows, ui.Small)

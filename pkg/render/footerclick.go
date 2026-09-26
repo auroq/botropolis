@@ -34,10 +34,7 @@ func (g *Game) clickFooter(cursor city.Point) bool {
 	if !ok {
 		return false
 	}
-	key, ok := footerSynonyms[hit.Key]
-	if !ok {
-		key, ok = keyByName(hit.Key)
-	}
+	key, ok := press(hit.Key)
 	if !ok {
 		// A verb with no key behind it — drag, wheel, click. The click
 		// still lands on the bar rather than falling through to the
@@ -45,5 +42,33 @@ func (g *Game) clickFooter(cursor city.Point) bool {
 		return true
 	}
 	g.clicked = key
+	return true
+}
+
+// press is the key a chip stands for, if any. The footer and the help
+// overlay share it so a verb means the same thing wherever it is read.
+func press(chip string) (ebiten.Key, bool) {
+	if key, ok := footerSynonyms[chip]; ok {
+		return key, true
+	}
+	return keyByName(chip)
+}
+
+// clickHelp presses the key on the row under the pointer. The overlay
+// closes either way, because it has done its job the moment you have
+// picked something off it.
+func (g *Game) clickHelp(cursor city.Point) bool {
+	if !g.help {
+		return false
+	}
+	g.mu.Lock()
+	panel := g.helpPanel
+	g.mu.Unlock()
+	if hit, ok := panel.Hit(cursor); ok {
+		if key, ok := press(hit.Key); ok {
+			g.clicked = key
+		}
+	}
+	g.help = false
 	return true
 }

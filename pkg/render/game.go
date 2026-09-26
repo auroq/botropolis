@@ -112,6 +112,8 @@ type Game struct {
 	// second copy of it, which is what "one code path, not two" means.
 	footerBar     ui.Footer
 	settingsPanel ui.SettingsPanel
+	helpPanel     ui.Help
+	searchPlate   city.Rect
 	clicked       ebiten.Key
 	hidden        bool
 	// live is whether anyone was watching the window last tick, so the
@@ -288,7 +290,7 @@ func (g *Game) Update() error {
 	// along from attach. Move either to the other event and a click
 	// becomes able to stop a session.
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		if !g.clickSettings(cursor) && !g.clickFooter(cursor) && !g.clickViewKey(cursor) && !g.clickTimeline(cursor) && !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
+		if !g.clickHelp(cursor) && !g.clickSettings(cursor) && !g.clickSearch(cursor) && !g.clickFooter(cursor) && !g.clickViewKey(cursor) && !g.clickTimeline(cursor) && !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
 			g.dragging, g.dragFrom = true, cursor
 		}
 	}

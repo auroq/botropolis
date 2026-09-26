@@ -10,6 +10,21 @@ type Help struct {
 	Rows  []PlacedKey
 }
 
+// Hit finds the key under a screen point. A row's target is its whole
+// band across the panel, chip and action together, so the thing you
+// read is the thing you can press. Bug 43.
+func (h Help) Hit(at city.Point) (Key, bool) {
+	if !h.Rect.Contains(at) {
+		return Key{}, false
+	}
+	for _, r := range h.Rows {
+		if at.Y >= r.Chip.Min.Y && at.Y < r.Chip.Max.Y {
+			return r.Key, true
+		}
+	}
+	return Key{}, false
+}
+
 // LayoutHelp centres the key list in a width×height window.
 func LayoutHelp(th Theme, width, height float64, title string, keys []Key, measure Measure) Help {
 	grid := th.Grid()
