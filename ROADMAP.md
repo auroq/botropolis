@@ -1328,6 +1328,37 @@ Take configured budgets. If the weekly or monthly budget is unset, the boat shou
 
 More importantly: **the river already carries tugs whose meaning is sessions arriving and leaving** (`drawVoyage`). Adding boats that mean "usage against a budget" gives one kind of object on one waterway two unrelated meanings. That is precisely what DESIGN.md's *"Two things that must agree"* section is about. Resolve it before building — different hull silhouettes at minimum, and the key has to name both.
 
+### 49a. What the usage numbers actually are, measured (2026-09-26)
+
+Aria sent `/usage` from Claude Code and the same panel from the desktop UI, and asked for research.
+This supersedes item 49's denominator ruling.
+Configured budgets are **not** the answer; real limits exist and item 49 was wrong about the windows.
+
+**The windows are five-hour and seven-day. There is no monthly limit.**
+`/usage` reports three things: *Current session* (6% used, resets 7:19pm), *Current week, all models* (20%, resets Sep 29 6:59am) and *Current week, Fable* (0%, its own separate limit).
+Transcripts confirm the server's own names for them: six `quotaLimits` records across the last week, every one carrying `rateLimitType` of either **`five_hour`** or **`seven_day`**, with `resetsAt` as an epoch, plus `overageStatus` and `isUsingOverage`.
+
+So the three boats map onto the real shape better than the one asked for: **session (5h), week (all models), week (Fable)**.
+Nothing monthly should be built.
+
+**The numerator is on disk; the live percentage is not.**
+`~/.claude/stats-cache.json` carries `modelUsage` — real per-model input, output and cache token counts.
+`~/.claude.json` has feature flags about usage limits (`tengu_c4w_usage_limit_notifications_enabled`, `tengu_usage_overage_included_models`) but **no utilization figures**.
+`claude --help` has no `usage` subcommand.
+The `quotaLimits` records appear **only on a 429** — all six are `"status":"rejected"` — so the transcript tells us when a window was exhausted and never what fraction is left.
+The percentages in `/usage` come live from the API and are not cached anywhere a daemon can read.
+
+**Two honest ways to get a denominator, and the choice is Aria's.**
+
+- **(a) Read the live figures**, the way `/usage` does. Accurate, matches what she already trusts, and includes usage from other devices and claude.ai. It requires the daemon to authenticate as her, which means `~/.claude/.credentials.json` — a real expansion of what the daemon is allowed to touch, and **her explicit decision**, not one to make on her behalf.
+- **(b) Calibrate locally from the 429s.** Each `rejected` record is ground truth that a window hit 100% at a known instant with a known type. Summing local token usage over that window estimates the limit, and every later 429 re-calibrates it. No credentials, works today. It is approximate and it misses other devices and claude.ai — Claude's own panel carries exactly that caveat for its local analysis — so the boat has to say it is an estimate.
+
+**The reset time is the other half of the gauge, and it suggests a use for the travel.**
+"20% used, resets in eight hours" and "20% used, resets in six days" are different situations, and a boat that shows only height cannot tell them apart.
+`resetsAt` gives us the reset directly.
+So: **let the boat's journey be the window.** It sets off at the window's start and reaches the far end exactly at the reset; its height across the river stays the usage.
+The travel Aria specified as ambience then carries the second half of the reading for free, and a boat riding high near the end of its run is fine while the same height at the start is trouble.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
