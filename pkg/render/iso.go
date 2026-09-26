@@ -647,6 +647,14 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 			g.kitThrough(screen, cam, kitStack, perch, roof, nil)
 		}))
 	}
+	// A project's sign is an object on the ground, so it sorts with
+	// everything else rather than being painted over the scene. Bug 44.
+	for _, d := range c.Districts {
+		d := d
+		items = append(items, standingAt(cam, monumentSite(d), func() {
+			g.districtMonument(screen, cam, d, c.Night)
+		}))
+	}
 	for _, t := range c.Trees {
 		if !g.scene.Scenery() {
 			break

@@ -968,7 +968,7 @@ Her reason is the requirement, so build to it: *"it enables things to be discove
 A footer verb that can only be typed teaches nothing; one that can be clicked teaches its own shortcut.
 So every clickable thing should still show its key, and clicking it should do exactly what the key does — one code path, not two.
 
-### 44. The district plate is a monument sign standing in the plaza (Aria, 2026-09-26, revising item 40)
+### 44. ~~The district plate is a monument sign standing in the plaza~~ Done 2026-09-26 (r216)
 
 Her words: *"The project plates should look like signs/billboards (research what signs outside office building plazas look like) not like textboxes/labels. Also, they should be inside the plaza not below."*
 
@@ -1004,6 +1004,22 @@ I took bounding boxes off the source `.obj` files in `tools/kits`:
 
 **The build.** Panel on the planter, copy in dimensional letters, standing inside the plaza at its street-facing edge among the rim planting, uplit at night.
 Hold it to the two rules that define the object: **2:1 landscape**, and **40% of its width meeting the ground**.
+
+**Done, built on the planter as proposed. Frame `docs/screenshots/r216-monument-sign.png`, day and night.**
+The floor plate is gone from the isometric city; it stays in the top-down one, where a monument would make no sense.
+The sign is a drawable on its own footprint inside `drawIso`, so it occludes and is occluded like everything else. That only became possible with bug 42 — a plate could be painted last *because* it was chrome, and an object cannot be.
+
+**Both rules are executable rather than decorative.** `MonumentAspect` is 2.0 and `MonumentOnGround(base, width)` is asserted in `pkg/ui/monument_test.go`.
+
+**I built it to the wrong number first, and the frame caught it.**
+`MonumentWidest(base)` is `base / 0.4` — the widest panel the 40% rule allows — and I sized the panel to it. That is the *limit*, not the design: a sign built to it has a base two fifths of its width, which is a board on a plinth, the exact shape the rule exists to keep out. The sign is now as wide as its base, so all of its width meets the ground, and `MonumentWidest` survives only as the limit the test checks against.
+
+**The second miss was the one this entry warned about.** With the panel's foot set above the bed it floated clear of it — a pylon sign, the failure mode named in the entry, rejected twice already. The fix is the chimney's trick from bug 40: the panel is drawn *first* and the planter over it, so the mass of the bed hides where the panel enters and the panel rises out of the planting instead of standing behind it.
+
+**On re-checking the gantry, as asked — both measurements were right and mine was the misleading one.**
+51 x 62 px is the axis-aligned bounding box of a board that leans; in its own plane the face is **56 x 36, landscape at 1.55:1**, against the model's 1.41:1, and foreshortening is the difference. So the model is not contradicted.
+The capacity changes from about eleven characters to about **thirteen** — `LayoutPlaque` was fitting text into that bounding box, which understates the width and overstates the height.
+That does not revive the gantry for **session** titles at twenty to thirty characters, which is what item 38 was measuring. It does mean the gantry was never ruled out for a **project** name: `avesta`, `mullet` and `botropolis` are six to ten. If the monument is ever rejected, the gantry is a live option for this job and item 38's number should not be quoted against it.
 A panel floating clear of its base is the failure mode, and it is the one that has already been rejected twice.
 
 ### Worth knowing, not bugs

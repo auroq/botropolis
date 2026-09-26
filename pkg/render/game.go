@@ -434,7 +434,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.district(screen, cam, d, hover.District == d, c.Night, detailed)
 	}
 	for _, d := range c.Districts {
-		if g.districtLabelVisible(d) {
+		// In the isometric city the project's name is a monument sign
+		// standing in its plaza, drawn with the scene. The floor plate
+		// is the top-down city's version of the same thing. Bug 44
+		// rejected having both, and rejected the plate as chrome.
+		if g.districtLabelVisible(d) && cam.Projection != city.Isometric {
 			g.floorLabel(screen, g.districtLabelAt(d), d.Name, colorText)
 		}
 		for _, b := range d.Buildings {
