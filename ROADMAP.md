@@ -1191,6 +1191,32 @@ The braces are gone, the support band with them, and the flashing plate is gone 
 Kept from bug 46: only the near half of anything wrapping the pipe is drawn, and every measurement comes from the rect `kitThrough` returns, so the curb scales with the sprite.
 
 **Aria's second complaint was a straight defect and it is worth keeping the lesson.** The guys ran to a band drawn as an arc, and the arc did not visibly land, so they read as wires passing near the chimney rather than bearing on it. A thing drawn to prove a connection argues against itself if it does not make the connection at both ends — which is the same failure as a label that does not match its behaviour, in a different medium.
+### 46b. The curb is a half circle, and a ring round a cylinder is not (Aria, 2026-09-26, on r228)
+
+Her words: *"It overlaps the other things on the roof. The brace doesn't actually touch the bottom of the chimney, the chimney itself still is cut as a line not an elipse, the brace doesn't wrap around to show it goes behind the chimney, it cuts at exactly a half circle making it look disjointed."*
+
+Four faults, and the fourth is the one with a number behind it.
+A diagram is at `docs/references/curb-geometry.png`.
+
+**1. It is drawn as exactly half a circle, and it should be more.**
+A ring of radius R round a stack of radius r is hidden **only where it passes behind the stack**, which is an arc of `2·arcsin(r/R)` — not half of it.
+At R = 1.32r that is 98° hidden and **262° visible**.
+So the ring wraps well past ±90°, and its two ends disappear **behind the stack's silhouette** rather than terminating in mid air on the horizontal diameter.
+Cutting at ±90° is what makes it read as a detached crescent: the ends stop where nothing is stopping them.
+Draw the ring, then draw the stack over it, and the occlusion happens for free — it does not need to be computed, only ordered.
+
+**2. The chimney's bottom is still a straight line.**
+Item 46's whole point, still not achieved, because the curb sits *below* the cut instead of over it.
+The curb's top has to sit **above** the sprite's straight edge so the edge is covered, and the visible bottom of the stack then becomes the curb's inner near arc.
+
+**3. The curb does not touch the stack.**
+There is a gap between its inner edge and the wall. A curb is built tight to the penetration; a gap says these are two objects near each other, which is the original complaint in a new form.
+
+**4. It overlaps the roof's other fixtures.**
+It is too wide. R = 1.32r keeps it clear of them and is also the value the arc maths above is quoted at.
+
+Keep what is already right: only the near arc of anything wrapping the pipe is drawn, and the curb is low and at the base.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
