@@ -52,10 +52,18 @@ func (n Network) String() string {
 // none, which is the answer for Attention and for every view that counts
 // something the networks do not carry.
 var shown = map[View][]Network{
-	ViewSpend:   {NetworkWires, NetworkFreight},
-	ViewServers: {NetworkBeams},
-	ViewTraffic: {NetworkTraffic},
-	ViewFanout:  {NetworkCranes},
+	// The base view draws traffic and nothing else. Bug 48: Aria asked
+	// for cars on the main view, and the reason it is safe to break the
+	// subtractive rule here is that a car already answers for itself —
+	// its hover card names the two projects and the messages, files and
+	// sessions passing between them, which is what section 10's item 5
+	// asked for. Unexplained motion would be the complaint that started
+	// this project; motion that says what it is on hover is not.
+	ViewAttention: {NetworkTraffic},
+	ViewSpend:     {NetworkWires, NetworkFreight},
+	ViewServers:   {NetworkBeams},
+	ViewTraffic:   {NetworkTraffic},
+	ViewFanout:    {NetworkCranes},
 	// Health draws the wires for what is *not* there. A session the
 	// daemon has seen no hook events from has no wire to the plant, and
 	// that is a health signal rather than a spend one — it means the

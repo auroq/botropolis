@@ -315,6 +315,9 @@ The sequential ramp is no better placed: it passes within 11.1 of the error red 
 Seven tones and a view palette do not both fit in the space.
 That makes "the chrome recedes with the city" a correctness requirement rather than a polish item — the tones are kept off the screen rather than out of the palette.
 
+
+**The base view draws one network, and only one.** The rule is subtractive — a view says something by taking things away, and the base view is quiet so that the quiet means something. Traffic is the exception, added 2026-09-26, and the test for the exception is whether the thing can answer for itself without the view to explain it. A car can: its hover card names the two projects and what passes between them. A wire cannot, so the wires stay on the views that are about spend and health. The exception is not "cars are nice"; it is that an object carrying its own explanation is not the unexplained motion the rule guards against.
+
 ## City plan
 
 Phase 8 of the roadmap, 2026-09-18.

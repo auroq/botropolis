@@ -715,9 +715,11 @@ The fifth panel of `docs/screenshots/r205-signage.png` is the hover-only city.
 What the frames say, without picking: the rooftop billboard that ships today is the only treatment that reads at a glance, and it is also the one this entry calls chrome; the plaque carries the whole title on a real mount; the gantry carries nothing (see item 38); and hover-only is the quietest city by a distance.
 Aria leans permanent without being sure, so nothing is switched.
 
-### 5. Cars do not say which repos they connect
+### 5. ~~Cars do not say which repos they connect~~ Done 2026-09-25 (r195), noticed 2026-09-26
 A car drives a street between two districts, but the street is routed on the grid and passes along the edge of whichever districts are adjacent, so a viewer cannot tell which pair it belongs to. Either the car carries its pair (colour, or a label on hover) or traffic stops being drawn as cars and becomes something anchored to both ends.
 
+
+Closed by phase 20's mover cards and only recognised while doing bug 48. This item asked for "the car carries its pair (colour, or a label on hover)", and `CarCard` gives the hover label: the two projects, and the messages, files and sessions between them. It sat open for a day because the work that closed it was filed under a different heading.
 ### 6. ~~Clicking a building should open the menu, not attach~~ Done 2026-09-25 (r197)
 Today a click attaches immediately. That is a destructive-by-surprise action — it opens a terminal. A click should select and show the card with its actions; attach is one of them, and `Enter` can stay the shortcut.
 Frame `docs/screenshots/r197-click-to-select.png`. `Scene.Click` selects and raises the card and returns no action; `Enter` still activates, and the footer says `click select` rather than `click attach`, which it had been saying while doing something else.
@@ -1265,7 +1267,7 @@ Slide it back — up-screen — until the curb clears the roof's pipe run.
 **The white squares have a different cause, and it is a hard geometric one.** The curb's near annulus has two jobs: hide the straight cut at the centre, which needs `h ≥ r/2`; and cover the sprite's square-cut corners at `x = ±r`, which needs `h ≤ (R/2)·√(1−(r/R)²)`. Those meet at **R = √2·r** and contradict below it. At R = 1.32r the most a curb can cover is 0.431r against the 0.5r it needs, so **the corners show at every possible height** — no adjustment would have found it, and widening the pipe share to 75/87 would not have either, because the constraint is on the *ratio*, not the radius. `StackCurbRatio` is 1.55, and `CurbFloor`/`CurbCeiling` are exported so both bounds are asserted rather than described.
 
 **The fixture clearance is a perch move, exactly as this entry says.** A curb has to be wider than its pipe, and now provably at least √2 times, so it cannot be shrunk to fit between the duct's blocks. The perch moves to open roof north-east of centre — clear of the tank below x=190, the duct below y=128 and the small pipes above x=310 — as a world offset derived from the sprite, so it does not walk on a camera turn. Frames: `docs/screenshots/r235-chimney-corners.png` and `r235-chimney-headings.png` (all four).
-### 48. Cars belong on the main view (Aria, 2026-09-26)
+### 48. ~~Cars belong on the main view~~ Done 2026-09-26
 
 Her words: *"I think I want cars on the main view not just on their own view."*
 
@@ -1278,6 +1280,12 @@ So item 5 in section 10 — *"the cars don't really make sense which repos they 
 Either a car on the base view means something and hover says what, or it is declared ambience and reads as life rather than as data.
 Decide which, say which in DESIGN.md, and make the hover agree.
 
+
+**Done, and the thing that needed deciding was already decided — by phase 20, without anyone noticing it had closed section 10's item 5.**
+
+That item offered two ways out: *"either the car carries its pair (colour, or a label on hover) or traffic stops being drawn as cars"*. The mover cards built the first one. `CarCard` reads `traffic → <project> ↔ <project>` over the messages, files and sessions passing between them, so a car already answers for itself.
+
+So the subtractive rule bends here for a reason rather than for convenience: the base view stays quiet because unexplained motion is the complaint this project started from, and traffic is the one network that is not unexplained. Nothing else joins it — the wires, beams, freight and cranes still belong to the views that explain them, and the test asserts that too.
 ### 43a. ~~Escape does not close the selection card, which is the menu she meant~~ Done 2026-09-26
 
 Her words, with a frame of an open building card: *"escape should close menus like these. That's what I meant earlier."*
