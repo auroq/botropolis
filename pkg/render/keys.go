@@ -149,7 +149,15 @@ func (g *Game) handleKeys() error {
 		g.setView(city.ViewAttention)
 		return nil
 	}
-	if just(ebiten.KeyEscape) || just(ebiten.KeyQ) {
+	if just(ebiten.KeyEscape) {
+		// Escape is back, and the last rung back is settings, not the
+		// door. Bug 43: it used to arm the quit prompt here, so the key
+		// people press to get out of something asked them to leave.
+		// Quit is q, which is what the footer has always said.
+		g.settingsOpen = true
+		return nil
+	}
+	if just(ebiten.KeyQ) {
 		g.quit.ask(timeNow())
 		g.SetStatus(quitPrompt)
 		return nil

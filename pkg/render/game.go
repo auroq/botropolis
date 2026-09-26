@@ -106,7 +106,14 @@ type Game struct {
 	// rows the reader can actually see.
 	viewKey     bool
 	viewKeyRows ui.ViewKey
-	hidden      bool
+	// footerBar is the footer as last drawn, so a click lands on the
+	// verb that is there. clicked is the key a clicked verb stands in
+	// for this frame: the click runs the keyboard's path rather than a
+	// second copy of it, which is what "one code path, not two" means.
+	footerBar     ui.Footer
+	settingsPanel ui.SettingsPanel
+	clicked       ebiten.Key
+	hidden        bool
 	// live is whether anyone was watching the window last tick, so the
 	// tick is only changed when that changes. ticks counts Update calls
 	// and painted the tick the last frame was painted for, so a repeat
@@ -227,6 +234,7 @@ func (g *Game) Update() error {
 		}
 	}
 	g.scripted, g.scriptedRune, g.scriptedShift = -1, 0, false
+	g.clicked = -1
 	if g.record != "" && g.shotFrames > 0 {
 		// A key every two seconds, then run the clock out.
 		if len(g.script) > 0 && g.recorded%60 == 30 {
@@ -280,7 +288,7 @@ func (g *Game) Update() error {
 	// along from attach. Move either to the other event and a click
 	// becomes able to stop a session.
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		if !g.clickViewKey(cursor) && !g.clickTimeline(cursor) && !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
+		if !g.clickSettings(cursor) && !g.clickFooter(cursor) && !g.clickViewKey(cursor) && !g.clickTimeline(cursor) && !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
 			g.dragging, g.dragFrom = true, cursor
 		}
 	}
@@ -305,7 +313,7 @@ func (g *Game) Update() error {
 // the second frame after the first snapshot so the fit has settled.
 // just reports a key pressed this frame, by hand or by the script.
 func (g *Game) just(key ebiten.Key) bool {
-	return g.scripted == key || inpututil.IsKeyJustPressed(key)
+	return g.scripted == key || g.clicked == key || inpututil.IsKeyJustPressed(key)
 }
 
 // keyByName finds an Ebitengine key by its name, case-insensitively:

@@ -90,6 +90,10 @@ func (g *Game) drawSettings(screen *ebiten.Image, width, height float64) {
 	th := g.theme
 	vector.FillRect(screen, 0, 0, float32(width), float32(height), colorScrim, false)
 	p := ui.LayoutSettings(th, width, height, g.settings, g.faces.Measure)
+	// Kept so a click lands on the row that was drawn. Bug 43.
+	g.mu.Lock()
+	g.settingsPanel = p
+	g.mu.Unlock()
 	g.roundPanel(screen, p.Rect)
 	g.run(screen, p.Title, th.Palette.Text)
 	for _, row := range p.Rows {
@@ -100,4 +104,26 @@ func (g *Game) drawSettings(screen *ebiten.Image, width, height float64) {
 		g.run(screen, row.Label, label)
 		g.run(screen, row.Value, value)
 	}
+}
+
+// clickSettings moves the cursor to the row under the pointer and
+// presses Enter on it, which is exactly what the keyboard does — the
+// click borrows the key rather than repeating the action behind it.
+func (g *Game) clickSettings(cursor city.Point) bool {
+	if !g.settingsOpen {
+		return false
+	}
+	g.mu.Lock()
+	panel := g.settingsPanel
+	g.mu.Unlock()
+	if !panel.Rect.Contains(cursor) {
+		// A click off the panel closes it, the way Escape does.
+		g.settingsOpen = false
+		return true
+	}
+	if i, ok := panel.Hit(cursor); ok {
+		g.settings.Cursor = i
+		g.clicked = ebiten.KeyEnter
+	}
+	return true
 }

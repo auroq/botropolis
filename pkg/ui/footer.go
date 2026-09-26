@@ -34,6 +34,29 @@ type Footer struct {
 	Keys   []PlacedKey
 }
 
+// Hit finds the footer verb under a screen point, so a verb can be
+// clicked as well as typed. Bug 43: a verb that can only be typed
+// teaches nothing, and one that can be clicked teaches its own key.
+//
+// A verb's target is its chip and the label beside it, out to wherever
+// the next chip starts — the label's width is not kept, and the gap
+// between verbs belongs to whichever verb is on its left.
+func (f Footer) Hit(at city.Point) (Key, bool) {
+	if !f.KeyRow.Contains(at) {
+		return Key{}, false
+	}
+	for i, k := range f.Keys {
+		right := f.Rect.Max.X
+		if i+1 < len(f.Keys) {
+			right = f.Keys[i+1].Chip.Min.X
+		}
+		if at.X >= k.Chip.Min.X && at.X < right {
+			return k.Key, true
+		}
+	}
+	return Key{}, false
+}
+
 // LayoutFooter lays the footer along the bottom of a width×height window.
 func LayoutFooter(th Theme, width, height float64, status string, keys []Key, measure Measure) Footer {
 	grid := th.Grid()

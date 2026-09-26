@@ -964,7 +964,7 @@ Frame `docs/screenshots/r215-draw-order.png`.
 The invariant to test: **no drawable that is behind another by the separating-axis rule is drawn after it.**
 Assert it over the real plan, not a fixture, and over all four headings — a depth bug that only shows at one heading is the same family as bug 25.
 
-### 43. Escape ends in quit, and the chrome answers only the keyboard (Aria, 2026-09-26)
+### 43. Escape ends in quit, and the chrome answers only the keyboard (Aria, 2026-09-26) — Escape and most of the mouse done 2026-09-26; search and help still keyboard-only
 
 Her words: *"escape should close open dialogs or open the settings menu if there are no open dialogs (and close the settings menu (as a dialog)) if it's open. I like that everything is keyboard navigatable, but we should allow mouse as well. It enables things to be discovered while learning controls and such."*
 
@@ -981,6 +981,20 @@ Inventory every panel that answers the keyboard — settings, breakdown, timelin
 Her reason is the requirement, so build to it: *"it enables things to be discovered while learning controls."*
 A footer verb that can only be typed teaches nothing; one that can be clicked teaches its own shortcut.
 So every clickable thing should still show its key, and clicking it should do exactly what the key does — one code path, not two.
+
+**Escape: done.** The last rung opens settings instead of arming the quit prompt. Quit stays on `q`, which is what the footer has always said. The help, view-key and leave-the-view rungs are unchanged and still sit above it.
+
+**Mouse: the inventory this entry asked for came back much shorter than it assumed.** Six of the surfaces already answered a click, through `Game.Update`'s dispatch chain: the view key, the timeline, the breakdown, the hover card, the sidebar and the strip. Only the footer, settings, search and help did not.
+
+**Footer verbs and settings rows: done. Search and help: not done, and they are the two that are left.**
+
+The interesting part is how a click runs "the same code path, not two". It does not call the action — **it presses the key.** `Game.just` reads a `clicked` key alongside the scripted one and the real keyboard, and a click on a verb sets it, so the keyboard's own handler runs. Clicks are dispatched at `game.go:283` and keys at `:308`, so a synthesised press lands in the same frame. Settings does the same thing twice over: a click puts the cursor on the row under the pointer and then presses Enter on it.
+
+That keeps Aria's reason intact rather than merely satisfying it. A verb goes on showing its key **because the key is what the click presses** — there is no second implementation to drift out of step with the label, which is the failure `labels_test.go` exists to catch.
+
+A verb with no key behind it — `drag`, `wheel`, `click` — still swallows the click rather than letting it fall through to the city, because the bar is what the pointer is over.
+
+**What is left:** `pkg/render/search.go` and the help overlay (`g.help`, drawn from `chrome.go`) have no hit-testing. Neither has a laid-out row rect yet, so each needs the same two steps the settings panel took: a `Row` on the layout's rows and a `Hit` beside it, then a click that presses the key the row stands for.
 
 ### 44. ~~The district plate is a monument sign standing in the plaza~~ Done 2026-09-26 (r216)
 

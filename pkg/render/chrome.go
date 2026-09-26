@@ -19,6 +19,11 @@ func (g *Game) chrome(screen *ebiten.Image, width, height float64) {
 	status := g.notice.Text(timeNow())
 	g.mu.Unlock()
 	footer := ui.LayoutFooter(th, width, height, status, footerKeys, g.faces.Measure)
+	// Kept so a click hit-tests the bar that was actually drawn, the
+	// same way the view key does. Bug 43.
+	g.mu.Lock()
+	g.footerBar = footer
+	g.mu.Unlock()
 	legend := ui.LayoutLegend(th, width, footer.Rect.Min.Y, g.scene.Legend(), g.faces.Measure)
 	top := g.strip(screen, width)
 	g.scene.SetTopChrome(top)

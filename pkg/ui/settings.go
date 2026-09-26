@@ -61,8 +61,11 @@ func (s *Settings) Adjust(delta int) Setting {
 // SettingRow is one laid-out row: label on the left, value in a column.
 type SettingRow struct {
 	Setting
-	Label    Text
-	Value    Text
+	Label Text
+	Value Text
+	// Row is the band the whole row occupies, so it can be clicked as
+	// well as stepped with the keyboard. Bug 43.
+	Row      city.Rect
 	Selected bool
 }
 
@@ -71,6 +74,18 @@ type SettingsPanel struct {
 	Rect  city.Rect
 	Title Text
 	Rows  []SettingRow
+}
+
+// Hit finds the setting under a screen point and reports its index, so
+// a click can move the cursor to a row and step it the way the
+// keyboard does.
+func (p SettingsPanel) Hit(at city.Point) (int, bool) {
+	for i, r := range p.Rows {
+		if r.Row.Contains(at) {
+			return i, true
+		}
+	}
+	return 0, false
 }
 
 const settingsTitle = "Settings"
@@ -107,6 +122,7 @@ func LayoutSettings(th Theme, width, height float64, s Settings, measure Measure
 			Setting:  item,
 			Label:    Text{Text: item.Label, At: city.Point{X: p.Rect.Min.X + pad, Y: y}, Size: Body},
 			Value:    Text{Text: values[i], At: city.Point{X: p.Rect.Min.X + pad + labelW + pad, Y: y}, Size: Body},
+			Row:      city.RectAt(p.Rect.Min.X, y, p.Rect.Width(), rowStep),
 			Selected: i == s.Cursor,
 		})
 		y += rowStep
