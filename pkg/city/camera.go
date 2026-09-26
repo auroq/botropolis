@@ -69,6 +69,43 @@ func (c *Camera) turn(p Point) Point {
 	return p
 }
 
+// TurnRect is a world rectangle in the camera's own frame. A heading is
+// a quarter turn, so the result is still axis aligned and turning the
+// two opposite corners is enough.
+func (c *Camera) TurnRect(r Rect) Rect {
+	a, b := c.turn(r.Min), c.turn(r.Max)
+	return Rect{
+		Min: Point{X: math.Min(a.X, b.X), Y: math.Min(a.Y, b.Y)},
+		Max: Point{X: math.Max(a.X, b.X), Y: math.Max(a.Y, b.Y)},
+	}
+}
+
+// Behind reports whether a is hidden by b: in the camera's own frame, a
+// ends before b begins on one of the two axes.
+//
+// Bug 42. DepthOf keys a footprint at one corner, and no single scalar
+// can order a point against a box here — key the box at its back corner
+// and everything standing behind it draws over it, key it at its front
+// corner and it draws over everything in front. A 4x4 building spans
+// eight units of depth and was being compared as though it were a point
+// at its far corner, so a tree on the cell behind its back edge sorted
+// after it and was painted across the facade.
+//
+// This is a separating axis, and it is only a partial order: two
+// footprints that overlap on both axes are behind neither, which on a
+// grid of non-overlapping footprints means they do not hide each other
+// and any order will do.
+func (c *Camera) Behind(a, b Rect) bool {
+	return BehindTurned(c.TurnRect(a), c.TurnRect(b))
+}
+
+// BehindTurned is Behind for rectangles already in the camera's frame,
+// for a sort that turns them once rather than once per comparison. It
+// is the same expression, so the two cannot drift.
+func BehindTurned(a, b Rect) bool {
+	return a.Max.X <= b.Min.X || a.Max.Y <= b.Min.Y
+}
+
 // TurnPoint is a world point in the camera's own frame, where depth is
 // x + y. Exported for the draw-order guard, which needs to say what
 // "behind" means from a heading.

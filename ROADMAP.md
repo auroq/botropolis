@@ -900,7 +900,7 @@ The test that would have caught this is not a cell test.
 It is: **for every tree, the ground under its final position is plantable**, resolved through whatever the renderer actually paints on that cell.
 Bug 20 tested the cell and this tree is on a legal cell — the guard has to run on the position, and it has to ask about the drawn surface, not the plan's category.
 
-### 42. Anything keyed by a point draws over every building it stands behind (Aria, 2026-09-26, on r205)
+### 42. ~~Anything keyed by a point draws over every building it stands behind~~ Done 2026-09-26 (r215)
 
 Her words: *"some trees still render through buildings"*, with a frame of a conifer painted across a four-storey facade.
 
@@ -925,6 +925,27 @@ Treat every drawable as an axis-aligned box in turned space; **A is behind B** i
 Points become cell-sized boxes so there is one rule.
 Sort by minimum depth first and only compare pairs whose depth intervals overlap — on this map that is near-linear, not the O(n²) the worst case suggests.
 Measure the frame cost before and after and put the number in DESIGN.md; the renderer is at 14% and I would rather know than guess.
+
+**Done, and the analysis above holds — I re-probed it rather than taking it.**
+Three of the seven probe points sort wrongly under the back-corner key, and keying the front corner does break the point in front, exactly as reported.
+
+**One thing had to be added to the proposed shape: the separating axis alone cycles.**
+A box west of another *and* north of it is behind it on the x test while the other is behind it on the y test, so each must be drawn first — `a` at x[0,1] y[5,6] against `b` at x[2,3] y[0,1] is a two-cycle, and a topological sort cannot resolve it.
+The fix is cheap and is not an optimisation: two footprints that share no screen column cannot occlude each other, so there is nothing to order, and requiring an overlap of the columns their footprints cover removes the cycle by removing the edge. In that example the columns are [-6,-4] and [1,3] and never meet.
+Anything that cycles anyway is appended in depth order rather than dropped, so the worst case is the old behaviour rather than a missing tree.
+
+**Cost, on the agent's rig, for 508 drawables — 484 point-keyed things and 24 four-cell footprints, which is the shape of a real city:**
+
+| | per call | allocations |
+| --- | --- | --- |
+| the old single-key sort | 95.9 µs | 3 |
+| depth sort plus the pairwise pass | 174.0 µs | 1131 |
+
+**+78 µs a frame**, which at 30 fps is 2.3 ms a second, 0.23% of one core against a renderer that was measured at 14%.
+The depth sort still dominates its own replacement.
+
+`Camera.Behind` and `BehindTurned` are one expression with two callers, so the tested predicate and the one the sort runs cannot drift.
+Frame `docs/screenshots/r215-draw-order.png`.
 
 The invariant to test: **no drawable that is behind another by the separating-axis rule is drawn after it.**
 Assert it over the real plan, not a fixture, and over all four headings — a depth bug that only shows at one heading is the same family as bug 25.

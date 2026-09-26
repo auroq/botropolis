@@ -3,7 +3,6 @@ package render
 import (
 	"image/color"
 	"math"
-	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/colorm"
@@ -280,11 +279,6 @@ func wirePoint(tops []city.Point, t, sag float64) city.Point {
 }
 
 var colorNightOverlay = color.NRGBA{0x08, 0x0c, 0x24, 0x70}
-
-type drawable struct {
-	depth float64
-	draw  func()
-}
 
 // isoBuilding draws a session as a stacked building on its footprint, or a
 // flat diamond in the map view.
@@ -599,49 +593,49 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 	g.powerLines(screen, c, cam, hover, seconds)
 	var items []drawable
 	if c.Fountain.Area() > 0 {
-		items = append(items, drawable{depth: cam.DepthOf(c.Fountain), draw: func() {
+		items = append(items, footprintAt(cam, c.Fountain, func() {
 			g.fountain(screen, cam, c, seconds)
-		}})
+		}))
 	}
 	for _, l := range c.Lamps {
 		if !g.scene.Scenery() {
 			break
 		}
 		l := l
-		items = append(items, drawable{depth: cam.DepthOf(l.Rect()), draw: func() {
+		items = append(items, footprintAt(cam, l.Rect(), func() {
 			g.lamp(screen, cam, l, c.Night)
-		}})
+		}))
 	}
 	for _, d := range c.Districts {
 		for _, b := range d.Buildings {
 			b := b
-			items = append(items, drawable{depth: cam.DepthOf(b.Rect), draw: func() {
+			items = append(items, footprintAt(cam, b.Rect, func() {
 				g.isoBuilding(screen, cam, b, b == selected, detailed, seconds)
-			}})
+			}))
 		}
 	}
 	for _, v := range g.scene.Voyages() {
 		v := v
-		items = append(items, drawable{depth: cam.Depth(v.At(g.scene.Clock())), draw: func() {
+		items = append(items, standingAt(cam, v.At(g.scene.Clock()), func() {
 			g.drawVoyage(screen, cam, v, seconds)
-		}})
+		}))
 	}
 	for _, k := range g.freight(c, seconds) {
 		k := k
-		items = append(items, drawable{depth: cam.Depth(k.at), draw: func() {
+		items = append(items, standingAt(cam, k.at, func() {
 			g.drawCarriage(screen, cam, k)
-		}})
+		}))
 	}
 	for _, car := range g.trafficCars(c, seconds) {
 		car := car
-		items = append(items, drawable{depth: cam.Depth(car.at), draw: func() {
+		items = append(items, standingAt(cam, car.at, func() {
 			g.drawCar(screen, cam, car)
-		}})
+		}))
 	}
 	if c.Plant.Rect.Area() > 0 {
-		items = append(items, drawable{depth: cam.DepthOf(c.Plant.Rect), draw: func() {
+		items = append(items, footprintAt(cam, c.Plant.Rect, func() {
 			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, g.scenery(), city.Hit{Landmark: city.LandmarkPlant})
-		}})
+		}))
 		// The chimney shares the building's depth and is appended after
 		// it. The sort is stable, so the slab is laid down first and the
 		// chimney over it, foot on the roof plane instead of the
@@ -649,38 +643,38 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		// and the slab paints over the chimney's base. Bug 39.
 		perch := plantStackPerch(c.Plant.Rect, g.kitFootprint(cam, kitPlant))
 		roof := g.kitRoofLift(cam, kitPlant)
-		items = append(items, drawable{depth: stackDepth(cam, c.Plant.Rect), draw: func() {
+		items = append(items, footprintAt(cam, c.Plant.Rect, func() {
 			g.kitThrough(screen, cam, kitStack, perch, roof, nil)
-		}})
+		}))
 	}
 	for _, t := range c.Trees {
 		if !g.scene.Scenery() {
 			break
 		}
 		t := t
-		items = append(items, drawable{depth: cam.Depth(t.At), draw: func() {
+		items = append(items, standingAt(cam, t.At, func() {
 			g.isoTree(screen, cam, t, g.scenery())
-		}})
+		}))
 	}
 	for _, t := range c.Towers {
 		t := t
-		items = append(items, drawable{depth: cam.DepthOf(t.Rect), draw: func() {
+		items = append(items, footprintAt(cam, t.Rect, func() {
 			r := g.kit(screen, cam, kitTower, 0, t.Rect.Center(), towerTint(t, g.viewing(), g.unlitTower(t)))
 			g.noteHit(r, city.Hit{Landmark: city.LandmarkTower, Tower: t})
 			g.towerSign(screen, r, t.Server.Name)
-		}})
+		}))
 	}
 	if c.Library.Rect.Area() > 0 {
-		items = append(items, drawable{depth: cam.DepthOf(c.Library.Rect), draw: func() {
+		items = append(items, footprintAt(cam, c.Library.Rect, func() {
 			g.isoLandmark(screen, cam, c.Library.Rect, kitLibrary, g.scenery(), city.Hit{Landmark: city.LandmarkLibrary})
-		}})
+		}))
 	}
 	if c.Hall.Rect.Area() > 0 {
-		items = append(items, drawable{depth: cam.DepthOf(c.Hall.Rect), draw: func() {
+		items = append(items, footprintAt(cam, c.Hall.Rect, func() {
 			g.isoLandmark(screen, cam, c.Hall.Rect, kitHall, g.scenery(), city.Hit{Landmark: city.LandmarkHall})
-		}})
+		}))
 	}
-	sort.SliceStable(items, func(i, j int) bool { return items[i].depth < items[j].depth })
+	items = order(cam, items)
 	for _, item := range items {
 		item.draw()
 	}

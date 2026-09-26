@@ -532,6 +532,8 @@ A window nobody can see draws nothing and waits in `Draw` rather than trusting t
 The city under the traffic — ground, avenues, beams, district floors, the plaza, the camp ties — composes into an offscreen image keyed on `(generation, camera, heading, view, size, night, labels, hover)` and blits until that key changes.
 And a frame whose tick has already been painted is skipped, with the tick itself dropping to ten when `city.Scene.Animating` says nothing on the map moves.
 
+**What the draw order costs** (bug 42, 2026-09-26). Ordering the city back to front used to be one sort on one number per drawable. A number cannot order a point against a footprint — a building spans a range of depths and was being compared as though it were a point at one corner — so the sort is now a first pass and a pairwise predicate corrects it, over only those pairs whose depth intervals and screen columns both overlap. On the agent's rig, 508 drawables: 95.9 µs before, 174.0 µs after, **+78 µs a frame**, or 0.23% of one core at 30 fps. Allocations went from 3 to 1131, which is the edge lists and is the obvious thing to pool if this ever matters.
+
 **Numbers are a measurement of one desk, so the desk is written beside them.**
 CPU is `utime+stime` from `/proc/<pid>/stat` over a twenty-second sample as a percentage of one core, RSS is `VmRSS` and the peak `VmHWM` from `/proc/<pid>/status`, taken by `tools/measure-render` on a display that already answers.
 Every row carries the frames drawn during the sample, because a cheap app and a stopped one look alike without it.
