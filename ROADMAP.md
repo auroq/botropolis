@@ -1417,6 +1417,37 @@ This settles item 49a's open choice and **overrides the configured-budget recomm
 
 **The reset times arrive free with the percentages**, which makes the journey-as-window proposal from 49a buildable at no extra cost: the boat sets off at the window's start and reaches the far end at its reset, with height still the usage. Recommended, and cheap enough to try and discard.
 
+### 49c. There are two plan shapes, and the monthly boat was right after all (Aria, 2026-09-26)
+
+Her words: *"The limits available depend on the type of plan. Here's for my max plan that is based on a percentage over time. The enterprise and other credit plans have a monthly limit. We should detect and handle both."*
+
+**Correction to 49a and 49b: "there is no monthly limit" was true of one plan, not of Claude.**
+I generalised from the only account on this machine.
+Item 49's monthly boat was right for credit and enterprise plans, and killing it was my error.
+
+**Shape A — subscription (Max), percentages over rolling windows.**
+Session at 7% resetting in hours, this week at 21% resetting Tuesday, and Fable's own separate weekly limit at 0%.
+Three real gauges, no money anywhere.
+
+**Shape B — credit and enterprise, a monthly spend limit.**
+*"$484.18 of $500.00 spent · 97% used · Spend limit · Resets Wed, Sep 30, 6:00 PM MDT."*
+One real gauge, denominated in dollars, on a **monthly** reset — plus breakdowns by product (Claude Code against Chat) and by model (Opus 5, Sonnet 5, Fable 5.1, Haiku 4.5) that map straight onto the breakdown panel we already have.
+
+**So the boats follow the plan, and the count follows the limits that actually exist.**
+Shape A gives three: week all-models, session, Fable week.
+Shape B gives **one**: month against the spend limit.
+Do not manufacture two more boats to fill the river on a credit plan — a derived denominator is the "right but meaningless" trap this project has paid for repeatedly, and an absent gauge is the honest answer, the same rule as an unset budget not being 0%.
+
+The one honest second gauge on shape B is **pace**: spend projected to the reset date against the limit, which is what Claude's own panel reports in words (*"On track. You should reach Tuesday's reset with room to spare"*). It is derived, so it has to be labelled as a projection, but it is genuinely useful and it is the reading a monthly spend limit actually needs.
+
+**Detection.** Parse the CLI output and branch on which lines are present: percentage-and-reset lines for shape A, a spend-of-spend line for shape B. Neither matching means **show nothing and say so** — not zero, not a guess.
+
+**The thing that blocks shape B: we cannot test it here.**
+This machine is on the subscription plan, so `claude -p "/usage"` on a credit plan is output nobody on this project has seen.
+Writing a parser against a format guessed from a *web UI screenshot* is how a format-coupled feature ships broken.
+**Get the real text before building shape B** — Aria has a work account; `claude -p "/usage"` under it, pasted verbatim, is a two-minute task that turns a guess into a specification.
+Until then, build shape A fully, and let shape B fall through to the visible "not recognised" state.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
