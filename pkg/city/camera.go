@@ -5,16 +5,30 @@ import "math"
 const (
 	MinZoom    = 0.25
 	FitMinZoom = 0.02
-	MaxZoom    = 4.0
-	fitPad     = 40.0
+	// MaxZoom is where the sprites run out, not where the maths does.
+	// pkg/assets/kits holds two levels, z1 at tile 132 and z2 at tile
+	// 264, so past 2 there is nothing to draw and z2 is stretched —
+	// which is what "the tower looks low res" was, map-wide, read off
+	// the one piece whose smooth curved surface could not hide it.
+	//
+	// The ladder used to go to 4. Cutting z3 and z4 was budgeted first
+	// and does not fit: pages grow with the square of the zoom, so z3
+	// wants 14 pages and z4 wants 23 against a budget of 8 each, on top
+	// of z2's 6. A ladder that promises a zoom the art cannot serve is
+	// the same lie as a label that does not match its behaviour, so the
+	// ladder stops where the art does. pkg/render's
+	// TestZoomLadderStopsWhereTheAtlasDoes holds the two together.
+	MaxZoom = 2.0
+	fitPad  = 40.0
 	// FitFooter keeps the bottom strip, where the footer draws, clear of the city.
 	FitFooter = 40.0
 )
 
 // ZoomSteps is the wheel's ladder: 16 px tiles land on whole screen
-// pixels at 1, 2, 3 and 4, and the steps below are where the map view
-// takes over from sprites.
-var ZoomSteps = []float64{MinZoom, 0.35, 0.5, 0.75, 1, 1.5, 2, 3, MaxZoom}
+// pixels at 1 and 2, and the steps below are where the map view takes
+// over from sprites. It ends at MaxZoom because that is where the atlas
+// ends; see the note there.
+var ZoomSteps = []float64{MinZoom, 0.35, 0.5, 0.75, 1, 1.5, MaxZoom}
 
 type Camera struct {
 	Offset     Point
