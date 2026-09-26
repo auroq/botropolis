@@ -78,6 +78,13 @@ var (
 // the world by turn degrees, as the camera's heading sees it. It returns
 // the sprite's screen rect for anything that hangs off it.
 func (g *Game) kit(screen *ebiten.Image, cam *city.Camera, name string, turn int, at city.Point, tint *ebiten.ColorScale) city.Rect {
+	return g.kitLifted(screen, cam, name, turn, at, 0, tint)
+}
+
+// kitLifted draws a piece standing lift screen pixels above the ground
+// point it is placed at, for a roof feature — see plantStackPerch. A
+// lift of zero is a piece on the ground, which is what kit is.
+func (g *Game) kitLifted(screen *ebiten.Image, cam *city.Camera, name string, turn int, at city.Point, lift float64, tint *ebiten.ColorScale) city.Rect {
 	if g.kits == nil {
 		return city.Rect{}
 	}
@@ -91,6 +98,7 @@ func (g *Game) kit(screen *ebiten.Image, cam *city.Camera, name string, turn int
 	}
 	scale := cam.Zoom / atlas.Zoom
 	foot := cam.WorldToScreen(at)
+	foot.Y -= lift
 	origin := city.Point{X: foot.X - float64(sprite.Anchor.X)*scale, Y: foot.Y - float64(sprite.Anchor.Y)*scale}
 	img := atlas.pages[sprite.Page].SubImage(sprite.Rect).(*ebiten.Image)
 	g.drawSprite(screen, img, origin, scale, tint)
@@ -172,6 +180,23 @@ func (g *Game) kitAt(screen *ebiten.Image, cam *city.Camera, name string, turn i
 	img := atlas.pages[sprite.Page].SubImage(sprite.Rect).(*ebiten.Image)
 	g.drawSprite(screen, img, origin, scale, tint)
 	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
+}
+
+// kitRoofLift is how high above its ground point a piece's roof plane
+// lands on screen, for standing something on top of it.
+func (g *Game) kitRoofLift(cam *city.Camera, name string) float64 {
+	if g.kits == nil {
+		return 0
+	}
+	atlas := g.kits.pick(cam.Zoom)
+	if atlas == nil {
+		return 0
+	}
+	sprite, ok := atlas.Sprite(name, cam.Heading)
+	if !ok {
+		return 0
+	}
+	return roofLift(float64(sprite.Rect.Dx()), float64(sprite.Anchor.Y)) * (cam.Zoom / atlas.Zoom)
 }
 
 // kitSize is a piece's screen size at the camera's zoom without drawing it.

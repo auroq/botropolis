@@ -634,16 +634,15 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		items = append(items, drawable{depth: cam.DepthOf(c.Plant.Rect), draw: func() {
 			g.isoLandmark(screen, cam, c.Plant.Rect, kitPlant, g.scenery(), city.Hit{Landmark: city.LandmarkPlant})
 		}})
-		// The stack is its own drawable at its own ground point, not a
-		// second sprite welded to the plant's. Sharing one depth is what
-		// made it hang: its ground point sits behind the plant's slab,
-		// so the slab should hide its base, and instead the base was
-		// painted over the slab afterwards. A tower standing on ground
-		// the viewer cannot see, drawn in front of the thing hiding that
-		// ground, reads as floating by exactly the slab's height.
-		stack := plantStackAt(c.Plant.Rect)
-		items = append(items, drawable{depth: cam.Depth(stack), draw: func() {
-			g.kit(screen, cam, kitStack, 0, stack, nil)
+		// The chimney shares the building's depth and is appended after
+		// it. The sort is stable, so the slab is laid down first and the
+		// chimney over it, foot on the roof plane instead of the
+		// pavement. Order here is load-bearing: swap these two appends
+		// and the slab paints over the chimney's base. Bug 39.
+		perch := plantStackPerch(c.Plant.Rect)
+		lift := g.kitRoofLift(cam, kitPlant)
+		items = append(items, drawable{depth: stackDepth(cam, c.Plant.Rect), draw: func() {
+			g.kitLifted(screen, cam, kitStack, 0, perch, lift, nil)
 		}})
 	}
 	for _, t := range c.Trees {
@@ -1120,11 +1119,47 @@ func (g *Game) freight(c *city.City, seconds float64) []carriage {
 	return g.carriages(c, seconds)
 }
 
-// plantStackAt is where the plant's stack stands: one tile in from the
-// far corner of the plant's footprint. It is a function so the point the
-// stack is drawn at and the point it is sorted by cannot drift apart —
-// they were the same expression written twice before, and that is the
-// shape the bug hid in.
-func plantStackAt(plant city.Rect) city.Point {
-	return city.Point{X: plant.Max.X - city.Tile, Y: plant.Max.Y - city.Tile}
+// plantStackPerch is where the plant's chimney stands: the same world
+// point the plant's own sprite is drawn at.
+//
+// Bug 39. It used to be one tile in from the footprint's near corner,
+// which is not on the building at all. The plant's rect is a 7.5 x 4
+// tile reservation and isoLandmark draws building-a at natural size —
+// a little over 1.6 tiles wide — centred in it, so a point a tile in
+// from Max is most of three tiles clear of the slab, out on the open
+// plaza. That is where the chimney was standing, and why swapping
+// chimney-large for chimney-medium changed how the error looked without
+// touching what it was.
+//
+// isoLandmark draws the building at r.Center(); the chimney reads the
+// same expression, so the two cannot be moved apart.
+func plantStackPerch(plant city.Rect) city.Point {
+	return plant.Center()
+}
+
+// roofLift is how far above a piece's ground anchor its roof plane sits,
+// in the atlas's own pixels.
+//
+// A kit sprite's box is exactly as wide as the piece's base diamond, so
+// in this 2:1 projection the diamond's screen height is w/2 and its
+// centre lies w/4 below the sprite's topmost pixel — which for a box of
+// a building is the roof's far corner. The anchor's ay is the whole
+// height above the ground point, so the roof plane is ay - w/4.
+// building-a checks out: 431 px is 1.63 tiles against the 264 px tile,
+// and 431/2 is the base diamond's screen height to the pixel.
+func roofLift(w, ay float64) float64 {
+	return math.Max(0, ay-w/4)
+}
+
+// stackDepth is the depth the plant's chimney sorts at: the building's,
+// not the chimney's own.
+//
+// This reverses bug 23 deliberately. That gave the stack its own ground
+// depth, which is right for something free-standing and wrong for a roof
+// feature — DepthOf takes a footprint's back-most corner while Depth of
+// the old perch was near its front-most, so the chimney sorted in front
+// of the slab and was painted over it. A chimney belongs to its
+// building's depth.
+func stackDepth(cam *city.Camera, plant city.Rect) float64 {
+	return cam.DepthOf(plant)
 }

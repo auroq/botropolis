@@ -502,6 +502,14 @@ The guard is a question asked before the sentence is written: *what is the set?*
 For a ratio — what is the comparison class, and is the thing on the other side representative of it or an extreme of it.
 For a negative — was the search over the whole set, or over a set some earlier sort or filter had already narrowed.
 
+**A third instance, found the same week, and it is the same shape without any sorting in it.**
+Bug 23 measured the gap between the plant's stack and the ground it stood on, got zero pixels, and concluded the stack was grounded.
+It was grounded.
+It was standing on the plaza, three tiles clear of the building it was supposed to be a chimney on, and a zero-pixel gap is exactly what that looks like.
+The arithmetic was right about an object nobody meant.
+Two independent routes to a number — and bug 23 had two — still cannot tell you that you measured the wrong thing's base.
+The set that went unnamed there was not a comparison class but a referent: *the gap between what and what?*
+
 **The tell, in both directions, is a superlative that nobody chose.**
 `building-c` arrived as "a four-storey commercial building," not as "the smallest commercial building" — the extremity was a property of the sample, invisible in the sentence built from it.
 Fourteen arrived as "the tall ones," not as "the set that cannot contain what I am looking for."
