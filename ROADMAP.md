@@ -1062,6 +1062,40 @@ The capacity changes from about eleven characters to about **thirteen** — `Lay
 That does not revive the gantry for **session** titles at twenty to thirty characters, which is what item 38 was measuring. It does mean the gantry was never ruled out for a **project** name: `avesta`, `mullet` and `botropolis` are six to ten. If the monument is ever rejected, the gantry is a live option for this job and item 38's number should not be quoted against it.
 A panel floating clear of its base is the failure mode, and it is the one that has already been rejected twice.
 
+### 45. The monument faces the viewer, stands at the lot's near corner, and is built of stone (Aria, 2026-09-26, on r216)
+
+Her words: *"they look completely flat and are hard to read at an angle. Can we try putting them at the bottom middle corner of the lot and make them face the user directly? It admittedly makes less sense with the world but makes them readable. They're just rotated 45 degrees. Alternatively, put them in that corner and make them bigger? Either way, make them actually look like stone signs in front of buildings so they don't look flat."*
+
+She supplied three references, kept in `docs/references/`:
+`monument-oak-hollow.png` — a single monolithic slab, panel and body one mass, landscaped at the foot.
+`monument-piers-and-panel.png` — two signs, and the richer of the pair is the whole grammar: coursed stone piers either side, a heavy overhanging cornice, a recessed panel between them, a base course at the ground, planting around it.
+
+**Siting.** The sign moves to the **near corner of the lot** — the corner closest to the viewer — where nothing of its own district stands in front of it.
+
+**Facing: take the rotation, not the size.**
+She offered either. The rotation is the answer and the size increase is not, because the problem is shear, not scale: type sheared into a 2:1 plane is hard to read at any size, so making it bigger only produces bigger slanted type. A face turned 45° off the world grid is a rectangle in screen space, its type sits level, and its masonry reads with honest thickness. A modest size increase on top is fine, but it is the second lever, not the first.
+
+**The risk this carries, named plainly.** A screen-facing object in an isometric scene is exactly what was rejected in item 4 and again in item 40: something that reads as pasted on rather than standing in the world. Facing the viewer does not cause that on its own — a decal causes it. The sign has to be a solid seen head-on, which means:
+
+- **visible returns.** The side of each pier and the underside of the cornice stay drawn. A head-on object with no visible depth is a sticker.
+- **a contact shadow** on the ground at its foot. This is what the Oak Hollow reference has that makes it sit on the earth rather than hover above it.
+- **correct occlusion**, through the footprint machinery from bug 42. It occludes and is occluded like anything else; it does not get painted last.
+
+If those three hold it will read as a monument photographed square on, which is what her references are.
+
+**Construction, from her references.** The current sign is a panel, a plinth and a cap. The grammar she is pointing at has more parts, and each one is a solidity cue:
+
+1. **Two piers flanking a recessed panel.** Both of the richer references have this. At our pixel budget the piers do more work than any texture, because they give the object three vertical masses instead of one flat one.
+2. **A cornice that oversails on every side.** The single strongest cue that a thing is solid. It already oversails; it should oversail the piers, and its underside should be visible and darker.
+3. **A base course wider than the body**, running the full width at the ground.
+4. **Coursed stone** on piers and base. At this resolution that is two or three horizontal score lines with slight value variation between courses — *not* a texture map, and not noise.
+5. **The panel recessed into the frame**, sold by a one-pixel inner shadow along its top and inside edge. Flush reads as printed; recessed reads as built.
+6. **Material contrast.** Smooth panel against textured stone — the references use dark bronze on pale stone, and white on grey. Two materials, not one.
+7. **Planting at the foot**, which the plaza already provides.
+
+**One consequence to rule on.** With four headings, "the near corner" changes when the camera turns.
+Recommendation: **recompute the corner on turn** so the sign is always the near one. A sign that stays put would spend two headings behind its own building, and a sign relocating on a discrete quarter-turn reads as the city re-orienting, which is the lesser cost. Worth showing Aria both before it is fixed.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
