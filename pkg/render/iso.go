@@ -644,7 +644,11 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 		perch := plantStackPerch(c.Plant.Rect, g.kitFootprint(cam, kitPlant))
 		roof := g.kitRoofLift(cam, kitPlant)
 		items = append(items, footprintAt(cam, c.Plant.Rect, func() {
-			g.kitThrough(screen, cam, kitStack, perch, roof, nil)
+			// The fittings go on after the stack and over its cut
+			// edge: the flashing's near rim is what makes the join a
+			// curve instead of the straight line a cylinder cannot
+			// meet a roof on. Bug 46.
+			g.stackFittings(screen, g.kitThrough(screen, cam, kitStack, perch, roof, nil))
 		}))
 	}
 	// A project's sign is an object on the ground, so it sorts with

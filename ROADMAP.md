@@ -1124,7 +1124,7 @@ Her words: *"move it just a bit back from the corner so it's not on the sidewalk
 
 **No lot is too small, and that is measured rather than assumed.** Probing the real plan at every heading from `MinZoom` up: the narrowest district is 9 x 15 tiles and holds the sign with clearance at all four. The world footprint grows as the camera pulls back, so `MinZoom` is the worst case and it was the one checked.
 
-### 46. The chimney meets the roof on a straight line, and a cylinder cannot (Aria, 2026-09-26, on r212)
+### 46. ~~The chimney meets the roof on a straight line, and a cylinder cannot~~ Done 2026-09-26 (r226)
 
 Her words: *"The building cuts it right across, but the chimney is circular, so the bottom line of the chimney should be round where it cuts into the building. Also, adding a little brace or something there might make it more clear that it's not just things rendering on top of each other."*
 
@@ -1140,6 +1140,16 @@ A stack through a flat roof is not bare. Two separate elements, and they do diff
 
 1. **At the roof line: flashing and a storm collar.** The flashing is a plate that makes the penetration weathertight; the storm collar is a band clamped round the pipe just above it, sealing the top of the flashing. On screen the collar is a ring at the base — and **its silhouette is the ellipse**, so drawing it satisfies Aria's first ask and hides the straight cut in one move.
 2. **At about two thirds of the height above the roof: a support band with guy braces down to the roof.** This is the manufacturers' own rule for a stack standing more than about five feet proud, and it is the "brace" she is asking for. It reads harder than the collar at small sizes, because the braces are **diagonals connecting the stack to the roof** — a line that only exists if the two things are joined, which is exactly the ambiguity she is complaining about.
+
+**Done. Frame `docs/screenshots/r226-chimney-join.png`, the same view before and after.**
+
+`ui.LayoutStackFittings` places all four fittings from the rect the stack was drawn into, and `kitThrough` already returns that rect, so everything scales with the sprite rather than being sized against the zoom separately. That was the explicit risk and it is closed by construction rather than by care.
+
+**Only the near half of each ring is drawn.** The first cut filled them as whole ellipses, which painted discs over the chimney and left a sliver of it showing between two grey pancakes — the frame is unambiguous about that. The far half of a band round a pipe is behind the pipe, so `nearArc` walks the half that bulges towards the viewer and nothing else. The flashing's near half is the whole point of the exercise: it is the ellipse, bulging below the straight edge the sprite was cut on.
+
+**The brace threshold is `MinStackBracePx = 12`, on the stack's drawn width.** A brace runs from the support band to a foot about 1.75 radii out, so at a twelve-pixel stack it is roughly eight pixels long against a one-pixel line — the shortest that still reads as a diagonal rather than a speck. The chimney sprite is 87 px at the z2 cut, so its drawn width is `87 × zoom / 2`, and the braces drop below **zoom 0.276**. In practice that means they are on from the fit zoom (0.31, 13.5 px) upwards and off at `MinZoom` (0.25, 10.9 px) — one step of the ladder, which is the right place for a detail to go. The collar stays at every zoom, because a filled shape survives being small in a way a hairline diagonal does not.
+
+**Two braces are drawn, not three.** A stack carries three at 120°, but at 30°, 150° and 270° in plan the third is directly behind the pipe and entirely hidden by it, so drawing it would paint nothing. The two that remain fall either side, where they read against the roof.
 
 **Build.** Sink the stack so the roof plane cuts it, then draw the flashing ellipse over the join; the ellipse becomes the round bottom line. Add the collar as a short band above it, and three braces from a support band at two thirds height down to the roof. Draw them with the stack, at the stack's depth, after it — `vector.FillPath` is already used this way in `monument.go`.
 
