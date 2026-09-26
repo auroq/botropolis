@@ -468,9 +468,44 @@ That is the first thing to reach for, and it is usually smaller than the duplica
 
 **One was caught before it bit**, which is the only reason it is in the table with an empty column. A click hit-tested a layout recomputed from `scene.Size()` while the draw used `screen.Bounds()`. They agreed, because `LayoutF` feeds both. Agreement that holds *today* is the signature — it reads as a coincidence rather than a fact, and that feeling is the thing to act on.
 
-**What to ask, before the seventh.** Where two things must say the same thing: can one be made to derive from the other? If not, what test ties them? And if neither, write down that they are coupled and why, where the person about to change one will see it — which is what `TestDrained`'s comment does for the palette, and what the press/release comment does for the card.
+**What to ask, before the seventh of this shape.** Where two things must say the same thing: can one be made to derive from the other? If not, what test ties them? And if neither, write down that they are coupled and why, where the person about to change one will see it — which is what `TestDrained`'s comment does for the palette, and what the press/release comment does for the card.
 
 **The honest gap.** `labels_test.go` ties the footer's verbs, the view key's nine questions and Enter's promise. It does not tie the five mover cards or the legend's aggregate, and those are the likeliest to drift, because a card's sentence is assembled from several fields and any one of them can change meaning while the sentence stays the same. The class is not closed.
+
+Not every wrong claim in this project has been this shape, and the next section is one that is not — a single number, correctly measured, that meant nothing because of the set it was compared against.
+
+## A number can be right and mean nothing
+
+Roadmap phase 21, item 36, 2026-09-26.
+This is not the shape above, and that is the point of giving it its own heading.
+Every row in that table is two things that must agree; the fix is to make one derive from the other, or failing that to test the pair.
+Here both numbers were correct, both were measured from the art, and the conclusion drawn from them was still wrong.
+
+The claim was that the power plant's chimney stood taller than a four-storey commercial building, at 0.89 × 0.96 tiles.
+`city-kit-commercial/building-c` measures 236×253 px against the 264 tile, which is 0.89 × 0.96 exactly.
+Nothing about that measurement is false.
+`building-c` is also the **shortest commercial building in the atlas** — it and `building-e` are the whole of fill class 0.
+The chimney had been compared against the smallest building on the map, and declared oversized.
+Against the three things it actually stands beside — its host slab at 1.61 tiles, the library at 1.89, the hall at 2.09 — it is the shortest object in the district.
+
+The answering error was the mirror of it, and worse in a way that is easy to miss.
+Checking the figure, I sorted the atlas by height, read the top fourteen, and wrote "there is no commercial building at 0.9 × 0.96."
+A short building cannot appear in a list of the tallest fourteen.
+The negative was asserted from a view that had already excluded its counterexample, and it happened to be *true of the list* and false of the atlas — which is why it read as a finding rather than as a gap.
+Sorting is a filter.
+Reading the top of a sort and concluding something about the whole is the same act as quoting a ratio without naming its comparison class, run in the other direction.
+
+**Neither guard is derivation and neither is a test.**
+Derivation has nothing to bind: there is only one number and it is correct.
+A test would have asserted the same ratio and passed.
+The guard is a question asked before the sentence is written: *what is the set?*
+For a ratio — what is the comparison class, and is the thing on the other side representative of it or an extreme of it.
+For a negative — was the search over the whole set, or over a set some earlier sort or filter had already narrowed.
+
+**The tell, in both directions, is a superlative that nobody chose.**
+`building-c` arrived as "a four-storey commercial building," not as "the smallest commercial building" — the extremity was a property of the sample, invisible in the sentence built from it.
+Fourteen arrived as "the tall ones," not as "the set that cannot contain what I am looking for."
+When a comparison lands on an extreme without anyone selecting an extreme, the number survives and the meaning does not.
 
 ## What it costs
 
