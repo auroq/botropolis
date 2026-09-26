@@ -1390,6 +1390,33 @@ The percentages in `/usage` come live from the API and are not cached anywhere a
 So: **let the boat's journey be the window.** It sets off at the window's start and reaches the far end exactly at the reset; its height across the river stays the usage.
 The travel Aria specified as ambience then carries the second half of the reading for free, and a boat riding high near the end of its run is fine while the same height at the start is trouble.
 
+### 49b. The usage numbers come from the CLI, and Aria has ruled the cadence (2026-09-26)
+
+Her ruling: *"I don't think the denominator changes often. Let's query on a long cadence and cache and then give the user a way to refresh which calls for the real numbers of both numerator and denominator."*
+
+**`claude -p "/usage"` prints the real figures non-interactively.** Tested on this machine:
+
+```
+Current session: 7% used · resets Sep 26, 7:19pm (America/Denver)
+Current week (all models): 20% used · resets Sep 29, 6:59am (America/Denver)
+Current week (Fable): 0% used · resets Sep 29, 7am (America/Denver)
+```
+
+This settles item 49a's open choice and **overrides the configured-budget recommendation**. It is the best available answer on every axis:
+
+- **No credentials.** The daemon never touches `~/.claude/.credentials.json`. The question of expanding its privilege does not arise.
+- **It is the project's existing principle.** Sessions are managed through the `claude` CLI only; usage now is too. One rule, not two.
+- **It gives the percentage directly**, so there is no denominator to derive, calibrate or configure — and no stale `stats-cache.json`, no scaling a 26-day history to a month.
+- **It leaves nothing behind.** Checked: no transcript is written and no session appears in `claude agents`, so polling does not litter the map. That mattered — a usage poller that spawned a building every time it ran would have been the measurement perturbing the thing measured.
+
+**Cadence, as she ruled:** poll on a long interval, cache the result with its timestamp, and give an explicit refresh that re-runs the command. Show the cache's age beside the reading, because a cached percentage with no age on it is a number that is right and means nothing.
+
+**Two things to build defensively.** The output is prose, not JSON, so parse it with a regex that can fail cleanly — an unparsed line means the boat is **absent**, not at zero, exactly as an unset budget would have. And the format may change between Claude Code versions, so the failure has to be visible rather than silent.
+
+**The windows are session, week (all models) and week (Fable).** No month; see 49a. That is three real gauges, so three boats survive, but the size-means-timescale reading Aria described does not, because two of them share a window. Sizes should track **how much each matters**: big is the week across all models, medium is the five-hour session, small is the Fable week, which is usually zero.
+
+**The reset times arrive free with the percentages**, which makes the journey-as-window proposal from 49a buildable at no extra cost: the boat sets off at the window's start and reaches the far end at its reset, with height still the usage. Recommended, and cheap enough to try and discard.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
