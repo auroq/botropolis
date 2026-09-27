@@ -57,22 +57,29 @@ PAD = 2
 # four industrial building variants, the tank, the windmill, the solar
 # panels, two train wagons and the rowing boat.
 #
-# The seven kept but not yet drawn are kept on purpose, each with a use
-# in view: electricity-pole and electricity-wires are what the power
-# lines should become (they are vector strokes today), chimney-medium is
-# a candidate for the plant's stack, traffic-light, construction-cone and
-# light-curved are street furniture the `detail` setting now gives a home
-# to, and the truck is a second vehicle for Traffic. If one of those
-# still has no caller a phase from now, it should go the same way.
+# Item 59 was that phase arriving. chimney-large went: bug 24 had kept it
+# as the plant's stack, and item 36 then picked chimney-medium instead, so
+# the piece three entries reasoned about was the largest thing here that
+# nothing drew. sign-highway-detailed went with it, never drawn at all —
+# kitSignGantry names the plain sign-highway.
+#
+# The six kept but not yet drawn are kept on purpose, each with a use in
+# view: electricity-pole and electricity-wires are what the power lines
+# should become (they are vector strokes today), traffic-light,
+# construction-cone and light-curved are street furniture the `detail`
+# setting now gives a home to, and the truck is a second vehicle for
+# Traffic. That set is asserted by TestAtlasCarriesNothingUndeclared
+# rather than only written here, because item 59 existed at all through a
+# comment going stale when chimney-medium was drawn.
 PIECES = {
     "city-kit-commercial": [f"building-{c}" for c in "abcdefghijklmn"] + [f"building-skyscraper-{c}" for c in "abcde"],
-    "city-kit-industrial": ["building-a", "chimney-large", "chimney-medium", "water-tower",
+    "city-kit-industrial": ["building-a", "chimney-medium", "water-tower",
                             "shipping-container-a", "shipping-container-b", "shipping-container-c"],
     "city-kit-roads": ["road-straight", "road-bend", "road-crossroad", "road-intersection", "road-end", "road-square",
                        "light-square", "light-curved", "electricity-pole", "electricity-wires", "traffic-light", "construction-cone",
                        # Phase 21 item 38: signage prototypes. A gantry beside
                        # the plot, a post-mounted board, a plaque for a wall.
-                       "sign-highway", "sign-highway-detailed", "road-sign-empty", "road-sign-empty-hanging"],
+                       "sign-highway", "road-sign-empty", "road-sign-empty-hanging"],
     "city-kit-suburban": ["tree-large", "tree-small", "planter"],
     "nature-kit": ["tree_default", "tree_oak", "tree_thin", "tree_tall", "tree_pineRoundA", "tree_small",
                    "plant_bush", "plant_bushLarge"],
