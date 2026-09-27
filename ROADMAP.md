@@ -2218,11 +2218,12 @@ Two things to do, and the second is the one that matters:
 
 **Fixed, both parts, and the correction on `tools/shrink-pngs` is accepted — it is `Makefile:81` and I said it was absent.**
 
-What I had actually done is narrower than "the step stopped running" and points at the same place: **I wrote the unshrunk pages myself, today, cutting item 59.**
+The cause is one habit rather than one change, and **four of the nine unshrunk pages are mine, from today.**
 The zoom levels are staged one at a time because each takes about a hundred seconds, which means `blender -b --python tools/render-sprites/render.py -- atlas --zooms 1` and then `--zooms 2`, driving the script directly.
 That skips the Makefile line that shrinks them.
-So the same hand that priced the pack growth in item 58 was adding a quarter of it, twice, that afternoon.
-The history dating the regression to the gauge-boat work says the same thing about the same habit a few revisions earlier.
+Item 59's re-cut rewrote `kits-z1-1`, `kits-z2-4`, `kits-z2-5` and `kits-z2-6` that way; the other five were already unshrunk, carried forward from the gauge-boat re-cut the history dates this to.
+So the regression is r267's and I did not introduce it — but I reproduced it that afternoon, in the same session that priced the pack growth a quarter of which this is, and that is the more useful thing to record.
+Staging the zooms is not optional at a hundred seconds each, so the fix had to go in the script rather than in remembering to use the Makefile.
 
 | | before | after |
 | --- | --- | --- |
