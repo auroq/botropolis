@@ -2444,7 +2444,7 @@ Two things found on the way, neither blocking:
   That is one observation and not a diagnosis; it is enough to say the reproducibility claim wants re-testing now that the shrink is in the render, and `atlas-diff.py` may have been comparing pre-shrink output to post-shrink pages all along.
 - The re-cut and the shrink are independently reproducible: the shrink is idempotent, freshly rendered pages pass `--check` on the first try, and `kits-z2-0` re-compresses to 3,009,736 B, the byte count it held at four separate commits before the regression.
 
-### 67. ~~The usage probe's transcripts are never pruned, and lingering sessions are what this project is for~~ Done 2026-09-26 (`SHA67`, rREV)
+### 67. ~~The usage probe's transcripts are never pruned, and lingering sessions are what this project is for~~ Done 2026-09-26 (`2708cc4`, r290)
 
 Measured 2026-09-26 at r286: `~/.claude/projects/-home-avesta--local-state-botropolis-usage-probe/` holds **7 transcripts**, one per refresh since 18:42, about 4 KB each.
 Nothing deletes them. `RefreshUtilization` creates the directory and runs `claude -p "/usage"` in it; the fence (item 54) is the whole of the design, and the fence is about where they land rather than whether they stay.
