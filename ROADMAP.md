@@ -1765,6 +1765,28 @@ That is the third time this session that looking has confirmed what I already be
 
 **Frame.** `docs/screenshots/r257-gauge-size-at-maxzoom.png`, before and after at the same camera at `MaxZoom`, from two binaries built for the purpose.
 
+### 54. The probe fence covers parked transcripts but not voyages (Aria, 2026-09-26, from a screen recording)
+
+Her words: *"The usage probes make the map change and refresh weird at a certain point. Sometimes they are off the water and we should add a debounce so we don't get a ton of them since that doesn't really make sense."*
+And: *"it shouldn't just despawn, it should run the whole length of the water or turn off the map or something."*
+
+I pulled frames from her recording. At 36 seconds there are **five orange tugs** on a three-lane river and **the leftmost one is sitting on the grass**, clear of the water. `docs/references/probe-tugs-aground.png`.
+
+**The fence has exactly one reader, and voyages are not it.**
+`loader.go:240` skips `claude.UsageProbeProject()` — but it sits in the **parked transcript** path.
+`Scene.noteVoyages` reads `snapshot.Sessions` and spawns an `Arrival` for **any id it has not seen before**, with no project filter at all.
+So the probe is kept out of the city's buildings and walks straight into its river.
+One fact — *"the probe is not a session"* — with two readers and only one of them told. That is the shape this project keeps paying for, and this is the first time it has cost us in a place Aria could see.
+
+**Why one is aground.** An arrival sails `From: north, To: s.city.dock(root)`, and `root` for a probe is the probe's own directory, which has no district. Whatever `dock()` returns for a project that is not on the map is where that tug is steering — and in the frame it is the bank. Check `dock`'s fallback: a destination that is not on the water is not a tug bug, it is a dock bug.
+
+**Four things to fix, and they are separable.**
+
+1. **Teach the voyage path the same fact.** Better: make it one reader rather than two — filter the probe out where `snapshot.Sessions` is built, so nothing downstream has to remember. A guard that has to be repeated is a guard that will be missed again.
+2. **Debounce the probe**, as Aria asks. A refresh is user-initiated, so the floor is about how fast she can press the key: ignore a request within some seconds of the last, and while one is in flight. The numbers behind the reading do not move fast enough for more than that to mean anything.
+3. **`dock()` must never return a point off the water** for a caller that is steering a boat. Assert it against `RiverBand`.
+4. **Nothing should despawn in place.** *"It should run the whole length of the water or turn off the map."* `Voyages()` drops a departure at `Progress >= 1` and an arrival once its building has risen. A boat whose reason disappears should be **converted to a departure and allowed to finish its run**, not deleted where it floats. That is also the honest animation: the session went away, and the tug leaving is how the map says so.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
