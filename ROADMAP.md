@@ -1787,6 +1787,33 @@ One fact — *"the probe is not a session"* — with two readers and only one of
 3. **`dock()` must never return a point off the water** for a caller that is steering a boat. Assert it against `RiverBand`.
 4. **Nothing should despawn in place.** *"It should run the whole length of the water or turn off the map."* `Voyages()` drops a departure at `Progress >= 1` and an arrival once its building has risen. A boat whose reason disappears should be **converted to a departure and allowed to finish its run**, not deleted where it floats. That is also the honest animation: the session went away, and the tug leaving is how the map says so.
 
+### 54a. The river moves when the city re-lays out, and voyages hold stale absolute points (Aria, 2026-09-26)
+
+Her words: *"Even with one boat, it still makes things refresh weird and the boat teleports off the river into the black."*
+
+**"Even with one boat" is the clue, and it means the probe is the reproducer, not the bug.**
+
+`plan.go:394`: `cols := eastRoad + 1 + belt + RiverCols`.
+`eastRoad` comes from the block layout, which comes from the district set.
+**So the map's width — and with it the river, which sits at its east edge — moves whenever the set of districts changes.**
+
+`Scene.noteVoyages` captures `From` and `To` as **absolute world points** at the moment a voyage is created, and `Voyage.At` interpolates between them forever after.
+When a session appears or disappears, `eastRoad` shifts, `RiverBand` shifts with it, and every voyage already in flight is still sailing the *old* river's coordinates.
+If the map shrank, those coordinates are outside the new map — which is Aria's black.
+The boat does not drift off the water; it is exactly where it was told to go, on a river that has since moved out from under it.
+
+A number that was right when it was written, read against a world that changed. Same family as the rest, with time as the axis instead of units.
+
+**This is not a probe bug.** A real session starting or stopping moves the river identically. The probe only made it happen often enough to see. **Fixing the fence from bug 54 would hide this, not fix it** — so do both, and do this one first, because it is the real defect.
+
+**Fix: voyages must be resolved against the current river, not against the one that existed when they launched.**
+Store the path as parameters — which end, which project's dock — and resolve to world points at draw time from the live `RiverBand`.
+Then a re-layout carries its boats with it instead of stranding them.
+
+**Worth checking while in there:** anything else holding a world point across a re-layout has the same exposure. The gauge boats are safe because they are computed per frame from `RiverBand`; the tugs were not. That asymmetry is the tell, and it is worth a sweep rather than a single fix.
+
+**And the re-layout itself is still worth suppressing.** Even with the boats fixed, the whole city visibly rearranging because a transient session appeared is the *"refresh weird"* half of her sentence, and bug 54's first fix — keeping the probe out of `snapshot.Sessions` — is what answers it.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
