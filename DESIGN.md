@@ -564,6 +564,22 @@ The set that went unnamed here is *whose memory*, and it is the same question as
 `VmRSS` answers "what is resident", `Pss` answers "what is resident and how much of it is ours", `Private_Dirty` answers "what would be freed if this process exited".
 Only the last two are about the program, and the first is the one every tool prints by default — which is the general form of this failure and worth stating plainly: **the number a tool gives you without being asked is the one least likely to have a question behind it.**
 
+`--record` belongs on that list beside `VmRSS`. It is a flag that changes what it measures by measuring: it accumulates frames, so its memory climbs with the length of the run, and the same instrument on the same machine gave **86 MB, 823 MB and 1.35 GB** of `Private_Dirty` depending on when it was read.
+So does `git log --oneline | wc -l`, which counts lines and not commits wherever `log.showSignature` is set, and reported 34 atlas commits where there were 17.
+
+**And the two halves of that afternoon were the same error with the sign flipped, which is the thing worth carrying out of it.**
+One session concluded the measuring runs were failing because Aria was typing — a mechanism that fitted every symptom, was never tested, and was wrong; the cause was one `xdotool search` away and the window being measured was her terminal.
+The other took two memory figures that landed within 5% of each other, called the agreement "the check that this is the right correction", and wrote it into this file — without asking what state either sample was in. One was a recorder part-way through a recording.
+**Guessing a mechanism that explains the symptom, and accepting a number that confirms what you hoped, are the same act**: both stop the enquiry at the first thing that fits, and both feel like arriving rather than like stopping.
+
+The tells differ, which is what makes them worth naming separately.
+A guessed mechanism announces itself as a *story* — it explains, it is satisfying, and it has no measurement attached.
+An accepted coincidence announces itself as *relief* — the numbers agree, and the agreement is doing the work that an argument should be doing.
+The guard against the first is to run the cheap check that would falsify it before writing it down. The guard against the second is to ask what each number was measuring before allowing them to meet — which is the same question as the comparison class, the referent and the unit, asked of two figures that appear to confirm one another rather than of one that stands alone.
+
+Two numbers matching is the most persuasive and least reliable evidence available, because a coincidence does not announce itself.
+An argument from what the pages *are* — that a page of `libgallium` is not this program's memory whatever any rig reports — needs no second measurement and survived when the agreement did not.
+
 ## What it costs
 
 Roadmap phase 18, 2026-09-22.

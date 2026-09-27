@@ -249,6 +249,11 @@ func ProjectFolder(dir string) string {
 // it for them. It is slow and it writes a transcript, so it belongs
 // behind an explicit user action and nowhere else. The caller re-reads
 // the file afterwards.
+//
+// It also clears up after itself. The probe's transcripts are fenced out
+// of the city by where they land, but nothing removed them, so they
+// accumulated one per refresh forever — see pruneProbeTranscripts for
+// why that is worth the few lines despite being 4 KB a time.
 func RefreshUtilization(ctx context.Context, bin string) bool {
 	dir := UsageProbeDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -259,5 +264,12 @@ func RefreshUtilization(ctx context.Context, bin string) bool {
 	}
 	cmd := exec.CommandContext(ctx, bin, "-p", "/usage")
 	cmd.Dir = dir
-	return cmd.Run() == nil
+	ok := cmd.Run() == nil
+	// After the run, so the transcript this probe just wrote is the one
+	// that survives, and best-effort: a probe that fetched the figures
+	// has done its job whether or not the tidying worked.
+	if d := probeTranscriptDir(); d != "" {
+		_ = pruneProbeTranscripts(d, probeKeep)
+	}
+	return ok
 }

@@ -2444,7 +2444,7 @@ Two things found on the way, neither blocking:
   That is one observation and not a diagnosis; it is enough to say the reproducibility claim wants re-testing now that the shrink is in the render, and `atlas-diff.py` may have been comparing pre-shrink output to post-shrink pages all along.
 - The re-cut and the shrink are independently reproducible: the shrink is idempotent, freshly rendered pages pass `--check` on the first try, and `kits-z2-0` re-compresses to 3,009,736 B, the byte count it held at four separate commits before the regression.
 
-### 67. The usage probe's transcripts are never pruned, and lingering sessions are what this project is for
+### 67. ~~The usage probe's transcripts are never pruned, and lingering sessions are what this project is for~~ Done 2026-09-26 (`SHA67`, rREV)
 
 Measured 2026-09-26 at r286: `~/.claude/projects/-home-avesta--local-state-botropolis-usage-probe/` holds **7 transcripts**, one per refresh since 18:42, about 4 KB each.
 Nothing deletes them. `RefreshUtilization` creates the directory and runs `claude -p "/usage"` in it; the fence (item 54) is the whole of the design, and the fence is about where they land rather than whether they stay.
@@ -2457,6 +2457,20 @@ One transcript per keypress, kept forever, in the folder the tool tells the load
 
 The fix is small and the choice is about what "enough" means: delete the probe's transcript after reading the figures, since the file has served its purpose the moment `~/.claude.json` is re-read; or keep the newest and drop the rest, if one is worth having to debug a failed refresh.
 I would keep one. A probe that leaves no trace at all is a probe you cannot ask why it failed.
+
+**Fixed, keeping one, for the reason given.** `pruneProbeTranscripts` runs at the end of `RefreshUtilization`, after the probe rather than before, so the transcript that survives is the one the current run just wrote — which is the one worth having when the figures come back wrong.
+
+Nine by the time I got to it, not seven; two more arrived while the entry was being written, which is the growth rate the entry describes making its own case.
+
+Three decisions in it worth stating, because each is a way this could have been quietly wrong:
+
+- **Newest by modification time, not by name.** Claude Code names transcripts with a UUID, which sorts arbitrarily. Sorting by name would look ordered, run without error, and keep whichever run happened to sort last — a wrong answer with no symptom, which is this project's most expensive shape.
+- **Only `*.jsonl` is touched.** This deletes from the user's `~/.claude`, so it removes what the probe made and nothing else. A `notes.txt` in that folder survives, and there is a test that says so.
+- **Best-effort, and after the result is decided.** A probe that fetched the figures has done its job whether or not the tidying worked, so a failed prune does not turn a successful refresh into a failed one.
+
+A missing folder is not an error either — the probe may never have run — and `keep` is a parameter rather than a constant inside the loop, so the test can ask for the boundary cases directly instead of asserting `probeKeep`'s value twice.
+
+**Four tests**: several runs leaving exactly the newest; a single run left alone; a folder that never existed; and a non-transcript file surviving.
 
 ### Worth knowing, not bugs
 
