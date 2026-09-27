@@ -235,6 +235,20 @@ var gaugeHulls = map[city.GaugeSize]gaugeHull{
 	city.GaugeSmall:  {piece: kitGaugeSail, beam: 17.2, extent: 60},
 }
 
+// courierExtent draws the refresh boat between the sail and the cargo
+// ship: big enough to notice crossing the map, small enough that it is
+// plainly not one of the three that carry a reading.
+const courierExtent = 74.0
+
+// unit is a direction normalised to one of the four world axes, for
+// picking a hull's rotation from a path.
+func unit(d city.Point) city.Point {
+	if math.Abs(d.X) > math.Abs(d.Y) {
+		return city.Point{X: math.Copysign(1, d.X)}
+	}
+	return city.Point{Y: math.Copysign(1, d.Y)}
+}
+
 // buoyExtent keeps a marker smaller than the boats it measures: a
 // reference should be read past, not looked at.
 const buoyExtent = 26.0

@@ -85,6 +85,14 @@ var (
 	kitLocos = []string{"train-kit/train-diesel-a", "train-kit/train-diesel-b", "train-kit/train-diesel-c"}
 	// The tugs on the river: one brings a session in, the other takes
 	// one away.
+	// The refresh courier. Item 56: it must not be mistaken for a tug,
+	// which means something else entirely. Picked by measurement — the
+	// tugs are 2.24 tall and blocky, every speed hull is 1.2 to 1.7 and
+	// flat, and boat-speed-j is the longest and most slender of them at
+	// 4.27 and 2.39:1 against boat-tug-a's 3.47 and 1.94:1. Low and
+	// fast against tall and squat, on both axes.
+	kitCourier = "watercraft-kit/boat-speed-j"
+
 	kitTugIn  = "watercraft-kit/boat-tug-a"
 	kitTugOut = "watercraft-kit/boat-tug-b"
 	// The usage gauges' hull. Deliberately not a tug: the river already

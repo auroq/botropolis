@@ -120,6 +120,10 @@ func (g *Game) handleKeys() error {
 		// Say which of the two happened. A key that silently does
 		// nothing reads as a broken key.
 		if g.refreshUsage() {
+			// The boat goes with the fetch, not with the keypress: a
+			// press inside the debounce fetches nothing, so it launches
+			// nothing and the status line says why. Item 56.
+			g.scene.SendCourier()
 			g.SetStatus("reading usage…")
 		} else {
 			g.SetStatus("just asked; the figures do not move that fast")

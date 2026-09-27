@@ -125,6 +125,9 @@ type Hit struct {
 	Park     *Park
 	Train    *Train
 	Voyage   *Voyage
+	// Courier is the refresh boat. It carries what pressing the refresh
+	// key does, because Aria had not realised the key existed. Item 56.
+	Courier *Courier
 	// The movers. These five were the only objects on the map that could
 	// not be asked what they meant, and three of them are vehicles, which
 	// is most of why they blurred together. See movers.go.

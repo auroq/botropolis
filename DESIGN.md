@@ -316,6 +316,17 @@ Seven tones and a view palette do not both fit in the space.
 That makes "the chrome recedes with the city" a correctness requirement rather than a polish item — the tones are kept off the screen rather than out of the palette.
 
 
+**The river carries three unrelated meanings, which makes it the most loaded single medium on the map.**
+A tug means a session arrived or left. A liner, a cargo ship or a sailing boat means a share of a usage limit. A white speedboat means you pressed the refresh key and figures were fetched.
+Three meanings on one waterway is past what colour alone can carry, so each is held apart on more than one axis at once: the gauge boats **hold station** while the other two **move**; the courier is **low and slender** where the tugs are **tall and blocky**, measured rather than judged — 1.25 against 2.24 in model height; and each answers the hover with a different kind of sentence.
+
+Each also passes the test above, but the third passes it differently and that is worth saying.
+A tug and a gauge boat appear unbidden, so they have to explain themselves to someone who did not ask for them.
+**The courier appears because a key was pressed one frame earlier**, with a status line already naming what it is doing — it is feedback for a deliberate action, not ambient motion, and the action is most of its explanation.
+Its card still teaches the key, because Aria had not realised the refresh existed at all: a thing that only appears when you already know the trick is no use for learning the trick.
+
+**The honest limit.** All three are hoverable in principle and hard to hover in practice, because two of them are moving and the courier lives five seconds. Pointing at a moving object is a real cost that the "it can answer for itself" test does not measure, and the river is where that cost has accumulated. A fourth meaning should not be added here.
+
 **The base view draws one network, and only one.** The rule is subtractive — a view says something by taking things away, and the base view is quiet so that the quiet means something. Traffic is the exception, added 2026-09-26, and the test for the exception is whether the thing can answer for itself without the view to explain it. A car can: its hover card names the two projects and what passes between them. A wire cannot, so the wires stay on the views that are about spend and health. The exception is not "cars are nice"; it is that an object carrying its own explanation is not the unexplained motion the rule guards against.
 
 ## City plan

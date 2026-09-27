@@ -688,6 +688,18 @@ func (g *Game) drawIso(screen *ebiten.Image, c *city.City, cam *city.Camera, hov
 			}
 		}
 	}
+	// The refresh couriers. Not sessions and not gauges — a third
+	// meaning on the same water, so it gets its own hull and its own
+	// card. Item 56.
+	for _, courier := range g.scene.Couriers() {
+		courier := courier
+		at := courier.At(g.scene.Clock())
+		items = append(items, standingAt(cam, at, func() {
+			dir := city.Point{X: courier.To.X - courier.From.X, Y: courier.To.Y - courier.From.Y}
+			r := g.kitSized(screen, cam, kitCourier, bowTurn(unit(dir)), at, courierExtent, nil)
+			g.noteHit(r, city.Hit{Courier: courier})
+		}))
+	}
 	// A project's sign is an object on the ground, so it sorts with
 	// everything else rather than being painted over the scene. Bug 44.
 	for _, d := range c.Districts {

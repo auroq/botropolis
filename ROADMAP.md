@@ -1892,7 +1892,7 @@ The lanes reserved the *widest* hull's half beam at both banks, which put the wi
 
 **Frames.** `docs/screenshots/r265-gauge-run-inset.png` is r263 beside now at her own 23/16/0 — the 0% boat comes off the corner tip. `r265-gauge-high-reading.png` is 94/88/71, **the first time the 100% end has been looked at**; the low end being the only case anyone had seen is how this got here.
 
-### 56. The refresh wants a boat of its own (Aria, 2026-09-26, on r265)
+### 56. ~~The refresh wants a boat of its own~~ Done 2026-09-26 (r266)
 
 Her words: *"Still don't see the refresh boat (to be clear the usage boats are there just not the refresh boat when I press u)."*
 
@@ -1914,6 +1914,25 @@ The probe's tug was the right *idea* arriving by the wrong *mechanism*.
 **It needs a silhouette of its own**, distinct from both the voyage tugs (sessions arriving and leaving) and the three gauge hulls. That is a third meaning on one waterway, so the view key has to name all three. Pick from the kit by measurement — something small and fast reads right for a courier — and note the atlas cost, since nothing suitable is cut today.
 
 **Worth stating plainly in DESIGN:** the river now carries three unrelated meanings — sessions coming and going, usage against limits, and a refresh you asked for. That is the most loaded single medium on the map. Each one has to pass the test already written there: it explains itself when pointed at, without the view explaining it.
+
+**Built. The courier is not a session, and a test holds it to that.**
+
+`TestCourierIsNotASession` launches one and asserts the river has not moved, no building rose, and no tug sailed. That is the guard against reintroducing bug 54 by the back door: the moment a refresh touches the plan, the map moves and every boat in flight goes with it.
+Its ends resolve from the live `RiverBand` on every read — written that way from the start rather than retrofitted, which is the one thing 54a had to be taught.
+
+**Life is not tied to the probe**, per Aria: *"Even if the command completes, we should still render the boat all the way across."* The probe returns in about a second and the run takes five. It means "you asked for fresh numbers", not "a subprocess is running".
+
+**The hull was picked by measurement, not by eye.** The discriminator is height: the tugs are 2.24 and blocky, every speed hull is 1.20–1.70 and flat. `boat-speed-j` is the longest at 4.27 and the most slender at 2.39:1, against `boat-tug-a`'s 3.47 and 1.94:1. Low and fast against tall and squat, on both axes. At MinZoom it draws 18×12 with aspect 1.58 where the tugs are 20×17 and 18×16 at 1.21 and 1.16 — and it is white where they are orange and green, so colour separates them before silhouette has to.
+
+**The atlas cost nothing.** z2 still cuts to 7 pages of 8 with the new piece in, so no swap was needed.
+
+**Aria had not realised the refresh existed at all**, which is the more useful half of her report: the status line alone never taught her the key. So the card teaches it — *"sent because you pressed u"* — and `RiverNote` names the launch beside the tugs and the liners.
+
+**DESIGN records the river as the most loaded medium on the map**, with the three meanings held apart on motion, profile and card rather than on colour alone, and a note that a fourth should not be added.
+
+**Worth knowing: `--keys` does not fire under `--record`.** Frames recorded with `--keys u` show no status line and no courier, while the identical `--keys u --screenshot` shows both. I spent several passes cropping for a boat that was never launched before checking the footer. Single-frame screenshots take keys; recordings do not.
+
+**Frames.** `docs/screenshots/r266-refresh-courier.png` is the courier entering at the river's head, bow downstream. `r266-courier-vs-tugs.png` is it beside both tugs, the cargo ship and the sailing boat, at drawn size and at MinZoom.
 
 ### Worth knowing, not bugs
 

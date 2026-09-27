@@ -93,6 +93,9 @@ type Scene struct {
 	// tugs on the river for those that came or went since.
 	known   map[string]state.Session
 	voyages []*Voyage
+	// couriers are the refresh boats: one per usage fetch that actually
+	// went out. Not sessions, so they never reach the plan. Item 56.
+	couriers []*Courier
 	// tools is each live session's tool call at the last snapshot and
 	// trips the workers out on the road because one started.
 	tools map[string]string
@@ -913,6 +916,8 @@ func (s *Scene) Card() (Card, bool) {
 		return s.hover.Train.Card(), true
 	case s.hover.Voyage != nil:
 		return s.hover.Voyage.Card(), true
+	case s.hover.Courier != nil:
+		return s.hover.Courier.Card(), true
 	case s.hover.Landmark == LandmarkWater:
 		return Card{Title: "river", Lines: []string{"the map's edge on this side"}}, true
 	case s.hover.Landmark == LandmarkPark && s.hover.Park != nil:

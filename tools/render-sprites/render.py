@@ -99,7 +99,18 @@ PIECES = {
                        # The full-size liner is left out -- the shrink
                        # per rank already separates the sizes, and it is
                        # a large sprite against one page of headroom.
-                       "ship-cargo-a", "boat-sail-a"],
+                       "ship-cargo-a", "boat-sail-a",
+                       # The refresh courier. Item 56: it says "you
+                       # asked for fresh numbers", so it must not be
+                       # mistaken for a tug, which says "a session came
+                       # or went". Chosen by measurement rather than by
+                       # eye -- the discriminator is height, since the
+                       # tugs are 2.24 tall and blocky while every speed
+                       # hull is 1.2-1.7 and flat. boat-speed-j is the
+                       # longest at 4.27 and the most slender at 2.39:1,
+                       # against boat-tug-a's 3.47 and 1.94:1. Low and
+                       # fast against tall and squat, on both axes.
+                       "boat-speed-j"],
     "botropolis": ["drone", "fountain-a", "fountain-b", "fountain-c"],
 }
 
