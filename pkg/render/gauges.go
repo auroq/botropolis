@@ -264,8 +264,16 @@ func (g *Game) readUsage() {
 // because nothing else makes Claude Code go and ask. It writes a
 // transcript, which is why it runs in a directory of its own and why it
 // is confined to a rare, explicit, user-initiated action.
-func (g *Game) refreshUsage() {
+func (g *Game) refreshUsage() bool {
+	if !g.mayAskUsage() {
+		return false
+	}
 	go func() {
+		defer func() {
+			g.mu.Lock()
+			g.usageInFlight = false
+			g.mu.Unlock()
+		}()
 		ctx, cancel := context.WithTimeout(context.Background(), usageTimeout)
 		defer cancel()
 		claude.RefreshUtilization(ctx, "")
@@ -273,7 +281,33 @@ func (g *Game) refreshUsage() {
 		// have refetched for its own reasons in the meantime.
 		g.readUsage()
 	}()
+	return true
 }
+
+// mayAskUsage decides whether to set a probe going, and claims the slot
+// if so. Separated from the work because the work is a subprocess: the
+// decision is what has rules worth testing, and a test that reached the
+// CLI would write the very transcripts the fence exists to keep out.
+func (g *Game) mayAskUsage() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.usageInFlight || timeNow().Sub(g.usageAskedAt) < usageDebounce {
+		return false
+	}
+	g.usageInFlight, g.usageAskedAt = true, timeNow()
+	return true
+}
+
+// usageDebounce is how long a reading stands before the key will fetch
+// another. Bug 54: Aria, on a screen recording of five tugs at once —
+// "we should add a debounce so we don't get a ton of them."
+//
+// A refresh is user-initiated, so the only floor without one is how
+// fast the key can be pressed, and every press is a session that
+// arrives by river and re-plans the map. The figures are percentages of
+// a five-hour and a seven-day window; nothing in them can move enough
+// in half a minute to be worth a boat.
+const usageDebounce = 30 * time.Second
 
 // usageTimeout is generous: the CLI takes about four seconds and a slow
 // machine is not a failure.

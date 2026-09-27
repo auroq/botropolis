@@ -1765,7 +1765,7 @@ That is the third time this session that looking has confirmed what I already be
 
 **Frame.** `docs/screenshots/r257-gauge-size-at-maxzoom.png`, before and after at the same camera at `MaxZoom`, from two binaries built for the purpose.
 
-### 54. The probe fence covers parked transcripts but not voyages (Aria, 2026-09-26, from a screen recording)
+### 54. ~~The probe fence covers parked transcripts but not voyages~~ Done 2026-09-26 (r259)
 
 Her words: *"The usage probes make the map change and refresh weird at a certain point. Sometimes they are off the water and we should add a debounce so we don't get a ton of them since that doesn't really make sense."*
 And: *"it shouldn't just despawn, it should run the whole length of the water or turn off the map or something."*
@@ -1787,7 +1787,7 @@ One fact — *"the probe is not a session"* — with two readers and only one of
 3. **`dock()` must never return a point off the water** for a caller that is steering a boat. Assert it against `RiverBand`.
 4. **Nothing should despawn in place.** *"It should run the whole length of the water or turn off the map."* `Voyages()` drops a departure at `Progress >= 1` and an arrival once its building has risen. A boat whose reason disappears should be **converted to a departure and allowed to finish its run**, not deleted where it floats. That is also the honest animation: the session went away, and the tug leaving is how the map says so.
 
-### 54a. The river moves when the city re-lays out, and voyages hold stale absolute points (Aria, 2026-09-26)
+### 54a. ~~The river moves when the city re-lays out, and voyages hold stale absolute points~~ Done 2026-09-26 (r259)
 
 Her words: *"Even with one boat, it still makes things refresh weird and the boat teleports off the river into the black."*
 
@@ -1813,6 +1813,44 @@ Then a re-layout carries its boats with it instead of stranding them.
 **Worth checking while in there:** anything else holding a world point across a re-layout has the same exposure. The gauge boats are safe because they are computed per frame from `RiverBand`; the tugs were not. That asymmetry is the tell, and it is worth a sweep rather than a single fix.
 
 **And the re-layout itself is still worth suppressing.** Even with the boats fixed, the whole city visibly rearranging because a transient session appeared is the *"refresh weird"* half of her sentence, and bug 54's first fix — keeping the probe out of `snapshot.Sessions` — is what answers it.
+
+**54a built first, as filed, and the trigger is finer than the filing said.**
+
+I nearly reported the opposite. My first check varied the number of distinct projects — one, two, three — and the river did not move at all, so the honest first answer was "`eastRoad` is stable, the cause is elsewhere."
+That was a **false negative from a sample that could not contain the effect**: one through eight distinct projects all sit inside a single stable band.
+
+Widened, measured:
+
+| change | river x |
+| --- | --- |
+| 1 → 8 distinct projects | 1032 throughout |
+| 9 projects | 1416 (+384; the south end also moves 936 → 1320) |
+| 1 → 2 sessions **in one existing project** | 1032 → 1080 (+48) |
+| 2 → 3 in one project | 1080 → 1128 (+48) |
+
+**The finest trigger is a second session in a project that already exists — one cell, 48 units.** Not a new district at all.
+That is why Aria's "even with one boat" reproduces: almost any session starting or ending moves the river out from under every tug in flight.
+
+**And it is exactly the black.** Three sessions down to one moves the river 1128 → 1032, whose water spans [960, 1104].
+A tug still holding 1128 is not merely off the centre line, it is **east of the map's own edge** — the river *is* the east boundary — so it is drawn over nothing. The map has to *shrink*, which is what a probe or a session ending does.
+
+**Fix as proposed: the ends are parameters, resolved from the live `RiverBand` on every read.**
+`Voyage` keeps `Root` and `Handover`; `Voyages` sets `From`/`To` from the city as it stands. `Progress` is time-based, so a tug keeps its place along the run and the run moves under it.
+The reason to prefer recompute-on-read over update-on-relayout is worth stating once: **the invariant then holds at every read rather than at every write.** A stored field is only right while every future writer remembers; a derived one cannot drift.
+
+**`dock()` was not the bug, and fix 3 was dropped.** It returns `Point{X: north.X, Y: y}` — the X is always the river's own centre and the fallback only changes Y, so no caller can be handed a point off the water *at the moment it asks*. Every aground tug got there by the river moving afterwards. Asserting `dock()` against `RiverBand` would have passed and left the defect, which is worse than no assertion because it reads as cover.
+
+**The sweep found nothing else.** `Trip` already stores a *fraction* and recomputes its route from the live city on every call — the pattern was known, and voyages were the outlier rather than the rule. `zoomAnchor` is a screen point. Everything else holding world coordinates belongs to `City` or `Plan`, which are rebuilt wholesale each snapshot.
+
+**54: the fence had one reader and it was the wrong one.**
+`claude -p "/usage"` is a real Claude Code session while it runs — it holds a PID and writes a transcript — so it reaches the city by **both** paths: live through `Records`, and afterwards through `Parked`. The fence covered only the parked half, in the loader.
+So a *running* probe became a live session, sailed a tug up the river, and re-planned the map around itself every time the city asked what it had spent. Both halves of Aria's sentence, from one missing branch.
+The fence is now in `state.Build`, which every session passes through whichever path it came by, and the loader's copy is gone. A guard that has to be repeated in each consumer is one that will be missed again, because it already was.
+
+**Debounce:** 30 seconds, and a probe in flight blocks another. A refresh is user-initiated, so without one the floor is how fast the key can be pressed, and each press is a session arriving by river. The key says which of the two happened — a key that silently does nothing reads as broken.
+`mayAskUsage` is separated from the work because the work is a subprocess: my first version of the test reached the real CLI and wrote the very transcripts the fence exists to keep out.
+
+**Despawn:** a tug still arriving when its session goes is **turned round where it stands** — `Kind` becomes `Departure`, `Handover` records how far up the run it had got, and it sails on to the south end and off the map. One boat instead of two, and the honest animation: the session left, so its tug leaves. Aria: *"it shouldn't just despawn, it should run the whole length of the water."*
 
 ### Worth knowing, not bugs
 

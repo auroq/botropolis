@@ -117,8 +117,13 @@ func (g *Game) handleKeys() error {
 	// seconds, so it runs off the frame and the boats keep their last
 	// reading until it lands. Item 49.
 	if just(ebiten.KeyU) {
-		g.refreshUsage()
-		g.SetStatus("reading usage…")
+		// Say which of the two happened. A key that silently does
+		// nothing reads as a broken key.
+		if g.refreshUsage() {
+			g.SetStatus("reading usage…")
+		} else {
+			g.SetStatus("just asked; the figures do not move that fast")
+		}
 	}
 	if just(ebiten.KeyS) {
 		g.settingsOpen = true

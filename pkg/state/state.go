@@ -163,6 +163,26 @@ type Probes struct {
 	Attached func(sock string) bool
 }
 
+// isUsageProbe reports whether a working directory is the one the usage
+// probe runs in, and so not a session at all.
+//
+// Bug 54, and the reason it sits here. `claude -p "/usage"` is a real
+// Claude Code session while it runs: it holds a PID and writes a
+// transcript, so it reaches the city by BOTH paths — live through
+// Records and afterwards through Parked. The original fence covered
+// only the parked one, in the loader, so a running probe became a live
+// session: it sailed a tug up the river and re-planned the map around
+// itself every time the city asked itself what it had spent.
+//
+// One fact with two readers and only one told, which is the shape this
+// project keeps paying for. Build is where every session arrives by
+// whichever path, so the fence is here and nowhere else. A guard that
+// has to be repeated in each consumer is a guard that will be missed
+// again, because it already was.
+func isUsageProbe(cwd string) bool {
+	return cwd != "" && claude.ProjectFolder(cwd) == claude.UsageProbeProject()
+}
+
 func Build(src Sources, probes Probes, now time.Time) []Session {
 	byID := map[string]claude.Transcript{}
 	for _, t := range src.Transcripts {
@@ -170,6 +190,9 @@ func Build(src Sources, probes Probes, now time.Time) []Session {
 	}
 	sessions := make([]Session, 0, len(src.Records))
 	for _, r := range src.Records {
+		if isUsageProbe(r.CWD) {
+			continue
+		}
 		transcript, hasTranscript := byID[r.SessionID]
 		isAlive := probes.Alive(r.PID)
 		isAttached := false
@@ -179,6 +202,9 @@ func Build(src Sources, probes Probes, now time.Time) []Session {
 		sessions = append(sessions, buildSession(r, transcript, hasTranscript, src.Subagents[r.SessionID], isAlive, isAttached))
 	}
 	for _, t := range src.Parked {
+		if isUsageProbe(t.CWD) || t.Project == claude.UsageProbeProject() {
+			continue
+		}
 		sessions = append(sessions, parkedSession(t))
 	}
 	dropSoloTeams(sessions)

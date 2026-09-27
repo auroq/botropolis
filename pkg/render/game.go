@@ -118,9 +118,16 @@ type Game struct {
 	// usage is Claude Code's own cached view of the account's limits,
 	// re-read off disk because reading a file is free. u makes Claude
 	// Code refetch. Item 49.
-	usage   claude.Utilization
-	clicked ebiten.Key
-	hidden  bool
+	usage claude.Utilization
+	// usageAskedAt is when the probe was last set going and usageInFlight
+	// whether one has yet to come back. Bug 54: each probe is a real
+	// Claude Code session while it runs, so asking repeatedly puts a
+	// fleet on the river and re-plans the map under it. Both are read
+	// and written under mu.
+	usageAskedAt  time.Time
+	usageInFlight bool
+	clicked       ebiten.Key
+	hidden        bool
 	// live is whether anyone was watching the window last tick, so the
 	// tick is only changed when that changes. ticks counts Update calls
 	// and painted the tick the last frame was painted for, so a repeat
