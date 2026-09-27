@@ -2185,6 +2185,37 @@ All three fixed: the recipe runs and puts the pointer back where it found it, th
 The shape is worth keeping: **a measuring instrument is the one tool whose bugs look like results.** All three of these failed silently in the direction of a better number.
 
 
+### 63. The atlas is 24% larger than the pipeline's own shrink step makes it, because the step stopped running
+
+Found 2026-09-26 checking the build session's claim that `tools/shrink-pngs` "exists and isn't in the pipeline".
+It *is* in the pipeline — `Makefile:81`, the second line of `make sprites`.
+What happened is worse and more fixable: the pages in the tree were never shrunk, so re-running the step the project already has is worth **6,594,549 bytes**.
+
+| | now | after the step | |
+| --- | --- | --- | --- |
+| all nine pages | 27,272,847 B | **20,678,298 B** | −24% |
+| `kits-z1-0` | 4,382,524 | 3,527,632 | −20% |
+| `kits-z2-3` | 4,340,488 | 3,237,270 | −25% |
+| `kits-z2-4` | 2,936,317 | 2,096,194 | −29% |
+
+**Lossless, checked rather than assumed:** `magick compare -metric AE` is 0 between the shipped page and the re-compressed one, and both are 2048×2048, 8-bit, TrueColorAlpha, sRGB.
+The atlas is embedded uncompressed, so the client binary should fall by the same 6.6 MB — from 54.4 MB to about 47.8.
+
+**When it stopped is readable from the history, and it narrows the cause to one change.**
+`kits-z2-0.png` is **3,009,736 B** at `9125ea3`, `78d578f`, `0905175` and `d70788f` — which is *exactly* the byte count re-compressing it yields today, so the step was running and its output is reproducible.
+It is **3,968,971 B** at `f7a4bac` (r267) and still at `9f9a13e` (r271).
+So a re-cut between `d70788f` and `f7a4bac` — the gauge-boat work — wrote the atlas by running `render.py` directly instead of through `make sprites`, and every re-cut since has carried the unshrunk pages forward.
+This is also part of the 8 MB-per-re-cut pack growth item 58 priced: a quarter of what each re-cut adds to the pack is deflate that was never applied.
+
+**The check I ran earlier could not have caught it, and that is the lesson worth keeping.**
+Closing the `sprites-check` DIFFERS bullet, I verified that the shipped pages carry no `tEXt`, `tIME` or `iTXt` chunk and read that as "the date-chunk fix works".
+A page that never went through ImageMagick has no date chunk either — Blender does not write one.
+**The test passes identically whether the fix works or the step never ran**, which is the same shape as bug 54's assertion that would have passed while the bug remained, and as my `find -newermt` cutoff that could only return empty.
+
+Two things to do, and the second is the one that matters:
+1. Run `tools/shrink-pngs pkg/assets/kits/kits-z*.png`, rebuild, repackage. One command, no re-render, no pixel change.
+2. Make it impossible to skip. `render.py` writing the pages and the Makefile shrinking them afterwards are two steps that must both happen with nothing checking that they did — the same shape as `PIECES` and the Go literals in item 59, and as the two deciders in §10 item 2. Either `render.py` shrinks what it writes, or a check asserts each shipped page is byte-identical to its own re-compression.
+
 ### Worth knowing, not bugs
 
 - ~~**A third of the atlas is never drawn.**~~ **Answered and closed by bug 24; Aria chose option D on 2026-09-25 (r188).**
