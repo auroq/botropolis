@@ -2046,7 +2046,7 @@ That is precisely how this item came to exist — `chimney-medium` left the rese
 Bug 24 wrote "check again in a phase" into a comment; a phase passed and nobody checked.
 The test is that instruction moved somewhere that cannot be forgotten, and it fails loudly the next time a piece is cut without a caller or a drawn piece is left in the reserve.
 
-### 60. The 10% CPU bar has not been measured since the river filled with movers
+### 60. ~~The 10% CPU bar has not been measured since the river filled with movers~~ Measured 2026-09-26 (r268), and the premise was wrong
 
 The last measurement is bug 31, on 2026-09-25 at the phase 19 binaries: **14.2% of a core busy, 5.3% when the gate drops to 12 fps**, against phase 18's bar of 10%.
 Bug 29 established why that number is sensitive to exactly the work done since: what is left in the frame is movers, `Scene.Animating` gates the tick off when nothing moves, and the second effect is the larger one.
@@ -2056,6 +2056,66 @@ Three of those move continuously, so the plausible direction is that `Animating`
 Nobody has looked, and a bar that is only measured when someone remembers it is not a bar.
 
 This wants the i3 recipe from bug 29 — name the workspace, float the window, move the pointer in, focus, and reject any sample that drew zero frames — and it wants to be run on Aria's desk, because the two rigs disagreed by a third on the visible figure and agreed to a tenth of a percent on the hidden one.
+
+**Measured 2026-09-26 on Aria's desk, `DISPLAY=:0`, i3, floating 900×700 — bug 29's geometry — at r268, with two sessions working.**
+
+| | CPU | frames / 20 s | ms/frame | static reuse | RSS |
+| --- | --- | --- | --- | --- | --- |
+| visible, n=3 | **14.4%** (13.9–14.8) | 600 (30 fps) | 1.62–1.81 | 120/120 | 380–402 MB |
+| `--detail plain` | 13.2% | 600 | 1.27 | 120/120 | 374 MB |
+| Attention view | 14.6% | 600 | 1.63 | 118/120 | 384 MB |
+| `--reduced_motion` | **8.1%** | 120 (6 fps) | 1.77 | 117/120 | 375 MB |
+| a quiet city (fixture, no sessions) | 6.8% | **240 (12 fps)** | 1.00 | 120/120 | 378 MB |
+
+**The premise of this item was wrong, and the measurement is what says so.**
+It predicted the gate would stop closing because the river had filled with movers.
+The gate still closes: 240 frames in 20 s on a quiet city is the 12 fps drop, working exactly as phase 19 left it.
+The reason is that **three of the four new objects do not move.** `gaugeAt(cam, from, to, lane, gauge)` takes no clock — a gauge boat's position *is* the reading, so it is repainted in place until the figures change.
+I read "boat" as "mover" and filed against the inference. Cars (item 48) were already counted through the `Streets` clause, so the only genuinely new mover is the courier.
+
+**Like for like against bug 31, the process cost has not moved: 14.2% → 14.4% at 30 fps, which is inside the run-to-run spread.**
+The draw instrument has: 1.48 ms → 1.71 ms a frame, up 16%, which is the boats' draw calls arriving and not reaching the process figure.
+So the river cost draw calls and not frames, which is the cheaper of the two ways to spend.
+
+**Against the 10% bar: still missed when the city is busy, met three ways when it is not** — 6.8% quiet, 8.1% with motion reduced, and 13.2% with the scenery dropped, which is the one that is not enough.
+
+**Two findings that are worth more than the numbers.**
+*`--reduced_motion` has gone from useless to the only switch that meets the bar.* Bug 22 measured it saving nothing and concluded the cost was the redraw rather than the motion, which was true then. With the static layer in, the movers *are* the cost: 8.1% against 14.4%, and 6 fps against 30. A conclusion that was correct when it was drawn has quietly inverted, and nothing would have told us.
+*Attention is no longer cheaper than the base view* — 14.6% against 14.4%, and 1.63 ms against 1.71. Bug 31 measured it 20% better. The gauges and the courier are neither scenery nor a network, so no view subtracts them and no `detail` step drops them; a view can only save what a view can hide. That is the cost of the ruling that the river carries meaning, and it is the right trade, but it should be recorded where the 20% was.
+
+**One honest limit on the quiet row:** the fixture daemon reports no sessions, so that city is empty of buildings, and 6.8% at 1.00 ms/frame is not what a real quiet city costs.
+It proves the gate closes. It does not price it.
+A real quiet city needs a moment when nothing on this machine is working, which is not a condition an agent that is working can arrange.
+
+### 61. The city holds 380–400 MB where it held 212–247, and one atlas page does not explain it
+
+Measured 2026-09-26 at r268 across five runs on Aria's desk: RSS settles at **374–402 MB**, identical whether the view is busy, plain, receded or motion-reduced.
+Bug 27 measured 231–247 MB and bug 28 212–234 MB on this same desk, so this is **+150 MB**, and it is stable rather than a spike.
+
+The atlas is the obvious suspect and cannot carry it. z2 went from 6 pages to 7 — one 2048² page is 16.8 MB on the card and the same again decoded, so about 34 MB of the 150.
+Bug 27 found the loader decodes every page before uploading any of them, which sets the start-up peak, and then bug 22's item made the app hand memory back when the window goes quiet; both of those were about the *peak*, and this is the settled figure.
+
+What this wants is `pkg/assets` measured directly rather than inferred: how much is live after `LoadKits` returns, how much the static layer's offscreen images hold at 900×700, and whether anything the river added — the hull sheets at four headings, the buoys, the courier — is being held per-object rather than shared.
+No bar is missed, because the client has never had one; the daemon's 20 MB bar is untouched at 13.8 MB.
+But a quarter of a gigabyte was the number DESIGN.md wrote down, it is now closer to four tenths, and a figure that grows by half without anyone choosing it is worth understanding before it is defended.
+
+### 62. ~~The measuring tool documented three guards it did not have~~ Fixed 2026-09-26 (`e6da2f1`)
+
+Found while setting up item 60's measurement, and it explains a line in bug 31.
+
+`tools/measure-render` accepted `--place` into a variable that nothing ever read.
+Its header describes the i3 recipe in ten lines of comment; the body does not run it.
+So every real-desktop run of this script measured a window that landed on whatever workspace i3 was last on, unfocused — and since phase 18 an unfocused window draws **no frames at all**, while still reporting a plausible fraction of a core spent sleeping.
+That is why bug 31 says "the agent could not script this" and was measured by hand: the flag that would have scripted it was documentation.
+
+The frame counter — invented in bug 29 precisely because three of eight samples reported a beautiful 0.2% while drawing nothing — was captured to a temp file and never read.
+The guard existed in the header, in `frametime.go`, and in the reasoning, and was absent from the tool built around it.
+
+And `trap 'rm -f …' EXIT` further down **replaced** `trap cleanup EXIT` rather than adding to it, so from that line onwards nothing was killed: every run leaked a city process and, on a virtual display, an Xvfb.
+
+All three fixed: the recipe runs and puts the pointer back where it found it, the row carries frames drawn, ms/frame and static reuse, a zero-frame sample exits 3 with the city's own QUIET lines, and there is one trap.
+The shape is worth keeping: **a measuring instrument is the one tool whose bugs look like results.** All three of these failed silently in the direction of a better number.
+
 
 ### Worth knowing, not bugs
 
@@ -2108,11 +2168,13 @@ Of the 60 numbered items, all but these are struck:
 | open | what it wants | whose call |
 | --- | --- | --- |
 | §10 item 3 (plant) | a look at a current frame; the geometry is fixed and the reading may be too | Aria |
+| ~~item 57~~ | the AUR repo is committed and `make package` keeps it that way | done |
 | bug 22 item 3, bug 29 | the 10% CPU bar, last at 14.2% busy — now item 60 | measurement |
 | item 57 | commit the AUR repo and regenerate `.SRCINFO` | bookkeeping, then Aria on publishing |
 | item 58 | 157 MB of pack, and the shallow-clone fix is closed off | Aria |
 | item 59 | two new atlas orphans, 11 MB of growth | Aria |
-| item 60 | measure the bar with the river's movers in | measurement, on Aria's desk |
+| ~~item 60~~ | measured at r268: 14.4% busy, 6.8% quiet, and the premise was wrong | done |
+| item 61 | RSS is 380–400 MB where it was 212–247, unexplained | measurement, in `pkg/assets` |
 | validation checklist | ten steps, never run end to end | Aria |
 
 **Three things that were standing questions and are not any more**, so they stop being carried:
