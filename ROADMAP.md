@@ -707,13 +707,24 @@ So the plan reserves the ground rather than the planting testing for it: `plan.P
 ### 3. The power plant sits oddly
 The cooling tower reads as standing on the industrial slab rather than beside it on the plaza. Related to bug 23 — the tower is correctly grounded but the two pieces are composed as one landmark, and the result does not read as a building with a stack.
 
-### 4. Billboards do not work
+**Reconciled 2026-09-26 (r268). Most of this was answered under other headings, and what is left is a frame for Aria rather than code.**
+The two pieces are no longer composed as one: bug 33's cheap test gave the stack its own drawable at its own ground point, and bug 39 then found the perch was never on the building at all — a tile in from a 7.5 × 4 tile reservation is three tiles clear of a slab that is 1.6 tiles wide, out on the open plaza.
+The plant's stack now reads the same expression the plant's own sprite is drawn at (`plantStackPerch`), is sunk through the roof plane by the building's own height (item 40), and carries the curb from items 46a–47.
+So "does not read as a building with a stack" has had four fixes since it was written, none of them filed here.
+What survives from bugs 23 and 33 is not geometry: the flange is convex and unlit from below and the fountain sits directly under it in screen space, so the flare's lower edge can read as an underside.
+That is a contact shadow or a moved fountain, and it wants Aria's eye on a current frame before either is bought — the last judgement was made on r186, eighty revisions ago.
+
+### 4. ~~Billboards do not work~~ Closed 2026-09-26 (r213), by item 40
 Session titles are drawn as vertical text up a building's flank. They cannot be read, they do not look like signage, and at distance they read as floating text with no surface. The water-tower treatment is better and still poor. The design brief said fascia over the door, rooftop billboard for long titles, up the side only for a tall building; in practice almost everything is taking the side. Either signage earns a real surface — a panel with a background, contrast and a size floor — or titles go back to plates on hover only.
 
 **Both built, 2026-09-26 (r205), for Aria to choose between: `--signage` carries the three real-surface treatments and `hover`, which draws no title at all.**
 The fifth panel of `docs/screenshots/r205-signage.png` is the hover-only city.
 What the frames say, without picking: the rooftop billboard that ships today is the only treatment that reads at a glance, and it is also the one this entry calls chrome; the plaque carries the whole title on a real mount; the gantry carries nothing (see item 38); and hover-only is the quietest city by a distance.
 Aria leans permanent without being sure, so nothing is switched.
+
+**Ruled and shipped under item 40.** Her words there: *"let's do hover for now but I like plates for the name of the project/repo."*
+The two labels separated, which is what this entry could not see: a **session's** title is hover-only and is the default (`--signage hover`), and a **project's** name keeps a permanent plate — which items 44 and 45 then built into the monument sign standing in the plaza.
+The four prototypes stay behind `--signage` as evidence, not as options in play.
 
 ### 5. ~~Cars do not say which repos they connect~~ Done 2026-09-25 (r195), noticed 2026-09-26
 A car drives a street between two districts, but the street is routed on the grid and passes along the edge of whichever districts are adjacent, so a viewer cannot tell which pair it belongs to. Either the car carries its pair (colour, or a label on hover) or traffic stops being drawn as cars and becomes something anchored to both ends.
@@ -1305,7 +1316,12 @@ The inventory of "things Escape should close" has to be the inventory of **thing
 **Done.** `Scene.Deselect` is new — nothing in the codebase cleared `selected` except the hide action, so the card had no way to close at all. Escape now clears it at the **top** of the ladder, above help and the view key, because it is the most modal thing on screen and it carries the verbs. Everything below is unchanged and quit stays on `q`.
 
 **Why bug 43 missed it is worth keeping.** That inventory was taken from the keyboard's side — help, the view key, the view, settings — and the card is the one surface the *mouse* opens. The list of things Escape closes has to be the list of things that are **open**, whatever opened them.
-### 49. Three boats on the river as usage gauges (Aria, 2026-09-26)
+### 49. ~~Three boats on the river as usage gauges (Aria, 2026-09-26)~~ Done 2026-09-26 (r252–r265), through items 50–55
+
+**Built and installed.**
+The five blocking questions below were answered by the research in 49a–49f — the denominator exists, it is cached on disk in `~/.claude.json`, and both plan shapes are handled.
+What shipped: three hulls sized by reading (`ship-ocean-liner-small`, `ship-cargo-a`, `boat-sail-a`), the gauge read *along* the river with the boats laned across it, buoys at the ends instead of painted lanes, world-unit sizing so nothing halves at the atlas step, and a run inset off the map's corners.
+Items 50, 51, 52, 52a, 53, 54, 54a and 55 are each a correction to this one, and item 56 gave the refresh its own boat.
 
 Her words: *"add a boat (maybe classic steamboat like mark twain era) that runs from one end of the river to the other. It will track usage session usage. Actually let's do 3 boats. Big boat is monthly model usage percentage, medium boat is weekly, and small boat is session model usage. bottom of the window is 0% and the top means we've hit 100% of usage. That way I can track that at a glance. Of course, hovering them tells the percentage. We can make the river wider if needed to fit 3 boats."*
 
@@ -1934,22 +1950,82 @@ Its ends resolve from the live `RiverBand` on every read — written that way fr
 
 **Frames.** `docs/screenshots/r267-refresh-courier.png` is the courier entering at the river's head, bow downstream. `r267-courier-vs-tugs.png` is it beside both tugs, the cargo ship and the sailing boat, at drawn size and at MinZoom.
 
+### 57. The AUR repo has not been committed since r100, and `.SRCINFO` advertises r30
+
+Found taking inventory 2026-09-26 at r268.
+`~/workspaces/aur/botropolis-git` builds correctly and has produced every package Aria has installed, and its git history stops at **r100.2f76f62**.
+`PKGBUILD` is modified-not-committed at `pkgver=r268.3113ef9`, so 168 revisions of bumps exist only in the working tree, and `.SRCINFO` still says **`pkgver = r30.e2ba1bc`**.
+There is also no git remote on that repo at all, so nothing has ever been pushed anywhere.
+
+Why it matters, in the order it will bite: `.SRCINFO` is the only thing the AUR reads for metadata, so publishing today would list a package 238 revisions behind what it builds.
+An uncommitted `PKGBUILD` is one `git checkout` from losing every bump.
+And phase 12's exit criterion is "publish `botropolis-git` to the AUR", which cannot be judged done or not-done while the repo has no remote to be absent from.
+
+The fix is bookkeeping, not design: regenerate `.SRCINFO` with `makepkg --printsrcinfo`, commit both with the repo-local signing identity the memory records, and then Aria decides whether it is pushed.
+Worth a `make package` step that regenerates `.SRCINFO` and commits, because a file that has to be regenerated by hand is a file that will be 238 revisions stale.
+
+### 58. The repo pack is 157 MB, grows by about 27 MB per atlas re-cut, and the obvious remedy is closed off by `pkgver()`
+
+Measured 2026-09-26 at r268: `.git` is **157 MB**, and 154 blob versions of `pkg/assets/kits` account for **248 MiB raw** across 34 commits that touched the atlas.
+PNGs are already compressed, so they do not delta against each other — every re-cut adds the whole atlas again, and the current atlas is 27 MB.
+The roadmap's own note says "the repo pack is 30 MB, almost all atlases", which was true on 2026-09-21 and is now off by a factor of five.
+
+The trap is in the shape of the cheap fix.
+`PKGBUILD` clones the full repo and `pkgver()` runs `git rev-list --count HEAD` to produce the `r268` in every package name Aria installs, so **a shallow clone cannot be used** — it would take the revision number with it.
+`makepkg` therefore transfers 155 MB to build a 55 MB binary, and that grows monotonically with every art change.
+
+Three real options, and this is Aria's call because each trades something different:
+git-lfs for `pkg/assets/kits` (was ruled out on 2026-09-21 on the grounds that the atlas does not churn — the ground has moved, it has been re-cut 34 times);
+build the atlases in the PKGBUILD (needs Blender as a makedepend, which is a heavy dependency for a package that exists to be installed);
+or leave it, on the grounds that one machine's clone is one machine's disk.
+Note that whatever is chosen, only history rewriting recovers the 157 MB already spent — the decision is about the next 34 re-cuts.
+
+### 59. Two atlas orphans have appeared since option D, and the river has spent option D's saving back
+
+Measured 2026-09-26 at r268 by matching every sprite name in `kits-z2.json` against the literals in the tracked Go files.
+**8 of 79 pieces are undrawn**, where bug 24 left 7 deliberately kept.
+The two that are not on that list:
+
+- `city-kit-industrial/chimney-large` — kept in bug 24 as bug 33's candidate, then made dead by item 36's swap: `kitStack` is `chimney-medium` now.
+  It is the largest orphan in the atlas and the one whose mesh three separate entries reasoned about.
+- `city-kit-roads/sign-highway-detailed` — the atlas cuts both highway signs and `kitSignGantry` names the plain `sign-highway`, so the detailed one has never been drawn.
+
+The six that remain are the reserve bug 24 argued for, minus `chimney-medium`, which is now in use: the truck, the pole, the wires, the traffic light, the cone and the curved lamp.
+Bug 24's own rule applies — "if one still has no caller a phase from now it should go the same way" — and a phase has passed.
+
+The sizes are the other half of this.
+Option D shipped 8 pages, 18.8 MB of atlas and a 43.5 MB client.
+Today: **9 pages (2 + 7), 27 MB of atlas, a 54.9 MB client**, and the daemon 13.8 MB, comfortably inside its 20 MB bar.
+The Watercraft kit is eight pieces now — three gauge hulls, two tugs, the courier, two buoys — and the river is what the extra page and the extra 11 MB bought.
+That is not an argument against the boats; it is the number to put beside them, and it says option D's 10 MB saving lasted one phase.
+
+### 60. The 10% CPU bar has not been measured since the river filled with movers
+
+The last measurement is bug 31, on 2026-09-25 at the phase 19 binaries: **14.2% of a core busy, 5.3% when the gate drops to 12 fps**, against phase 18's bar of 10%.
+Bug 29 established why that number is sensitive to exactly the work done since: what is left in the frame is movers, `Scene.Animating` gates the tick off when nothing moves, and the second effect is the larger one.
+
+Since then the map has gained cars on the base view (item 48), three gauge boats that move whenever the window is open (items 49–55), buoys at both ends of their run, and a courier on every refresh (item 56).
+Three of those move continuously, so the plausible direction is that `Animating` now says yes far more often than it did when 360 frames per 20 s was measured — which would cost more than the draw calls do.
+Nobody has looked, and a bar that is only measured when someone remembers it is not a bar.
+
+This wants the i3 recipe from bug 29 — name the workspace, float the window, move the pointer in, focus, and reject any sample that drew zero frames — and it wants to be run on Aria's desk, because the two rigs disagreed by a third on the visible figure and agreed to a tenth of a percent on the hidden one.
+
 ### Worth knowing, not bugs
 
-- **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
-  nine Commercial buildings, four Industrial, the tank, windmill and solar panel, five Roads pieces (poles, wires, traffic light, cone, the curved lamp), two wagons, the rowing boat and the truck.
-  They cost four headings each at two zoom levels in a 21 MB atlas whose z2 budget is seven pages of eight.
-  Two of the four pieces whose anchor moved most in bug 20 are in this list, so the fix was measured against pieces nothing looks at.
-  Whether they are a reserve or an oversight is Aria's call; `PIECES` in `render.py` is where they are chosen.
-- The client binary is 45 MB (21 MB of embedded atlases plus Ebitengine, bubbletea and Inter); the daemon is 13 MB and links none of the UI.
-- The repo pack is 30 MB, almost all atlases; if `make sprites` churns, that is git-lfs or build-time atlases in the PKGBUILD.
+- ~~**A third of the atlas is never drawn.**~~ **Answered and closed by bug 24; Aria chose option D on 2026-09-25 (r188).**
+  Eight commercial pieces went into `fillClasses`, ten orphans left `PIECES`, seven were kept with a stated use.
+  The standing question this bullet recorded — reserve or oversight — has an answer per piece and does not need Aria again.
+  What is true today is item 59: 8 of 79 undrawn, of which six are that reserve and two are new orphans created since.
+- The client binary is **54.9 MB** and the daemon **13.8 MB** (measured 2026-09-26 at r268; the atlas is 27 MB of the client, and the daemon links none of the UI).
+  The 20 MB bar is the daemon's and it holds; the client has never had one.
+- The repo pack was 30 MB on 2026-09-21 and is **157 MB** at r268 — see item 58, which is this bullet's concern arriving by the route it did not expect.
+  If `make sprites` churns, that is git-lfs or build-time atlases in the PKGBUILD.
   Measured 2026-09-21 with the new `make sprites-check` (phase 15): it does not churn.
   A no-op render reproduces every atlas bit for bit — same manifests, same IDAT bytes, same decoded pixels on all nine pages —
   so git-lfs and build-time atlases are both off the table.
-  The target still reports DIFFERS, for one reason only:
-  `tools/shrink-pngs` runs ImageMagick, which stamps three `date:create` / `date:modify` / `date:timestamp` tEXt chunks with the wall clock (111 bytes a page).
-  Strip those and `git diff` is empty; left alone, every re-render rewrites nine files that differ only by a date.
-  **Aria's call before phase 16's exit criterion can pass.**
+  ~~The target still reports DIFFERS, for one reason only: `tools/shrink-pngs` runs ImageMagick, which stamps three `date:create` / `date:modify` / `date:timestamp` tEXt chunks with the wall clock.~~
+  **Fixed, and it needed no ruling from Aria:** `shrink-pngs` passes `-define png:exclude-chunk=date`, and the shipped pages carry no `tEXt`, `tIME` or `iTXt` chunk at all (checked 2026-09-26 at r268).
+  The repo-weight concern this bullet opened has moved rather than gone: the atlas does not churn on a no-op render, and it has been *deliberately* re-cut 34 times, which is item 58.
 - `proto` (11%), `app` (16%) and `render` (5%) are the low-coverage packages; `proto` is exercised through the daemon tests, `render` is the GUI.
 - `botropolis-notify` is installed but not enabled; check `pacman -Q botropolis-git` against the PKGBUILD before validating.
 
@@ -1967,6 +2043,38 @@ Install the latest build, restart the daemon, enable notify, then:
 8. `botropolis bar` in waybar: the class changes colour when a session needs you.
 9. `b` with more projects than fit the window: the sidebar scrolls and the cursor row stays visible.
 10. Type `!` in a session to drop into a shell, then look at the map: the session reads as working, not needs-you (bug 12).
+
+## 12. Inventory, 2026-09-26 (r268.3113ef9)
+
+Taken at Aria's request, against the installed package rather than the working tree: `pacman -Q botropolis-git` says `r268.3113ef9-1`, which is HEAD, and `main` is level with `github/main`.
+
+**Gate, run now:** `go build ./...` clean, `go vet ./...` clean, `go test ./pkg/...` green across 30 packages, `make lint` 0 issues.
+22.2k lines of Go with 19.5k lines of tests beside them, and 80 frames in `docs/screenshots/`.
+
+**What is running:** `botropolisd` active under systemd; **no map client process** (`/proc/*/exe` matching `/usr/bin/botropolis` — zero).
+That is the third time this has been the explanation for frames disagreeing with the screen, so it belongs in the inventory rather than in a diagnosis: restarting the daemon does not restart the map, and every gauge, boat and card lives in the client.
+
+**Where the phases stand.** Phases 7–12 shipped 2026-09-18 and were audited at r96.
+Phases 13–21 are the bug and polish work in §8–§11.
+Of the 60 numbered items, all but these are struck:
+
+| open | what it wants | whose call |
+| --- | --- | --- |
+| §10 item 3 (plant) | a look at a current frame; the geometry is fixed and the reading may be too | Aria |
+| bug 22 item 3, bug 29 | the 10% CPU bar, last at 14.2% busy — now item 60 | measurement |
+| item 57 | commit the AUR repo and regenerate `.SRCINFO` | bookkeeping, then Aria on publishing |
+| item 58 | 157 MB of pack, and the shallow-clone fix is closed off | Aria |
+| item 59 | two new atlas orphans, 11 MB of growth | Aria |
+| item 60 | measure the bar with the river's movers in | measurement, on Aria's desk |
+| validation checklist | ten steps, never run end to end | Aria |
+
+**Three things that were standing questions and are not any more**, so they stop being carried:
+the 25 undrawn atlas pieces (answered per piece by bug 24, option D, r188);
+the `make sprites-check` DIFFERS (fixed in `shrink-pngs`, no ruling needed);
+and the signage choice (ruled in item 40 — hover for sessions, a permanent plate for projects, which became the monument sign).
+
+**The one design ruling from this phase worth keeping at the top level:** a fourth meaning must not go on the river.
+Three are held apart by motion, profile and card, and the honest limit recorded in DESIGN is that all three are hoverable in principle and hard to hover in practice — two move, and the courier lives five seconds.
 
 ## Later
 
