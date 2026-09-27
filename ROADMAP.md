@@ -2005,6 +2005,13 @@ After `git gc`: 146 MB on disk, a 144.7 MiB pack, no loose objects.
 **18 commits have touched `pkg/assets/kits`, not 34.**
 26 have touched `pkg/assets` if the Kenney tilemaps are counted with the atlas.
 Neither is 34, and I cannot reconstruct where 34 came from, so the per-re-cut arithmetic downstream of it should be redone rather than trusted.
+
+**Where 34 came from, since it is reconstructible and the cause has now cost two bugs in one session.**
+This repo sets `log.showSignature=true`, so every commit `git log --oneline` prints carries a second line — `Good "git" signature for dev@ariavesta.com …`.
+`git log --oneline -- pkg/assets/kits | wc -l` therefore counts two lines per commit: 36 today for the 18 commits, and 34 when I ran it at r268 for 17.
+So the figure was not a wrong count of the right thing, it was **a line count read as a commit count** — the same shape as the atlas cell read as a city tile, and it is the third time this project has been bitten by a number in the wrong units.
+The same setting is why the AUR `Makefile`'s `commit` target wrote a mangled subject: `$(git log -1 --format=%s)` returned the verification line ahead of the message.
+**In this repo any script reading git log must pass `--no-show-signature`, and `git rev-list --count` is safe because it prints no signatures** — which is why `pkgver()` was never affected.
 The blob count is right: 160 versions at r272, which is the filed 154 plus the six files item 59's re-cut rewrote.
 
 **PNGs do not delta, but they do deflate: 256 MiB raw becomes 91.6 MiB in the pack, a factor of 2.8.**
@@ -2196,6 +2203,9 @@ The shape is worth keeping: **a measuring instrument is the one tool whose bugs 
   The repo-weight concern this bullet opened has moved rather than gone: the atlas does not churn on a no-op render, and it has been *deliberately* re-cut 34 times, which is item 58.
 - `proto` (11%), `app` (16%) and `render` (5%) are the low-coverage packages; `proto` is exercised through the daemon tests, `render` is the GUI.
 - `botropolis-notify` is installed but not enabled; check `pacman -Q botropolis-git` against the PKGBUILD before validating.
+- **`log.showSignature=true` is set on this repo, so `git log` prints a verification line per commit.** `git log --oneline | wc -l` counts double and `git log --format=%s` returns the signature before the subject.
+  Pass `--no-show-signature` in anything scripted; `git rev-list --count` and `git rev-parse` are unaffected, which is why `pkgver()` never broke.
+  It has produced two wrong results in one session — a commit count in item 58 and a package subject in item 57's Makefile — so it is a property of the repo rather than a mistake either of us made twice.
 
 ### Validation checklist for Aria
 
