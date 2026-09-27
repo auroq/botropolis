@@ -580,6 +580,25 @@ The guard against the first is to run the cheap check that would falsify it befo
 Two numbers matching is the most persuasive and least reliable evidence available, because a coincidence does not announce itself.
 An argument from what the pages *are* — that a page of `libgallium` is not this program's memory whatever any rig reports — needs no second measurement and survived when the agreement did not.
 
+## A green test is not a guard until it has been made to fail
+
+Three times in one evening a test was written for a behaviour, passed, and could not have failed.
+
+The courier's expiry case asserted that a city goes still once the boat lands, and passed **before** the fix — because `Animating()` never returned true for a courier at all, so "still" was the only answer it could give.
+The `sprites-check` date-chunk check reported that no page carried a `tEXt`, `tIME` or `iTXt` chunk, which is equally true of a page ImageMagick never touched, so it passed identically whether the shrink step worked or had silently stopped running for fourteen revisions.
+And item 67's own fixture, written *by* the session that had just named this trap, laid its transcripts down with names ascending in the same order as their modification times — so sorting by name and sorting by time gave the same answer, and the one decision the test existed to protect was invisible to it.
+
+**The check is cheap and mechanical: break the implementation on purpose, in the specific way the test claims to forbid, and watch that test fail.**
+Not the suite — that test.
+Sorting by name instead of mtime, `len(s.couriers) > 0` instead of asking each courier's progress, reversing a comparator.
+If it stays green, the test is describing the behaviour rather than holding it, and the distance between those two things is the whole of what went wrong above.
+
+Two notes on doing it.
+A mutation has to be the *plausible* wrong implementation, not an absurd one: the value is in showing the test separates the real design from the near miss somebody would actually have written, and every one of the three above was a near miss somebody actually wrote.
+And where a seam cannot be tested, say so rather than leaving a gap that reads like coverage — nothing asserts that the probe's prune runs *after* `cmd.Run()` rather than before, because a test for that would have to spawn `claude -p`, which is the subprocess the fence exists to keep out of the city. That ordering is held by a comment and by reading, and it is worth knowing which of the two it is.
+
+**"I wrote a test for it" and "the test can fail" are different claims**, and only the second is worth anything. The first is the same species as a number that is right and means nothing: correct, reproducible, and about something other than the question.
+
 ## What it costs
 
 Roadmap phase 18, 2026-09-22.
