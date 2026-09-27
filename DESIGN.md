@@ -532,6 +532,16 @@ The set that went unnamed there was not a comparison class but a referent: *the 
 Fourteen arrived as "the tall ones," not as "the set that cannot contain what I am looking for."
 When a comparison lands on an extreme without anyone selecting an extreme, the number survives and the meaning does not.
 
+**A fifth, and it is between coordinate systems rather than between units.**
+`kitSized` states how big a piece should draw and works the scale back from the art, which is what item 51 needed and what it delivered.
+It stated that size in **screen pixels**, where the rest of the renderer works in world units scaled by zoom.
+Multiply the two expressions out and the sprite's own size cancels: the drawn size came to `target * cam.Zoom / atlas.Zoom`, and `atlas.Zoom` is a step function, so the piece halved the moment the finer cut took over.
+Every other piece survives that step because applying the zoom ratio to the sprite's own pixels cancels it — a z2 cut is twice its z1 cut. That cancellation is the entire purpose of the ladder, and normalising the sprite away opts out of it.
+
+The number was right. `target = 142` drew a 142-pixel boat, at the zoom it was written against.
+What it meant changed underneath it, once per atlas boundary, and a boundary is the frame nobody screenshots.
+**Ask of any size in this renderer: a size in what, at which zoom?** A helper that cannot answer that will be correct somewhere and wrong at every step.
+
 ## What it costs
 
 Roadmap phase 18, 2026-09-22.

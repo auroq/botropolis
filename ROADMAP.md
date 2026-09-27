@@ -1724,7 +1724,7 @@ Looking to confirm is not looking. A frame checked *after* the conclusion is for
 
 **Frames.** `docs/screenshots/r255-gauge-bows-flipped.png` is all four headings with the bows leading upstream; `r255-gauge-lanes-abreast.png` is the forced 61/58/55 case again. r254's two frames are left in place and show the backwards facing.
 
-### 53. The boats halve when the atlas switches, because `kitSized` cancels the sprite out (Aria, 2026-09-26, on r255)
+### 53. ~~The boats halve when the atlas switches, because `kitSized` cancels the sprite out~~ Done 2026-09-26 (r256)
 
 Her words: *"The boats get smaller at a certain zoom. We don't need to do that."*
 
@@ -1750,6 +1750,20 @@ drawn = longest * scale = longest * (cam.Zoom/atlas.Zoom) * (target/longest)
 **The buoys go through the same path** (`buoyExtent = 26`) and shrink at the same boundary. One fix covers both, and `kitSized` has no other callers.
 
 **Worth recording as its own lesson:** `kitSized` was added in item 51 to fix two hulls drawing at the same length, and it did. It introduced this by solving that problem in **screen** units, where the rest of the renderer works in world units scaled by zoom. A helper that opts out of the ladder's normalisation will look correct at whatever zoom it was written against and wrong at every atlas boundary — and the boundary is exactly the frame nobody screenshots.
+
+**Built exactly as filed; the algebra held and the numbers matched.**
+`pick` switches at `zoom >= 2/1.01`, so the only ladder step affected is `MaxZoom` itself, which is why this survived every earlier frame.
+
+**Guard.** `TestKitSizedIgnoresWhichAtlasItIsCutFrom` draws the same piece at one camera zoom from each cut and requires the same size; `TestKitSizedGrowsAllTheWayUpTheLadder` walks every `ZoomStep` through the real `pick` and requires the size to increase.
+The first failed at 284 px against 142 before the fix — exactly the predicted halving, from the real atlas rather than from the algebra restated.
+
+**I verified the fix against a stale binary three times before noticing.**
+The shots taken after the fix went through `bin/botropolis`, which had not been rebuilt since the previous item, so every "after" frame was the unfixed build.
+I looked at them and read them as correct. A pixel diff against two binaries built on purpose showed my before and after were byte-identical.
+That is the third time this session that looking has confirmed what I already believed — the bow facing, the `untigirned` sed that silently matched nothing, and this.
+**When the question is "did that change anything", compare artifacts mechanically rather than by eye.** A hash or a pixel count is not a more careful version of looking; it is a different instrument, and it is the only one that answers that question.
+
+**Frame.** `docs/screenshots/r256-gauge-size-at-maxzoom.png`, before and after at the same camera at `MaxZoom`, from two binaries built for the purpose.
 
 ### Worth knowing, not bugs
 

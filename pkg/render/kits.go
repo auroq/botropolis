@@ -184,9 +184,9 @@ func (g *Game) kitScaled(screen *ebiten.Image, cam *city.Camera, name string, tu
 	return city.RectAt(origin.X, origin.Y, float64(sprite.Rect.Dx())*scale, float64(sprite.Rect.Dy())*scale)
 }
 
-// kitSized draws a piece scaled so its longest side comes out at
-// target pixels in the atlas's own scale, whatever size the sprite
-// happens to be.
+// kitSized draws a piece scaled so its longest side comes out at target
+// pixels at zoom 1, whatever size the sprite happens to be and whatever
+// cut the zoom ladder picked.
 //
 // Sizing by a per-piece shrink factor does not survive different
 // sprites: the liner and the cargo ship are 15.2 and 10.6 long in the
@@ -196,6 +196,30 @@ func (g *Game) kitScaled(screen *ebiten.Image, cam *city.Camera, name string, tu
 // the per-kit SCALE have had their say — the same gap that made the
 // chimney's pipe measurement wrong. So the target is stated and the
 // scale is worked back from the art.
+// kitShrink is how far to shrink a piece so its longest side draws at
+// target pixels at zoom 1 — a size in world terms, not in screen ones.
+//
+// Bug 53, and the atlasZoom is the whole of the fix. kitScaled then
+// draws at cam.Zoom/atlas.Zoom times this, so the drawn size comes out
+// at target*cam.Zoom: the sprite's own pixels cancel, and so does the
+// atlas the ladder happened to pick.
+//
+// Without the atlasZoom the drawn size was target*cam.Zoom/atlas.Zoom.
+// That looks fine at any one zoom and is wrong at exactly one place:
+// atlas.Zoom is a step function, so where the z2 cut takes over the
+// ratio halves and the piece halves with it. Aria saw it as "the boats
+// get smaller at a certain zoom"; nobody had written a threshold.
+//
+// Every other piece survives that step because kit and kitLifted apply
+// the ratio to the sprite's own pixels, and a z2 cut being twice its z1
+// cut cancels it. That cancellation is what the ladder is for. Stating
+// a size in screen pixels opts out of it — the same family as the unit
+// confusions in DESIGN.md, but between coordinate systems rather than
+// between tile sizes, and it hides at a boundary nobody screenshots.
+func kitShrink(target, longest, atlasZoom float64) float64 {
+	return target * atlasZoom / longest
+}
+
 func (g *Game) kitSized(screen *ebiten.Image, cam *city.Camera, name string, turn int, at city.Point, target float64, tint *ebiten.ColorScale) city.Rect {
 	if g.kits == nil || target <= 0 {
 		return city.Rect{}
@@ -212,7 +236,7 @@ func (g *Game) kitSized(screen *ebiten.Image, cam *city.Camera, name string, tur
 	if longest <= 0 {
 		return city.Rect{}
 	}
-	return g.kitScaled(screen, cam, name, turn, at, target/longest, tint)
+	return g.kitScaled(screen, cam, name, turn, at, kitShrink(target, longest, atlas.Zoom), tint)
 }
 
 // kitGround draws a ground tile a hair larger than its cell, so two tiles
