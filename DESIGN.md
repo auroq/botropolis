@@ -558,7 +558,7 @@ Item 61 opened on the city holding 380–400 MB where bugs 27 and 28 had measure
 Every figure was `VmRSS`, read correctly from `/proc/<pid>/status`, and reproducible.
 Breaking one down by mapping: **68% of it was shared libraries** — Mesa and the NVIDIA GL driver — file-backed, clean, and shared with every other process on the machine that draws anything.
 The number was a true statement about the process's address space and a false one about the program.
-Between a virtual display and real hardware the same build differs by **60 MB of `VmRSS` and under 5% of `Private_Dirty`**, which is the tell: a metric that moves 60 MB when only the driver changed was never measuring the city.
+On the desk the same process reads 388–390 MB of `VmRSS` against 114.6–116.5 of `Private_Dirty`: a metric that triples the answer by counting a driver's text was never measuring the city.
 
 The set that went unnamed here is *whose memory*, and it is the same question as the referent in bug 23 and the comparison class in item 36, asked of an address space instead.
 `VmRSS` answers "what is resident", `Pss` answers "what is resident and how much of it is ours", `Private_Dirty` answers "what would be freed if this process exited".
@@ -586,9 +586,16 @@ Item 61, 2026-09-26: of a client sitting at 357.3 MB `VmRSS`, **68% is shared li
 A third of this table is therefore a measurement of a Mesa release.
 The city's own memory is `Private_Dirty`, which was **85.7 MB** on the virtual display and **75.4–86.5 MB** on the desk, against `Pss` of 188–254 MB.
 
-The check that this is the right correction rather than a different arbitrary one is that the two rigs agree on it.
-**They differ by 60 MB on `VmRSS` and by under 5% on `Private_Dirty`**, measuring the same build — which is exactly what should happen if the difference between them is a driver stack and not a program.
-So: quote `Private_Dirty`, or `Pss` when a shared page genuinely is a cost. Bugs 22, 27 and 28 quote `VmRSS` and their absolute figures should be read as that and not as the city's footprint.
+**An earlier version of this paragraph rested the correction on two rigs agreeing to within 5% on `Private_Dirty`. That agreement was not real and has been withdrawn.**
+The virtual-display figure behind it was sampled from a `--record` run, which accumulates frames and whose memory climbs the longer it runs; the same instrument gives 86 MB, 823 MB and 1.35 GB depending on when it is read and which GL path it lands on.
+It was not measuring a steady state and should never have been set beside a desk figure.
+Two numbers matching is the most persuasive and least reliable evidence available, because nothing about a coincidence announces itself — and it is worth recording that the retraction cost more than the claim was ever worth.
+
+**What the ruling actually stands on is one rig, broken down by mapping, which does not need a second rig to agree.**
+On the desk, drawing: `VmRSS` 388–390 MB against `Private_Dirty` 114.6–116.5, with about **147 MB of NVIDIA and Mesa** that is file-backed, clean, and shared with every GL process on the machine.
+That is an argument about what the pages *are*. A page of `libgallium` is not the city's memory whatever either rig reports, and `VmRSS` counts it whatever the window is doing.
+So: quote `Private_Dirty`, or `Pss` when a shared page genuinely is a cost, and name whether the window was drawing — a window that exists holds about 77 MB and the same window drawing holds about 115, so a figure without that state attached is missing a third of itself.
+Bugs 22, 27 and 28 quote `VmRSS` and their absolute figures should be read as that and not as the city's footprint.
 
 | Rig | Build | Visible | Hidden | RSS (`VmRSS`, see above) | Peak |
 | --- | --- | --- | --- | --- | --- |
@@ -614,8 +621,8 @@ RSS is given as a range because it is not a property of the build.
 An idle app allocates too little to make the collector run, so memory is handed back explicitly when the window goes quiet — but whether that has happened yet by the time a sample is taken is timing.
 One rig saw 236 MB fall to 208 when hidden; the other saw 212 rise to 219 and 224 to 234 across runs.
 A virtual display cannot stand in for either *on CPU*: software rasterising turns everything into fill rate, where one full-screen blit shades as many pixels as the sprites it replaces, and no draw-call saving is visible at all.
-It stands in perfectly well for memory, which item 61 established by accident — mappings do not care whether a frame was cheap, and the virtual display's `Private_Dirty` landed inside the desk's range.
-The two claims look contradictory and are not: the thing a virtual display gets wrong is the cost of drawing, not the cost of existing.
+It does not stand in for memory either, though the reason is different and took a retraction to find: a virtual display may fall back to llvmpipe, whose buffers are nothing like a driver's, and the same command on the same machine measured 357 MB one way and 1.35 GB the other.
+An earlier draft here claimed the opposite on the strength of one coincidental match.
 `BOTROPOLIS_FRAMETIME=1` reports what a frame costs the CPU and how often the static layer was reused; that is the hardware-independent signal, and it predicted item 2's cut on real glass to within a percent (3.69 ms to 2.30, −38%, against −37% measured).
 A gate that is hard to exercise by hand is itself worth recording: i3 will not hand focus to the window from a non-interactive shell, so an unfocused window correctly draws nothing and a naive sample reads the hidden figure whatever it meant to measure.
 That is why every row carries its frame count.

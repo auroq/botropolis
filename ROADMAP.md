@@ -2222,6 +2222,13 @@ Instrumented with `runtime.MemStats` around a real `LoadKits()`: nine `*image.NR
 Every byte comes back. The decoded copy and the uploaded one are *not* both held, so that candidate is out too.
 `ka.Pages = nil` in `loadKits` does nil a struct copy rather than the original, which looks like a bug and is not: `loaded` is dead after the loop and the `debug.FreeOSMemory()` that follows reclaims it, which is what the measurement shows.
 
+**Retracted 2026-09-26, and the retraction is the useful part: the figures below were sampled from a `--record` run, which is not a steady state.**
+`--record` accumulates frames, so its memory climbs with the length of the run; re-measured, the same instrument gives 86 MB, 823 MB and 1.35 GB of `Private_Dirty` depending on when it is read and whether the GL path lands on the NVIDIA driver or on llvmpipe.
+The 85.7 MB below is therefore a reading of a recorder part-way through a recording, not of the city, and it should not have been set beside a desk figure.
+The cross-rig agreement built on it — "60 MB apart on `VmRSS`, under 5% on `Private_Dirty`" — is withdrawn from here and from DESIGN.md.
+
+What survives is the mapping breakdown, which is an argument about what the pages *are* rather than about two numbers matching, and the desk's own single-rig figures make the same case without help: `VmRSS` 388–390 MB against `Private_Dirty` 114.6–116.5 while drawing.
+
 **And the RSS breakdown says 68% of it is the graphics stack, not the city.**
 Sampling `/proc/<pid>/smaps` of a running client at 357.3 MB RSS:
 
@@ -2235,6 +2242,8 @@ Sampling `/proc/<pid>/smaps` of a running client at 357.3 MB RSS:
 The largest single mappings are `libLLVM.so` at 83.4 MB, `libnvidia-gpucomp.so` at 75.5 MB, `libgallium.so` at 45.6 MB and `libnvidia-eglcore.so` at 20.3 MB.
 That is Mesa and the NVIDIA GL driver, **file-backed, clean, and shared with every other GL process on the machine** — memory the city is mapping, not memory it is using.
 `Pss` for the same process is 254.6 MB against 357.3 RSS, and `Private_Dirty` — the only figure that is unambiguously ours — is **85.7 MB**.
+
+(The table above is the retracted `--record` sample; its *proportions* are consistent with the desk's, but its absolute figures are not a steady state and only the shape should be read from it.)
 
 So the honest reading of "380–400 where it held 212–247" is that **most of the difference is a driver stack that got bigger**, and bugs 27 and 28 were quoting a number that moves when Mesa ships a release.
 This does not clear the city of everything: 76.9 MB of anonymous memory is still more than the decoded atlas should leave behind, and that is the part worth a follow-up.
