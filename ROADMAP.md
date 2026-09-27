@@ -2197,9 +2197,14 @@ The agent's figure under Xvfb was 243.5 MB of `/usr/lib` including **`libLLVM` a
 The 75.4–86.5 MB range came from the seven runs that drew **no frames** (see item 62 — `--place` was focusing the wrong window).
 Taken properly at r284, drawing 600 frames in 20 s, three times: `Private_Dirty` is **114.6–116.5 MB**, `Pss` 281–283, `VmRSS` 388–390, CPU **15.3%** on all three runs.
 So "two rigs within 5% on `Private_Dirty`" was a drawing figure of the agent's against non-drawing figures of mine, and it is void as stated.
-Whether it survives depends on something only the build session can say: whether its 85.7 MB sample was drawing. If it was, the two rigs are 34% apart, not 5%.
+**Resolved 2026-09-26 (r288): it does not survive, and the reason is worse than a state mismatch.**
+The agent's sample *was* drawing — it was a `--record` run, which forces `liveTPS` — but **`--record` accumulates frames, so its memory climbs with the length of the recording.**
+Re-running the same instrument gave **86 MB, 823 MB and 1.35 GB** of `Private_Dirty` depending on when it was sampled and whether the GL path landed on the NVIDIA driver or fell back to llvmpipe.
+So 85.7 MB was a recorder part-way through a recording: not a steady state, and not a measurement of the city at all.
+The 5% was a coincidence between two numbers that were not measuring the same thing, and it has been retracted from DESIGN.md and from here.
+`--record` belongs on the list with `VmRSS` and `git log --oneline | wc -l`: **a flag that changes what it measures by measuring.**
 
-**What does not depend on that, and is why the ruling stands anyway:** the mapping breakdown. 147 MB of NVIDIA and Mesa is file-backed, clean and shared with every GL process on the box, whatever state the window is in, and `VmRSS` counts all of it. That is an argument from what the pages *are*, not from two numbers happening to match.
+**What never depended on it, and is why the ruling stands anyway:** the mapping breakdown, plus the fact that one desk makes the case on its own — `VmRSS` 388–390 against `Private_Dirty` 114.6–116.5, same process, same instant. 147 MB of NVIDIA and Mesa is file-backed, clean and shared with every GL process on the box, whatever state the window is in, and `VmRSS` counts all of it. That is an argument from what the pages *are*, not from two numbers happening to match.
 
 **The 38 MB between the two rows is the most useful thing in this table**, and it was free: a window that exists but draws nothing holds 77 MB, and the same window drawing holds 115. That localises a third of the remaining question to the render path — the static layer's offscreen images and Ebitengine's frame buffers — rather than to the loader.
 
@@ -2438,6 +2443,20 @@ Two things found on the way, neither blocking:
   Three bytes, one page, same code and same `PIECES`.
   That is one observation and not a diagnosis; it is enough to say the reproducibility claim wants re-testing now that the shrink is in the render, and `atlas-diff.py` may have been comparing pre-shrink output to post-shrink pages all along.
 - The re-cut and the shrink are independently reproducible: the shrink is idempotent, freshly rendered pages pass `--check` on the first try, and `kits-z2-0` re-compresses to 3,009,736 B, the byte count it held at four separate commits before the regression.
+
+### 67. The usage probe's transcripts are never pruned, and lingering sessions are what this project is for
+
+Measured 2026-09-26 at r286: `~/.claude/projects/-home-avesta--local-state-botropolis-usage-probe/` holds **7 transcripts**, one per refresh since 18:42, about 4 KB each.
+Nothing deletes them. `RefreshUtilization` creates the directory and runs `claude -p "/usage"` in it; the fence (item 54) is the whole of the design, and the fence is about where they land rather than whether they stay.
+
+**The fence works and that part is verified**: every transcript containing `"/usage"` on this machine is inside that folder, and there are none anywhere else, so the city is clean and the 22 strays Aria had me delete have not come back.
+The build session's standing list still names those 22 as outstanding; they were deleted, and this is what replaced them.
+
+Why it is worth a line at all, given it is 28 KB: **bot-crossing existed because sessions lingered, and this is botropolis leaving litter of exactly that kind in exactly that directory.**
+One transcript per keypress, kept forever, in the folder the tool tells the loader to ignore — ignored is not the same as tidy, and the next person to run `ls ~/.claude/projects` will find a folder that only grows.
+
+The fix is small and the choice is about what "enough" means: delete the probe's transcript after reading the figures, since the file has served its purpose the moment `~/.claude.json` is re-read; or keep the newest and drop the rest, if one is worth having to debug a failed refresh.
+I would keep one. A probe that leaves no trace at all is a probe you cannot ask why it failed.
 
 ### Worth knowing, not bugs
 
