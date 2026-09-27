@@ -2185,7 +2185,7 @@ All three fixed: the recipe runs and puts the pointer back where it found it, th
 The shape is worth keeping: **a measuring instrument is the one tool whose bugs look like results.** All three of these failed silently in the direction of a better number.
 
 
-### 63. ~~The atlas is 24% larger than the pipeline's own shrink step makes it, because the step stopped running~~ Done 2026-09-26 (`SHA`, rREV)
+### 63. ~~The atlas is 24% larger than the pipeline's own shrink step makes it, because the step stopped running~~ Done 2026-09-26 (`071793f`, r279)
 
 Found 2026-09-26 checking the build session's claim that `tools/shrink-pngs` "exists and isn't in the pipeline".
 It *is* in the pipeline — `Makefile:81`, the second line of `make sprites`.
