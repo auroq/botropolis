@@ -553,6 +553,17 @@ The number was right. `target = 142` drew a 142-pixel boat, at the zoom it was w
 What it meant changed underneath it, once per atlas boundary, and a boundary is the frame nobody screenshots.
 **Ask of any size in this renderer: a size in what, at which zoom?** A helper that cannot answer that will be correct somewhere and wrong at every step.
 
+**A sixth, and this one had been quoted in four places for four days before anyone asked what it measured.**
+Item 61 opened on the city holding 380–400 MB where bugs 27 and 28 had measured 212–247, with about 130 MB that no candidate explained.
+Every figure was `VmRSS`, read correctly from `/proc/<pid>/status`, and reproducible.
+Breaking one down by mapping: **68% of it was shared libraries** — Mesa and the NVIDIA GL driver — file-backed, clean, and shared with every other process on the machine that draws anything.
+The number was a true statement about the process's address space and a false one about the program.
+Between a virtual display and real hardware the same build differs by **60 MB of `VmRSS` and under 5% of `Private_Dirty`**, which is the tell: a metric that moves 60 MB when only the driver changed was never measuring the city.
+
+The set that went unnamed here is *whose memory*, and it is the same question as the referent in bug 23 and the comparison class in item 36, asked of an address space instead.
+`VmRSS` answers "what is resident", `Pss` answers "what is resident and how much of it is ours", `Private_Dirty` answers "what would be freed if this process exited".
+Only the last two are about the program, and the first is the one every tool prints by default — which is the general form of this failure and worth stating plainly: **the number a tool gives you without being asked is the one least likely to have a question behind it.**
+
 ## What it costs
 
 Roadmap phase 18, 2026-09-22.
@@ -566,10 +577,20 @@ And a frame whose tick has already been painted is skipped, with the tick itself
 **What the draw order costs** (bug 42, 2026-09-26). Ordering the city back to front used to be one sort on one number per drawable. A number cannot order a point against a footprint — a building spans a range of depths and was being compared as though it were a point at one corner — so the sort is now a first pass and a pairwise predicate corrects it, over only those pairs whose depth intervals and screen columns both overlap. On the agent's rig, 508 drawables: 95.9 µs before, 174.0 µs after, **+78 µs a frame**, or 0.23% of one core at 30 fps. Allocations went from 3 to 1131, which is the edge lists and is the obvious thing to pool if this ever matters.
 
 **Numbers are a measurement of one desk, so the desk is written beside them.**
-CPU is `utime+stime` from `/proc/<pid>/stat` over a twenty-second sample as a percentage of one core, RSS is `VmRSS` and the peak `VmHWM` from `/proc/<pid>/status`, taken by `tools/measure-render` on a display that already answers.
+CPU is `utime+stime` from `/proc/<pid>/stat` over a twenty-second sample as a percentage of one core, taken by `tools/measure-render` on a display that already answers.
 Every row carries the frames drawn during the sample, because a cheap app and a stopped one look alike without it.
 
-| Rig | Build | Visible | Hidden | RSS | Peak |
+**The memory column is `VmRSS`, and `VmRSS` is the wrong number.**
+It is kept because that is what was measured, and a row relabelled after the fact is a row that has stopped being evidence — but nothing new should be quoted in it, and no two rows in it should be compared unless they ran against the same graphics driver.
+Item 61, 2026-09-26: of a client sitting at 357.3 MB `VmRSS`, **68% is shared libraries under `/usr/lib`** — `libnvidia-gpucomp`, `libgallium`, `libnvidia-eglcore`, and `libLLVM` when there is no hardware to avoid it — file-backed, clean, and shared with every other process on the machine that draws anything.
+A third of this table is therefore a measurement of a Mesa release.
+The city's own memory is `Private_Dirty`, which was **85.7 MB** on the virtual display and **75.4–86.5 MB** on the desk, against `Pss` of 188–254 MB.
+
+The check that this is the right correction rather than a different arbitrary one is that the two rigs agree on it.
+**They differ by 60 MB on `VmRSS` and by under 5% on `Private_Dirty`**, measuring the same build — which is exactly what should happen if the difference between them is a driver stack and not a program.
+So: quote `Private_Dirty`, or `Pss` when a shared page genuinely is a cost. Bugs 22, 27 and 28 quote `VmRSS` and their absolute figures should be read as that and not as the city's footprint.
+
+| Rig | Build | Visible | Hidden | RSS (`VmRSS`, see above) | Peak |
 | --- | --- | --- | --- | --- | --- |
 | Aria's desk | r156, before phase 18 | 56.7% | 57.7% | 244 MB | 740 MB |
 | Aria's desk | items 1 and 2, first cut | 35.6% | 50.3% | 268 MB | — |
@@ -592,7 +613,9 @@ A city with work in it always has something moving; a city mostly parked does no
 RSS is given as a range because it is not a property of the build.
 An idle app allocates too little to make the collector run, so memory is handed back explicitly when the window goes quiet — but whether that has happened yet by the time a sample is taken is timing.
 One rig saw 236 MB fall to 208 when hidden; the other saw 212 rise to 219 and 224 to 234 across runs.
-A virtual display cannot stand in for either: software rasterising turns everything into fill rate, where one full-screen blit shades as many pixels as the sprites it replaces, and no draw-call saving is visible at all.
+A virtual display cannot stand in for either *on CPU*: software rasterising turns everything into fill rate, where one full-screen blit shades as many pixels as the sprites it replaces, and no draw-call saving is visible at all.
+It stands in perfectly well for memory, which item 61 established by accident — mappings do not care whether a frame was cheap, and the virtual display's `Private_Dirty` landed inside the desk's range.
+The two claims look contradictory and are not: the thing a virtual display gets wrong is the cost of drawing, not the cost of existing.
 `BOTROPOLIS_FRAMETIME=1` reports what a frame costs the CPU and how often the static layer was reused; that is the hardware-independent signal, and it predicted item 2's cut on real glass to within a percent (3.69 ms to 2.30, −38%, against −37% measured).
 A gate that is hard to exercise by hand is itself worth recording: i3 will not hand focus to the window from a non-interactive shell, so an unfocused window correctly draws nothing and a naive sample reads the hidden figure whatever it meant to measure.
 That is why every row carries its frame count.
