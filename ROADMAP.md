@@ -1892,6 +1892,29 @@ The lanes reserved the *widest* hull's half beam at both banks, which put the wi
 
 **Frames.** `docs/screenshots/r265-gauge-run-inset.png` is r263 beside now at her own 23/16/0 — the 0% boat comes off the corner tip. `r265-gauge-high-reading.png` is 94/88/71, **the first time the 100% end has been looked at**; the low end being the only case anyone had seen is how this got here.
 
+### 56. The refresh wants a boat of its own (Aria, 2026-09-26, on r265)
+
+Her words: *"Still don't see the refresh boat (to be clear the usage boats are there just not the refresh boat when I press u)."*
+
+**The gauges are working; what she is missing is the thing bug 54 removed.**
+`u` currently sets a status line and nothing else (`keys.go:119`).
+The boat she is looking for was the **probe's tug** — an accident of `claude -p` being a real session, which is exactly why it dragged the map around and why it had to go.
+
+**She is right that the event deserves a boat, and the accident is not the only way to get one.**
+A refresh is a real thing that happened, and a key that changes nothing visible on a map reads as a key that did nothing — which is the reasoning already written beside that status line, taken one step further.
+The probe's tug was the right *idea* arriving by the wrong *mechanism*.
+
+**Build a courier: a boat that is not a session.**
+- No district, no dock, no entry in `snapshot.Sessions`, nothing that touches the plan. It cannot move the river because it is not part of what sizes the map. Everything bug 54 and 54a fixed stays fixed.
+- **It runs the whole length of the water and leaves**, which is her own ruling from bug 54 applied to a boat built for it rather than retrofitted onto one.
+- Ends resolved per frame from the live `RiverBand`, per 54a. It is new code, so it should be born with the rule rather than acquire it.
+- **Do not tie its life to the probe's.** The probe finishes in about a second, and a boat that vanishes a second after launching is the despawn she already rejected. The boat means *"you asked for fresh numbers"*, not *"a subprocess is running"* — say that in the key.
+- One at a time. The 30-second debounce already stops a fleet; a debounced press launches nothing and the status already says why.
+
+**It needs a silhouette of its own**, distinct from both the voyage tugs (sessions arriving and leaving) and the three gauge hulls. That is a third meaning on one waterway, so the view key has to name all three. Pick from the kit by measurement — something small and fast reads right for a courier — and note the atlas cost, since nothing suitable is cut today.
+
+**Worth stating plainly in DESIGN:** the river now carries three unrelated meanings — sessions coming and going, usage against limits, and a refresh you asked for. That is the most loaded single medium on the map. Each one has to pass the test already written there: it explains itself when pointed at, without the view explaining it.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
