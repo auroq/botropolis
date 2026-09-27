@@ -1724,7 +1724,7 @@ Looking to confirm is not looking. A frame checked *after* the conclusion is for
 
 **Frames.** `docs/screenshots/r255-gauge-bows-flipped.png` is all four headings with the bows leading upstream; `r255-gauge-lanes-abreast.png` is the forced 61/58/55 case again. r254's two frames are left in place and show the backwards facing.
 
-### 53. ~~The boats halve when the atlas switches, because `kitSized` cancels the sprite out~~ Done 2026-09-26 (r256)
+### 53. ~~The boats halve when the atlas switches, because `kitSized` cancels the sprite out~~ Done 2026-09-26 (r257)
 
 Her words: *"The boats get smaller at a certain zoom. We don't need to do that."*
 
@@ -1763,7 +1763,7 @@ I looked at them and read them as correct. A pixel diff against two binaries bui
 That is the third time this session that looking has confirmed what I already believed — the bow facing, the `untigirned` sed that silently matched nothing, and this.
 **When the question is "did that change anything", compare artifacts mechanically rather than by eye.** A hash or a pixel count is not a more careful version of looking; it is a different instrument, and it is the only one that answers that question.
 
-**Frame.** `docs/screenshots/r256-gauge-size-at-maxzoom.png`, before and after at the same camera at `MaxZoom`, from two binaries built for the purpose.
+**Frame.** `docs/screenshots/r257-gauge-size-at-maxzoom.png`, before and after at the same camera at `MaxZoom`, from two binaries built for the purpose.
 
 ### Worth knowing, not bugs
 
