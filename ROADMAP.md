@@ -1994,7 +1994,7 @@ build the atlases in the PKGBUILD (needs Blender as a makedepend, which is a hea
 or leave it, on the grounds that one machine's clone is one machine's disk.
 Note that whatever is chosen, only history rewriting recovers the 157 MB already spent — the decision is about the next 34 re-cuts.
 
-### 59. ~~Two atlas orphans have appeared since option D, and the river has spent option D's saving back~~ Done 2026-09-26 (`0c7e39e`, r271)
+### 59. ~~Two atlas orphans have appeared since option D, and the river has spent option D's saving back~~ Done 2026-09-26 (`9f9a13e`, r271)
 
 Measured 2026-09-26 at r268 by matching every sprite name in `kits-z2.json` against the literals in the tracked Go files.
 **8 of 79 pieces are undrawn**, where bug 24 left 7 deliberately kept.
