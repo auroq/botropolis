@@ -1852,6 +1852,29 @@ The fence is now in `state.Build`, which every session passes through whichever 
 
 **Despawn:** a tug still arriving when its session goes is **turned round where it stands** — `Kind` becomes `Departure`, `Handover` records how far up the run it had got, and it sails on to the south end and off the map. One boat instead of two, and the honest animation: the session left, so its tug leaves. Aria: *"it shouldn't just despawn, it should run the whole length of the water."*
 
+### 55. The boats are drawn correctly and still cannot be found (Aria, 2026-09-26, on r263)
+
+Her words: *"I just refreshed and didn't get a usage boat appearing at all, tho it seemed to refresh."*
+
+**Not a regression, and not a draw fault. Measured against her live machine on the shipped build.**
+`ReadUtilization` returns three limits — 23% all models this week, 16% this session, 0% Fable — and all three boats are drawn, on the water, in the default fitted view.
+`RiverBand` still returns ok after 54a; the gauges are positioned fine.
+
+**The finding is where they are.** The run is 1948 world units from 0% to 100%. Readings of 23/16/0 put the boats at Y 1526, 1662 and 1974 — **the last quarter of the river, jammed into the map's southern corner**, with the 0% boat on the corner tip itself. Everywhere else on the river is empty water.
+`docs/references/gauge-boats-at-low-readings.png`: where they are, beside what the rest of the river looks like.
+
+**So the most common reading is drawn at the least visible point on the map**, and the smallest boat — the one at 0% — is about nine pixels at the fitted zoom, in the corner, behind the storage plate.
+Her sentence is exactly right: it did refresh, and there was no boat to see.
+
+**This is a consequence of bug 52's swap rather than a fault in it.** When the percentage was the across-river offset the boats were spread along the river and always in frame; now a low reading puts every boat at one end. The swap was still correct — the reading has to be on the long axis — but nothing was decided about *where that axis sits*.
+
+**Not fixed, because the fix is a choice for Aria:**
+- **Run the gauge over the middle stretch of the river rather than its whole length.** Both ends then sit well inside the map, near the city, and low readings land where the eye already is. Resolution is in surplus — a 25% step is hundreds of units — so shortening the run costs nothing. This is the recommendation.
+- Leave the run and mark the 0% end hard enough to find.
+- Give the boats a minimum separation so a cluster spreads out.
+
+**One thing worth fixing whatever she picks:** at lane 0 the widest hull sits exactly half a beam from the bank by construction, so the liner's superstructure overlaps the grass. It reads as moored rather than aground, but it is touching.
+
 ### Worth knowing, not bugs
 
 - **A third of the atlas is never drawn.** (Found 2026-09-21 measuring bug 20.) 25 of the 79 pieces the pipeline cuts are named nowhere in the Go code:
