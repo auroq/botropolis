@@ -2152,7 +2152,7 @@ So the river cost draw calls and not frames, which is the cheaper of the two way
 It proves the gate closes. It does not price it.
 A real quiet city needs a moment when nothing on this machine is working, which is not a condition an agent that is working can arrange.
 
-### 61. The city holds 380–400 MB where it held 212–247, and one atlas page does not explain it
+### 61. ~~The city holds 380–400 MB where it held 212–247, and one atlas page does not explain it~~ Answered 2026-09-26 (`SHA64`, rREV) — most of it is the GL driver, and RSS is the wrong metric
 
 Measured 2026-09-26 at r268 across five runs on Aria's desk: RSS settles at **374–402 MB**, identical whether the view is busy, plain, receded or motion-reduced.
 Bug 27 measured 231–247 MB and bug 28 212–234 MB on this same desk, so this is **+150 MB**, and it is stable rather than a spike.
@@ -2175,7 +2175,41 @@ That leaves about 130 MB unaccounted for by either candidate anyone has named, a
 
 What is left to measure, in `pkg/assets` and the renderer rather than by sampling the process: what is live after `LoadKits` returns and whether both the decoded copy and the uploaded one are being held; what the static layer's offscreen images cost at 900×700; and whether the window geometry accounts for any of it, since bugs 27 and 28 sampled 636×1120 under i3's tiling and these runs are 900×700 floating.
 
-### 64. The tick gate does not know about the courier
+**Answered 2026-09-26 at r281. The 130 MB is not ours, and RSS is the wrong number to be tracking.**
+
+Two measurements, neither of them in the places the item expected.
+
+**`LoadKits` releases what it decodes — bug 27's fix works.**
+Instrumented with `runtime.MemStats` around a real `LoadKits()`: nine `*image.NRGBA` pages at 2048×2048 are **144.0 MB** decoded, heap goes 0.4 → **148.0 MB**, and dropping `Pages` and collecting returns it to **0.5 MB**.
+Every byte comes back. The decoded copy and the uploaded one are *not* both held, so that candidate is out too.
+`ka.Pages = nil` in `loadKits` does nil a struct copy rather than the original, which looks like a bug and is not: `loaded` is dead after the loop and the `debug.FreeOSMemory()` that follows reclaims it, which is what the measurement shows.
+
+**And the RSS breakdown says 68% of it is the graphics stack, not the city.**
+Sampling `/proc/<pid>/smaps` of a running client at 357.3 MB RSS:
+
+| | |
+| --- | --- |
+| total RSS | 357.3 MB |
+| shared libraries under `/usr/lib` | **243.5 MB (68%)** |
+| the botropolis binary itself | 36.9 MB |
+| anonymous + everything else | **76.9 MB** |
+
+The largest single mappings are `libLLVM.so` at 83.4 MB, `libnvidia-gpucomp.so` at 75.5 MB, `libgallium.so` at 45.6 MB and `libnvidia-eglcore.so` at 20.3 MB.
+That is Mesa and the NVIDIA GL driver, **file-backed, clean, and shared with every other GL process on the machine** — memory the city is mapping, not memory it is using.
+`Pss` for the same process is 254.6 MB against 357.3 RSS, and `Private_Dirty` — the only figure that is unambiguously ours — is **85.7 MB**.
+
+So the honest reading of "380–400 where it held 212–247" is that **most of the difference is a driver stack that got bigger**, and bugs 27 and 28 were quoting a number that moves when Mesa ships a release.
+This does not clear the city of everything: 76.9 MB of anonymous memory is still more than the decoded atlas should leave behind, and that is the part worth a follow-up.
+But it is a 77 MB question, not a 130 MB one, and the instrument has to change before the next measurement means anything.
+
+**So the metric should be `Private_Dirty` or `Pss`, not `VmRSS`**, and any comparison against bugs 27 and 28 has to note the driver version or it is comparing two different machines.
+That is the same failure as reading a cached percentage with no age on it: a number that is right and means nothing.
+
+Caveat on the instrument, stated because it cuts against my own figure: this run was headless under Xvfb, where `libLLVM` is loaded for llvmpipe, and the desk runs real hardware — an Intel Arc Pro and an NVIDIA RTX Pro, with `Xorg` on `:0`.
+The 83 MB of LLVM is therefore probably *not* in the desk's 377–388 MB, and the driver libraries probably are.
+The shape of the finding survives either way; the exact split wants one `smaps` sample on `:0` to confirm, which is a thing `measure-render` could take while it is already placing a window there.
+
+### 64. ~~The tick gate does not know about the courier~~ Done 2026-09-26 (`SHA64`, rREV)
 
 Found 2026-09-26 reading `Animating()` while measuring item 60, and the build session independently asked for it to be filed.
 
@@ -2189,6 +2223,20 @@ That is the fastest-moving object on the map running at the slowest tick, and it
 Two things, and the second is bookkeeping that keeps the first from coming back:
 1. Add the couriers to the gate. `Couriers()` already resolves them per frame, so it is `len(s.couriers) > 0` with the same live-resolution rule. The test is a scene with nothing else moving: `SendCourier`, then `Animating()` must be true.
 2. **Record the gauge boats as a deliberate exclusion**, in the paragraph that already names the fountain and the lamps. They belong there for a good reason — `gaugeAt` takes no clock, so a gauge's position *is* its reading and it is repainted in place — and right now their absence looks exactly like the courier's, which is an oversight. A list whose comment says it names "every object that moves between frames and nothing else" needs the exceptions written down, or the next reader cannot tell a decision from a gap.
+
+**Fixed, both halves.**
+
+The gate asks the clock rather than the slice length: `for _, courier := range s.couriers { if courier.Progress(s.now()) < 1 { return true } }`.
+Not `len(s.couriers) > 0` as filed, and not `len(s.Couriers()) > 0` either.
+`Couriers()` prunes *and* allocates a copy for the renderer, which is more than a gate running every `Update` should do, and the bare length would hold the tick open after the boat had landed, because pruning only happens when the renderer asks.
+Asking each courier's own progress is the same live-resolution rule with neither cost.
+
+**Two tests, and the second one is the one that needed proving.**
+The first is the filed case: a city of parked sessions, `require.False(Animating())` first so the scene is known still, then `SendCourier`, then it must animate.
+The second winds the clock past `CourierFor` and asserts the city goes still again — and *that* test passed before the fix, because `Animating()` never returned true for a courier at all.
+So I mutated the fix to the filed `len(s.couriers) > 0` and confirmed the expiry test fails against it, which is the only thing that distinguishes a test that holds the behaviour from one that is merely green.
+
+The exclusions paragraph now names three things and says why the list needs them written down at all: the fountain's three spray frames, the lamps' glow fixed by zoom and hour, and the gauges, which hold still because `gaugeAt` takes no clock and a boat that drifted between frames would be lying about its reading.
 
 ### 65. "A no-op render reproduces every atlas bit for bit" is not what the check checks, and is not true
 
@@ -2204,6 +2252,30 @@ Two consequences, one of them expensive.
 
 *And it puts a number back in play in item 58.* Pack growth is a byte question, and if a no-op render rewrites even three bytes of a page, that page is a whole new blob in the pack — 2 to 4 MB for a render that changed nothing. "The atlas does not churn" was the ground the 09-21 LFS ruling stood on, and it is only true to the tolerance of a pixel check.
 Worth one byte-level measurement before item 58's recommendation is treated as settled: render both zooms with no change and run `git diff --stat`, which is the comparison that decides whether the pack grows.
+
+**Measured 2026-09-26. The answer is 2 pages and about 2.0 MB per no-op render, and it does not reopen item 58.**
+
+Both zooms rendered with no change into a scratch directory and compared byte for byte against the tree — scratch rather than in place, because `git diff --stat` reports binary files as `Bin` and would not have given the number anyway.
+
+| | result |
+| --- | --- |
+| both manifests | byte-identical |
+| 7 of 9 pages | byte-identical |
+| `kits-z1-1` | differs, 1,564,311 vs 1,564,308 (3 B) |
+| `kits-z2-6` | differs, 422,677 vs 422,683 (6 B) |
+
+So a render that changes nothing rewrites **two blobs totalling about 2.0 MB**, not the 20.7 MB a full churn would cost and not the zero the struck bullet claimed.
+Against 8–27 MB for a real re-cut that is a rounding error, so **C stands, now on a measured footing rather than on the bullet that had to be struck.**
+
+**The cause is five pieces, and it is not the compression.**
+`magick compare -metric AE` is *non-zero* on both differing pages, so the pixels genuinely differ — a handful of them, by a little. That rules out the encoder and rules out uninitialised page memory (`new_page` uses `np.zeros`).
+What the two pages have in common is exact: they are the only pages carrying the **`botropolis/` pieces** — the drone and the three fountain frames, which this repo models procedurally rather than importing from a Kenney kit.
+Every page built entirely from imported kit meshes is bit-exact across renders; every page holding a generated piece is not.
+`kits-z2-6` makes the case cleanly, holding six pieces of which four are `botropolis/`.
+
+That is a narrower and more useful statement than "the render is not bit-exact", and it suggests the fix is in `drone()` and `fountain()` rather than anywhere in the atlas pipeline.
+Not chased — filing the correlation is worth more than guessing at the mechanism.
+
 
 
 ### 62. ~~The measuring tool documented three guards it did not have~~ Fixed 2026-09-26 (`e6da2f1`)

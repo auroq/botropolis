@@ -64,6 +64,30 @@ func TestAnimating(t *testing.T) {
 		})
 	})
 
+	t.Run("when a courier is crossing a city where nothing else moves", func(t *testing.T) {
+		s := still(t, session("a", cinders, state.Parked), session("b", botropolis, state.Parked))
+		require.False(t, s.Animating(), "the scene has to be still before the courier for this to mean anything")
+		s.SendCourier()
+
+		t.Run("it should be animating: the boat is the fastest thing on the map", func(t *testing.T) {
+			assert.True(t, s.Animating())
+		})
+	})
+
+	t.Run("when the courier has finished its run", func(t *testing.T) {
+		clock := now
+		s := city.NewScene(city.NewLayout())
+		s.SetClock(func() time.Time { return clock }, time.UTC)
+		s.Resize(800, 600)
+		s.SetSnapshot(snapshot(session("a", cinders, state.Parked)))
+		s.SendCourier()
+		clock = clock.Add(city.CourierFor + time.Second)
+
+		t.Run("it should be still again", func(t *testing.T) {
+			assert.False(t, s.Animating())
+		})
+	})
+
 	t.Run("when motion is reduced", func(t *testing.T) {
 		s := still(t, session("a", cinders, state.Working))
 		s.SetReducedMotion(true)
