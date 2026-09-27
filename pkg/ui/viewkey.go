@@ -48,7 +48,13 @@ type ViewKey struct {
 // RiverNote is what the key says about the river. Two meanings on one
 // waterway are only allowed if each says what it is, and this is the
 // half of that which does not require hovering.
-const RiverNote = "on the river: liners gauge your usage, tugs are sessions arriving and leaving"
+//
+// It names the buoys because after bug 55 they are the scale's ends
+// rather than the river's: the gauge runs between the first and the
+// last, not from bank to bank nor from one end of the water to the
+// other. A mark that means something other than where it sits has to
+// say so somewhere, and this is where the map explains its vocabulary.
+const RiverNote = "on the river: liners gauge your usage from the first buoy to the last, tugs are sessions arriving and leaving"
 
 // LayoutViewKey centres the key in a width×height window and marks the
 // view that is up.

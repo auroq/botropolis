@@ -1852,7 +1852,7 @@ The fence is now in `state.Build`, which every session passes through whichever 
 
 **Despawn:** a tug still arriving when its session goes is **turned round where it stands** — `Kind` becomes `Departure`, `Handover` records how far up the run it had got, and it sails on to the south end and off the map. One boat instead of two, and the honest animation: the session left, so its tug leaves. Aria: *"it shouldn't just despawn, it should run the whole length of the water."*
 
-### 55. The boats are drawn correctly and still cannot be found (Aria, 2026-09-26, on r263)
+### 55. ~~The boats are drawn correctly and still cannot be found~~ Done 2026-09-26 (r265)
 
 Her words: *"I just refreshed and didn't get a usage boat appearing at all, tho it seemed to refresh."*
 
@@ -1874,6 +1874,23 @@ Her sentence is exactly right: it did refresh, and there was no boat to see.
 - Give the boats a minimum separation so a cluster spreads out.
 
 **One thing worth fixing whatever she picks:** at lane 0 the widest hull sits exactly half a beam from the bank by construction, so the liner's superstructure overlaps the grass. It reads as moored rather than aground, but it is touching.
+
+**Built: the scale runs over the middle of the river, and the inset is derived.**
+
+**One river-width in from each end, plus half the longest hull.** Where the water stops is a map corner, and a boat wants at least the water's own width between it and that, so it reads as floating in a river rather than sitting on a point.
+
+**Two derivations were tried and rejected before that one, and the reason is worth keeping.**
+The obvious choice was the districts' own extent — the scale beside the city, where the eye is. Measured, it fails twice: it is only 144 world units wide with two projects, far too short to read a percentage along, **and it grows with the session count** (432 units at five projects). A scale whose length changes as sessions come and go moves a boat for a reason that is not its reading. Storage-block clearance has the same defect.
+**A gauge's ends have to hold still**, so the run is derived from the map's geometry, which does not move when a session starts.
+
+**The bank clearance was zero by construction and is now half a tile.**
+The lanes reserved the *widest* hull's half beam at both banks, which put the widest hull itself exactly on the line. Pinning each outer lane by the hull that actually rides there recovers the room the narrow boat never used, and that is what pays for the margin. A whole tile does not fit: at three cells of river the binding pair closes to 6 units and the guard fails, which is the river's width talking rather than the margin.
+
+**The buoys follow the run**, so 0/50/100 now mark the scale's ends rather than the water's, and `RiverNote` says so: *"liners gauge your usage from the first buoy to the last"*. A mark that means something other than where it sits has to say so where the map explains its vocabulary.
+
+**The guard now ties three things to the art, not one.** `TestRiverFitsThreeHullsAbreast` re-measures each hull's beam from the atlas and checks the declared figure, the clearance between the binding pair, and the margin at each bank. `TestGaugeRunsBesideTheCityNotTheMapsEdge` holds the ends inside the river.
+
+**Frames.** `docs/screenshots/r265-gauge-run-inset.png` is r263 beside now at her own 23/16/0 — the 0% boat comes off the corner tip. `r265-gauge-high-reading.png` is 94/88/71, **the first time the 100% end has been looked at**; the low end being the only case anyone had seen is how this got here.
 
 ### Worth knowing, not bugs
 

@@ -85,7 +85,7 @@ func Gauges(u claude.Utilization) []Gauge {
 			Percent:  l.Percent,
 			Resets:   resetsIn(l.ResetsAt),
 			Severity: l.Severity,
-			Size:     sizeFor(i),
+			Size:     SizeFor(i),
 			Lane:     i,
 		})
 	}
@@ -155,7 +155,10 @@ func resetsIn(at time.Time) string {
 // are ordered by how much the reading matters.
 var gaugeSizes = [3]GaugeSize{GaugeBig, GaugeMedium, GaugeSmall}
 
-func sizeFor(i int) GaugeSize {
+// SizeFor is the rank of the i'th boat, biggest first. Exported because
+// the renderer lays the lanes out by hull width and has to ask which
+// hull rides in which lane before it has a gauge in hand.
+func SizeFor(i int) GaugeSize {
 	if i < len(gaugeSizes) {
 		return gaugeSizes[i]
 	}

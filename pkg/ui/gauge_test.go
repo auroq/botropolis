@@ -13,39 +13,46 @@ import (
 // widest hull that has to ride in it, where does each boat sit.
 
 func TestGaugeLanes(t *testing.T) {
-	t.Run("when three boats are laid across a river", func(t *testing.T) {
-		const width, widest = 144.0, 48.0
-		lanes := ui.GaugeLanes(width, widest, 3)
-		require.Len(t, lanes, 3)
+	// The three hulls' beams in lane order: liner, cargo, sail.
+	beams := []float64{47.7, 19.8, 17.2}
+	const width, margin = 144.0, 8.0
 
-		t.Run("it should put the middle boat on the centre line", func(t *testing.T) {
-			assert.InDelta(t, 0.0, lanes[1], 0.0001)
-		})
+	t.Run("when three boats are laid across a river", func(t *testing.T) {
+		lanes := ui.GaugeLanes(width, beams, margin)
+		require.Len(t, lanes, 3)
 
 		t.Run("it should space the lanes evenly", func(t *testing.T) {
 			assert.InDelta(t, lanes[1]-lanes[0], lanes[2]-lanes[1], 0.0001)
 		})
 
-		// An outer boat centred on the bank would hang half its hull
-		// over dry land, which is the beached look the margin exists to
-		// prevent.
-		t.Run("it should keep the outer boats a half hull clear of the bank", func(t *testing.T) {
-			assert.InDelta(t, -(width-widest)/2, lanes[0], 0.0001)
+		// Bug 55. The widest hull used to sit exactly half a beam from
+		// the bank, so its superstructure lay over the grass — a
+		// clearance of zero that fell out of the arithmetic rather than
+		// being chosen.
+		t.Run("it should leave water between the widest hull and the bank", func(t *testing.T) {
+			assert.InDelta(t, margin, width/2+lanes[0]-beams[0]/2, 0.0001)
+		})
+
+		t.Run("it should leave the same water at the other bank", func(t *testing.T) {
+			assert.InDelta(t, margin, width/2-lanes[2]-beams[2]/2, 0.0001)
+		})
+
+		// The narrow boat needs less room than the wide one, and
+		// pinning each end by its own hull is what pays for the margin.
+		t.Run("it should give the narrow boat's end more room than the wide boat's", func(t *testing.T) {
+			assert.Greater(t, lanes[2], -lanes[0])
 		})
 	})
 
 	t.Run("when a plan reports a single limit", func(t *testing.T) {
 		t.Run("it should sail the one boat down the middle rather than off to a side", func(t *testing.T) {
-			assert.Equal(t, []float64{0}, ui.GaugeLanes(144, 48, 1))
+			assert.Equal(t, []float64{0}, ui.GaugeLanes(width, beams[:1], margin))
 		})
 	})
 
 	t.Run("when the hulls are wider than the water they are given", func(t *testing.T) {
-		// Absent is not the answer here: the reading still has to be
-		// drawn, overlapping, and the guard that the river is wide
-		// enough lives with the river rather than here.
 		t.Run("it should still give every boat a lane", func(t *testing.T) {
-			assert.Len(t, ui.GaugeLanes(40, 90, 3), 3)
+			assert.Len(t, ui.GaugeLanes(40, beams, margin), 3)
 		})
 	})
 }

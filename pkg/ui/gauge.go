@@ -10,31 +10,37 @@ package ui
 // Both are pure arithmetic on a width and a count, so they live here
 // and pkg/render decides where on the water that lands.
 
-// GaugeLanes are the offsets from the river's centre line at which n
+// GaugeLanes are the offsets from the river's centre line at which
 // boats ride, one lane each, so that boats with equal readings are
-// still told apart.
+// still told apart. beams is each boat's width in lane order, and
+// margin is the water left between a hull and the bank.
 //
-// The outer lanes are set half of the widest hull in from each bank: a
-// boat centred on the bank edge would hang half its hull over dry land.
-// Reserving the widest at both sides rather than each boat's own beam
-// keeps the lanes fixed whatever set of limits a plan reports, which is
-// the same reason the hulls are mapped to rank rather than to a named
-// window.
-func GaugeLanes(width, widest float64, n int) []float64 {
-	if n <= 0 {
+// The outer lanes are pinned by their OWN half beam plus the margin,
+// not by the widest hull's. Bug 55: reserving the widest at both sides
+// put the widest hull exactly half a beam from the bank — a clearance
+// of zero, arrived at by construction rather than chosen by anyone, so
+// the liner's superstructure sat over the grass. Pinning each end by
+// the hull that actually rides there recovers the room the narrow boat
+// was never using, which is what pays for the margin.
+func GaugeLanes(width float64, beams []float64, margin float64) []float64 {
+	if len(beams) == 0 {
 		return nil
 	}
-	if n == 1 {
+	if len(beams) == 1 {
 		return []float64{0}
 	}
-	span := width - widest
-	if span < 0 {
-		span = 0
+	lo := -width/2 + margin + beams[0]/2
+	hi := width/2 - margin - beams[len(beams)-1]/2
+	if hi <= lo {
+		// Narrower water than the hulls need. Still give every boat a
+		// lane: the reading has to be drawn, and the guard that the
+		// river is wide enough lives with the river.
+		lo, hi = 0, 0
 	}
-	step := span / float64(n-1)
-	lanes := make([]float64, n)
+	step := (hi - lo) / float64(len(beams)-1)
+	lanes := make([]float64, len(beams))
 	for i := range lanes {
-		lanes[i] = -span/2 + step*float64(i)
+		lanes[i] = lo + step*float64(i)
 	}
 	return lanes
 }

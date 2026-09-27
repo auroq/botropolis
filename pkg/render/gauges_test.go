@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/auroq/botropolis/pkg/assets"
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/plan"
+	"github.com/auroq/botropolis/pkg/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -183,10 +185,11 @@ func TestGaugeMarksTheEnds(t *testing.T) {
 	})
 }
 
-// The guard that keeps RiverCols honest. The river's width and the
-// hulls' sizes are two things that must agree, and this project has
-// paid for that shape repeatedly — so the width is not asserted as a
-// number here, it is re-derived from the art every run.
+// The guard that keeps RiverCols, the hull beams and the lanes honest.
+// The river's width and the hulls' sizes are two things that must
+// agree, and this project has paid for that shape repeatedly — so
+// nothing here is asserted as a number, it is re-derived from the art
+// every run.
 func TestRiverFitsThreeHullsAbreast(t *testing.T) {
 	atlases, err := assets.LoadKits()
 	require.NoError(t, err)
@@ -198,7 +201,7 @@ func TestRiverFitsThreeHullsAbreast(t *testing.T) {
 	}
 	require.NotZero(t, z1.Zoom)
 
-	beam := func(size city.GaugeSize) float64 {
+	measured := func(size city.GaugeSize) float64 {
 		hull := gaugeHulls[size]
 		s, ok := z1.Sprite(hull.piece, 0)
 		require.True(t, ok, hull.piece)
@@ -207,26 +210,76 @@ func TestRiverFitsThreeHullsAbreast(t *testing.T) {
 		return math.Min(w, h) * scale / (2 * city.IsoScale * z1.Zoom)
 	}
 
+	t.Run("when each hull's declared beam is checked against its sprite", func(t *testing.T) {
+		// The lanes are laid out from these numbers, so if the art
+		// moves and they do not, the boats quietly start overlapping.
+		for _, size := range []city.GaugeSize{city.GaugeBig, city.GaugeMedium, city.GaugeSmall} {
+			t.Run("it should still be what the art measures", func(t *testing.T) {
+				assert.InDelta(t, measured(size), gaugeHulls[size].beam, 0.5)
+			})
+		}
+	})
+
 	width := float64(plan.RiverCols) * city.CellSize
 	lanes := gaugeLanes(width, 3)
 	require.Len(t, lanes, 3)
-	spacing := lanes[1] - lanes[0]
 
 	t.Run("when the big boat rides beside the medium one", func(t *testing.T) {
 		// The binding pair. Big and small are never adjacent, so the
 		// widest two that ever sit side by side are these.
-		need := (beam(city.GaugeBig) + beam(city.GaugeMedium)) / 2
+		need := (measured(city.GaugeBig) + measured(city.GaugeMedium)) / 2
 
 		t.Run("it should leave water between their hulls", func(t *testing.T) {
-			assert.Greater(t, spacing, need,
+			assert.Greater(t, lanes[1]-lanes[0], need,
 				"a %.0f-unit river gives %.1f units of lane spacing, and the two hulls need %.1f",
-				width, spacing, need)
+				width, lanes[1]-lanes[0], need)
 		})
 	})
 
-	t.Run("when the widest hull rides the outer lane", func(t *testing.T) {
-		t.Run("it should stay off the bank", func(t *testing.T) {
-			assert.LessOrEqual(t, math.Abs(lanes[0])+beam(city.GaugeBig)/2, width/2+0.0001)
+	// Bug 55: the outer lanes used to be pinned by the widest hull's
+	// half beam, which put that hull exactly on the bank — zero
+	// clearance, by construction rather than by choice.
+	t.Run("when the outermost boats ride their lanes", func(t *testing.T) {
+		t.Run("it should keep the widest hull off the near bank", func(t *testing.T) {
+			assert.InDelta(t, gaugeBankClear, width/2+lanes[0]-measured(city.GaugeBig)/2, 0.5)
+		})
+
+		t.Run("it should keep the narrowest hull off the far bank", func(t *testing.T) {
+			assert.InDelta(t, gaugeBankClear, width/2-lanes[2]-measured(city.GaugeSmall)/2, 0.5)
+		})
+	})
+}
+
+// Bug 55. The scale used to run the river's whole length, so a low
+// reading — which is most readings — drew every boat in the map's
+// corner, where Aria could not find them.
+func TestGaugeRunsBesideTheCityNotTheMapsEdge(t *testing.T) {
+	c := city.Build(state.Snapshot{At: time.Now(), Sessions: []state.Session{
+		{ID: "a", CWD: "/home/avesta/workspaces/github/auroq/botropolis", State: state.Working},
+		{ID: "b", CWD: "/home/avesta/workspaces/github/mCedar/mullet", State: state.Working},
+	}}, city.NewLayout())
+	require.NotNil(t, c)
+
+	river, mouth, _, ok := c.RiverBand()
+	require.True(t, ok)
+	from, to, _, ok := riverRun(c)
+	require.True(t, ok)
+
+	t.Run("when the scale is laid along the river", func(t *testing.T) {
+		t.Run("it should start well inside the river's own head", func(t *testing.T) {
+			assert.Greater(t, from.Y, river.Y+gaugeEndroom-0.001)
+		})
+
+		t.Run("it should stop well short of the river's mouth at the map's corner", func(t *testing.T) {
+			assert.Less(t, to.Y, mouth.Y-gaugeEndroom+0.001)
+		})
+
+		t.Run("it should still be long enough to read a percentage along", func(t *testing.T) {
+			assert.Greater(t, to.Y-from.Y, 10*city.CellSize)
+		})
+
+		t.Run("it should keep the boats on the river's own centre line", func(t *testing.T) {
+			assert.InDelta(t, river.X, from.X, 0.0001)
 		})
 	})
 }

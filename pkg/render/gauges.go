@@ -117,17 +117,22 @@ func gaugeFacing(cam *city.Camera, from, to city.Point) int {
 	return bowTurn(gaugeUpstream(cam, from, to))
 }
 
-// gaugeWidestBeam is the across-river width of the largest hull, in
-// world units, measured off the cut sprite at z1: the liner's drawn box
-// is 131x142 and the narrow side converts at 2*IsoScale.
+// gaugeBankClear is the water kept between a hull and the bank.
 //
-// Stated once here and re-derived from the art by
-// TestRiverFitsThreeHullsAbreast, so the lanes and the hulls cannot
-// drift apart the way a written-down number and its source always do.
-const gaugeWidestBeam = 47.7
+// Bug 55: the lanes used to reserve the WIDEST hull's half beam at both
+// banks, which put the widest hull itself exactly on the line — a
+// clearance of zero, produced by the arithmetic rather than chosen. Half
+// a map tile is the smallest amount of water that reads as water.
+//
+// A whole tile does not fit. Three cells of river spend 47.7 units on
+// the liner's beam and need 33.8 between the big boat and the medium
+// one, which leaves about 14 either side; at a full tile the binding
+// pair closes to 6 units and the guard fails. That is the river's width
+// talking, not this number, and a fourth cell would buy it.
+var gaugeBankClear = city.Tile / 2
 
-// gaugeEndroom keeps a boat reading 0% or 100% on the water rather than
-// hanging off the end of the run — half the longest hull.
+// gaugeEndroom keeps a boat reading 0% or 100% wholly inside the run
+// rather than hanging off its end — half the longest hull.
 const gaugeEndroom = 26.0
 
 // gaugeMarkInset sets the channel markers just inside the bank, clear
@@ -135,9 +140,20 @@ const gaugeEndroom = 26.0
 // read against.
 const gaugeMarkInset = 6.0
 
+// gaugeBeams is how wide each of the first n boats is, in lane order,
+// so the lanes can be pinned by the hull that actually rides at each
+// end rather than by the widest one everywhere.
+func gaugeBeams(n int) []float64 {
+	beams := make([]float64, 0, n)
+	for i := 0; i < n; i++ {
+		beams = append(beams, gaugeHulls[city.SizeFor(i)].beam)
+	}
+	return beams
+}
+
 // gaugeLanes is where each of n boats rides across the river.
 func gaugeLanes(width float64, n int) []float64 {
-	return ui.GaugeLanes(width, gaugeWidestBeam, n)
+	return ui.GaugeLanes(width, gaugeBeams(n), gaugeBankClear)
 }
 
 // gaugeRun is the stretch a reading is drawn along: the run's midpoint,
@@ -197,6 +213,12 @@ func gaugeMarks(cam *city.Camera, from, to city.Point, width float64) []gaugeMar
 // hardcoding three hull names would throw away.
 type gaugeHull struct {
 	piece string
+	// beam is how wide the hull draws across the river, in world units,
+	// measured off the cut sprite at z1 and converted at 2*IsoScale.
+	// Stated here and re-derived from the art by
+	// TestRiverFitsThreeHullsAbreast, so the lanes and the hulls cannot
+	// drift apart the way a written-down number and its source do.
+	beam float64
 	// extent is how long the boat's longest side is drawn, in the
 	// atlas's own pixels. Stated as a size rather than a scale, because
 	// a scale means different things to sprites of different sizes —
@@ -208,9 +230,9 @@ type gaugeHull struct {
 // The three ranks step down by a bit under two thirds each, measured on
 // the longest side so a tall hull and a long one are compared fairly.
 var gaugeHulls = map[city.GaugeSize]gaugeHull{
-	city.GaugeBig:    {kitGaugeLiner, 142},
-	city.GaugeMedium: {kitGaugeCargo, 93},
-	city.GaugeSmall:  {kitGaugeSail, 60},
+	city.GaugeBig:    {piece: kitGaugeLiner, beam: 47.7, extent: 142},
+	city.GaugeMedium: {piece: kitGaugeCargo, beam: 19.8, extent: 93},
+	city.GaugeSmall:  {piece: kitGaugeSail, beam: 17.2, extent: 60},
 }
 
 // buoyExtent keeps a marker smaller than the boats it measures: a
@@ -219,8 +241,14 @@ const buoyExtent = 26.0
 
 // riverRun is the stretch of river the gauges are read along, and how
 // wide the water is for the lanes to spread across.
+//
+// Not the whole river. Bug 55: its ends are the map's corners, so a low
+// reading — which is most readings — drew every boat where nobody
+// looks. City.GaugeRun puts the scale beside the city instead, and the
+// clearance it is given is half the longest hull, so a boat at 0% or
+// 100% is wholly inside the run rather than hanging off its end.
 func riverRun(c *city.City) (from, to city.Point, width float64, ok bool) {
-	return c.RiverBand()
+	return c.GaugeRun(gaugeEndroom)
 }
 
 // drawGauge floats one boat at its reading, bow pointing at 100%.
