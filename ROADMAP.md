@@ -2099,6 +2099,9 @@ What this wants is `pkg/assets` measured directly rather than inferred: how much
 No bar is missed, because the client has never had one; the daemon's 20 MB bar is untouched at 13.8 MB.
 But a quarter of a gigabyte was the number DESIGN.md wrote down, it is now closer to four tenths, and a figure that grows by half without anyone choosing it is worth understanding before it is defended.
 
+**Confirmed at the tip after item 59's re-cut (r271): 400.4 MB, 14.6% of a core, 600 frames, 1.73 ms/frame.**
+Half a megabyte off the atlas changed neither figure, which is what it should do and is worth having written down: the 150 MB is not in the pieces that were dropped.
+
 ### 62. ~~The measuring tool documented three guards it did not have~~ Fixed 2026-09-26 (`e6da2f1`)
 
 Found while setting up item 60's measurement, and it explains a line in bug 31.
