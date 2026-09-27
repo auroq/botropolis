@@ -12,12 +12,19 @@ import (
 
 // probeRuns lays down transcripts oldest first, a minute apart, and
 // returns the newest one's name.
+//
+// The names run backwards on purpose: the newest run is called a.jsonl
+// and the oldest z-wards, so sorting by name and sorting by modification
+// time disagree. With the names ascending alongside the times, this
+// fixture passed against an implementation that sorted by path — the
+// UUIDs a real probe writes carry no order at all, so a name sort would
+// have kept an arbitrary run and nothing would have said so.
 func probeRuns(t *testing.T, dir string, n int) string {
 	t.Helper()
 	base := time.Date(2026, 9, 26, 18, 0, 0, 0, time.UTC)
 	var newest string
 	for i := range n {
-		name := filepath.Join(dir, string(rune('a'+i))+".jsonl")
+		name := filepath.Join(dir, string(rune('a'+n-1-i))+".jsonl")
 		require.NoError(t, os.WriteFile(name, []byte(`{"type":"summary"}`), 0o600))
 		require.NoError(t, os.Chtimes(name, base.Add(time.Duration(i)*time.Minute), base.Add(time.Duration(i)*time.Minute)))
 		newest = name
