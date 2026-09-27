@@ -100,10 +100,16 @@ else
 	Xvfb "${display}" -screen 0 1280x800x24 -nolisten tcp >/dev/null 2>&1 &
 	xvfb=$!
 fi
+# One trap, because a second `trap ... EXIT` replaces the first rather
+# than adding to it: this file used to arm `cleanup` here and then arm a
+# `rm -f` on the frames log further down, so from that line onwards
+# nothing was killed and every run leaked a city and an Xvfb.
 cleanup() {
 	[[ -n "${thief:-}" ]] && kill "${thief}" 2>/dev/null || true
 	[[ -n "${city:-}" ]] && kill "${city}" 2>/dev/null || true
 	[[ -n "${xvfb}" ]] && kill "${xvfb}" 2>/dev/null || true
+	[[ -n "${frames_log:-}" ]] && rm -f "${frames_log}" || true
+	[[ -n "${pointer:-}" ]] && eval "xdotool mousemove ${pointer}" 2>/dev/null || true
 	wait 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -116,13 +122,38 @@ args=(city)
 # frame that was never drawn. Three of Aria's eight runs reported 0.2% of
 # a core while drawing nothing at all.
 frames_log=$(mktemp)
-trap 'rm -f "${frames_log}"' EXIT
 DISPLAY="${display}" BOTROPOLIS_FRAMETIME=1 bin/botropolis "${args[@]}" >/dev/null 2>"${frames_log}" &
 city=$!
 
 # Let it start, load the atlases and settle on its first snapshot.
 sleep 15
 kill -0 "${city}" 2>/dev/null || { echo "the city exited before it could be measured" >&2; exit 1; }
+
+# --place was accepted by the option parser and never implemented, so
+# every real-desktop run of this script measured an unfocused window,
+# which since phase 18 means a window that draws nothing at all. The
+# recipe is the one bug 29 arrived at by hand.
+pointer=""
+if [[ "${place}" == 1 ]]; then
+	for tool in i3-msg xdotool jq; do
+		command -v "${tool}" >/dev/null || { echo "${tool} is needed for --place" >&2; exit 1; }
+	done
+	# The pointer is Aria's, so where it was is where it goes back.
+	pointer=$(DISPLAY="${display}" xdotool getmouselocation --shell | awk -F= '/^[XY]=/ {print $2}' | paste -sd' ')
+	wid=$(DISPLAY="${display}" xdotool search --name Botropolis | head -1)
+	[[ -n "${wid}" ]] || { echo "no Botropolis window on ${display} to place" >&2; exit 1; }
+	# Name the workspace, because "move workspace current" resolves
+	# against the window's own workspace once it is focused, and a window
+	# launched from a non-interactive shell is not on yours.
+	ws=$(DISPLAY="${display}" i3-msg -t get_workspaces | jq -r '.[] | select(.focused) | .name')
+	DISPLAY="${display}" i3-msg "[id=${wid}] floating enable, move workspace ${ws}, resize set 900 700, move position center" >/dev/null
+	sleep 1
+	# focus_follows_mouse snaps focus back to wherever the pointer sits,
+	# so the pointer goes in before the focus, not after.
+	DISPLAY="${display}" xdotool mousemove --window "${wid}" 450 350 >/dev/null
+	DISPLAY="${display}" i3-msg "[id=${wid}] focus" >/dev/null
+	sleep 4
+fi
 
 if [[ "${unfocus}" == 1 ]]; then
 	# There is no window manager on the private display, so nothing will
@@ -144,10 +175,28 @@ fi
 
 ticks=$(getconf CLK_TCK)
 read_cpu() { awk '{print $14 + $15}' "/proc/$1/stat"; }
+# The frame counter reports every 120 frames, so the count over the
+# sample is the difference between the last report before it and the last
+# report after. Without this the header's promise — "a row that drew no
+# frames is not a measurement of anything and says so" — was true of the
+# documentation and not of the script.
+read_frames() { awk '/^FRAME /{n=$2} END{print n+0}' "${frames_log}"; }
 before=$(read_cpu "${city}")
+frames_before=$(read_frames)
 sleep "${seconds}"
 after=$(read_cpu "${city}")
+frames_after=$(read_frames)
 rss=$(awk '/^VmRSS:/ {print $2}' "/proc/${city}/status")
+drawn=$((frames_after - frames_before))
+per_frame=$(awk '/^FRAME /{ms=$4} END{printf "%.2f", ms+0}' "${frames_log}")
+reuse=$(awk '/^FRAME /{h=$(NF-2); n=$NF} END{if (n+0) printf "%d/%d", h, n; else print "-"}' "${frames_log}")
 
 awk -v l="${label}" -v b="${before}" -v a="${after}" -v s="${seconds}" -v t="${ticks}" -v r="${rss}" \
-	'BEGIN { printf "| %-28s | %6.1f MB | %5.1f%% |\n", l, r/1024, (a-b)/t/s*100 }'
+	-v f="${drawn}" -v ms="${per_frame}" -v reuse="${reuse}" \
+	'BEGIN { printf "| %-28s | %6.1f MB | %5.1f%% | %5d frames | %5.2f ms/frame | static %s |\n", l, r/1024, (a-b)/t/s*100, f, ms, reuse }'
+
+if [[ "${drawn}" -eq 0 ]]; then
+	echo "# THIS IS NOT A MEASUREMENT: no frames were drawn while sampling." >&2
+	grep -m3 '^QUIET' "${frames_log}" >&2 || echo "# and the city said nothing about why" >&2
+	exit 3
+fi
