@@ -1765,7 +1765,7 @@ That is the third time this session that looking has confirmed what I already be
 
 **Frame.** `docs/screenshots/r257-gauge-size-at-maxzoom.png`, before and after at the same camera at `MaxZoom`, from two binaries built for the purpose.
 
-### 54. ~~The probe fence covers parked transcripts but not voyages~~ Done 2026-09-26 (r259)
+### 54. ~~The probe fence covers parked transcripts but not voyages~~ Done 2026-09-26 (r262)
 
 Her words: *"The usage probes make the map change and refresh weird at a certain point. Sometimes they are off the water and we should add a debounce so we don't get a ton of them since that doesn't really make sense."*
 And: *"it shouldn't just despawn, it should run the whole length of the water or turn off the map or something."*
@@ -1787,7 +1787,7 @@ One fact — *"the probe is not a session"* — with two readers and only one of
 3. **`dock()` must never return a point off the water** for a caller that is steering a boat. Assert it against `RiverBand`.
 4. **Nothing should despawn in place.** *"It should run the whole length of the water or turn off the map."* `Voyages()` drops a departure at `Progress >= 1` and an arrival once its building has risen. A boat whose reason disappears should be **converted to a departure and allowed to finish its run**, not deleted where it floats. That is also the honest animation: the session went away, and the tug leaving is how the map says so.
 
-### 54a. ~~The river moves when the city re-lays out, and voyages hold stale absolute points~~ Done 2026-09-26 (r259)
+### 54a. ~~The river moves when the city re-lays out, and voyages hold stale absolute points~~ Done 2026-09-26 (r261)
 
 Her words: *"Even with one boat, it still makes things refresh weird and the boat teleports off the river into the black."*
 
