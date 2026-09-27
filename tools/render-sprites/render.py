@@ -20,6 +20,7 @@ import glob
 import json
 import math
 import os
+import subprocess
 import sys
 
 import bpy
@@ -609,7 +610,31 @@ class Pages:
             img.save()
             bpy.data.images.remove(img)
             names.append(name)
+        shrink([os.path.join(out, n) for n in names])
         return names
+
+
+def shrink(paths):
+    """Re-compress the pages we just wrote, before anyone can ship them.
+
+    Blender writes PNGs at a low deflate level and `make sprites` used to
+    be the only thing that fixed that, on the line after this script ran.
+    Two steps that must both happen, with nothing checking that they did:
+    a staged re-cut driving this file directly — which is how the zoom
+    levels are cut one at a time, because each takes about a hundred
+    seconds — skipped the second one silently. Item 63 found nine pages
+    carried forward unshrunk, 6.6 MB in every client binary, and the
+    check that was supposed to catch it could not: an unshrunk page has
+    no ImageMagick date chunk either, so looking for the chunk passed
+    whether the step had run or not.
+
+    Doing it here rather than after means there is one step. The Makefile
+    still calls the tool, which is now a no-op that costs a re-encode.
+    """
+    if not paths:
+        return
+    tool = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "shrink-pngs")
+    subprocess.run([tool, *paths], check=True)
 
 
 def atlas(args):

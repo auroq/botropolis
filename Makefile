@@ -80,7 +80,15 @@ sprites :: kits
 	@blender -b --python tools/render-sprites/render.py -- atlas --out pkg/assets/kits 2>&1 | grep -E "WROTE|BUDGET|Traceback|Error" || true
 	@tools/shrink-pngs pkg/assets/kits/kits-z*.png
 
-sprites-check :: sprites
+# Cheap: re-encodes the nine shipped pages and compares, no Blender. This
+# is the guard for item 63 — render.py writing the pages and shrink-pngs
+# compressing them were two steps with nothing checking that both ran,
+# and nine pages shipped unshrunk for fifty revisions because of it.
+atlas-shrunk ::
+	$(LOG) "Checking every shipped atlas page is at full compression"
+	@tools/shrink-pngs --check pkg/assets/kits/kits-z*.png
+
+sprites-check :: sprites atlas-shrunk
 	$(LOG) "Checking the re-render against the committed atlases"
 	@python3 tools/atlas-diff.py --self-test
 	@python3 tools/atlas-diff.py

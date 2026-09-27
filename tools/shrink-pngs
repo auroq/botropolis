@@ -3,21 +3,71 @@
 # atlases come out of Blender lightly compressed; this takes a fifth off.
 set -euo pipefail
 
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" || $# -eq 0 ]]; then
+usage() {
 	cat <<USAGE
-Usage: tools/shrink-pngs FILE.png [FILE.png ...]
+Usage: tools/shrink-pngs [--check] FILE.png [FILE.png ...]
 
 Rewrites each PNG in place with maximum lossless compression (ImageMagick).
+
+  --check   Rewrite nothing. Report which files are not already at that
+            compression and exit non-zero if any are.
+
+--check exists because writing the pages and shrinking them afterwards are
+two steps, and nothing used to notice when only the first ran. Item 63: a
+staged re-cut that calls render.py directly rather than through
+\`make sprites\` skips the shrink, and the pages had been carried forward
+unshrunk since r220-ish, costing 6.6 MB in every client binary. The check
+and the rewrite share one magick invocation below so they cannot drift
+into disagreeing about what "shrunk" means.
 USAGE
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+	usage
 	exit 0
 fi
 
+check=0
+if [[ "${1:-}" == "--check" ]]; then
+	check=1
+	shift
+fi
+
+if [[ $# -eq 0 ]]; then
+	usage
+	exit 0
+fi
+
+# The one definition of "compressed as hard as we compress things".
+# Excludes the date chunk: ImageMagick stamps date:create/modify/timestamp
+# from the wall clock, which is the whole of the diff a no-op re-render
+# otherwise shows — and which would also make --check fail every time.
+recompress() {
+	magick "$1" -define png:compression-level=9 -define png:compression-filter=5 \
+		-define png:compression-strategy=1 -define png:exclude-chunk=date "$2"
+}
+
+unshrunk=0
 for f in "$@"; do
 	before=$(stat -c %s "$f")
-	# Exclude the date chunk: ImageMagick stamps date:create/modify/timestamp from the
-	# wall clock, which is the whole of the diff a no-op re-render otherwise shows.
-	magick "$f" -define png:compression-level=9 -define png:compression-filter=5 -define png:compression-strategy=1 -define png:exclude-chunk=date "$f.tmp.png"
-	mv "$f.tmp.png" "$f"
-	after=$(stat -c %s "$f")
-	echo "$f: $before -> $after"
+	tmp="$f.tmp.png"
+	recompress "$f" "$tmp"
+	after=$(stat -c %s "$tmp")
+	if [[ "${check}" == 1 ]]; then
+		if cmp -s "$f" "$tmp"; then
+			echo "$f: already at full compression (${before} B)"
+		else
+			echo "$f: NOT SHRUNK — ${before} -> ${after} B would be saved by tools/shrink-pngs" >&2
+			unshrunk=$((unshrunk + 1))
+		fi
+		rm -f "$tmp"
+	else
+		mv "$tmp" "$f"
+		echo "$f: $before -> $after"
+	fi
 done
+
+if [[ "${check}" == 1 && "${unshrunk}" -gt 0 ]]; then
+	echo "${unshrunk} page(s) have not been through tools/shrink-pngs" >&2
+	exit 1
+fi
