@@ -2152,7 +2152,7 @@ So the river cost draw calls and not frames, which is the cheaper of the two way
 It proves the gate closes. It does not price it.
 A real quiet city needs a moment when nothing on this machine is working, which is not a condition an agent that is working can arrange.
 
-### 61. ~~The city holds 380–400 MB where it held 212–247, and one atlas page does not explain it~~ Answered 2026-09-26 (`SHA64`, rREV) — most of it is the GL driver, and RSS is the wrong metric
+### 61. ~~The city holds 380–400 MB where it held 212–247, and one atlas page does not explain it~~ Answered 2026-09-26 (`546854e`, r283) — most of it is the GL driver, and RSS is the wrong metric
 
 Measured 2026-09-26 at r268 across five runs on Aria's desk: RSS settles at **374–402 MB**, identical whether the view is busy, plain, receded or motion-reduced.
 Bug 27 measured 231–247 MB and bug 28 212–234 MB on this same desk, so this is **+150 MB**, and it is stable rather than a spike.
@@ -2209,7 +2209,7 @@ Caveat on the instrument, stated because it cuts against my own figure: this run
 The 83 MB of LLVM is therefore probably *not* in the desk's 377–388 MB, and the driver libraries probably are.
 The shape of the finding survives either way; the exact split wants one `smaps` sample on `:0` to confirm, which is a thing `measure-render` could take while it is already placing a window there.
 
-### 64. ~~The tick gate does not know about the courier~~ Done 2026-09-26 (`SHA64`, rREV)
+### 64. ~~The tick gate does not know about the courier~~ Done 2026-09-26 (`546854e`, r283)
 
 Found 2026-09-26 reading `Animating()` while measuring item 60, and the build session independently asked for it to be filed.
 
@@ -2238,7 +2238,7 @@ So I mutated the fix to the filed `len(s.couriers) > 0` and confirmed the expiry
 
 The exclusions paragraph now names three things and says why the list needs them written down at all: the fountain's three spray frames, the lamps' glow fixed by zoom and hour, and the gauges, which hold still because `gaugeAt` takes no clock and a boat that drifted between frames would be lying about its reading.
 
-### 65. "A no-op render reproduces every atlas bit for bit" is not what the check checks, and is not true
+### 65. ~~"A no-op render reproduces every atlas bit for bit" is not what the check checks, and is not true~~ Measured 2026-09-26 (`546854e`, r283) — 2 pages, ~2.0 MB per no-op render
 
 Found 2026-09-26, from the build session's scratch render and `atlas-diff.py`'s own docstring.
 
