@@ -140,8 +140,22 @@ if [[ "${place}" == 1 ]]; then
 	done
 	# The pointer is Aria's, so where it was is where it goes back.
 	pointer=$(DISPLAY="${display}" xdotool getmouselocation --shell | awk -F= '/^[XY]=/ {print $2}' | paste -sd' ')
-	wid=$(DISPLAY="${display}" xdotool search --name Botropolis | head -1)
-	[[ -n "${wid}" ]] || { echo "no Botropolis window on ${display} to place" >&2; exit 1; }
+	# By pid, never by name. `search --name Botropolis` matches anything
+	# whose title contains the word — a terminal running a session called
+	# "botropolis trademark research", a browser tab on the repo — and
+	# `head -1` then floats, resizes and focuses someone else's window
+	# while the city it is supposed to be measuring sits unfocused and
+	# draws nothing. That happened for seven runs; the frame guard caught
+	# every one of them, which is the only reason it was not read as a
+	# result. The window we want is the one belonging to the process we
+	# started, and we know its pid.
+	wid=""
+	for _ in 1 2 3 4 5 6 7 8 9 10; do
+		wid=$(DISPLAY="${display}" xdotool search --onlyvisible --pid "${city}" 2>/dev/null | tail -1)
+		[[ -n "${wid}" ]] && break
+		sleep 1
+	done
+	[[ -n "${wid}" ]] || { echo "the city we started (pid ${city}) has no visible window on ${display}" >&2; exit 1; }
 	# Name the workspace, because "move workspace current" resolves
 	# against the window's own workspace once it is focused, and a window
 	# launched from a non-interactive shell is not on yours.

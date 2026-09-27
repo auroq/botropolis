@@ -2186,13 +2186,22 @@ So the decoded copy and the uploaded one are *not* both held and bug 27's fix wo
 | --- | --- |
 | `VmRSS` | 348.9–360.1 MB |
 | `Pss` — its fair share of what it shares | 188.0–253.3 MB |
-| **`Private_Dirty` — what this program actually dirtied** | **75.4–86.5 MB** |
+| `Private_Dirty` on a window that was **not drawing** | 75.4–86.5 MB |
+| **`Private_Dirty` on a window drawing 600 frames in 20 s** | **114.6–116.5 MB** |
 
 Biggest mappings on the desk: `libnvidia-gpucomp` 75.5 MB, anonymous 50.5, `libgallium` 45.6, the binary 37.0, `libnvidia-eglcore` 20.3, `locale-archive` 6.0.
 **About 147 MB of that is the NVIDIA and Mesa libraries** — file-backed, clean, shared with every GL process on the box, and counted in full by `VmRSS`.
 
 The agent's figure under Xvfb was 243.5 MB of `/usr/lib` including **`libLLVM` at 83.4 MB**, which is llvmpipe; the desk has an Intel Arc Pro and an RTX Pro, so that mapping is absent here, exactly as it predicted.
-Its `Private_Dirty` was 85.7 MB and the desk's is 75.4–86.5. **Two rigs, different drivers, a 60 MB spread on `VmRSS` and agreement on `Private_Dirty`** — that is the instrument being the finding.
+**And here I have to withdraw the agreement I reported, because I compared samples in two different states.**
+The 75.4–86.5 MB range came from the seven runs that drew **no frames** (see item 62 — `--place` was focusing the wrong window).
+Taken properly at r284, drawing 600 frames in 20 s, three times: `Private_Dirty` is **114.6–116.5 MB**, `Pss` 281–283, `VmRSS` 388–390, CPU **15.3%** on all three runs.
+So "two rigs within 5% on `Private_Dirty`" was a drawing figure of the agent's against non-drawing figures of mine, and it is void as stated.
+Whether it survives depends on something only the build session can say: whether its 85.7 MB sample was drawing. If it was, the two rigs are 34% apart, not 5%.
+
+**What does not depend on that, and is why the ruling stands anyway:** the mapping breakdown. 147 MB of NVIDIA and Mesa is file-backed, clean and shared with every GL process on the box, whatever state the window is in, and `VmRSS` counts all of it. That is an argument from what the pages *are*, not from two numbers happening to match.
+
+**The 38 MB between the two rows is the most useful thing in this table**, and it was free: a window that exists but draws nothing holds 77 MB, and the same window drawing holds 115. That localises a third of the remaining question to the render path — the static layer's offscreen images and Ebitengine's frame buffers — rather than to the loader.
 
 **So the ruling: quote `Private_Dirty` or `Pss`, never `VmRSS`.**
 Bugs 22, 27 and 28 all quoted `VmRSS`, which means "212–247 MB" and "380–400 MB" are partly a statement about which version of the NVIDIA driver was installed that week. DESIGN.md's "What it costs" carries the same metric and wants the same correction.
@@ -2323,6 +2332,31 @@ And `trap 'rm -f …' EXIT` further down **replaced** `trap cleanup EXIT` rather
 
 All three fixed: the recipe runs and puts the pointer back where it found it, the row carries frames drawn, ms/frame and static reuse, a zero-frame sample exits 3 with the city's own QUIET lines, and there is one trap.
 The shape is worth keeping: **a measuring instrument is the one tool whose bugs look like results.** All three of these failed silently in the direction of a better number.
+
+**A fourth, found 2026-09-26 by the guard the same commit added, and it is the best evidence on this project that the guard was worth building.**
+`--place` found its window with `xdotool search --name Botropolis | head -1`.
+That matches **anything whose title contains the word** — and by then the desk had a terminal running a session called *"botropolis trademark research"* and a browser tab on the repo's GitHub page.
+So for seven consecutive runs the script floated, resized to 900×700, centred and focused **Aria's terminal**, while the city it was measuring sat unfocused and drew nothing.
+Every one of those runs **refused to report**: exit 3, `THIS IS NOT A MEASUREMENT`, and the city's own `QUIET no frames: focused=false`.
+The number it would otherwise have printed is **0.2–0.4%**, which is precisely the phantom that fooled bug 29 three times in eight runs — a tenth of the real 15.3%, and the most attractive figure in this whole phase.
+I also spent one of those runs concluding the cause was Aria typing, which was a guess that fitted the evidence and was wrong; the actual cause was visible in one `xdotool search` and I did not run it until she had cleared the desk for nothing.
+It places by the pid of the process it started now, waiting for that pid's own window to appear, because the window we want is the one belonging to the city we launched and we know its pid.
+
+### 66. The city holds about 115 MB of private dirty, and the atlas is not in it (curiosity)
+
+Filed 2026-09-26 at the build session's request as a curiosity rather than a bug: nothing is broken, no bar is missed, and Aria has not asked for it.
+It is here so that it is not rediscovered in three phases as "the city holds 80 MB nobody can explain", which is exactly how item 61 arrived.
+
+Measured at r284 on Aria's desk: `Private_Dirty` **114.6–116.5 MB** while drawing, **75.4–86.5 MB** on a window that exists and draws nothing.
+The atlas is measurably not in either: nine decoded pages are 144.0 MB, the heap returns to 0.5 MB once `Pages` is dropped, and the uploaded copy lives on the card.
+
+Three candidates, and the 38 MB gap between drawing and not drawing already splits them:
+- **the static layer's offscreen images and Ebitengine's frame buffers** — the only things that exist because a frame is being drawn, so the 38 MB is theirs to explain or disclaim. At the window's hardcoded 1100×760 a full RGBA buffer is 3.3 MB, so 38 MB is more than a handful and worth a count.
+- **the heap at rest** — measurable directly with `MemStats` the way `LoadKits` was.
+- **driver-side allocations that land in the process's private pages** rather than in the shared library mappings, which would mean part of this is not ours either and the same lesson applies one level down.
+
+Nobody should feel urgency about it. The honest summary is that the city's own memory has never been measured with an instrument that answers "whose", and now that one exists it should be pointed at these three before anyone quotes a figure again.
+
 
 
 ### 63. ~~The atlas is 24% larger than the pipeline's own shrink step makes it, because the step stopped running~~ Done 2026-09-26 (`071793f`, r279)
