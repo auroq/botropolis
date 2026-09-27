@@ -2167,6 +2167,45 @@ But a quarter of a gigabyte was the number DESIGN.md wrote down, it is now close
 **Confirmed at the tip after item 59's re-cut (r271): 400.4 MB, 14.6% of a core, 600 frames, 1.73 ms/frame.**
 Half a megabyte off the atlas changed neither figure, which is what it should do and is worth having written down: the 150 MB is not in the pieces that were dropped.
 
+**Re-measured at r281, after item 63 took 6.6 MB off the atlas: 377.4 and 388.5 MB, against 374–402 before it.** The shrink moved RSS by nothing measurable, which is the right answer and worth stating: a page is decoded to 2048×2048×4 whatever its PNG cost, so compression was never a candidate.
+
+**And the sharpest evidence is a row that was already in the table.** The quiet-city run — the fixture daemon with **no sessions at all**, so no buildings, no districts, no drawables — holds **378 MB**, the same as the busy city.
+So the growth is not in anything the snapshot makes. It is fixed cost, and the only fixed thing that changed is the page count: 8 pages to 9 is 134 → 151 MB decoded, **+17 MB of 150**.
+That leaves about 130 MB unaccounted for by either candidate anyone has named, and it rules both of them out rather than narrowing them.
+
+What is left to measure, in `pkg/assets` and the renderer rather than by sampling the process: what is live after `LoadKits` returns and whether both the decoded copy and the uploaded one are being held; what the static layer's offscreen images cost at 900×700; and whether the window geometry accounts for any of it, since bugs 27 and 28 sampled 636×1120 under i3's tiling and these runs are 900×700 floating.
+
+### 64. The tick gate does not know about the courier
+
+Found 2026-09-26 reading `Animating()` while measuring item 60, and the build session independently asked for it to be filed.
+
+`pkg/render/watching.go:83` sets the tick to `liveTPS` when the scene is animating and `stillTPS` — 12 — when it is not.
+`city.Scene.Animating()` lists voyages, trains, streets with traffic, and buildings that pulse, smoke, build or work.
+**The refresh courier is none of those.** It lives in its own slice (`Scene.couriers`, `courier.go:73`), and nothing in the gate reads it.
+
+So on a quiet city — nothing working, no traffic, no train — pressing `u` launches a boat that crosses the entire river in five seconds while the loop runs at 12 fps: about 60 frames for the traverse instead of 150.
+That is the fastest-moving object on the map running at the slowest tick, and item 56's whole case for the courier is that the motion is the explanation.
+
+Two things, and the second is bookkeeping that keeps the first from coming back:
+1. Add the couriers to the gate. `Couriers()` already resolves them per frame, so it is `len(s.couriers) > 0` with the same live-resolution rule. The test is a scene with nothing else moving: `SendCourier`, then `Animating()` must be true.
+2. **Record the gauge boats as a deliberate exclusion**, in the paragraph that already names the fountain and the lamps. They belong there for a good reason — `gaugeAt` takes no clock, so a gauge's position *is* its reading and it is repainted in place — and right now their absence looks exactly like the courier's, which is an oversight. A list whose comment says it names "every object that moves between frames and nothing else" needs the exceptions written down, or the next reader cannot tell a decision from a gap.
+
+### 65. "A no-op render reproduces every atlas bit for bit" is not what the check checks, and is not true
+
+Found 2026-09-26, from the build session's scratch render and `atlas-diff.py`'s own docstring.
+
+The Worth-knowing bullet says a no-op render reproduces every atlas **bit for bit — same manifests, same IDAT bytes, same decoded pixels on all nine pages**, and that git-lfs and build-time atlases are therefore off the table.
+`tools/atlas-diff.py` says the opposite in its first paragraph: *the render is not bit-exact*, Eevee under software GL reproduces a page very nearly, so **the pages are compared as decoded pixels with a 400-byte tolerance** and only the manifests are compared byte for byte.
+The tool is right and the bullet overstates it. The observation that settles it: a scratch z1 render reproduced `kits-z1-0` exactly and produced `kits-z1-1` **three bytes** different from the tree's.
+
+Two consequences, one of them expensive.
+
+*It explains why nothing noticed item 63.* A check that compares decoded pixels cannot see a compression level, so the shrink step could vanish for fourteen revisions without the gate that exists to watch the atlas making a sound. The gate is not wrong — it is answering "did the art change", which is the question it was built for — but nobody had written down that no check was answering "is the atlas as small as it should be". Item 63's `shrink-pngs --check` is now that check.
+
+*And it puts a number back in play in item 58.* Pack growth is a byte question, and if a no-op render rewrites even three bytes of a page, that page is a whole new blob in the pack — 2 to 4 MB for a render that changed nothing. "The atlas does not churn" was the ground the 09-21 LFS ruling stood on, and it is only true to the tolerance of a pixel check.
+Worth one byte-level measurement before item 58's recommendation is treated as settled: render both zooms with no change and run `git diff --stat`, which is the comparison that decides whether the pack grows.
+
+
 ### 62. ~~The measuring tool documented three guards it did not have~~ Fixed 2026-09-26 (`e6da2f1`)
 
 Found while setting up item 60's measurement, and it explains a line in bug 31.
@@ -2268,8 +2307,9 @@ Two things found on the way, neither blocking:
 - The repo pack was 30 MB on 2026-09-21 and is **157 MB** at r268 — see item 58, which is this bullet's concern arriving by the route it did not expect.
   If `make sprites` churns, that is git-lfs or build-time atlases in the PKGBUILD.
   Measured 2026-09-21 with the new `make sprites-check` (phase 15): it does not churn.
-  A no-op render reproduces every atlas bit for bit — same manifests, same IDAT bytes, same decoded pixels on all nine pages —
-  so git-lfs and build-time atlases are both off the table.
+  ~~A no-op render reproduces every atlas bit for bit — same manifests, same IDAT bytes, same decoded pixels on all nine pages.~~
+  **Overstated; see item 65.** `atlas-diff.py` compares decoded pixels with a tolerance and only the manifests byte for byte, and it says in its own docstring that the render is *not* bit-exact.
+  One page has since been observed three bytes different across two renders of the same inputs.
   ~~The target still reports DIFFERS, for one reason only: `tools/shrink-pngs` runs ImageMagick, which stamps three `date:create` / `date:modify` / `date:timestamp` tEXt chunks with the wall clock.~~
   **Fixed, and it needed no ruling from Aria:** `shrink-pngs` passes `-define png:exclude-chunk=date`, and the shipped pages carry no `tEXt`, `tIME` or `iTXt` chunk at all (checked 2026-09-26 at r268).
   The repo-weight concern this bullet opened has moved rather than gone: the atlas does not churn on a no-op render, and it has been *deliberately* re-cut 34 times, which is item 58.
