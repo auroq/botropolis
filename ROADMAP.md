@@ -1892,7 +1892,7 @@ The lanes reserved the *widest* hull's half beam at both banks, which put the wi
 
 **Frames.** `docs/screenshots/r265-gauge-run-inset.png` is r263 beside now at her own 23/16/0 — the 0% boat comes off the corner tip. `r265-gauge-high-reading.png` is 94/88/71, **the first time the 100% end has been looked at**; the low end being the only case anyone had seen is how this got here.
 
-### 56. ~~The refresh wants a boat of its own~~ Done 2026-09-26 (r266)
+### 56. ~~The refresh wants a boat of its own~~ Done 2026-09-26 (r267)
 
 Her words: *"Still don't see the refresh boat (to be clear the usage boats are there just not the refresh boat when I press u)."*
 
@@ -1932,7 +1932,7 @@ Its ends resolve from the live `RiverBand` on every read — written that way fr
 
 **Worth knowing: `--keys` does not fire under `--record`.** Frames recorded with `--keys u` show no status line and no courier, while the identical `--keys u --screenshot` shows both. I spent several passes cropping for a boat that was never launched before checking the footer. Single-frame screenshots take keys; recordings do not.
 
-**Frames.** `docs/screenshots/r266-refresh-courier.png` is the courier entering at the river's head, bow downstream. `r266-courier-vs-tugs.png` is it beside both tugs, the cargo ship and the sailing boat, at drawn size and at MinZoom.
+**Frames.** `docs/screenshots/r267-refresh-courier.png` is the courier entering at the river's head, bow downstream. `r267-courier-vs-tugs.png` is it beside both tugs, the cargo ship and the sailing boat, at drawn size and at MinZoom.
 
 ### Worth knowing, not bugs
 
