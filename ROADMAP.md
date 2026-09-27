@@ -2175,6 +2175,35 @@ That leaves about 130 MB unaccounted for by either candidate anyone has named, a
 
 What is left to measure, in `pkg/assets` and the renderer rather than by sampling the process: what is live after `LoadKits` returns and whether both the decoded copy and the uploaded one are being held; what the static layer's offscreen images cost at 900×700; and whether the window geometry accounts for any of it, since bugs 27 and 28 sampled 636×1120 under i3's tiling and these runs are 900×700 floating.
 
+**Answered 2026-09-26 (r283–r284). The 130 MB is not ours: `VmRSS` was the wrong instrument, and two rigs that disagree by 60 MB on it agree within 5% on the number that means something.**
+
+The build session instrumented `runtime.MemStats` around a real `LoadKits()`: nine NRGBA pages are **144.0 MB** decoded, the heap goes 0.4 → 148.0 MB, and dropping `Pages` returns it to **0.5 MB**.
+So the decoded copy and the uploaded one are *not* both held and bug 27's fix works — which is the third candidate out, after the atlas bytes and the snapshot.
+
+`smaps` on Aria's desk, `DISPLAY=:0`, real hardware, r284, with `measure-render` now grabbing `smaps_rollup` on every run:
+
+| | |
+| --- | --- |
+| `VmRSS` | 348.9–360.1 MB |
+| `Pss` — its fair share of what it shares | 188.0–253.3 MB |
+| **`Private_Dirty` — what this program actually dirtied** | **75.4–86.5 MB** |
+
+Biggest mappings on the desk: `libnvidia-gpucomp` 75.5 MB, anonymous 50.5, `libgallium` 45.6, the binary 37.0, `libnvidia-eglcore` 20.3, `locale-archive` 6.0.
+**About 147 MB of that is the NVIDIA and Mesa libraries** — file-backed, clean, shared with every GL process on the box, and counted in full by `VmRSS`.
+
+The agent's figure under Xvfb was 243.5 MB of `/usr/lib` including **`libLLVM` at 83.4 MB**, which is llvmpipe; the desk has an Intel Arc Pro and an RTX Pro, so that mapping is absent here, exactly as it predicted.
+Its `Private_Dirty` was 85.7 MB and the desk's is 75.4–86.5. **Two rigs, different drivers, a 60 MB spread on `VmRSS` and agreement on `Private_Dirty`** — that is the instrument being the finding.
+
+**So the ruling: quote `Private_Dirty` or `Pss`, never `VmRSS`.**
+Bugs 22, 27 and 28 all quoted `VmRSS`, which means "212–247 MB" and "380–400 MB" are partly a statement about which version of the NVIDIA driver was installed that week. DESIGN.md's "What it costs" carries the same metric and wants the same correction.
+This does not clear the city: **77–86 MB of private dirty is still more than a program whose atlas lives on the card should need**, and the atlas is demonstrably not in it. But it is a 77 MB question about heap, the static layer's offscreen images and Ebitengine's own buffers, not a 130 MB mystery about the atlas.
+
+**One process note, because it cost four samples and is a property of the desk rather than a fault.**
+The CPU half of this could not be retaken while Aria was working: `--place` puts the pointer in the window and focuses it, and focus is a shared resource — her typing takes it straight back, `SetRunnableOnUnfocused(false)` then stops the loop, and the sample contains no frames.
+Every one of those four runs **failed loudly** (`THIS IS NOT A MEASUREMENT`, exit 3, the city's own `QUIET focused=false` lines) rather than reporting the 0.2–0.4% that bug 29 was fooled by three times in eight runs.
+The memory figures above are unaffected — the mappings do not depend on focus, and those runs drew frames during placement, so the buffers exist.
+**A focused-window CPU figure needs the desk left alone for forty seconds.** That is a condition to ask for, not one to work around.
+
 **Answered 2026-09-26 at r281. The 130 MB is not ours, and RSS is the wrong number to be tracking.**
 
 Two measurements, neither of them in the places the item expected.
