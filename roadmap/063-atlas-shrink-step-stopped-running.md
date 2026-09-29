@@ -29,7 +29,7 @@ A page that never went through ImageMagick has no date chunk either — Blender 
 
 Two things to do, and the second is the one that matters:
 1. Run `tools/shrink-pngs pkg/assets/kits/kits-z*.png`, rebuild, repackage. One command, no re-render, no pixel change.
-2. Make it impossible to skip. `render.py` writing the pages and the Makefile shrinking them afterwards are two steps that must both happen with nothing checking that they did — the same shape as `PIECES` and the Go literals in item 59, and as the two deciders in §10 item 2. Either `render.py` shrinks what it writes, or a check asserts each shipped page is byte-identical to its own re-compression.
+2. Make it impossible to skip. `render.py` writing the pages and the Makefile shrinking them afterwards are two steps that must both happen with nothing checking that they did — the same shape as `PIECES` and the Go literals in item 59, and as the two deciders in [phase-20-explain-itself.md](phase-20-explain-itself.md) item 2. Either `render.py` shrinks what it writes, or a check asserts each shipped page is byte-identical to its own re-compression.
 
 **Fixed, both parts, and the correction on `tools/shrink-pngs` is accepted — it is `Makefile:81` and I said it was absent.**
 

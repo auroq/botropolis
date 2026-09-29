@@ -11,7 +11,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - Settings: in-app panel (`s`) backed by the same viper config; `reduced_motion`, `render_scale`, `projection`, `parked_days`, `terminal`.
 - Help overlay (`?`), hide UI (`h`), screenshot (`p`), reset (`0`), keyboard pan and zoom.
 - **Done when** no bitmap-font text remains in chrome, and a 1× and a 2× screenshot are pixel-checked by the acceptance test.
-- Done 2026-09-18 (r68–r73); see DESIGN.md "Chrome".
+- Done 2026-09-18 (r68–r73); see [../design/chrome.md](../design/chrome.md).
 
 ### 8 — City plan
 
@@ -22,7 +22,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - Streets as a full grid; traffic on a street is the road's data; empty streets carry no cars.
 - Fit frames the bounds; minimap draws the plan.
 - **Done when** the fit view has no empty field, every decoration can be pointed at in `pkg/plan`, and mullet's parked sessions are in the storage district.
-- Done 2026-09-18 (r74–r76); see DESIGN.md "City plan".
+- Done 2026-09-18 (r74–r76); see [../design/city-and-rendering.md](../design/city-and-rendering.md).
 
 ### 9 — Art pipeline and art pass
 
@@ -35,7 +35,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - Four headings on `r`; smooth zoom.
 - Map view (low zoom) redrawn to match the palette.
 - **Done when** the city reads at fit, at detail, and at night without a label, and every building state is distinguishable at map view.
-- Done 2026-09-18 (r80–r85); see DESIGN.md "Sprite pipeline". Not cut: the train (the poles and sparks stay, as §3 allows) and the Watercraft kit (the river is a strip).
+- Done 2026-09-18 (r80–r85); see [../design/sprite-pipeline.md](../design/sprite-pipeline.md). Not cut: the train (the poles and sparks stay, as [art-direction.md](art-direction.md) allows) and the Watercraft kit (the river is a strip).
 
 ### 10 — Parity
 
@@ -44,9 +44,9 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
   All through `pkg/control` and the `claude` CLI.
 - Hide project (map-only, `layout.json`) and star (map-only) — never written to `~/.claude`.
 - Name plates only for districts with something happening; otherwise on hover.
-- Day/night by the clock (`Live`), with a scrub; lamps keep meaning awake, so night and unattended stop sharing a signal (§5).
+- Day/night by the clock (`Live`), with a scrub; lamps keep meaning awake, so night and unattended stop sharing a signal ([design-open-questions.md](design-open-questions.md)).
 - Merged PR: flag turns green with a one-shot celebration; API error keeps smoke.
-- **Done when** every row in §1 with a gap reads "—".
+- **Done when** every row in [parity-with-bot-crossing.md](parity-with-bot-crossing.md) with a gap reads "—".
 - Done 2026-09-18 (r77–r86); the parity pieces landed ahead of phase 9 on the phase 7 toolkit, the clock and the merged flag after it.
 
 ### 11 — Beyond parity
@@ -59,7 +59,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - Daily budget: a target in config, shown on the strip and the plant.
 - "While you were away": the needs-you and error events since the window last had focus, shown on focus.
 - **Done when** each item has a hover datum and a test, per DESIGN.md's first principle.
-- Done 2026-09-18 (r87–r92); see DESIGN.md "Beyond parity".
+- Done 2026-09-18 (r87–r92); see [../design/parity-and-ship.md](../design/parity-and-ship.md).
 
 ### 12 — Ship
 
@@ -67,7 +67,7 @@ Each phase ends with tests green, lint and format clean, a signed commit, a PKGB
 - README with screenshots from `docs/screenshots/`, a 30-second GIF, and the shell helper up front.
 - Wayland check (Ebitengine via GLFW/X11 under XWayland today); note it.
 - First-run: `botropolis doctor` reports daemon, hooks, terminal, harnesses.
-- Done 2026-09-18 (r93–r95) except publishing, which is Aria's call; see DESIGN.md "Ship". `--headless` was added for screenshots and recordings that never open a window.
+- Done 2026-09-18 (r93–r95) except publishing, which is Aria's call; see [../design/parity-and-ship.md](../design/parity-and-ship.md). `--headless` was added for screenshots and recordings that never open a window.
 
 ## 7. Order
 

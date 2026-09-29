@@ -27,6 +27,10 @@ There are two bug 18s, left as written, because a dated record that gets tidied 
 **Item status lives in the item's own file**, on the line under its title: `Done`, `Fixed`, `Open`, `Unadjudicated`, with the date and revision.
 `ROADMAP.md`'s open table is derived from those lines, so it is checked rather than remembered — a hand-maintained summary of machine-checkable state always drifts, which it did.
 
+**`make docs-check` enforces all of this**, and runs as part of `make lint`.
+It verifies that every relative link resolves *from its own file's directory*, that no `§N` citation to the pre-split roadmap survives, that every item declares a status, and that `ROADMAP.md`'s open table lists exactly the items whose status is `Open`.
+All four checks were mutated red before the script was trusted; the first version of the link check could not fail, because it tried the bare path first and every root-level target resolved from the repo root.
+
 ## Working arrangement
 
 Two sessions, at Aria's request.

@@ -59,7 +59,7 @@ Proven by mutation before anything was changed — `car-kit/truck` added to `kit
 
 Excluding `_test.go` makes the six genuinely undrawn again, which lets two further guards exist that could not before: `TestAtlasReserveIsStillReserved` (a reserved piece has not since been given a caller) and `TestAtlasReserveNamesPiecesTheAtlasCarries` (a reservation is not held open for a piece dropped from `PIECES`).
 All three were mutated red before being trusted — truck drawn, a reservation for a piece never cut, and a reservation deleted — each naming exactly the piece it should.
-The general form is in DESIGN.md: **a corpus that includes the test will always agree with the test**, and the same trap produced the 0-of-77 count recorded in §12.
+The general form is in [../rules/a-green-test-is-not-a-guard.md](../rules/a-green-test-is-not-a-guard.md): **a corpus that includes the test will always agree with the test**, and the same trap produced the 0-of-77 count recorded in [inventory-2026-09-29.md](inventory-2026-09-29.md).
 
 ---
 

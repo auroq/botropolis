@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Verify the documentation structure holds: links resolve, citations are not
+# stale, every item declares a status, and ROADMAP.md's open table matches the
+# statuses the item files actually carry.
+#
+# The last check is the point of this script. A hand-maintained summary of
+# machine-checkable state always drifts, and this one did — see
+# rules/a-plausible-wrong-number.md.
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+check-docs — verify the documentation structure holds
+
+Usage: tools/check-docs [--help]
+
+Checks, all against the working tree:
+  1. every relative markdown link resolves from its own file's directory
+  2. no "§N" citation to the pre-r310 ROADMAP survives outside the dated inventory
+  3. every roadmap/NNN-*.md carries a status line under its title
+  4. ROADMAP.md's open table lists exactly the items whose status is Open
+
+Exit 0 if all four hold, 1 otherwise, naming every failure.
+USAGE
+}
+
+[ "${1:-}" = "--help" ] && { usage; exit 0; }
+cd "$(dirname "$0")/.." >/dev/null
+exec python3 tools/check_docs.py

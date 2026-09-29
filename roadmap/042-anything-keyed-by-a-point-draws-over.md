@@ -24,7 +24,7 @@ What is correct on a grid of non-overlapping footprints is a pairwise predicate 
 Treat every drawable as an axis-aligned box in turned space; **A is behind B** if `A.Max.X <= B.Min.X` or `A.Max.Y <= B.Min.Y`.
 Points become cell-sized boxes so there is one rule.
 Sort by minimum depth first and only compare pairs whose depth intervals overlap — on this map that is near-linear, not the O(n²) the worst case suggests.
-Measure the frame cost before and after and put the number in DESIGN.md; the renderer is at 14% and I would rather know than guess.
+Measure the frame cost before and after and put the number in [../design/what-it-costs.md](../design/what-it-costs.md); the renderer is at 14% and I would rather know than guess.
 
 **Done, and the analysis above holds — I re-probed it rather than taking it.**
 Three of the seven probe points sort wrongly under the back-corner key, and keying the front corner does break the point in front, exactly as reported.

@@ -29,7 +29,7 @@ Phases 7–12 were specified in [`phases-7-12.md`](roadmap/phases-7-12.md) and a
 | --- | --- | --- |
 | [58](roadmap/058-repo-pack-size-and-growth.md) | the repo pack, priced three ways with **C — leave it** recommended | Aria |
 | [66](roadmap/066-115-mb-private-dirty-curiosity.md) | ~115 MB of private dirty unaccounted for, filed as a curiosity | nobody, until it costs something |
-| [§10 item 3](roadmap/phase-20-explain-itself.md) | the plant's *reading* — the geometry was fixed at r186 and has not been looked at since | Aria, from a frame |
+| [phase 20 item 3](roadmap/phase-20-explain-itself.md) | the plant's *reading* — the geometry was fixed at r186 and has not been looked at since | Aria, from a frame |
 
 ## Waiting on Aria
 
@@ -58,7 +58,7 @@ Each is either bot-crossing's setting rather than a feature, or a cost the footp
 | [DESIGN.md](DESIGN.md) | what exists, and the rules the work is held to |
 
 Items are numbered in one series, 1–68.
-Section 8's bugs 1–34 and the art batch's 35–68 continue the same numbering; phases 19 and 20 have their own small series, cited as "§10 item 3".
+Section 8's bugs 1–34 and the art batch's 35–68 continue the same numbering; phases 19 and 20 have their own small series, cited as "phase 20 item 3".
 There are two bug 18s — road tiles, and rovers parking — both fixed, both left renumbered as written, because a dated record that gets tidied stops being a record.
 Nothing cites either by number.
 

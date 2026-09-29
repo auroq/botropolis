@@ -1,5 +1,10 @@
 ## 12. Inventory, 2026-09-29 (r294.29f7884)
 
+> **The section numbers below — §8, §10, §11, §12 — refer to `ROADMAP.md` as it stood before the r310 split, when it was 2,689 lines and held every item inline.**
+> They are left as written because this inventory is dated and its whole subject is that structure and its counts.
+> §8 is now [audit-r96.md](audit-r96.md) plus items 1–34, §10 is [phase-20-explain-itself.md](phase-20-explain-itself.md), §11 is items 35–68, and §12 is this file.
+
+
 Taken at Aria's request, a second time, three days after the r268 one.
 The table that replaced this section had gone stale: it still listed items 57, 59, 60 and 61 as open after all four had been closed, and it carried item 57 on two rows at once, struck on the first and open on the second.
 **An inventory section that is not retaken is worse than none**, because it reads as current by virtue of being called an inventory, and that is the same shape as every other bug on this list — a reading whose form implies a freshness it does not have.

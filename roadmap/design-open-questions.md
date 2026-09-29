@@ -13,6 +13,6 @@
   Clock-driven light with a scrub; a lit lamp means a session is awake, so unattended-at-night reads as a lit building in a dark city.
   Night stops being a state signal.
 - **Cost, context window, parked catalogue, `tasks/` and `plans/`.**
-  Settled in DESIGN.md as recorded there; nothing changes.
+  Settled in [../DESIGN.md](../DESIGN.md) as recorded there; nothing changes.
 - **Sprites.**
-  §3.
+  [art-direction.md](art-direction.md).

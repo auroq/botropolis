@@ -46,10 +46,14 @@ test-acceptance :: fixtures
 	$(LOG) "Running acceptance tests"
 	@go test ./testing/acceptance/...
 
-lint ::
+lint :: docs-check
 	$(LOG) "Linting"
 	@go vet ./...
 	@golangci-lint run ./...
+
+docs-check ::
+	$(LOG) "Checking the documentation structure"
+	@tools/check-docs
 
 format ::
 	$(LOG) "Formatting"
