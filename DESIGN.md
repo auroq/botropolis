@@ -604,6 +604,17 @@ Every plausible one survived until something re-derived it: the 71 by a count ru
 **Not one was caught by rereading the working that produced it**, and that is the practical point rather than an observation about who caught what: rereading your own derivation re-runs the same assumption about the set, so it can confirm the arithmetic and never the question.
 A second pair of eyes helps because they are a second route, not because they are a second pair of eyes — and the same benefit is available alone, by counting the complement, or the total, or the same thing grouped a different way.
 
+**Which figure raises nothing is answerable, because the wrong numbers here fall into exactly two kinds and each has its own question.**
+Sorting every one of them: `34` re-cuts, `71` and nowhere else, `64` struck, `22` of 34, `0` of 77 undrawn and `0` atlas pages are all **counts, and every one failed by the shape of its corpus** — lines counted as commits, a `switch` arm that swallowed a case, three series summed as one, a dedup that hid an entry, a corpus containing the test that names the things, a directory that was not the one holding them.
+`VmRSS` at 380–400 MB, 85.7 MB of `Private_Dirty`, the 75–86 MB before it and the 0.2–0.4% of a core are all **measurements, and every one failed by its instrument** — shared driver pages counted as the program's, a recorder accumulating frames while being sampled, windows that were not drawing, a window matcher that found a terminal.
+Ten numbers, no overlap, nothing left over.
+
+So the selector is cheap and mechanical.
+**Before quoting a count, say out loud what set it is over and what is in that set that should not be.**
+**Before quoting a measurement, say what the instrument does when it is not measuring what you think.**
+Counts are re-derived by counting the complement, or the total, or the same set grouped another way — entries instead of numbers is what exposed the 35th.
+Measurements are re-derived by changing instrument, or better by arguing from what the thing *is*, which is the move recorded above that survived when the cross-rig agreement did not.
+
 This is the counterpart of the mutation rule below: **a mutation must be the plausible wrong implementation, and a number must be checked hardest when it looks reasonable.**
 Both say the same thing from opposite ends — the near miss is the dangerous case, not the obvious one — and both are answered by the same move, which is to make the thing fail on purpose rather than to look at it harder.
 

@@ -2654,6 +2654,7 @@ In all four the **corpus was the wrong shape**, and the answer was then computed
 A number that disagrees with everything cannot be quoted by accident; had that split come out 20/14 it would have been shipped.
 So the danger is not proportional to the size of the error — **a plausible wrong number is more dangerous than an absurd one**, and this project has now been bitten by the plausible kind (34 re-cuts, 71 drawn names, 64 struck, `VmRSS`) far more often than by the visible kind.
 The counterpart of the mutation rule in DESIGN: a mutation must be the plausible wrong implementation, and a number must be checked hardest when it looks reasonable.
+The rule and its selector now live in DESIGN under *a plausible wrong number is more dangerous than an absurd one*; what is above is the instance, kept where it happened.
 
 ## Later
 
