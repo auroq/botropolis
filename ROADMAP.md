@@ -2599,14 +2599,27 @@ A `botropolis notify` has been up 2 days 15 hours at 22.9 MB private dirty; that
 What is left is the r293 package pair (35.3 MB plus 14.3 MB of debug symbols) and the 154 MB bare cache clone that `makepkg` fetches into.
 That closes the largest of the four decisions, and it closed the right way — the offer stood for three days and she took it.
 
-**Of the 68 numbered items, 64 are struck.** These are not:
+**The item tally, counted rather than carried forward.**
+"64 of 68 struck" appeared in this section and in the r268 one before it, and neither was ever counted.
+There are three numbered series, not one: §8 runs bugs **1–34**, §11 continues the same series as items **35–68**, and §10 has its own **1–6** alongside them.
+Counting struck titles: §8 is 22 of 34, §11 is 32 of 34, §10 is 5 of 6.
+So the main series is **54 struck of 68**, not 64 — and the conclusion the wrong number was serving is still right, because the fourteen unstruck are mostly not open work.
+
+**§8's twelve unstruck entries are not twelve open items**, and that is a convention rather than a backlog.
+Where a §8 entry is a *bug*, the title is struck when it is fixed; where it is a **finding or a measurement**, the title stays unstruck and the conclusion sits in the body.
+Spot-checked three: bug 32 reads "Fixed" and names the fix, bug 34 reads "Verified independently" and reports the shipped result, and bug 30 settles the palette question it was opened to ask.
+None of the three is open work, and none can be told apart from open work by looking at its title.
+**The remaining nine (22, 23, 24, 26, 27, 28, 29, 31, 33) have not been adjudicated one by one**, and several are visibly superseded downstream — the CPU bar by item 60, the undrawn atlas by option D and bug 34, the memory question by item 61.
+Saying which of the nine are closed is an afternoon's careful reading, and it is the one piece of roadmap hygiene left that could still be hiding real work.
+Until it is done, the open list below is what is *tracked* as open, not a proof that nothing else is.
+
+**Three items are tracked as open.** These are they:
 
 | open | what it wants | whose call |
 | --- | --- | --- |
 | §10 item 3 | the plant's *reading* — the geometry was fixed at r186 and has not been looked at in ~108 revisions | Aria, from a frame |
 | item 58 | the repo pack, priced three ways with **C (leave it)** recommended; the 2.68 GB beside it is now spent | Aria |
 | item 66 | ~115 MB of private dirty unaccounted for, filed as a curiosity rather than a defect | nobody, until it costs something |
-| item 68 | the atlas guard counts a doc comment as drawing; fix is to match string literals, not file text | nobody, a defect with a known fix |
 
 **And two standing decisions that were never numbered**, which is why they keep having to be re-derived:
 the **six reserve atlas pieces**, and the **ten-step validation checklist** (§ "Validation checklist for Aria") that has never been run end to end.
