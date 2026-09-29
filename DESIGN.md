@@ -582,7 +582,7 @@ An argument from what the pages *are* — that a page of `libgallium` is not thi
 
 ## A green test is not a guard until it has been made to fail
 
-Three times in one evening a test was written for a behaviour, passed, and could not have failed.
+Four times in a day a test was written for a behaviour, passed, and could not have failed.
 
 The courier's expiry case asserted that a city goes still once the boat lands, and passed **before** the fix — because `Animating()` never returned true for a courier at all, so "still" was the only answer it could give.
 The `sprites-check` date-chunk check reported that no page carried a `tEXt`, `tIME` or `iTXt` chunk, which is equally true of a page ImageMagick never touched, so it passed identically whether the shrink step worked or had silently stopped running for fourteen revisions.
@@ -596,6 +596,20 @@ If it stays green, the test is describing the behaviour rather than holding it, 
 Two notes on doing it.
 A mutation has to be the *plausible* wrong implementation, not an absurd one: the value is in showing the test separates the real design from the near miss somebody would actually have written, and every one of the three above was a near miss somebody actually wrote.
 And where a seam cannot be tested, say so rather than leaving a gap that reads like coverage — nothing asserts that the probe's prune runs *after* `cmd.Run()` rather than before, because a test for that would have to spawn `claude -p`, which is the subprocess the fence exists to keep out of the city. That ordering is held by a comment and by reading, and it is worth knowing which of the two it is.
+
+**A fourth arrived the next morning, and it is the sharpest of them because the test was correct.**
+`TestAtlasCarriesNothingUndeclared` decides which atlas pieces nothing draws by searching every `.go` file for each piece's name as a quoted literal, and a sibling map, `atlasReserve`, holds the six undrawn pieces that are deliberately kept.
+The corpus it searched included `_test.go`, so it included the file declaring the reserve — which spells all six names as quoted literals.
+Every reserved piece therefore looked drawn, and **the test agreed with itself**.
+The failure it could not see is the one its own doc comment cites as the reason it exists: `chimney-medium` quietly leaving the reserve by being drawn, and the reserve going stale around it.
+Adding `car-kit/truck` to `kitCars` — making a reserved piece genuinely drawn — left the suite green.
+
+**Generalised: a corpus that includes the test will always agree with the test.**
+Any check that measures usage by searching source has to exclude its own — and the tell is that the check *names the things it is looking for*, which is what a test does and what production code, on the whole, does not.
+The same trap caught a second session counting the same six pieces from outside: matching against `git ls-files '*.go'` returned 0 of 77 undrawn, because the test file alone made all 77 look referenced.
+Two independent readings agreeing on a wrong answer, for the same reason, in the same hour.
+
+Note what the mutation bought beyond the fix. Excluding `_test.go` makes the reserve's six pieces genuinely undrawn again, which lets two guards exist that could not before: one that a reserved piece has not since been given a caller, and one that a reservation is not being held for a piece the atlas no longer carries. Both were mutated red before being trusted. The original test was not wrong about anything — it was answering a question that could only come out one way.
 
 **"I wrote a test for it" and "the test can fail" are different claims**, and only the second is worth anything. The first is the same species as a number that is right and means nothing: correct, reproducible, and about something other than the question.
 

@@ -2115,6 +2115,15 @@ That is precisely how this item came to exist — `chimney-medium` left the rese
 Bug 24 wrote "check again in a phase" into a comment; a phase passed and nobody checked.
 The test is that instruction moved somewhere that cannot be forgotten, and it fails loudly the next time a piece is cut without a caller or a drawn piece is left in the reserve.
 
+**Correction, 2026-09-29 (r296): the second half of that sentence was false, and the guard is now three tests rather than one.**
+`goSource` walked every `.go` file including `_test.go`, so the corpus contained the file declaring `atlasReserve`, which spells all six reserved names as quoted literals.
+Every reserved piece therefore looked drawn, and the test agreed with itself: it could not catch a drawn piece left in the reserve, which is the exact `chimney-medium` failure quoted two paragraphs above as the reason it exists.
+Proven by mutation before anything was changed — `car-kit/truck` added to `kitCars`, making a reserved piece genuinely drawn, left the suite green.
+
+Excluding `_test.go` makes the six genuinely undrawn again, which lets two further guards exist that could not before: `TestAtlasReserveIsStillReserved` (a reserved piece has not since been given a caller) and `TestAtlasReserveNamesPiecesTheAtlasCarries` (a reservation is not held open for a piece dropped from `PIECES`).
+All three were mutated red before being trusted — truck drawn, a reservation for a piece never cut, and a reservation deleted — each naming exactly the piece it should.
+The general form is in DESIGN.md: **a corpus that includes the test will always agree with the test**, and the same trap produced the 0-of-77 count recorded in §12.
+
 ### 60. ~~The 10% CPU bar has not been measured since the river filled with movers~~ Measured 2026-09-26 (r268), and the premise was wrong
 
 The last measurement is bug 31, on 2026-09-25 at the phase 19 binaries: **14.2% of a core busy, 5.3% when the gate drops to 12 fps**, against phase 18's bar of 10%.
