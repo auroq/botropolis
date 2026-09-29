@@ -2569,6 +2569,12 @@ The second pass matched piece names against `git ls-files '*.go'` and found **0 
 A check run over its own fixture will pass whether or not the thing it checks is true.
 Both were caught by the answer being too clean to believe, which is the only reason either was caught, and neither would have survived being written down first.
 
+**The second one was not only my error, and that came out an hour later (r296).**
+The 0-of-77 was pointing at a defect in the guard itself: `goSource` walked `_test.go` too, so the corpus included the file declaring `atlasReserve`, and the test agreed with itself.
+It could not catch a drawn piece left in the reserve — the exact `chimney-medium` failure its own doc comment cites as its reason to exist.
+Verified here independently rather than taken on report: the r294 guard stays green with `car-kit/truck` added to `kitCars`, and all three r296 guards go red under their own mutations, each naming the right piece.
+So the wrong count and the broken guard are one fault seen from two sides, and the count of six was right the whole time — it was the method that needed the caveat, not the answer.
+
 ## Later
 
 Things noticed while building that are not in a phase; each is a question for Aria, not a plan.
