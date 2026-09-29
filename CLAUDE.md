@@ -31,19 +31,19 @@ There are two bug 18s, left as written, because a dated record that gets tidied 
 It verifies that every relative link resolves *from its own file's directory*, that no `§N` citation to the pre-split roadmap survives, that every item declares a status, and that `ROADMAP.md`'s open table lists exactly the items whose status is `Open`.
 It also refuses an empty corpus — the four indexes must be non-empty and every item number from 1 to the highest must have a file — because the other checks all pass on nothing.
 
-Every check was mutated red before the script was trusted, and four of its own versions could not fail:
+Every check was mutated red before the script was trusted, and **five of its own versions could not fail**:
 the first link check tried the bare path before the relative one, so every root-level target resolved from the repo root;
 the first corpus check passed on a directory containing four empty files and no `roadmap/`;
 and the version after that took its ceiling from the working tree, so deleting the two highest-numbered items lowered `max()` and it reported "1-66, none missing".
 The ceiling now comes from `git ls-files`, which a working-tree deletion cannot move — but its `except: pass` silently restored the fault whenever git could not be reached, and the summary then read exactly like a healthy run.
 Running outside a checkout is legitimate, so the fallback stays; **it just is not silent any more**, and the green says which source the bound came from.
+And every check up to that point ran in one direction — each asked whether a link points at a file that exists, and none asked whether a file is pointed *at*, so a document could sit in the tree unreachable by navigation with everything green.
+That was true of three files the split itself created: `design-brief.md`, `later.md` and `why-a-second-pass.md` were in the tree and linked from nowhere.
+Item files are exempt, because the numbering check is their reachability guarantee; everything else has to be linked from somewhere.
 
-The pattern across all four is one thing: **a guard fails where its own inputs come from.**
-A fallback is a way for a checker to pass, an empty corpus satisfies every check that iterates over it, and a bound derived from the thing it measures can be lowered by the fault it exists to catch.
+The pattern across all five is one thing: **a guard fails where its own inputs come from.**
+A fallback is a way for a checker to pass, an empty corpus satisfies every check that iterates over it, a bound derived from the thing it measures can be lowered by the fault it exists to catch, and a check that only follows links outward cannot see what nothing points to — which is item 59's shape, a piece nothing draws being a piece nothing validates.
 Mutating a guard tests the guard; mutating what the guard measures itself *against* tests whether it has a fixed reference at all.
-A fifth check exists because the other four all pass on nothing — an empty tree reported "0 links resolve, 0 items carry a status, open table matches" and exited 0.
-It requires the four index files to be non-empty and every item number from 1 to the highest present to have a file, which is a floor that rises with the work rather than a constant that goes stale.
-
 ## Working arrangement
 
 Two sessions, at Aria's request.

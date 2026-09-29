@@ -41,6 +41,16 @@ Phases 7–12 were specified in [`phases-7-12.md`](roadmap/phases-7-12.md) and a
   Several are visibly superseded downstream — the CPU bar by item 60, the undrawn atlas by item 24's option D and item 34, the memory question by item 61 — but saying which are closed is an afternoon of careful reading and has not been done.
   Until it is, this list is what is *tracked* open, not a proof that nothing else is.
 
+## Background
+
+Written when this roadmap was opened and still the frame for it.
+
+- [why-a-second-pass.md](roadmap/why-a-second-pass.md) — the r64 frame this plan was opened against
+- [design-brief.md](roadmap/design-brief.md) — what "modern and intentional" means here
+- [art-direction.md](roadmap/art-direction.md) — the kits, and why these ones
+- [parity-with-bot-crossing.md](roadmap/parity-with-bot-crossing.md) — what the predecessor had, row by row
+- [later.md](roadmap/later.md) — noticed while building, not in a phase; each one a question rather than a plan
+
 ## Not doing
 
 Planets, orbit mode, a 3D renderer, network serving, quality presets beyond render scale and reduced motion, animated faces.

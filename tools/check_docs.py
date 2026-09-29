@@ -103,12 +103,36 @@ else:
             where = 'tracked in git' if n in tracked else 'expected'
             note('corpus', 'item %03d has no file (%s; highest known is %03d)' % (n, where, top))
 
+# 6. nothing is orphaned. Checks 1-5 all run in one direction: they ask
+# whether a link points at a file that exists. None asks whether a file is
+# pointed at, so a document can sit in the tree unreachable by navigation
+# and every check stays green -- verified, and it was true of three files
+# this split created. It is item 59's shape: a piece nothing draws is a
+# piece nothing validates, and a rule nothing indexes is a rule nothing
+# reads. Item files are exempt because the numbering check in 5 is their
+# reachability guarantee; everything else has to be linked from somewhere.
+linked = set()
+for p in docs:
+    base = os.path.dirname(p) or '.'
+    for m in re.finditer(r'\]\(([^)]+)\)', open(p, encoding='utf-8').read()):
+        t = m.group(1).split('#')[0]
+        if not t or t.startswith(('http', 'mailto')):
+            continue
+        linked.add(os.path.normpath(os.path.join(base, t)))
+
+for p in sorted(glob.glob('design/*.md') + glob.glob('rules/*.md')
+                + glob.glob('roadmap/*.md')):
+    if re.match(r'\d{3}-', os.path.basename(p)):
+        continue
+    if os.path.normpath(p) not in linked:
+        note('orphans', '%s is linked from nowhere' % p)
+
 if fail:
     for f in fail:
         print('  %s' % f)
     print('\n%d problem(s).' % len(fail))
     sys.exit(1)
-print('  %d links resolve, %d items carry a status (1-%d, none missing), open table matches.'
+print('  %d links resolve, %d items carry a status (1-%d, none missing), open table matches, nothing orphaned.'
       % (links, len(status), max(numbers | tracked)))
 if not bound_from_git:
     print('  NOTE: git was not reachable, so the range came from the working tree '
