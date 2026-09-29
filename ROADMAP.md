@@ -2602,8 +2602,13 @@ That closes the largest of the four decisions, and it closed the right way — t
 **The item tally, counted rather than carried forward.**
 "64 of 68 struck" appeared in this section and in the r268 one before it, and neither was ever counted.
 There are three numbered series, not one: §8 runs bugs **1–34**, §11 continues the same series as items **35–68**, and §10 has its own **1–6** alongside them.
-Counting struck titles: §8 is 22 of 34, §11 is 32 of 34, §10 is 5 of 6.
+Counting struck titles by number: §8 is 22 of 34, §11 is 32 of 34, §10 is 5 of 6.
 So the main series is **54 struck of 68**, not 64 — and the conclusion the wrong number was serving is still right, because the fourteen unstruck are mostly not open work.
+
+**By *entry* rather than by number it is 55 of 69, because §8 has two bug 18s** — "Road tiles do not meet" and "Rovers park on the road", adjacent, both struck, both fixed (r135 and r139).
+Nothing references either: `bug 18` appears nowhere in any `.md`, `.go` or `.py` in the repo, so no citation has ever had to disambiguate them.
+They are left renumbered as they are, because §8 is a dated audit record and renumbering a record changes what was written; anything needing to cite one should name it — "bug 18 (road tiles)".
+The count is quoted by number above, and the two figures are the same fact counted two ways.
 
 **§8's twelve unstruck entries are not twelve open items**, and that is a convention rather than a backlog.
 Where a §8 entry is a *bug*, the title is struck when it is fixed; where it is a **finding or a measurement**, the title stays unstruck and the conclusion sits in the body.
@@ -2639,6 +2644,16 @@ The 0-of-77 was pointing at a defect in the guard itself: `goSource` walked `_te
 It could not catch a drawn piece left in the reserve — the exact `chimney-medium` failure its own doc comment cites as its reason to exist.
 Verified here independently rather than taken on report: the r294 guard stays green with `car-kit/truck` added to `kitCars`, and all three r296 guards go red under their own mutations, each naming the right piece.
 So the wrong count and the broken guard are one fault seen from two sides, and the count of six was right the whole time — it was the method that needed the caveat, not the answer.
+
+**Four counts were taken in this section's making and all four were wrong at the first attempt.**
+The atlas pages (wrong directory), the undrawn pieces (corpus included its own test), the drawn-name partition (a `switch` arm that swallowed the both-files case, in the other session), and the item tally (an aggregate over three series, inherited and repeated twice).
+In none of the four was the arithmetic wrong.
+In all four the **corpus was the wrong shape**, and the answer was then computed correctly over the wrong set — which is why every one of them looked like a result rather than a mistake.
+
+**And one of them was caught only by being absurd.** The other session's first strike count came out at 6 of 34 because §8 uses two markup styles (`~~N. **Title**~~` for bugs 1–6, `N. ~~**Title**~~` for 7–21 and 25) and its regex knew one.
+A number that disagrees with everything cannot be quoted by accident; had that split come out 20/14 it would have been shipped.
+So the danger is not proportional to the size of the error — **a plausible wrong number is more dangerous than an absurd one**, and this project has now been bitten by the plausible kind (34 re-cuts, 71 drawn names, 64 struck, `VmRSS`) far more often than by the visible kind.
+The counterpart of the mutation rule in DESIGN: a mutation must be the plausible wrong implementation, and a number must be checked hardest when it looks reasonable.
 
 ## Later
 
