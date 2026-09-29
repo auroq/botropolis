@@ -44,6 +44,16 @@ Item files are exempt, because the numbering check is their reachability guarant
 The pattern across all five is one thing: **a guard fails where its own inputs come from.**
 A fallback is a way for a checker to pass, an empty corpus satisfies every check that iterates over it, a bound derived from the thing it measures can be lowered by the fault it exists to catch, and a check that only follows links outward cannot see what nothing points to — which is item 59's shape, a piece nothing draws being a piece nothing validates.
 Mutating a guard tests the guard; mutating what the guard measures itself *against* tests whether it has a fixed reference at all.
+
+**A different sentence, and the one this repo has actually been bitten by: a guard that is not invoked cannot fail.**
+`make lint :: docs-check` is one line in a Makefile with nothing guarding it — delete it and all six checks go quiet at once behind a green gate.
+Asserting that dependency from inside the thing it invokes is circular, and grepping the Makefile is a string match on a build file, so the answer is a **second invocation path**: `testing/acceptance/docs_test.go` runs `tools/check-docs` too, so the checks survive losing either caller.
+Verified by removing the Makefile dependency and orphaning a file at the same time — `make lint` went green and the test failed.
+A comment would not have been enough, and this repo is the proof: `tools/shrink-pngs` sat in the Makefile for fourteen revisions while the path that actually ran bypassed it, at 6.6 MB of binary, with the Makefile entry right there the whole time.
+
+**And `DESIGN.md`'s index is load-bearing as a guard, not only as navigation.**
+Deleting `design/` or `rules/` is caught because the index links into them.
+Tidying an index down to prose would remove a check without appearing to.
 ## Working arrangement
 
 Two sessions, at Aria's request.
