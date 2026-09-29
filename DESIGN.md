@@ -609,6 +609,10 @@ Any check that measures usage by searching source has to exclude its own — and
 The same trap caught a second session counting the same six pieces from outside: matching against `git ls-files '*.go'` returned 0 of 77 undrawn, because the test file alone made all 77 look referenced.
 Two independent readings agreeing on a wrong answer, for the same reason, in the same hour.
 
+**What the guard proves is that a name is spelled in the recipe table, not that anything reaches the screen**, and the two are worth keeping apart: all 71 drawn names live in `recipes.go` and nowhere else, so a recipe entry no `pickPiece` call ever reaches would read as drawn and the piece would keep its area unchallenged.
+The set is empty today — every `kit*` slice in that file has a consumer — which is exactly why it is cheap to write down now rather than after one appears.
+The near miss worth recording with it: the first check for this measured "referenced outside `recipes.go`" and read the answer as reachability, which is a file boundary standing in for a call graph — the anchor-versus-extent substitution again, in the tooling built to catch a substitution.
+
 Note what the mutation bought beyond the fix. Excluding `_test.go` makes the reserve's six pieces genuinely undrawn again, which lets two guards exist that could not before: one that a reserved piece has not since been given a caller, and one that a reservation is not being held for a piece the atlas no longer carries. Both were mutated red before being trusted. The original test was not wrong about anything — it was answering a question that could only come out one way.
 
 **"I wrote a test for it" and "the test can fail" are different claims**, and only the second is worth anything. The first is the same species as a number that is right and means nothing: correct, reproducible, and about something other than the question.
