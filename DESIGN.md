@@ -580,6 +580,33 @@ The guard against the first is to run the cheap check that would falsify it befo
 Two numbers matching is the most persuasive and least reliable evidence available, because a coincidence does not announce itself.
 An argument from what the pages *are* — that a page of `libgallium` is not this program's memory whatever any rig reports — needs no second measurement and survived when the agreement did not.
 
+## A plausible wrong number is more dangerous than an absurd one
+
+Five counts in this project came out wrong on the first attempt, and **not one of them was an arithmetic error**.
+34 atlas re-cuts that were 18; 85.7 MB of `Private_Dirty` sampled from a recorder part-way through a recording; 71 drawn sprite names "and nowhere else" that were 70 and one elsewhere; 64 roadmap entries struck that were 54 across three series that do not share a numbering space; 22 of 34 bugs counted as 34 entries when there are 35, because the counter deduplicated by number.
+In every one the sum over the wrong set was correct — which is exactly why each of them looked like a result.
+
+**The sixth is the one that makes the rule.**
+A first pass at that last count used a regular expression that knew one of the two strikethrough styles in the section, and returned **6 struck of 34**.
+That is so far from anything that it was discarded in the second it appeared.
+Had the two styles been distributed differently it would have returned 20 of 34, and 20 would have been written down, quoted, and built on.
+
+So the danger is not proportional to the size of the error.
+**A number that is obviously wrong costs nothing, because it defends against itself. A number that is quietly wrong costs everything downstream of it**, and the more reasonable it looks the further it travels before anything stops it.
+`VmRSS` reached this document as load-bearing evidence and had to be retracted from it; 34 re-cuts survived a filing, a ruling and a re-quote before anyone counted; 64 struck was carried forward through two inventories whose entire purpose was to be the thing you could trust.
+
+**Which inverts the obvious triage.** The instinct to check a number when it surprises you is backwards as a policy: surprise is self-correcting and needs no discipline, and a figure that raises an eyebrow has already recruited the attention it needs.
+The scrutiny has to be spent on the figure that raises nothing.
+
+And there is only one thing that has actually caught the plausible kind here — **deriving it a second time by a different route.**
+Every absurd number above was caught free, by its own author, on sight.
+Every plausible one survived until something re-derived it: the 71 by a count run from outside the package, the 64 by counting a table nobody had counted, the 34 by a recount during an unrelated pricing, the `VmRSS` by re-running the instrument and getting 86 MB, 823 MB and 1.35 GB out of it.
+**Not one was caught by rereading the working that produced it**, and that is the practical point rather than an observation about who caught what: rereading your own derivation re-runs the same assumption about the set, so it can confirm the arithmetic and never the question.
+A second pair of eyes helps because they are a second route, not because they are a second pair of eyes — and the same benefit is available alone, by counting the complement, or the total, or the same thing grouped a different way.
+
+This is the counterpart of the mutation rule below: **a mutation must be the plausible wrong implementation, and a number must be checked hardest when it looks reasonable.**
+Both say the same thing from opposite ends — the near miss is the dangerous case, not the obvious one — and both are answered by the same move, which is to make the thing fail on purpose rather than to look at it harder.
+
 ## A green test is not a guard until it has been made to fail
 
 Five times in two days a test was written for a behaviour, passed, and could not have failed.
