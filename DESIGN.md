@@ -582,7 +582,8 @@ An argument from what the pages *are* — that a page of `libgallium` is not thi
 
 ## A plausible wrong number is more dangerous than an absurd one
 
-Five counts in this project came out wrong on the first attempt, and **not one of them was an arithmetic error**.
+Five figures in this project came out wrong on the first attempt, and **not one of them was an arithmetic error**.
+(Counts, except the 85.7 MB — the list is mixed on purpose, and mislabelling it "five counts" was how this paragraph first read.)
 34 atlas re-cuts that were 18; 85.7 MB of `Private_Dirty` sampled from a recorder part-way through a recording; 71 drawn sprite names "and nowhere else" that were 70 and one elsewhere; 64 roadmap entries struck that were 54 across three series that do not share a numbering space; 22 of 34 bugs counted as 34 entries when there are 35, because the counter deduplicated by number.
 In every one the sum over the wrong set was correct — which is exactly why each of them looked like a result.
 
@@ -634,11 +635,14 @@ A number's own label carries a hint of its extent — "atlas pages", "blob versi
 Nothing in a label carries its moment.
 So the extent question gets prompted by the figure itself and the state question gets prompted by nothing, which means it is the one that has to be asked on purpose, every time, by whoever writes the number down.
 
-So the selector is cheap and mechanical.
+So the selector is cheap and mechanical, and it is three questions rather than two.
 **Before quoting a count, say out loud what set it is over and what is in that set that should not be.**
 **Before quoting a measurement, say what the instrument does when it is not measuring what you think.**
+**Before quoting either, say what state the thing was in when you looked, and put the moment next to the number.**
+The first two are the extent question asked in the idiom of each kind; the third is the state question, which has no idiom and so has to be asked in the same words both times.
 Counts are re-derived by counting the complement, or the total, or the same set grouped another way — entries instead of numbers is what exposed the 35th.
 Measurements are re-derived by changing instrument, or better by arguing from what the thing *is*, which is the move recorded above that survived when the cross-rig agreement did not.
+State is re-derived by looking twice, far enough apart that a thing still settling has moved — `git gc` and read again, let the recorder run longer and read again.
 
 This is the counterpart of the mutation rule below: **a mutation must be the plausible wrong implementation, and a number must be checked hardest when it looks reasonable.**
 Both say the same thing from opposite ends — the near miss is the dangerous case, not the obvious one — and both are answered by the same move, which is to make the thing fail on purpose rather than to look at it harder.
