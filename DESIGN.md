@@ -582,12 +582,13 @@ An argument from what the pages *are* — that a page of `libgallium` is not thi
 
 ## A plausible wrong number is more dangerous than an absurd one
 
-Five figures in this project came out wrong on the first attempt, and **not one of them was an arithmetic error**.
-(Counts, except the 85.7 MB — the list is mixed on purpose, and mislabelling it "five counts" was how this paragraph first read.)
+**Eleven figures in this project came out wrong on the first attempt, and not one of them was an arithmetic error.**
+All eleven are sorted further down; these five are enough to show the shape.
+(Counts, except the 85.7 MB — the list is mixed on purpose, and mislabelling it "five counts" was how this paragraph first read. It said "five figures" as the total for two revisions after the sorting below had found eleven, which is the third time this section contradicted itself across alternating edits.)
 34 atlas re-cuts that were 18; 85.7 MB of `Private_Dirty` sampled from a recorder part-way through a recording; 71 drawn sprite names "and nowhere else" that were 70 and one elsewhere; 64 roadmap entries struck that were 54 across three series that do not share a numbering space; 22 of 34 bugs counted as 34 entries when there are 35, because the counter deduplicated by number.
 In every one the sum over the wrong set was correct — which is exactly why each of them looked like a result.
 
-**The sixth is the one that makes the rule.**
+**A twelfth is the one that makes the rule, and it is the only one of the twelve that cost nothing.**
 A first pass at that last count used a regular expression that knew one of the two strikethrough styles in the section, and returned **6 struck of 34**.
 That is so far from anything that it was discarded in the second it appeared.
 Had the two styles been distributed differently it would have returned 20 of 34, and 20 would have been written down, quoted, and built on.
@@ -646,6 +647,23 @@ State is re-derived by looking twice, far enough apart that a thing still settli
 
 This is the counterpart of the mutation rule below: **a mutation must be the plausible wrong implementation, and a number must be checked hardest when it looks reasonable.**
 Both say the same thing from opposite ends — the near miss is the dangerous case, not the obvious one — and both are answered by the same move, which is to make the thing fail on purpose rather than to look at it harder.
+
+## A document edited in turns can contradict itself with every edit correct
+
+The section above was written across five alternating passes by two sessions, each checking its own claim against the record, and it ended up asserting three different tallies for one set and prescribing, in its closing paragraph, the two-question rule that its own middle paragraphs had just shown to be incomplete.
+Not one edit was wrong.
+Each was a correct local repair that left an earlier sentence describing a document that no longer existed — the failure is in the seams, and a seam belongs to nobody.
+
+This is not the plausible-number failure and the guard against it is different.
+Re-deriving a claim by a second route is exactly what produced the contradictions here, because each re-derivation corrected its own paragraph and touched none of the others.
+**The guard is the boring one: after the last hand has left it, one reader goes through the whole thing once, in order, looking only for places where it disagrees with itself.**
+Not for truth — every sentence had already been checked against the record — but for coherence, which no individual check can see.
+
+Two things make it worth naming rather than assuming.
+The tallies were the *last* contradiction found, and they were the most visible thing in the section: a number in the opening line, disagreeing with a number ten paragraphs down, in a section about numbers that disagree.
+Five careful passes went over it without either of us seeing it, because each pass was reading for whether *its* claim was right.
+And the same shape is already on the record outside this document: §12 of the roadmap listed items as open after they closed, and item 58 carried "34 re-cuts" in its filing while its own correction block a few paragraphs below read 18.
+**Both were documents that had been edited correctly, repeatedly, and never read through.**
 
 ## A green test is not a guard until it has been made to fail
 
