@@ -2054,6 +2054,10 @@ Optimising a 146 MB repo while 2.68 GB of stale build output sits in the adjacen
 
 So: `git gc` (−21 MB, done), `make clean` in the AUR repo (−2.68 GB, offered and not taken unilaterally), and leave the pack alone.
 
+**Aria ran `make clean` herself on 2026-09-29 at 10:09.**
+The directory is 202 MB where it was 2.9 GB, and what is left is the r293 package pair and the bare cache clone.
+The recommendation on the repo itself — option C, leave it — is unchanged and still hers to rule on.
+
 **The trigger to revisit is the repo going public**, not the pack passing a size.
 While it is one person's clone, 146 MB is a rounding error against the 2.9 GB beside it.
 The moment anyone else clones it, the cost becomes theirs and recurring, and that is also the last moment a history rewrite is cheap — before there are clones to invalidate.
