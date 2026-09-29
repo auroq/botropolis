@@ -30,6 +30,8 @@ There are two bug 18s, left as written, because a dated record that gets tidied 
 **`make docs-check` enforces all of this**, and runs as part of `make lint`.
 It verifies that every relative link resolves *from its own file's directory*, that no `§N` citation to the pre-split roadmap survives, that every item declares a status, and that `ROADMAP.md`'s open table lists exactly the items whose status is `Open`.
 All four checks were mutated red before the script was trusted; the first version of the link check could not fail, because it tried the bare path first and every root-level target resolved from the repo root.
+A fifth check exists because the other four all pass on nothing — an empty tree reported "0 links resolve, 0 items carry a status, open table matches" and exited 0.
+It requires the four index files to be non-empty and every item number from 1 to the highest present to have a file, which is a floor that rises with the work rather than a constant that goes stale.
 
 ## Working arrangement
 
