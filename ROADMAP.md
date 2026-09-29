@@ -1989,10 +1989,10 @@ The trap is in the shape of the cheap fix.
 `makepkg` therefore transfers 155 MB to build a 55 MB binary, and that grows monotonically with every art change.
 
 Three real options, and this is Aria's call because each trades something different:
-git-lfs for `pkg/assets/kits` (was ruled out on 2026-09-21 on the grounds that the atlas does not churn — the ground has moved, it has been re-cut 34 times);
+git-lfs for `pkg/assets/kits` (was ruled out on 2026-09-21 on the grounds that the atlas does not churn — the ground has moved, it has been re-cut ~~34~~ 18 times — see the correction below);
 build the atlases in the PKGBUILD (needs Blender as a makedepend, which is a heavy dependency for a package that exists to be installed);
 or leave it, on the grounds that one machine's clone is one machine's disk.
-Note that whatever is chosen, only history rewriting recovers the 157 MB already spent — the decision is about the next 34 re-cuts.
+Note that whatever is chosen, only history rewriting recovers the 157 MB already spent — the decision is about the next ~~34~~ 18 re-cuts.
 
 **Priced 2026-09-26 at r272. Recommendation: leave it, and spend the free hygiene first. The decision is Aria's; this is the case, not the ruling.**
 
@@ -2515,39 +2515,50 @@ Install the latest build, restart the daemon, enable notify, then:
 9. `b` with more projects than fit the window: the sidebar scrolls and the cursor row stays visible.
 10. Type `!` in a session to drop into a shell, then look at the map: the session reads as working, not needs-you (bug 12).
 
-## 12. Inventory, 2026-09-26 (r268.3113ef9)
+## 12. Inventory, 2026-09-29 (r294.29f7884)
 
-Taken at Aria's request, against the installed package rather than the working tree: `pacman -Q botropolis-git` says `r268.3113ef9-1`, which is HEAD, and `main` is level with `github/main`.
+Taken at Aria's request, a second time, three days after the r268 one.
+The table that replaced this section had gone stale: it still listed items 57, 59, 60 and 61 as open after all four had been closed, and it carried item 57 on two rows at once, struck on the first and open on the second.
+**An inventory section that is not retaken is worse than none**, because it reads as current by virtue of being called an inventory, and that is the same shape as every other bug on this list — a reading whose form implies a freshness it does not have.
 
-**Gate, run now:** `go build ./...` clean, `go vet ./...` clean, `go test ./pkg/...` green across 30 packages, `make lint` 0 issues.
-22.2k lines of Go with 19.5k lines of tests beside them, and 80 frames in `docs/screenshots/`.
+**Where the code is.** `HEAD` is `29f7884` (r294), tree clean, and `main` is level with `github/main` — checked with `git ls-remote` against the remote itself rather than against the local tracking ref, which only records the last fetch.
+`pacman -Q botropolis-git` says `r293.25e11cc-1`, one commit behind, and that commit touches only `ROADMAP.md`, so there is nothing to rebuild.
 
-**What is running:** `botropolisd` active under systemd; **no map client process** (`/proc/*/exe` matching `/usr/bin/botropolis` — zero).
-That is the third time this has been the explanation for frames disagreeing with the screen, so it belongs in the inventory rather than in a diagnosis: restarting the daemon does not restart the map, and every gauge, boat and card lives in the client.
+**Gate, run now:** `go build ./...` clean, `go vet ./...` clean, `go test ./pkg/...` green (22 packages with tests, of 23), `make lint` 0 issues.
+22,250 lines of Go with 19,701 lines of tests beside them, and 82 frames in `docs/screenshots/`.
 
-**Where the phases stand.** Phases 7–12 shipped 2026-09-18 and were audited at r96.
-Phases 13–21 are the bug and polish work in §8–§11.
-Of the 60 numbered items, all but these are struck:
+**What is on disk.** The atlas is 9 pages (2 at z1, 7 at z2) and 20.7 MB, holding it at the size item 63's repaired shrink step brought it to.
+`.git` is 156 MB with a 144.7 MiB pack; the 10 MB above item 58's gc'd 146 MB is loose objects from the commits since, not growth.
+`~/workspaces/aur/botropolis-git` is **202 MB**, down from 2.9 GB — see below.
+
+**What is running:** `botropolisd` active under systemd, and **no map client** (no `/proc/*/exe` resolving to `/usr/bin/botropolis`).
+That remains the first thing to check when a frame disagrees with the screen.
+A `botropolis notify` has been up 2 days 15 hours at 22.9 MB private dirty; that is the desktop notifier doing its job, not a lingering process, and it is recorded here so the next inventory does not file it as one.
+
+**Aria ran `make clean` herself this morning at 10:09:21**, taking the AUR directory from 2.9 GB to 202 MB.
+What is left is the r293 package pair (35.3 MB plus 14.3 MB of debug symbols) and the 154 MB bare cache clone that `makepkg` fetches into.
+That closes the largest of the four decisions, and it closed the right way — the offer stood for three days and she took it.
+
+**Of the 67 numbered items, 64 are struck.** These are not:
 
 | open | what it wants | whose call |
 | --- | --- | --- |
-| §10 item 3 (plant) | a look at a current frame; the geometry is fixed and the reading may be too | Aria |
-| ~~item 57~~ | the AUR repo is committed and `make package` keeps it that way | done |
-| bug 22 item 3, bug 29 | the 10% CPU bar, last at 14.2% busy — now item 60 | measurement |
-| item 57 | commit the AUR repo and regenerate `.SRCINFO` | bookkeeping, then Aria on publishing |
-| item 58 | 157 MB of pack, and the shallow-clone fix is closed off | Aria |
-| item 59 | two new atlas orphans, 11 MB of growth | Aria |
-| ~~item 60~~ | measured at r268: 14.4% busy, 6.8% quiet, and the premise was wrong | done |
-| item 61 | RSS is 380–400 MB where it was 212–247, unexplained | measurement, in `pkg/assets` |
-| validation checklist | ten steps, never run end to end | Aria |
+| §10 item 3 | the plant's *reading* — the geometry was fixed at r186 and has not been looked at in ~108 revisions | Aria, from a frame |
+| item 58 | the repo pack, priced three ways with **C (leave it)** recommended; the 2.68 GB beside it is now spent | Aria |
+| item 66 | ~115 MB of private dirty unaccounted for, filed as a curiosity rather than a defect | nobody, until it costs something |
 
-**Three things that were standing questions and are not any more**, so they stop being carried:
-the 25 undrawn atlas pieces (answered per piece by bug 24, option D, r188);
-the `make sprites-check` DIFFERS (fixed in `shrink-pngs`, no ruling needed);
-and the signage choice (ruled in item 40 — hover for sessions, a permanent plate for projects, which became the monument sign).
+**And two standing decisions that were never numbered**, which is why they keep having to be re-derived:
+the **six reserve atlas pieces**, and the **ten-step validation checklist** (§ "Validation checklist for Aria") that has never been run end to end.
 
-**The one design ruling from this phase worth keeping at the top level:** a fourth meaning must not go on the river.
-Three are held apart by motion, profile and card, and the honest limit recorded in DESIGN is that all three are hoverable in principle and hard to hover in practice — two move, and the courier lives five seconds.
+**The six, measured today rather than recalled:** the two manifests declare **77 sprites**, and **6 are referenced nowhere in non-test Go** — `car-kit/truck`, `city-kit-roads/construction-cone`, `electricity-pole`, `electricity-wires`, `light-curved` and `traffic-light`.
+All six are whole string literals with no concatenation anywhere that could reach them, and `car-kit/truck` is simply absent from `kitCars` beside its six siblings.
+This is item 24's 25-of-79 after option D drew seventeen of them and item 59 dropped two.
+
+**Taking this count reproduced the project's own recurring bug twice in five minutes**, which is the part worth keeping.
+The first pass looked for the atlas under `pkg/render/kits` — the package that *draws* it — and found zero pages, because it is embedded from `pkg/assets/kits`; a zero that meant "wrong path", not "no atlas".
+The second pass matched piece names against `git ls-files '*.go'` and found **0 of 77 undrawn**, because item 59's `TestAtlasCarriesNothingUndeclared` enumerates every name, so the test file alone made all 77 look referenced.
+A check run over its own fixture will pass whether or not the thing it checks is true.
+Both were caught by the answer being too clean to believe, which is the only reason either was caught, and neither would have survived being written down first.
 
 ## Later
 
