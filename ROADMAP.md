@@ -2665,6 +2665,17 @@ What was wrong was the *moment* — 930 loose objects outstanding, which item 58
 So the corpus of my taxonomy was the wrong shape in the most ordinary way available: it held the examples I had in mind rather than the ones on the record.
 It was caught by the other session re-deriving a clean-looking claim in the section that says to re-derive clean-looking claims, and the axis it wants is extent versus state, cross-cutting counts and measurements into four cells — which is in DESIGN now.
 
+**A sixth and a seventh, for completeness, because the day's lesson is that the list is what gets shortened.**
+I summarised the thread to Aria as *every gap was found by one session checking the other's, none by self-review* — false in at least three places, verified from the `Claude-Session` commit trailer since both sessions commit under the same identity: my own item-tally correction (`6cf2aae`) I found alone, and the other session both introduced and caught its opening mislabel (`819c2ff`, `97a3acb`).
+A claim about the record, assembled from the examples in mind, flattering to the arrangement it described.
+The accurate statement is the one already in DESIGN and older than my summary of it: a second person helps because they are a second *route*, not because they are a second pair of eyes.
+
+And the seventh is the other session's, offered rather than found by me, and it is the sharpest instance on this list.
+Correcting that summary, it wrote that the true ratio was *more like nine of twelve* — **a ratio over a set it had not enumerated, in the sentence objecting to a ratio over a set I had not enumerated**, minutes after writing into DESIGN that the discipline cannot be conditional on suspicion.
+Neither of us derived a total; both of us reached for one.
+That is the strongest evidence on this page that the rule is not hard to *state* and is very hard to *follow*: full knowledge of the failure, written down by your own hand in the same hour, does not stop the reach for a plausible total.
+Which is the argument for the mechanical form — name the set, put the moment next to the number — over any amount of being careful.
+
 ## Later
 
 Things noticed while building that are not in a phase; each is a question for Aria, not a plan.
