@@ -26,9 +26,13 @@ Compared against `claude agents --json --all` (41 records: 17 `done`, 13 `blocke
 
 **Correct and confirmed.** The row whose title is `f26cfe27` is right: that is the CLI's *own* `name` for an untitled session, so bug 15's truncation is working rather than bug 2 recurring. Three sessions the CLI calls `blocked` are absent because they are idle 7.9, 8.2 and 10.7 days against `parked_days` of 7 — correctly excluded, not missing.
 
-**One defect found: two live sessions are missing entirely.** Filed as [item 71](071-two-live-sessions-missing-from-status.md).
+**One defect filed and withdrawn the same day.** [Item 71](071-two-live-sessions-missing-from-status.md) reported two live sessions missing; they were present under titles the CLI does not use, and the filing had reconciled on a non-key column. It is kept because it is what produced `status --json`.
 
-**And a finding about this step rather than the program.** `botropolis status` prints no session id and has no `--json`, so its rows can only be matched to `claude agents` by title — and titles are not unique (two sessionIds share "chef mac documentation" with different states). So step 1 cannot be checked mechanically by anyone, only eyeballed by Aria, and a disagreement cannot be localised to a session. That is why this step has sat unvalidated. An id column or `--json` would make it a check rather than a judgement.
+**Re-run by id after r322 added `status --json`, and step 1 passes.**
+`claude agents` reports 14 sessions as blocked or working. Matched by `sessionId` against `botropolis status --all --json`: **ten are present with the state that maps correctly**, and the other four are idle 7.9, 8.3, 8.3 and 10.7 days against `parked_days` of 7, so they are not catalogued — correct. Three more resolve as `parked` where the CLI still says `blocked`, which is the same aging and also correct.
+Nothing is missing and nothing disagrees.
+
+**The finding that mattered was about this step rather than the program, and it is fixed.** `botropolis status` printed no session id and had no `--json`, so its rows could only be matched to `claude agents` by title — and titles are not unique. That is why this step sat unvalidated for so long, and it is why the first attempt at running it produced a false positive. `status --json` (r322) emits `state.Session` as modelled, so the reconciliation is by id and step 1 is now a check that either passes or names the session that failed.
 
 ## Step 8, run 2026-09-29, passes
 

@@ -1,6 +1,6 @@
 # 71. Two live sessions are missing from status entirely, and one was active today
 
-**Open. Found 2026-09-29 running step 1 of the [validation checklist](validation-checklist.md) — which is what that step exists for.**
+**Closed 2026-09-29 as a false positive, same day it was filed. Both sessions were present and always were.** Driving `state.Loader` against the real `~/.claude` finds `d7314bb1` as **"What time is it"** and `ac752824` as **"Database credential setup migration to Chef"**, both `needs-you`, both alive, 20 sessions in the snapshot and 0 files skipped. Verified independently through the `status --json` that r322 added.
 
 `claude agents --json --all` reports 13 sessions as `blocked` and 2 as `working`.
 `botropolis status` shows 12 rows, `--all` shows 20 (9 needs-you, 3 working, 8 parked).
@@ -34,3 +34,21 @@ Also noticed: `d7314bb1`'s transcript opens with an `ai-title` record where the 
 **This is the build session's, because it is in the loader and I would be guessing at code I do not own.** What it wants is the derivation in `pkg/claude` for which sessions reach a snapshot, checked against these two sessionIds directly rather than against the aggregate.
 
 **And it is the argument for the checklist.** Ten steps, never run end to end, and the first one found a live session missing from the program's main view.
+
+
+---
+
+## Why the filing was wrong, which is the only part worth keeping
+
+**`claude agents` names a session by its jobId; botropolis titles it from the transcript's `ai-title`.**
+The only column the two lists share is the title, so that is what I reconciled on — and titles are not a key.
+`status --all` prints **"What time is it" twice in mullet**, two different sessions, and "chef-tools homebrew tap" twice as well.
+
+The two rows I reported as missing sessions were sitting in the output I was looking at, under names the CLI does not use.
+
+**And I had already written the reason down before filing anyway.** The same step-1 notes say *"titles are not unique (two sessionIds share 'chef mac documentation' with different states)"* — I identified the instrument fault, recorded it as a caveat on the comparison, and then filed a defect from that comparison regardless.
+That is *name the set before quoting the number*, arriving as a bug report: the set was "rows I could match by title" and it was quoted as "sessions that exist".
+
+Neither asymmetry I flagged was a cause. `ac752824`'s name-is-not-its-sessionId is real and incidental; `d7314bb1`'s `ai-title`-first record is a coincidence.
+
+**What the false positive bought, which is why it is filed rather than deleted:** `status --json` now emits `state.Session` as modelled, carrying `id` and `pid`, so step 1 is a check rather than a judgement and cannot be reconciled on a non-key again. Run by id against the real tree, step 1 passes — see [validation-checklist.md](validation-checklist.md).

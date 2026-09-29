@@ -29,15 +29,16 @@ Phases 7–12 were specified in [`phases-7-12.md`](roadmap/phases-7-12.md) and a
 | --- | --- | --- |
 | [69](roadmap/069-the-10-percent-cpu-bar-is-missed.md) | the 10% CPU bar: still the bar, or the wrong number for a busy city? | Aria |
 | [70](roadmap/070-atlas-start-up-peak.md) | the start-up peak holds two copies of every atlas page; fix is page-at-a-time | nobody, a known fix |
-| [71](roadmap/071-two-live-sessions-missing-from-status.md) | two live sessions missing from `status` entirely, one active that day | the build session, it is in the loader |
+| [72](roadmap/072-what-going-public-would-publish.md) | going public publishes the employer's internal repo structure; history rewriting is the only way back | **Aria, and it blocks the publish** |
 | [66](roadmap/066-115-mb-private-dirty-curiosity.md) | ~115 MB of private dirty unaccounted for, filed as a curiosity | nobody, until it costs something |
 | [phase 20 item 3](roadmap/phase-20-explain-itself.md) | the plant's *reading* — the geometry was fixed at r186 and has not been looked at since | Aria, from a frame |
 
 ## Waiting on Aria
 
 - **The plant's reading.** Wants a frame, not a measurement.
-- **The validation checklist** now has its own file, [`validation-checklist.md`](roadmap/validation-checklist.md), and two of its ten steps have been run. Step 8 passes. Step 1 found item 71. **The other eight need her hands on the keyboard**, and the file says which keys.
+- **The validation checklist** has its own file, [`validation-checklist.md`](roadmap/validation-checklist.md). **Steps 1 and 8 pass** — step 1 now reconciles by session id rather than by title, which is what item 71 bought. **The other eight need her hands on the keyboard**, and the file says which keys.
 - **The plant frames are rendered and waiting** — `docs/screenshots/r320-plant-fountain-aligned.png` and `r320-plant-fountain-behind.png`, the camera turned 180° between them so the fountain moves out from under the flange. If the flange reads as an underside in the first and not the second, the fountain's alignment is the cause; if it reads the same in both, the flange is. Read the premise note on items 23 and 33 first — the flange description was derived from a piece that is no longer the one drawn.
+- **Item 72 — read this before the repo goes public.** `docs/usage-profile.md` carries a per-repository dump of the employer's internal repos with effort and PR counts, and all 322 commits go with the repo, so scrubbing the tree does not unpublish it. Four options priced; the recommendation is a squashed public repo rather than a rewrite of this one.
 - **Item 69** — whether 10% is still the bar for a busy city, or was always the bar for an idle one.
 
 The nine unadjudicated entries were read one by one on 2026-09-29 and all nine are now closed: item 24 by Aria's ruling that the six undrawn pieces are a deliberate reserve, and items 22, 23, 26, 27, 28, 29, 31 and 33 by adjudication, each with the reason on its own file.
@@ -77,8 +78,8 @@ Nothing cites either by number.
 
 ## Status, 2026-09-29
 
-71 items, 67 closed, 4 open, 0 unadjudicated — counted by number.
-By *file* it is 68 closed of 72, because the two bug 18s are one number and two entries.
+72 items, 68 closed, 4 open, 0 unadjudicated — counted by number.
+By *file* it is 69 closed of 73, because the two bug 18s are one number and two entries.
 Both figures are the same fact; this line quotes the first.
 Gate green: `go build`, `go vet`, 22 test packages, `make lint` 0 issues.
 The inventory is [`inventory-2026-09-29.md`](roadmap/inventory-2026-09-29.md).
