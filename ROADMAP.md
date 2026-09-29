@@ -2656,6 +2656,15 @@ So the danger is not proportional to the size of the error — **a plausible wro
 The counterpart of the mutation rule in DESIGN: a mutation must be the plausible wrong implementation, and a number must be checked hardest when it looks reasonable.
 The rule and its selector now live in DESIGN under *a plausible wrong number is more dangerous than an absurd one*; what is above is the instance, kept where it happened.
 
+**A fifth, and it is mine, and it is the one that proves the rule rather than illustrating it.**
+Sorting those wrong numbers into two kinds — counts failing by corpus, measurements failing by instrument — came out as *ten numbers, no overlap, nothing left over*, and I wrote it into DESIGN in that form.
+It is short by one.
+`.git` at **157 MB**, filed in item 58 and corrected to 146, fits neither: `du` reported exactly what was on disk, so no instrument misbehaved, and the set was the right set.
+What was wrong was the *moment* — 930 loose objects outstanding, which item 58's own correction describes as *what an un-gc'd repo looks like mid-session, not its steady state*.
+**I read that sentence this morning**, checking item 58's pricing for this inventory, and built a taxonomy a few hours later that the sentence falsifies.
+So the corpus of my taxonomy was the wrong shape in the most ordinary way available: it held the examples I had in mind rather than the ones on the record.
+It was caught by the other session re-deriving a clean-looking claim in the section that says to re-derive clean-looking claims, and the axis it wants is extent versus state, cross-cutting counts and measurements into four cells — which is in DESIGN now.
+
 ## Later
 
 Things noticed while building that are not in a phase; each is a question for Aria, not a plan.

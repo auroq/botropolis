@@ -598,6 +598,11 @@ So the danger is not proportional to the size of the error.
 **Which inverts the obvious triage.** The instinct to check a number when it surprises you is backwards as a policy: surprise is self-correcting and needs no discipline, and a figure that raises an eyebrow has already recruited the attention it needs.
 The scrutiny has to be spent on the figure that raises nothing.
 
+**And this is why the discipline cannot be conditional on suspicion.**
+The only free detector available is disbelief, and **a plausible number is definitionally one that disbelief does not fire on** — that is the whole content of calling it plausible.
+So "check it when it looks off" is not a weak version of the rule, it is a policy that by construction never fires on the cases the rule exists for.
+The second derivation has to be owed to the number rather than prompted by a feeling about it.
+
 And there is only one thing that has actually caught the plausible kind here — **deriving it a second time by a different route.**
 Every absurd number above was caught free, by its own author, on sight.
 Every plausible one survived until something re-derived it: the 71 by a count run from outside the package, the 64 by counting a table nobody had counted, the 34 by a recount during an unrelated pricing, the `VmRSS` by re-running the instrument and getting 86 MB, 823 MB and 1.35 GB out of it.
@@ -623,6 +628,11 @@ Counts have that cell too, and the record's example is the one figure in item 58
 So there are two questions and not one, and the second is the one that gets skipped:
 **what is in this set, or this frame, that should not be** — and **was the thing in a steady state when I looked, and when was that**.
 A figure with no timestamp has lost its moment exactly as a figure with no named set has lost its extent, and both losses are invisible in the number itself.
+
+**That asymmetry is also why the state question is the one that gets skipped, and it is not carelessness.**
+A number's own label carries a hint of its extent — "atlas pages", "blob versions", "`.git` on disk" all name the set well enough that asking what is in it is a natural next thought.
+Nothing in a label carries its moment.
+So the extent question gets prompted by the figure itself and the state question gets prompted by nothing, which means it is the one that has to be asked on purpose, every time, by whoever writes the number down.
 
 So the selector is cheap and mechanical.
 **Before quoting a count, say out loud what set it is over and what is in that set that should not be.**
