@@ -2,6 +2,7 @@ package commands_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -55,6 +56,55 @@ func TestRender(t *testing.T) {
 
 		t.Run("it should say so", func(t *testing.T) {
 			assert.Equal(t, "no sessions\n", out.String())
+		})
+	})
+}
+
+// Item 71 was filed as two live sessions missing from status and was a
+// false positive: both were present, under titles taken from their
+// transcripts rather than the names `claude agents` gives them. The two
+// lists could only be reconciled by title, and titles are not unique —
+// "What time is it" is two different mullet sessions in one run of
+// `status --all`. Matching on a column that is not a key is what
+// manufactured the bug, so status grew a key to match on.
+func TestRenderJSON(t *testing.T) {
+	now := time.Date(2026, time.September, 17, 12, 0, 0, 0, time.UTC)
+	same := "the same title twice"
+	snapshot := state.Snapshot{At: now, Sessions: []state.Session{
+		{ID: "d7314bb1-6586-4392-b3b1-f5df4266017b", PID: 1165254, Title: same, State: state.NeedsYou},
+		{ID: "ac752824-6bc4-479d-b9c4-842c2336b5a8", PID: 1698050, Title: same, State: state.Parked},
+	}}
+	decode := func(t *testing.T, s state.Snapshot) []map[string]any {
+		t.Helper()
+		var out bytes.Buffer
+		require.NoError(t, commands.RenderJSON(&out, s))
+		var rows []map[string]any
+		require.NoError(t, json.Unmarshal(out.Bytes(), &rows))
+		return rows
+	}
+
+	t.Run("when two sessions share a title", func(t *testing.T) {
+		rows := decode(t, snapshot)
+
+		t.Run("and they are told apart by the id the CLI also knows", func(t *testing.T) {
+			t.Run("it should carry every session's id", func(t *testing.T) {
+				assert.Equal(t, []any{"d7314bb1-6586-4392-b3b1-f5df4266017b", "ac752824-6bc4-479d-b9c4-842c2336b5a8"},
+					[]any{rows[0]["id"], rows[1]["id"]})
+			})
+		})
+
+		t.Run("and `claude agents` reports a pid rather than a title", func(t *testing.T) {
+			t.Run("it should carry every session's pid", func(t *testing.T) {
+				assert.Equal(t, []any{float64(1165254), float64(1698050)}, []any{rows[0]["pid"], rows[1]["pid"]})
+			})
+		})
+	})
+
+	t.Run("when no session is present", func(t *testing.T) {
+		t.Run("it should emit an empty array rather than null, so a reader can iterate it", func(t *testing.T) {
+			var out bytes.Buffer
+			require.NoError(t, commands.RenderJSON(&out, state.Snapshot{At: now}))
+			assert.Equal(t, "[]", strings.TrimSpace(out.String()))
 		})
 	})
 }

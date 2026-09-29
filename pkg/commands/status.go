@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -28,7 +29,7 @@ func (s *Status) Snapshot(direct bool) (state.Snapshot, error) {
 	return s.source.Snapshot(direct)
 }
 
-func (s *Status) Run(out io.Writer, direct, all bool) error {
+func (s *Status) Run(out io.Writer, direct, all, asJSON bool) error {
 	snapshot, err := s.source.Snapshot(direct)
 	if err != nil {
 		return err
@@ -36,8 +37,31 @@ func (s *Status) Run(out io.Writer, direct, all bool) error {
 	if !all {
 		snapshot = LiveOnly(snapshot)
 	}
+	if asJSON {
+		return RenderJSON(out, snapshot)
+	}
 	Render(out, snapshot)
 	return nil
+}
+
+// RenderJSON writes the sessions as they are modelled, which is how the
+// daemon already sends them. Item 71: the table has no column that is a
+// key, so reconciling it with `claude agents --json` could only be done
+// on the title, and two mullet sessions share the title "What time is
+// it". That filed a defect against the loader for two sessions it was
+// in fact reporting correctly, under titles taken from their transcripts
+// rather than the names the CLI gives them.
+//
+// Encoding state.Session rather than a hand-built row is the point: the
+// two cannot drift, and every field the model gains is here without
+// anyone remembering to add it. `id` and `pid` are the two the CLI also
+// knows, and either one makes the reconciliation mechanical.
+func RenderJSON(out io.Writer, snapshot state.Snapshot) error {
+	sessions := snapshot.Sessions
+	if sessions == nil {
+		sessions = []state.Session{}
+	}
+	return json.NewEncoder(out).Encode(sessions)
 }
 
 func LiveOnly(snapshot state.Snapshot) state.Snapshot {

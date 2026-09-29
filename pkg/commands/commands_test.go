@@ -93,7 +93,7 @@ func TestStatus(t *testing.T) {
 	t.Run("when the source has one session", func(t *testing.T) {
 		source := &fakeSource{snapshot: snapshot}
 		var out bytes.Buffer
-		require.NoError(t, commands.NewStatus(source).Run(&out, true, false))
+		require.NoError(t, commands.NewStatus(source).Run(&out, true, false, false))
 		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 
 		t.Run("it should pass the direct flag through", func(t *testing.T) {
@@ -118,7 +118,7 @@ func TestStatus(t *testing.T) {
 
 		t.Run("and all sessions are not asked for", func(t *testing.T) {
 			var out bytes.Buffer
-			require.NoError(t, commands.NewStatus(&fakeSource{snapshot: parked}).Run(&out, true, false))
+			require.NoError(t, commands.NewStatus(&fakeSource{snapshot: parked}).Run(&out, true, false, false))
 
 			t.Run("it should leave the parked one out", func(t *testing.T) {
 				assert.Len(t, strings.Split(strings.TrimSpace(out.String()), "\n"), 2)
@@ -127,7 +127,7 @@ func TestStatus(t *testing.T) {
 
 		t.Run("and all sessions are asked for", func(t *testing.T) {
 			var out bytes.Buffer
-			require.NoError(t, commands.NewStatus(&fakeSource{snapshot: parked}).Run(&out, true, true))
+			require.NoError(t, commands.NewStatus(&fakeSource{snapshot: parked}).Run(&out, true, true, false))
 
 			t.Run("it should print the parked one too", func(t *testing.T) {
 				assert.Contains(t, out.String(), "parked")
@@ -137,7 +137,7 @@ func TestStatus(t *testing.T) {
 
 	t.Run("when the source has no sessions", func(t *testing.T) {
 		var out bytes.Buffer
-		require.NoError(t, commands.NewStatus(&fakeSource{}).Run(&out, false, false))
+		require.NoError(t, commands.NewStatus(&fakeSource{}).Run(&out, false, false, false))
 
 		t.Run("it should say so", func(t *testing.T) {
 			assert.Equal(t, "no sessions\n", out.String())
@@ -145,7 +145,7 @@ func TestStatus(t *testing.T) {
 	})
 
 	t.Run("when the source fails", func(t *testing.T) {
-		err := commands.NewStatus(&fakeSource{err: errors.New("boom")}).Run(&bytes.Buffer{}, false, false)
+		err := commands.NewStatus(&fakeSource{err: errors.New("boom")}).Run(&bytes.Buffer{}, false, false, false)
 
 		t.Run("it should return the error", func(t *testing.T) {
 			assert.ErrorContains(t, err, "boom")

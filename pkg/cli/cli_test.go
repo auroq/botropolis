@@ -22,11 +22,12 @@ import (
 type fakeStatus struct {
 	direct bool
 	all    bool
+	asJSON bool
 	err    error
 }
 
-func (f *fakeStatus) Run(out io.Writer, direct, all bool) error {
-	f.direct, f.all = direct, all
+func (f *fakeStatus) Run(out io.Writer, direct, all, asJSON bool) error {
+	f.direct, f.all, f.asJSON = direct, all, asJSON
 	_, _ = io.WriteString(out, "TABLE\n")
 	return f.err
 }
