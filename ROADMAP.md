@@ -2524,7 +2524,7 @@ Install the latest build, restart the daemon, enable notify, then:
 9. `b` with more projects than fit the window: the sidebar scrolls and the cursor row stays visible.
 10. Type `!` in a session to drop into a shell, then look at the map: the session reads as working, not needs-you (bug 12).
 
-### 68. The atlas guard counts prose as drawing, and for one piece today the prose is load-bearing
+### 68. ~~The atlas guard counts prose as drawing, and for one piece today the prose is load-bearing~~ Fixed 2026-09-29 (r300)
 
 Filed 2026-09-29 at r298, out of checking the seam r298 named.
 It is the third appearance of one mechanism in one morning, and the first that is not empty.
@@ -2555,6 +2555,21 @@ That kills the class rather than the instance: comments, doc examples, `//go:gen
 The check stays a text search over an evidence set; the change is what counts as evidence.
 
 **Mutation to keep afterwards:** dropping a drawn piece from `recipes.go` while a comment elsewhere still names it must go red.
+
+**Resolved at r300 by `go/scanner`, keeping `token.STRING` and nothing else.**
+`goSource` is now `sourceLiterals`, returning the set of string literals every tracked non-test file actually contains, and `splitByDrawn` asks that set rather than searching text.
+Comments never reach the scanner as tokens, so the class goes with the instance: doc examples, `//go:generate` lines and struct tags stop counting together, and the match becomes exact rather than a substring.
+The `_test.go` exclusion stays, as filed — the two answer different questions and both are load-bearing.
+
+The kept mutation is kept: dropping `building-a` from `kitCommercial` with the doc comment untouched is now **red**, naming `city-kit-commercial/building-a`, where it was green at r299.
+The three from r296 were re-run against the new corpus and are still red, each naming exactly its piece — truck drawn, a reservation for a piece never cut, a reservation deleted.
+Undrawn is still exactly the six: the two guards together pin it, since nothing outside the reserve may be undrawn and nothing inside it may be drawn.
+
+**The measurement in r298 that said "71, and nowhere else" was wrong, and how it was wrong is worth more than the count.**
+The harness classified each name with a `switch` whose first arm was "appears in `recipes.go`", so a name in *both* files landed in that arm and never reached the one that would have caught it.
+The bucket labelled "elsewhere" actually held "elsewhere **and not** in `recipes.go`", and it was reported as "elsewhere", which is how 70-and-one-elsewhere came out as 71-and-nothing.
+That is *name the set before quoting the number*, missed while writing about the guard whose whole job is to name a set — and the instinct that the evidence rested on a single file was right; only the number was not.
+DESIGN.md carries both as the fifth instance.
 That is the assertion the current guard cannot make, and it is the one this item exists for.
 
 **Whose call:** nobody's — this is a defect with a known fix and no trade-off worth Aria's time.

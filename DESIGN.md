@@ -582,7 +582,7 @@ An argument from what the pages *are* — that a page of `libgallium` is not thi
 
 ## A green test is not a guard until it has been made to fail
 
-Four times in a day a test was written for a behaviour, passed, and could not have failed.
+Five times in two days a test was written for a behaviour, passed, and could not have failed.
 
 The courier's expiry case asserted that a city goes still once the boat lands, and passed **before** the fix — because `Animating()` never returned true for a courier at all, so "still" was the only answer it could give.
 The `sprites-check` date-chunk check reported that no page carried a `tEXt`, `tIME` or `iTXt` chunk, which is equally true of a page ImageMagick never touched, so it passed identically whether the shrink step worked or had silently stopped running for fourteen revisions.
@@ -609,9 +609,20 @@ Any check that measures usage by searching source has to exclude its own — and
 The same trap caught a second session counting the same six pieces from outside: matching against `git ls-files '*.go'` returned 0 of 77 undrawn, because the test file alone made all 77 look referenced.
 Two independent readings agreeing on a wrong answer, for the same reason, in the same hour.
 
-**What the guard proves is that a name is spelled in the recipe table, not that anything reaches the screen**, and the two are worth keeping apart: all 71 drawn names live in `recipes.go` and nowhere else, so a recipe entry no `pickPiece` call ever reaches would read as drawn and the piece would keep its area unchallenged.
-The set is empty today — every `kit*` slice in that file has a consumer — which is exactly why it is cheap to write down now rather than after one appears.
+**What the guard proves is that a name is spelled in the recipe table, not that anything reaches the screen**, and the two are worth keeping apart: a recipe entry no `pickPiece` call ever reaches would read as drawn and the piece would keep its area unchallenged.
+That set is empty today — every `kit*` slice in `recipes.go` has a consumer — which is why it is cheap to write down before one appears.
 The near miss worth recording with it: the first check for this measured "referenced outside `recipes.go`" and read the answer as reachability, which is a file boundary standing in for a call graph — the anchor-versus-extent substitution again, in the tooling built to catch a substitution.
+
+**A fifth instance arrived out of the sentence above, which was wrong.**
+It read "all 71 drawn names live in `recipes.go` and nowhere else", and the count was 70-and-one-elsewhere: `city-kit-commercial/building-a` also appears in the doc comment on `assets.KitAtlas.Sprite`, which names it as the illustrative example.
+`goSource` matched raw file text, so **eight words of prose in another package counted as a caller** — dropping that piece from `kitCommercial` left the guard green, and deleting the comment as well turned it red.
+The corpus gave way rather than the comment: quoting a real name in a doc example is a good convention, and deleting this one would only restore the guard until somebody wrote the next.
+`go/scanner` keeping `token.STRING` settles comments, doc examples, `//go:generate` lines and struct tags in one move, and makes the match exact rather than a substring.
+
+**The measurement error is its own instance, and the more instructive half.**
+The harness that produced "71, and nowhere else" classified each name with a `switch` whose first arm was "appears in `recipes.go`", so a name in *both* files landed there and never reached the arm that would have counted it twice.
+The bucket labelled "elsewhere" held "elsewhere **and not** in `recipes.go`", and it was reported as "elsewhere".
+Nothing about the output announced that, and it was quoted as the evidence for a stronger claim than the instrument could make — **naming the set before quoting the number**, missed in the act of writing about missing it.
 
 Note what the mutation bought beyond the fix. Excluding `_test.go` makes the reserve's six pieces genuinely undrawn again, which lets two guards exist that could not before: one that a reserved piece has not since been given a caller, and one that a reservation is not being held for a piece the atlas no longer carries. Both were mutated red before being trusted. The original test was not wrong about anything — it was answering a question that could only come out one way.
 

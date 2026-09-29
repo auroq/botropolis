@@ -1,6 +1,8 @@
 package render
 
 import (
+	"go/scanner"
+	"go/token"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -31,23 +33,40 @@ var atlasReserve = map[string]string{
 	"car-kit/truck":                    "a second vehicle for Traffic",
 }
 
-// goSource is every tracked non-test .go file's text, which is where
-// piece names are spelled. Walked rather than shelled out to git: a test
-// that runs a subprocess is a test that can fail for reasons that are not
-// the code's.
+// sourceLiterals is every string literal in every tracked non-test .go
+// file, which is where piece names are spelled. Scanned rather than
+// searched as text, and walked rather than shelled out to git: a test
+// that runs a subprocess is a test that can fail for reasons that are
+// not the code's.
 //
-// _test.go is excluded, and that exclusion is the whole of what makes
-// these three tests able to fail. atlasReserve below spells all six of
-// its pieces as quoted literals, so a corpus containing this file finds
-// every reserved piece "drawn" and agrees with itself: the reserve can
-// never be caught going stale, which is the one thing it exists to catch.
-// Verified by mutation — car-kit/truck added to kitCars, making a
-// reserved piece genuinely drawn, left the suite green until this line.
-// The same trap catches anything that counts atlas usage: a corpus that
-// includes the test will always agree with the test.
-func goSource(t *testing.T) string {
+// Two exclusions, and both are what make these three tests able to fail.
+//
+// _test.go is excluded because atlasReserve below spells all six of its
+// pieces as quoted literals, so a corpus containing this file finds every
+// reserved piece "drawn" and agrees with itself: the reserve can never be
+// caught going stale, which is the one thing it exists to catch. Verified
+// by mutation — car-kit/truck added to kitCars, making a reserved piece
+// genuinely drawn, left the suite green until item 59's correction.
+//
+// Comments are excluded because go/scanner never emits them as tokens,
+// and item 68 is why that matters: a raw text search counted the doc
+// comment on assets.KitAtlas.Sprite, which names
+// "city-kit-commercial/building-a" as its illustrative example, as a
+// caller. Dropping that piece from kitCommercial while the comment stood
+// left the guard green; deleting eight words of prose in another package
+// turned it red. Prose is not a caller, and the convention of quoting a
+// real name in a doc comment is worth keeping, so the corpus gives way
+// rather than the comment.
+//
+// The general shape both times: a corpus that includes the test will
+// always agree with the test, and a corpus that includes prose will
+// agree with whatever the prose happens to mention. Scanning for
+// token.STRING settles comments, doc examples, //go:generate lines and
+// struct tags in one move, and makes the match exact rather than a
+// substring.
+func sourceLiterals(t *testing.T) map[string]bool {
 	t.Helper()
-	var b strings.Builder
+	lits := map[string]bool{}
 	root := filepath.Join("..", "..")
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -66,33 +85,42 @@ func goSource(t *testing.T) string {
 		if err != nil {
 			return err
 		}
-		b.Write(data)
-		return nil
+		fset := token.NewFileSet()
+		var sc scanner.Scanner
+		sc.Init(fset.AddFile(path, fset.Base(), len(data)), data, nil, 0)
+		for {
+			_, tok, lit := sc.Scan()
+			if tok == token.EOF {
+				return nil
+			}
+			if tok != token.STRING {
+				continue
+			}
+			if v, err := strconv.Unquote(lit); err == nil {
+				lits[v] = true
+			}
+		}
 	})
 	if err != nil {
 		t.Fatalf("walking the source: %v", err)
 	}
-	return b.String()
+	return lits
 }
 
-// drawnNames is every sprite name the atlas carries that the code spells
-// somewhere, and undrawnNames the rest. Split here so the two directions
-// — a piece nothing claims, and a claim no piece needs — are asked of one
-// reading of the source.
 func splitByDrawn(t *testing.T) (drawn, undrawn map[string]bool) {
 	t.Helper()
 	atlases, err := assets.LoadKits()
 	if err != nil {
 		t.Fatalf("loading the kits: %v", err)
 	}
-	src := goSource(t)
+	lits := sourceLiterals(t)
 	drawn, undrawn = map[string]bool{}, map[string]bool{}
 	for _, a := range atlases {
 		for _, name := range a.Names() {
 			if drawn[name] || undrawn[name] {
 				continue
 			}
-			if strings.Contains(src, strconv.Quote(name)) {
+			if lits[name] {
 				drawn[name] = true
 			} else {
 				undrawn[name] = true
