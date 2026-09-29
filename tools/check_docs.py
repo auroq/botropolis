@@ -1,4 +1,4 @@
-import glob, os, re, sys
+import glob, os, re, subprocess, sys
 
 fail = []
 
@@ -66,13 +66,31 @@ for index in ('DESIGN.md', 'ROADMAP.md', 'CLAUDE.md', 'README.md'):
     if not open(index, encoding='utf-8').read().strip():
         note('corpus', '%s is empty' % index)
 
+# The ceiling of that range comes from git, not from the working tree.
+# Derived from the tree alone it falls with the damage: deleting the two
+# highest-numbered items lowers max() and the check reports "1-66, none
+# missing" and exits 0, verified. git is an independent source that a
+# working-tree deletion cannot move, and it still needs no maintenance --
+# committing item 69 raises it, and committing a deliberate removal lowers
+# it, which is the correct semantics for each.
 numbers = {int(os.path.basename(p)[:3]) for p in items}
+tracked = set()
+try:
+    out = subprocess.run(['git', 'ls-files', 'roadmap/'], capture_output=True,
+                         text=True, check=True).stdout.split()
+    tracked = {int(os.path.basename(f)[:3])
+               for f in out if re.match(r'^\d{3}-', os.path.basename(f))}
+except Exception:
+    pass  # not a checkout; the working tree is all we have
+
 if not numbers:
     note('corpus', 'no roadmap/NNN-*.md files found at all')
 else:
-    for n in range(1, max(numbers) + 1):
+    top = max(numbers | tracked)
+    for n in range(1, top + 1):
         if n not in numbers:
-            note('corpus', 'item %03d has no file, but %03d does' % (n, max(numbers)))
+            where = 'tracked in git' if n in tracked else 'expected'
+            note('corpus', 'item %03d has no file (%s, and %03d does)' % (n, where, top))
 
 if fail:
     for f in fail:
@@ -80,4 +98,4 @@ if fail:
     print('\n%d problem(s).' % len(fail))
     sys.exit(1)
 print('  %d links resolve, %d items carry a status (1-%d, none missing), open table matches.'
-      % (links, len(status), max(numbers)))
+      % (links, len(status), max(numbers | tracked)))
