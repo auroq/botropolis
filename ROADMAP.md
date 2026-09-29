@@ -2524,6 +2524,42 @@ Install the latest build, restart the daemon, enable notify, then:
 9. `b` with more projects than fit the window: the sidebar scrolls and the cursor row stays visible.
 10. Type `!` in a session to drop into a shell, then look at the map: the session reads as working, not needs-you (bug 12).
 
+### 68. The atlas guard counts prose as drawing, and for one piece today the prose is load-bearing
+
+Filed 2026-09-29 at r298, out of checking the seam r298 named.
+It is the third appearance of one mechanism in one morning, and the first that is not empty.
+
+**The measurement r298 records is off by one, and the correction is the finding.**
+It says all 77 names partition as 71 in `recipes.go`, 0 anywhere else, 6 nowhere, and states that every drawn name appears *only* in `recipes.go`.
+Measured here: **70 only in `recipes.go`, one in `recipes.go` and one other file, 0 elsewhere-only, 6 nowhere.**
+The one is `city-kit-commercial/building-a`, and its second home is `pkg/assets/kits.go:112` — inside a doc comment, as the illustrative example in *"Sprite is a piece (`"city-kit-commercial/building-a"`) at a heading in degrees"*.
+
+**`goSource` reads file text, so a name in a comment counts as evidence that something draws it.**
+Proven by mutation, both directions, from a clean tree:
+
+- drop `building-a` from `kitCommercial` and leave the doc comment → **suite green**, the guard does not notice a piece that nothing draws;
+- drop it and delete the eight words of the comment as well → **`TestAtlasCarriesNothingUndeclared` red**.
+
+The only difference between a green run and a red one is a sentence of prose in an unrelated package.
+Nothing is broken today, because `building-a` really is drawn — the comment is describing a live piece accurately.
+It is load-bearing all the same: it is the reason the guard would stay green if that piece were ever dropped from the table.
+
+**This is the `_test.go` bug with a different corpus, and that is the reason to fix the corpus rather than the comment.**
+r296 removed `_test.go` from the search because a file that names the things it looks for will always agree with the check.
+A doc comment naming a piece is the same statement in prose, and the next one costs nothing to write — the convention of quoting a real example in a doc comment is a good one and should not have to be given up to keep a test honest.
+Deleting or mangling this particular comment would restore the guard for exactly as long as it takes someone to write another.
+
+**The fix is to stop matching raw text.**
+`go/parser` with `ParseComments` off, or `go/scanner` keeping only `token.STRING`, yields the string literals a file actually contains, and a name in a comment then cannot be mistaken for a caller.
+That kills the class rather than the instance: comments, doc examples, `//go:generate` lines and struct tags all stop counting, and `_test.go` could in principle come back into the corpus, though it should not — the two exclusions answer different questions and both are worth keeping.
+The check stays a text search over an evidence set; the change is what counts as evidence.
+
+**Mutation to keep afterwards:** dropping a drawn piece from `recipes.go` while a comment elsewhere still names it must go red.
+That is the assertion the current guard cannot make, and it is the one this item exists for.
+
+**Whose call:** nobody's — this is a defect with a known fix and no trade-off worth Aria's time.
+Filed rather than done because `pkg/render/reserve_test.go` is the build session's file and it is mid-flight in it; the two of us editing one file in one morning is a worse failure than the one being fixed.
+
 ## 12. Inventory, 2026-09-29 (r294.29f7884)
 
 Taken at Aria's request, a second time, three days after the r268 one.
@@ -2548,13 +2584,14 @@ A `botropolis notify` has been up 2 days 15 hours at 22.9 MB private dirty; that
 What is left is the r293 package pair (35.3 MB plus 14.3 MB of debug symbols) and the 154 MB bare cache clone that `makepkg` fetches into.
 That closes the largest of the four decisions, and it closed the right way — the offer stood for three days and she took it.
 
-**Of the 67 numbered items, 64 are struck.** These are not:
+**Of the 68 numbered items, 64 are struck.** These are not:
 
 | open | what it wants | whose call |
 | --- | --- | --- |
 | §10 item 3 | the plant's *reading* — the geometry was fixed at r186 and has not been looked at in ~108 revisions | Aria, from a frame |
 | item 58 | the repo pack, priced three ways with **C (leave it)** recommended; the 2.68 GB beside it is now spent | Aria |
 | item 66 | ~115 MB of private dirty unaccounted for, filed as a curiosity rather than a defect | nobody, until it costs something |
+| item 68 | the atlas guard counts a doc comment as drawing; fix is to match string literals, not file text | nobody, a defect with a known fix |
 
 **And two standing decisions that were never numbered**, which is why they keep having to be re-derived:
 the **six reserve atlas pieces**, and the **ten-step validation checklist** (§ "Validation checklist for Aria") that has never been run end to end.
