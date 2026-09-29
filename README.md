@@ -76,7 +76,7 @@ A waybar module, for example:
 "custom/botropolis": { "exec": "botropolis bar --watch", "return-type": "json", "on-click": "botropolis" }
 ```
 
-See [DESIGN.md](DESIGN.md) for the design and the plan, [ROADMAP.md](ROADMAP.md) for where it is going,
+See [DESIGN.md](DESIGN.md) for the design and the rules, [ROADMAP.md](ROADMAP.md) for where it is going,
 and [docs/usage-profile.md](docs/usage-profile.md) for the numbers it is built around.
 
 ## Thanks

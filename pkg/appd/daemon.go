@@ -33,7 +33,7 @@ func DaemonModule(cfg *config.Config, out io.Writer) fx.Option {
 }
 
 // DefaultMemoryLimit caps the Go heap so the idle daemon stays near the
-// 20 MB target DESIGN.md sets; GOMEMLIMIT in the environment overrides it.
+// 20 MB target design/what-it-costs.md sets; GOMEMLIMIT overrides it.
 const DefaultMemoryLimit = 16 << 20
 
 const (

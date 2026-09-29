@@ -260,7 +260,7 @@ func TestLayoutStrip(t *testing.T) {
 //
 // Which means that relaxing this assertion does not cost a little
 // polish. It makes the palette illegal again, and no choice of hue
-// repairs it. See "Why the category colours are legal" in DESIGN.md for
+// repairs it. See rules/why-the-category-colours-are-legal.md for
 // the search and the argument before changing anything here.
 func TestDrained(t *testing.T) {
 	t.Run("when a view is up and the strip has to give the tones back", func(t *testing.T) {

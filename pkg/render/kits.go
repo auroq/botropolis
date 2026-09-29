@@ -214,7 +214,8 @@ func (g *Game) kitScaled(screen *ebiten.Image, cam *city.Camera, name string, tu
 // the ratio to the sprite's own pixels, and a z2 cut being twice its z1
 // cut cancels it. That cancellation is what the ladder is for. Stating
 // a size in screen pixels opts out of it — the same family as the unit
-// confusions in DESIGN.md, but between coordinate systems rather than
+// confusions in rules/a-number-can-be-right-and-mean-nothing.md, but
+// between coordinate systems rather than
 // between tile sizes, and it hides at a boundary nobody screenshots.
 func kitShrink(target, longest, atlasZoom float64) float64 {
 	return target * atlasZoom / longest

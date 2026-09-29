@@ -28,7 +28,7 @@ import (
 // aggregate are not tied to anything, and they are the likeliest to
 // drift — a card's sentence is assembled from several fields, so any one
 // of them can change meaning while the sentence reads the same. See
-// "Two things that must agree" in DESIGN.md.
+// rules/two-things-that-must-agree.md.
 
 func action(keys []ui.Key, key string) (string, bool) {
 	for _, k := range keys {

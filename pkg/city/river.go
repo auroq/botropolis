@@ -69,8 +69,8 @@ func (c *City) RiverBand() (from, to Point, width float64, ok bool) {
 // Nobody chose to draw the commonest reading at the least visible point
 // on the map. It fell out of "one end to the other" being read as the
 // river's ends when what was meant was the scale's ends, and an
-// extremity nobody selected is the shape DESIGN.md's second section is
-// about.
+// extremity nobody selected is the shape
+// rules/a-number-can-be-right-and-mean-nothing.md is about.
 //
 // The inset is one river-width at each end, plus clear. Derived, not
 // picked: where the water stops is a corner, and a boat wants at least
