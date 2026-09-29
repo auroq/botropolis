@@ -1,6 +1,6 @@
 # 28. Phase 18 verified on this desk; the gate is better than its own report claims. (2026-09-22, `DISPLAY=:0`, i3, 1920×1200, window 636×1120, 8 live and 72 total sessions, 40 s warm-up, 20 s samples.)
 
-**Unadjudicated (2026-09-29) — filed as a measurement or a finding rather than a bug, or superseded by a later item, but never formally closed. One of the nine in ROADMAP.md.**
+**Closed 2026-09-29 by adjudication.** A verification record, and it verified. The gate was better than its own report claimed, 360 frames per 20 s is 18 fps rather than 30 (so `Scene.Animating` gates off far more than predicted), and the sorted list it carried forward became item 29. Its note that the 10% bar was still missed at 14.5% is now item 69.**
 
 | | visible | hidden | RSS settled | start-up peak |
 | --- | --- | --- | --- | --- |

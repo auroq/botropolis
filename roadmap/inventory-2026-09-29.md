@@ -55,7 +55,7 @@ Until it is done, the open list below is what is *tracked* as open, not a proof 
 | item 66 | ~115 MB of private dirty unaccounted for, filed as a curiosity rather than a defect | nobody, until it costs something |
 
 **And two standing decisions that were never numbered**, which is why they keep having to be re-derived:
-the **six reserve atlas pieces**, and the **ten-step validation checklist** (§ "Validation checklist for Aria") that has never been run end to end.
+the **six reserve atlas pieces**, and the **ten-step validation checklist** ([validation-checklist.md](validation-checklist.md)) that had never been run end to end.
 
 **The six, measured today rather than recalled:** the two manifests declare **77 sprites**, and **6 are referenced nowhere in non-test Go** — `car-kit/truck`, `city-kit-roads/construction-cone`, `electricity-pole`, `electricity-wires`, `light-curved` and `traffic-light`.
 All six are whole string literals with no concatenation anywhere that could reach them, and `car-kit/truck` is simply absent from `kitCars` beside its six siblings.

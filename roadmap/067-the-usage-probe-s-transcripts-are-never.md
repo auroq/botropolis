@@ -52,20 +52,7 @@ A missing folder is not an error either — the probe may never have run — and
   Pass `--no-show-signature` in anything scripted; `git rev-list --count` and `git rev-parse` are unaffected, which is why `pkgver()` never broke.
   It has produced two wrong results in one session — a commit count in item 58 and a package subject in item 57's Makefile — so it is a property of the repo rather than a mistake either of us made twice.
 
-### Validation checklist for Aria
-
-Install the latest build, restart the daemon, enable notify, then:
-
-1. `botropolis status` — every live session's state matches what you know it is doing (bug 1 and 2 will show here).
-2. `botropolis` — Tab to the first needs-you, Enter: terminator opens with `claude attach` on that session, and Ctrl-Z leaves it running.
-3. `c` on a district: a new background session in that folder, and it appears on the map within a few seconds.
-4. Let a session hand a turn back while the map is unfocused: the desktop notification fires and the away panel shows it on refocus.
-5. `x` on the plant: the breakdown's 24 h cost is within a few dollars of `~$… 24h` on the strip, and no row says `$0.00` for millions of tokens.
-6. `b`, `t`, `s`, `?`, `h`, `r`, `n`, `/` — each opens, closes with Escape, and none leaves the map in a wrong state.
-7. `d d` on a parked container: it is gone from the map and from `claude agents --json --all`.
-8. `botropolis bar` in waybar: the class changes colour when a session needs you.
-9. `b` with more projects than fit the window: the sidebar scrolls and the cursor row stays visible.
-10. Type `!` in a session to drop into a shell, then look at the map: the session reads as working, not needs-you (bug 12).
+The ten-step validation checklist that used to sit here has its own file: [validation-checklist.md](validation-checklist.md).
 
 ---
 

@@ -65,6 +65,11 @@ One owns `ROADMAP.md`, `roadmap/`, numbered items, audits and relaying to Aria; 
 Aria judges the frames.
 Relaying to Aria is the roadmap session's half — check before sending, or she gets the same thing twice.
 
+**Cross-checking is capped at two rounds (Aria, 2026-09-29).** Her ruling: *"Keep it, cap the rounds"* — verify each other's work once, and take a second round only if the first found something material.
+Otherwise write the finding in the file and skip the message.
+It was capped after a day of seven rounds on one 90-line script in which **every round found a real defect** and the day still shipped no features.
+So the cap is not a judgement that the cross-checking was wrong; it is a budget. The value is real and bounded, and the rounds after the second are where it stops paying.
+
 ## Gotchas that have each cost a session
 
 - **`log.showSignature=true` is set repo-locally**, so `git log --oneline | wc -l` counts double and `git log --format=%s` returns the signature ahead of the subject.

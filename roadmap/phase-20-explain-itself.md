@@ -48,6 +48,13 @@ So "does not read as a building with a stack" has had four fixes since it was wr
 What survives from bugs 23 and 33 is not geometry: the flange is convex and unlit from below and the fountain sits directly under it in screen space, so the flare's lower edge can read as an underside.
 That is a contact shadow or a moved fountain, and it wants Aria's eye on a current frame before either is bought — the last judgement was made on r186, eighty revisions ago.
 
+**Frames rendered 2026-09-29 (r320): `docs/screenshots/r320-plant-fountain-aligned.png` and `r320-plant-fountain-behind.png`.**
+Two frames of the same plant, stack, flange and zoom, day, no interface — the camera turned 180° between them so the fountain goes behind the building with only its jets above the roofline.
+**The pair is the discriminator and it cost no code.** A second frame with the fountain *moved* was considered and rejected, because moving it is one of the two remedies she is choosing between, and building it would make that option cheaper to prefer before she had looked.
+If the flange reads as an underside in the aligned frame and not in the turned one, the alignment is the cause and moving the fountain is the fix.
+If it reads the same in both, the flange itself is the cause and a contact shadow is on the table for a reason rather than by elimination.
+**Read the premise note on items 23 and 33 first:** the flange description was derived from `chimney-large`, and the piece drawn is `chimney-medium`.
+
 ### 4. ~~Billboards do not work~~ Closed 2026-09-26 (r213), by item 40
 Session titles are drawn as vertical text up a building's flank. They cannot be read, they do not look like signage, and at distance they read as floating text with no surface. The water-tower treatment is better and still poor. The design brief said fascia over the door, rooftop billboard for long titles, up the side only for a tall building; in practice almost everything is taking the side. Either signage earns a real surface — a panel with a background, contrast and a size floor — or titles go back to plates on hover only.
 

@@ -1,6 +1,8 @@
 # 23. The plant *reads* as hanging; it is not. A piece with no foot has nothing that says it stands. (Found 2026-09-21 finishing bug 20, which it is not.) `city-kit-industrial/chimney-large` is a hollow shell;
 
-**Unadjudicated (2026-09-29) — filed as a measurement or a finding rather than a bug, or superseded by a later item, but never formally closed. One of the nine in ROADMAP.md.**
+**Closed 2026-09-29 by adjudication, superseded by phase 20 item 3.** Both of its diagnoses were tested at r186 and neither was the cause: the composite drawable was real and fixed, and the stack does not hang — measured. Item 33 then corrected its premise (`chimney-large` has a flared skirt, it is not an open rim). What survives is a reading rather than a geometry: the flange is convex and unlit from below with the fountain under it in screen space. That is with Aria on a frame, tracked at [phase-20-explain-itself.md](phase-20-explain-itself.md).**
+
+**Premise note added 2026-09-29, and it bears on the frame Aria is judging.** Both this entry and item 33 reason about `city-kit-industrial/chimney-large`, but `kitStack` has been **`chimney-medium`** since item 36 (`a2a7021`), so the piece described here is not the piece on screen. Item 47 measured `chimney-medium` row by row and found a skirt at rows 306-334 and a continuous taper, so the drawn piece does have a foot. The surviving symptom - a convex flange unlit from below - was derived from `chimney-large` and should be re-checked against what is actually drawn before any remedy is bought. Found by the build session reading the code rather than the record.
 
 its lowest geometry is an open rim, and the sun in `render.py` is front-left, so the shadow that would tie it to the ground falls behind it, out of the camera's sight.
 The anchor and the draw order are both correct and the tower still reads as hanging — see `docs/screenshots/r150-plaza-stacks.png`.

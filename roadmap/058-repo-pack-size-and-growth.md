@@ -1,6 +1,6 @@
 # 58. The repo pack is 157 MB, grows by about 27 MB per atlas re-cut, and the obvious remedy is closed off by `pkgver()`
 
-**Open.**
+**Ruled 2026-09-29 by Aria: leave it.** The pack stays as it is. The trigger to revisit is the repo going public, not the pack passing a size — and that is also the last cheap moment for a history rewrite.
 
 Measured 2026-09-26 at r268: `.git` is **157 MB**, and 154 blob versions of `pkg/assets/kits` account for **248 MiB raw** across 34 commits that touched the atlas.
 PNGs are already compressed, so they do not delta against each other — every re-cut adds the whole atlas again, and the current atlas is 27 MB.

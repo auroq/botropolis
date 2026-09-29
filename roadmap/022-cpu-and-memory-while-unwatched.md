@@ -1,6 +1,6 @@
 # 22. The city costs half a core while you are not looking at it, and a quarter of a gigabyte while you are. (Measured 2026-09-18 on r145+, this machine, 70 parked and 10 live sessions.)
 
-**Unadjudicated (2026-09-29) — filed as a measurement or a finding rather than a bug, or superseded by a later item, but never formally closed. One of the nine in ROADMAP.md.**
+**Closed 2026-09-29 by adjudication.** All three sub-items shipped — `SetRunnableOnUnfocused` plus a visible-and-focused-and-not-minimised gate (r157, redone r159), the static layer (r158), and the tick gate (phase 19 and item 64). Half its exit criterion is met and half is not: unfocused is **0.3–0.4%** against a bar of 1%, and idle-and-visible is **15.3%** against a bar of 10%. The work is done; the missed bar is not this item's to carry and is now item 69.**
 
 | | RSS | CPU |
 | --- | --- | --- |

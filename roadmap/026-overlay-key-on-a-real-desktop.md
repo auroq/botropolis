@@ -1,6 +1,6 @@
 # 26. Item 1 does not work on a real desktop, and item 2 works better there than its own rig could show. (Measured 2026-09-22 on `DISPLAY=:0`, i3, same session, back to back, 15-second samples of `/proc/<pid>/stat` utime+stime.)
 
-**Unadjudicated (2026-09-29) — filed as a measurement or a finding rather than a bug, or superseded by a later item, but never formally closed. One of the nine in ROADMAP.md.**
+**Closed 2026-09-29 by adjudication.** A finding that was acted on twice over. Item 1 was genuinely broken on real glass — a scratchpad window cost *more* than a visible one, which is what losing the vsync throttle looks like — and was redone at r159 against `DISPLAY=:0`. Item 2's 37% cut was confirmed on hardware, almost exactly what its own instrumentation predicted. Both conclusions are in item 28's verification.**
 
 | build | visible | unmapped and unfocused | RSS |
 | --- | --- | --- | --- |

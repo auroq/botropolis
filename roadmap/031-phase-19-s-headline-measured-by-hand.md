@@ -1,6 +1,6 @@
 # 31. Phase 19's headline, measured by hand on the real desk. (2026-09-25. The agent could not script this; the two binaries it left at `~/.claude/jobs/cae49d3d/tmp/ab/{before,after}` were run through the i3 recipe, ten runs, every sample rejected unless it drew frames.)
 
-**Unadjudicated (2026-09-29) — filed as a measurement or a finding rather than a bug, or superseded by a later item, but never formally closed. One of the nine in ROADMAP.md.**
+**Closed 2026-09-29 by adjudication, superseded by item 60.** Phase 19's headline, measured by hand: 20% off the process and 20% off the instrument, the first time in that phase the two agreed, 17.7% → 14.2%. Item 60 re-measured the same thing at r268 and found it unmoved at 14.4%, inside the run-to-run spread. The bar it recorded as missed is now item 69.**
 
 | | CPU, 30 fps | instrument, 30 fps | when the gate drops to 12 fps |
 | --- | --- | --- | --- |

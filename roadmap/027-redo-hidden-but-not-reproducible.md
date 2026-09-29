@@ -1,6 +1,6 @@
 # 27. Item 1's redo is confirmed hidden, but "visible" does not reproduce between rigs. (Measured 2026-09-22, `DISPLAY=:0`, i3, 45-second warm-up, 20-second samples, frame counts from `BOTROPOLIS_FRAMETIME`.)
 
-**Unadjudicated (2026-09-29) — filed as a measurement or a finding rather than a bug, or superseded by a later item, but never formally closed. One of the nine in ROADMAP.md.**
+**Closed 2026-09-29 by adjudication.** Two findings, both resolved. The visible case not reproducing between rigs is not a fault: 40.7% here against 28.7% there is different glass drawing a different city, and the hidden case reproduced exactly with zero frames drawn. The start-up peak it found was looked at at r160 and the real fix — decoding and uploading one atlas page at a time — was named and deliberately deferred out of that phase. It was never filed, and is now item 70.**
 
 | | visible | hidden | RSS |
 | --- | --- | --- | --- |

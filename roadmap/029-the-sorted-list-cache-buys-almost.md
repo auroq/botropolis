@@ -1,6 +1,6 @@
 # 29. The sorted-list cache buys almost nothing on this desk, and it is being paid for. (2026-09-22, `DISPLAY=:0`, i3, floating window pinned to 900×700 on the focused workspace, 8 live and 72 parked sessions, 14 s warm-up, 20 s samples, every sample verified to have drawn frames before it was accepted.)
 
-**Unadjudicated (2026-09-29) — filed as a measurement or a finding rather than a bug, or superseded by a later item, but never formally closed. One of the nine in ROADMAP.md.**
+**Closed 2026-09-29 by adjudication.** A finding that was acted on: the cache bought about **2%**, not the third its own rig had measured, and it was reverted at r170 rather than kept. Its more valuable half was the inversion — *if what is left is movers, hiding networks is the lever, and phase 19 is the performance work* — which phase 19 then confirmed, taking 20% off the process.**
 
 | | process CPU | its own instrument | frames |
 | --- | --- | --- | --- |
