@@ -31,11 +31,16 @@ There are two bug 18s, left as written, because a dated record that gets tidied 
 It verifies that every relative link resolves *from its own file's directory*, that no `§N` citation to the pre-split roadmap survives, that every item declares a status, and that `ROADMAP.md`'s open table lists exactly the items whose status is `Open`.
 It also refuses an empty corpus — the four indexes must be non-empty and every item number from 1 to the highest must have a file — because the other checks all pass on nothing.
 
-Every check was mutated red before the script was trusted, and three of its own versions could not fail:
+Every check was mutated red before the script was trusted, and four of its own versions could not fail:
 the first link check tried the bare path before the relative one, so every root-level target resolved from the repo root;
 the first corpus check passed on a directory containing four empty files and no `roadmap/`;
 and the version after that took its ceiling from the working tree, so deleting the two highest-numbered items lowered `max()` and it reported "1-66, none missing".
-The ceiling now comes from `git ls-files`, which a working-tree deletion cannot move.
+The ceiling now comes from `git ls-files`, which a working-tree deletion cannot move — but its `except: pass` silently restored the fault whenever git could not be reached, and the summary then read exactly like a healthy run.
+Running outside a checkout is legitimate, so the fallback stays; **it just is not silent any more**, and the green says which source the bound came from.
+
+The pattern across all four is one thing: **a guard fails where its own inputs come from.**
+A fallback is a way for a checker to pass, an empty corpus satisfies every check that iterates over it, and a bound derived from the thing it measures can be lowered by the fault it exists to catch.
+Mutating a guard tests the guard; mutating what the guard measures itself *against* tests whether it has a fixed reference at all.
 A fifth check exists because the other four all pass on nothing — an empty tree reported "0 links resolve, 0 items carry a status, open table matches" and exited 0.
 It requires the four index files to be non-empty and every item number from 1 to the highest present to have a file, which is a floor that rises with the work rather than a constant that goes stale.
 

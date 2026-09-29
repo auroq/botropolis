@@ -73,15 +73,26 @@ for index in ('DESIGN.md', 'ROADMAP.md', 'CLAUDE.md', 'README.md'):
 # working-tree deletion cannot move, and it still needs no maintenance --
 # committing item 69 raises it, and committing a deliberate removal lowers
 # it, which is the correct semantics for each.
+# When git cannot be reached the bound falls back to the working tree,
+# which silently restores the fault above: with git stubbed out, deleting
+# 067 and 068 prints "1-66, none missing" and exits 0 again, verified --
+# and the summary read identically to a healthy run, which is what made it
+# worth fixing rather than accepting. A fallback in a checker is a way for
+# it to pass (r312), so the fallback is not removed -- running outside a
+# checkout is legitimate -- but it is no longer silent: the summary says
+# which source the bound came from, so a green from the degraded path
+# cannot be mistaken for a green from the checked one.
 numbers = {int(os.path.basename(p)[:3]) for p in items}
 tracked = set()
+bound_from_git = False
 try:
     out = subprocess.run(['git', 'ls-files', 'roadmap/'], capture_output=True,
                          text=True, check=True).stdout.split()
     tracked = {int(os.path.basename(f)[:3])
                for f in out if re.match(r'^\d{3}-', os.path.basename(f))}
+    bound_from_git = bool(tracked)
 except Exception:
-    pass  # not a checkout; the working tree is all we have
+    pass  # not a checkout; the working tree is all we have, and we say so
 
 if not numbers:
     note('corpus', 'no roadmap/NNN-*.md files found at all')
@@ -90,7 +101,7 @@ else:
     for n in range(1, top + 1):
         if n not in numbers:
             where = 'tracked in git' if n in tracked else 'expected'
-            note('corpus', 'item %03d has no file (%s, and %03d does)' % (n, where, top))
+            note('corpus', 'item %03d has no file (%s; highest known is %03d)' % (n, where, top))
 
 if fail:
     for f in fail:
@@ -99,3 +110,6 @@ if fail:
     sys.exit(1)
 print('  %d links resolve, %d items carry a status (1-%d, none missing), open table matches.'
       % (links, len(status), max(numbers | tracked)))
+if not bound_from_git:
+    print('  NOTE: git was not reachable, so the range came from the working tree '
+          'alone. A deletion of the highest-numbered items cannot be seen from here.')
