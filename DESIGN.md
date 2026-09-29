@@ -607,7 +607,22 @@ A second pair of eyes helps because they are a second route, not because they ar
 **Which figure raises nothing is answerable, because the wrong numbers here fall into exactly two kinds and each has its own question.**
 Sorting every one of them: `34` re-cuts, `71` and nowhere else, `64` struck, `22` of 34, `0` of 77 undrawn and `0` atlas pages are all **counts, and every one failed by the shape of its corpus** — lines counted as commits, a `switch` arm that swallowed a case, three series summed as one, a dedup that hid an entry, a corpus containing the test that names the things, a directory that was not the one holding them.
 `VmRSS` at 380–400 MB, 85.7 MB of `Private_Dirty`, the 75–86 MB before it and the 0.2–0.4% of a core are all **measurements, and every one failed by its instrument** — shared driver pages counted as the program's, a recorder accumulating frames while being sampled, windows that were not drawing, a window matcher that found a terminal.
-Ten numbers, no overlap, nothing left over.
+Ten numbers, no overlap.
+
+**"Nothing left over" was the part to check, and it does not hold — which is the section working on its own claim.**
+`.git` at **157 MB** is an eleventh, filed in item 58 and corrected to 146 MB, and it fits neither question.
+`du` reported exactly what was on disk; the instrument was faultless. The reading was taken with 930 loose objects outstanding, 85 MiB of them — *what an un-gc'd repo looks like mid-session, not its steady state*.
+And on that reading the 85.7 MB belongs with it rather than with the instrument failures: `smaps_rollup` read correctly too, and what was wrong was that the thing being read was still accumulating frames.
+So the question "what does the instrument do when it is not measuring what you think" would have caught the terminal and the shared driver pages, and would have sailed past both of these, because in both the instrument was doing its job perfectly.
+
+**The sharper cut is across the other axis: a number goes wrong by *extent* or by *state*, and that cross-cuts counts and measurements into four cells the record fills all of.**
+Wrong extent is being pointed at the wrong things — the wrong directory and the wrong window are the same error in the two different kinds, as are a corpus containing its own test and a process's shared driver pages.
+Wrong state is being pointed at the right thing at the wrong moment — a repo mid-session, a recorder mid-recording.
+Counts have that cell too, and the record's example is the one figure in item 58 that survived: **154 blob versions was right when it was filed and is 160 at r272**, and it was reconciled rather than retracted by naming both moments. A count is as perishable as a measurement; it just looks like a fact.
+
+So there are two questions and not one, and the second is the one that gets skipped:
+**what is in this set, or this frame, that should not be** — and **was the thing in a steady state when I looked, and when was that**.
+A figure with no timestamp has lost its moment exactly as a figure with no named set has lost its extent, and both losses are invisible in the number itself.
 
 So the selector is cheap and mechanical.
 **Before quoting a count, say out loud what set it is over and what is in that set that should not be.**
