@@ -54,6 +54,7 @@ Each of these was paid for by a specific mistake, and each is stated so it can b
 | --- | --- |
 | [a-number-can-be-right-and-mean-nothing.md](rules/a-number-can-be-right-and-mean-nothing.md) | a correct measurement of the wrong thing |
 | [a-plausible-wrong-number.md](rules/a-plausible-wrong-number.md) | why the reasonable-looking figure is the dangerous one, and the three questions to ask |
+| [a-second-independent-route.md](rules/a-second-independent-route.md) | what verification actually requires, and why six honest greens meant nothing |
 | [a-green-test-is-not-a-guard.md](rules/a-green-test-is-not-a-guard.md) | mutate it red before trusting it |
 | [a-document-edited-in-turns.md](rules/a-document-edited-in-turns.md) | a file can contradict itself with every edit correct |
 | [two-things-that-must-agree.md](rules/two-things-that-must-agree.md) | every pair that must agree, and what makes them |
