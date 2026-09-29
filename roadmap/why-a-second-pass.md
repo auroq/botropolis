@@ -2,7 +2,7 @@
 
 The framing this roadmap was opened with, on 2026-09-18 against r64.
 
-[DESIGN.md](DESIGN.md) is complete: every milestone shipped, every cell of its two tables is drawn, the daemon holds under 20 MB.
+[DESIGN.md](../DESIGN.md) is complete: every milestone shipped, every cell of its two tables is drawn, the daemon holds under 20 MB.
 What it produced is a working single pane of glass with a map that is *correct* but not yet *designed*.
 This roadmap is the second pass: reach feature parity with bot-crossing, keep the better data model, add what bot-crossing never had,
 and make the city look intentional.

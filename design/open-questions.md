@@ -1,6 +1,6 @@
 ## Open questions
 
-All settled; the decisions are in [ROADMAP.md](ROADMAP.md) §5 and §3.
+All settled; the decisions are in [ROADMAP.md](../ROADMAP.md) §5 and §3.
 The history of each is kept here because it explains code that still exists.
 
 - **Foreground-started sessions.**
