@@ -14,9 +14,14 @@ vendor: Aria Vesta
 homepage: https://github.com/auroq/botropolis
 license: MIT
 
-# The renderer needs X11, GL and ALSA at runtime. The Arch package declared only
-# glibc for its first 331 revisions and got away with it because it was only ever
-# installed on a machine that already had a desktop.
+# Ebitengine dlopens GL and X11, so the binary's only NEEDED entry is libc and no
+# linker-based tool can see these. They are read off the sonames in the binary's
+# string table instead.
+#
+# libXxf86vm and ALSA are deliberately absent. They are in the build headers CI
+# installs, which is not the same as a runtime need: nothing references either,
+# and botropolis has no audio. Requiring ALSA would make every user install a
+# sound stack for a program that never opens one.
 overrides:
   deb:
     depends:
@@ -26,8 +31,6 @@ overrides:
       - libxi6
       - libxinerama1
       - libxrandr2
-      - libxxf86vm1
-      - libasound2
   rpm:
     depends:
       - mesa-libGL
@@ -36,8 +39,6 @@ overrides:
       - libXi
       - libXinerama
       - libXrandr
-      - libXxf86vm
-      - alsa-lib
   archlinux:
     depends:
       - libgl
@@ -46,8 +47,6 @@ overrides:
       - libxi
       - libxinerama
       - libxrandr
-      - libxxf86vm
-      - alsa-lib
 
 contents:
   - src: ./bin/botropolis

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The `.deb` and `.rpm` packages no longer require `libXxf86vm` or ALSA.
+  Neither is referenced by any binary — they came from the build headers CI installs, which is not the same as a runtime need, and requiring ALSA made every user install a sound stack for a program that never opens one.
+
 ## [0.1.0] - 2026-09-30
 
 First release.
