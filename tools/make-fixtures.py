@@ -105,12 +105,17 @@ def pseudonym(word):
     if word in _pseudonyms:
         return _pseudonyms[word]
     digest = hashlib.sha1(("botropolis-fixture/" + word).encode("utf-8")).hexdigest()
-    alias = "%s-%s" % (ADJECTIVES[int(digest[:8], 16) % len(ADJECTIVES)],
-                       NOUNS[int(digest[8:16], 16) % len(NOUNS)])
+    # camelCase rather than hyphenated, because these same names are substituted
+    # into source as well as into data, and some of the originals are Go
+    # identifiers -- pkg/city/city_test.go declares `cinders` and `mullet` as
+    # variables. A hyphen there is a syntax error, which is how this was found.
+    head = ADJECTIVES[int(digest[:8], 16) % len(ADJECTIVES)]
+    tail = NOUNS[int(digest[8:16], 16) % len(NOUNS)]
+    alias = head + tail[:1].upper() + tail[1:]
     clash = [w for w, a in _pseudonyms.items() if a == alias and w != word]
     if clash:
         # Deterministic and loud rather than silently merging two districts into one.
-        alias = "%s-%s" % (alias, digest[16:20])
+        alias = alias + digest[16:20].upper()
     _pseudonyms[word] = alias
     return alias
 
