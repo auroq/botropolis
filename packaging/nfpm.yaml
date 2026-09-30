@@ -31,6 +31,7 @@ overrides:
       - libxi6
       - libxinerama1
       - libxrandr2
+      - hicolor-icon-theme
   rpm:
     depends:
       - mesa-libGL
@@ -39,6 +40,7 @@ overrides:
       - libXi
       - libXinerama
       - libXrandr
+      - hicolor-icon-theme
   archlinux:
     depends:
       - libgl
@@ -47,6 +49,7 @@ overrides:
       - libxi
       - libxinerama
       - libxrandr
+      - hicolor-icon-theme
 
 contents:
   - src: ./bin/botropolis

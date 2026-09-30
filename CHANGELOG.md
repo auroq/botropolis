@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-30
+
 ### Fixed
 
 - The `.deb` and `.rpm` packages no longer require `libXxf86vm` or ALSA.
   Neither is referenced by any binary — they came from the build headers CI installs, which is not the same as a runtime need, and requiring ALSA made every user install a sound stack for a program that never opens one.
+- The packages now declare `hicolor-icon-theme`, which they need for the icon they install into that tree.
 
 ## [0.1.0] - 2026-09-30
 
@@ -44,5 +47,6 @@ Botropolis draws every Claude Code session on the machine as a city, and starts,
 
 - The usage probe runs inside a fenced directory the session loader skips, and prunes its own transcripts, so reading usage cannot make Botropolis see itself as a session.
 
-[Unreleased]: https://github.com/auroq/botropolis/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/auroq/botropolis/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/auroq/botropolis/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/auroq/botropolis/releases/tag/v0.1.0
