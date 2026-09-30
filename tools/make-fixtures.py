@@ -95,14 +95,24 @@ NOUNS = (
     "quarry", "ridge", "sawmill", "thicket", "upland", "vault", "weir", "yard",
     "aqueduct", "bellows", "causeway", "dovecote", "foundry", "granary", "hedgerow", "ironworks",
 )
-# A rename has to preserve what the fixture demonstrates, not only its shape.
-# pkg/city asserts that two projects get different container hues, and projectHue
-# is FNV-1a over the full path modulo len(ContainerHues), which is three. The
-# generated alias for mullet landed on the same hue as cinders's, where the
-# original names had not, so the rename would have quietly turned a passing
-# assertion into a failing one. Pinned to the first alias from the same word
-# lists that restores the distinction.
-PINNED_ALIASES = {"mullet": "amberBasin"}
+# A rename has to preserve what a name DOES, not only that it is distinct, and
+# these four are load-bearing in three separate ways that a hashed alias cannot
+# satisfy by chance. Each was found by running the suite against the renamed
+# tree, one after the other, never by reading the mapping:
+#
+#   length -- pkg/ui asserts plate padding, and a plate is sized from its text;
+#   sort order -- pkg/claude and pkg/state assert output ordered by project;
+#   hue -- pkg/city asserts two projects differ, and projectHue is FNV-1a over
+#          the full path modulo three, so distinct names are not enough.
+#
+# These four aliases are the same lengths as their originals, in the same
+# lexical order, and give the same hue distinction. Solved rather than picked.
+PINNED_ALIASES = {
+    "cinders": "cinders",
+    "ledger": "ledger",
+    "mCedar": "mAcorn",
+    "mullet": "mullet",
+}
 _pseudonyms = {}
 
 
