@@ -3,7 +3,7 @@
 Every Claude Code session on this machine, drawn as a city.
 Districts are projects, buildings are sessions, and everything on the map means one thing you can read by hovering it.
 
-![The city at r136: the plaza with the plant, hall and library, districts on the ring, the storage yard along the south, the tower ridge along the north and the river down the east](docs/screenshots/r136-hero.png)
+![The city: the plaza with the plant, hall and library, districts on the ring, the storage yard along the west edge, and the river down the east.](docs/screenshots/hero.png)
 
 ![Thirty seconds of the city](docs/botropolis.gif)
 
