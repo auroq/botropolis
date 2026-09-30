@@ -123,10 +123,17 @@ analyze ::
 	$(LOG) "Analyzing ~/.claude history"
 	@python3 tools/analyze-history.py
 
-gif ::
-	$(LOG) "Recording docs/botropolis.gif headlessly (24 s, one key every two seconds)"
+# Recorded from the scrubbed fixture, not from the machine it is run on. The
+# committed GIF used to be of the author's own city, so it carried project names
+# on the district plates, MCP vendor names on the towers and a real daily spend
+# across the strip -- published, in a repository whose history had just been
+# rewritten to remove exactly that. Pointing this at ~/.claude is opt-in now.
+gif :: fixtures
+	$(LOG) "Recording docs/botropolis.gif headlessly from the ${FIXTURE} fixture (24 s)"
 	@rm -rf dist/frames && mkdir -p dist/frames
-	@bin/botropolis city --headless --record dist/frames --seconds 24 --keys n,n,equal,equal,tab,r,r,b,b,x,escape,t,escape,slash,m,a,r,q,enter,f
+	@bin/botropolis city --headless --record dist/frames --seconds 24 \
+		--home testing/helpers/fixtures/${FIXTURE}/home --socket /nonexistent/botropolis.sock \
+		--keys n,n,equal,equal,tab,r,r,b,b,x,escape,t,escape,slash,m,a,r,q,enter,f
 	@ffmpeg -loglevel error -y -framerate 10 -i dist/frames/frame-%05d.png -vf "fps=8,scale=880:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=160[p];[s1][p]paletteuse=dither=bayer:bayer_scale=4" docs/botropolis.gif
 	@ls -la docs/botropolis.gif | awk '{print $$5 " bytes"}'
 
