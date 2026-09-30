@@ -102,15 +102,19 @@ NOUNS = (
 #
 #   length -- pkg/ui asserts plate padding, and a plate is sized from its text;
 #   sort order -- pkg/claude and pkg/state assert output ordered by project;
-#   hue -- pkg/city asserts two projects differ, and projectHue is FNV-1a over
-#          the full path modulo three, so distinct names are not enough.
+#   hue -- pkg/city asserts a renamed project differs in hue from botropolis,
+#          whose path does NOT change, and projectHue is FNV-1a over the full
+#          path modulo three. So distinct names are not enough, and the target
+#          is fixed: the alias has to miss one specific value. Twice I solved
+#          this against the wrong pair by assuming which projects the test
+#          compared instead of reading it.
 #
 # These four aliases are the same lengths as their originals, in the same
 # lexical order, and give the same hue distinction. Solved rather than picked.
 PINNED_ALIASES = {
     "cinders": "cinders",
     "ledger": "ledger",
-    "mCedar": "mAcorn",
+    "mCedar": "mCedar",
     "mullet": "mullet",
 }
 _pseudonyms = {}
