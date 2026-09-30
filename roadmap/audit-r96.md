@@ -1,4 +1,4 @@
-## 8. Audit, 2026-09-18 (r96, `138c8ba`)
+## 8. Audit, 2026-09-18 (r96, `de52f08`)
 
 Phases 7–12 shipped in one day.
 The audit built HEAD, ran every command against this machine, shot every panel headlessly, measured the daemon and the hook,

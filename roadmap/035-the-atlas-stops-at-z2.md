@@ -14,4 +14,4 @@ So `MaxZoom` is 2 and `ZoomSteps` ends there. Nothing is ever upscaled now. Fram
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

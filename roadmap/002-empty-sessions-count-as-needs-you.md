@@ -1,6 +1,6 @@
 # 2. Empty sessions count as needs-you
 
-**Fixed 2026-09-18 (`fcedca8`): the `empty` state, a vacant plot, never counted, pruned after an hour.**
+**Fixed 2026-09-18 (`94ea46b`): the `empty` state, a vacant plot, never counted, pruned after an hour.**
 
 Two bg sessions with no transcript at all (`3fe36032`, `a75745cb` — started, nothing typed) show as needs-you with `-` in every column,
 and the waybar line names one of them as who is first.
@@ -9,4 +9,4 @@ once idle for an hour — this is the "lingering sessions" complaint that starte
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

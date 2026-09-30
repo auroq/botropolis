@@ -4,7 +4,7 @@ Ten steps, written for Aria to run against a live city.
 It lived inside item 67's file until 2026-09-29 and was cross-referenced by a section number that no longer existed, which is why it had never been run end to end.
 
 **Preconditions.** Install the latest build, restart the daemon, enable notify.
-As of 2026-09-29 the installed package is `r293.25e11cc` against a HEAD of r320, so the steps below have been run against a build seven-and-twenty revisions old; everything since is documentation and tooling, so no behaviour differs, but a real run should install first.
+As of 2026-09-29 the installed package is `r293.f920abc` against a HEAD of r320, so the steps below have been run against a build seven-and-twenty revisions old; everything since is documentation and tooling, so no behaviour differs, but a real run should install first.
 I have not installed or restarted anything on Aria's machine for this.
 
 | # | step | state |

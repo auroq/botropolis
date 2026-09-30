@@ -12,4 +12,4 @@ Also fixed regardless: at lane 0 the widest hull sits exactly half a beam from t
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

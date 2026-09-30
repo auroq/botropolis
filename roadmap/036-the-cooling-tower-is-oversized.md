@@ -14,4 +14,4 @@ Note that the plant is the *building plus* the stack — Aria had been reading t
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

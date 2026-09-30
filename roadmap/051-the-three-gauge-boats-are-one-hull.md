@@ -37,4 +37,4 @@ So size is now stated as a target extent and the scale is worked back from the a
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

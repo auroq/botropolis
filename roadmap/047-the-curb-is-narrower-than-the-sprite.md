@@ -14,4 +14,4 @@ Frames `docs/screenshots/r235-chimney-corners.png`, `r235-chimney-headings.png`.
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

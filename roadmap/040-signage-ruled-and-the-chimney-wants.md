@@ -14,4 +14,4 @@ Frames `docs/screenshots/r213-project-plates.png`, `r212-chimney-through-roof.pn
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

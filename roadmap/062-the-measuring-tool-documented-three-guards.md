@@ -1,6 +1,6 @@
 # 62. The measuring tool documented three guards it did not have
 
-**Fixed 2026-09-26 (`e6da2f1`).**
+**Fixed 2026-09-26 (`407ffec`).**
 
 Four faults in `tools/measure-render`, each documented as a guard that did not exist:
 
@@ -15,4 +15,4 @@ The fourth is the sharpest: it targeted a terminal called "botropolis trademark 
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

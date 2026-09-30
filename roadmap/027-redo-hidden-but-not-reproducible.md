@@ -18,4 +18,4 @@ What is left is not the static cache but the atlas: nine 2048-pixel pages on the
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

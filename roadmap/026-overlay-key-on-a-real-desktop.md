@@ -25,4 +25,4 @@ The exit bar for a hidden window is met. Visible is 28.7% and the bar is 10%, so
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

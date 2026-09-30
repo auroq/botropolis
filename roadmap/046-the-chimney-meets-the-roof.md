@@ -14,4 +14,4 @@ Frame `docs/screenshots/r226-chimney-join.png`, the same view before and after.
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

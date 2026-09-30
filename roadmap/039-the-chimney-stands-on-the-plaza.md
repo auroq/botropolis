@@ -43,4 +43,4 @@ Worth noting for the taxonomy of how this was found: bug 23 measured a zero-pixe
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

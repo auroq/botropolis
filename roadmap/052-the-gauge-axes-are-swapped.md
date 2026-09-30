@@ -10,4 +10,4 @@ Which end is 0% is recomputed per heading, exactly as the monument's near corner
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

@@ -12,4 +12,4 @@ Frame `docs/screenshots/r201-night-glow.png`, botropolis before and after: a sol
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

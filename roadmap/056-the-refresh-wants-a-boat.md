@@ -10,4 +10,4 @@ Built a courier: a boat that is not a session, with a silhouette of its own dist
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

@@ -23,4 +23,4 @@ Either way this closes the concern that bug 20's derived anchors were partly val
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

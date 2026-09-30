@@ -14,4 +14,4 @@ Measured on Aria's desk, `DISPLAY=:0`, i3, floating 900x700 — bug 29's geometr
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

@@ -2,7 +2,7 @@
 
 **Closed 2026-09-29 by adjudication, superseded by phase 20 item 3.** It did its job: it kept item 23's conclusion, killed its mechanism, and voided the cheapest remedy by cutting the piece out of the atlas and looking — `chimney-large` already has a flared octagonal skirt, so drawing it a base plate would add a second one. What is left is the reading, which is with Aria on a frame.**
 
-**Premise note added 2026-09-29, and it bears on the frame Aria is judging.** Both this entry and item 33 reason about `city-kit-industrial/chimney-large`, but `kitStack` has been **`chimney-medium`** since item 36 (`a2a7021`), so the piece described here is not the piece on screen. Item 47 measured `chimney-medium` row by row and found a skirt at rows 306-334 and a continuous taper, so the drawn piece does have a foot. The surviving symptom - a convex flange unlit from below - was derived from `chimney-large` and should be re-checked against what is actually drawn before any remedy is bought. Found by the build session reading the code rather than the record.
+**Premise note added 2026-09-29, and it bears on the frame Aria is judging.** Both this entry and item 33 reason about `city-kit-industrial/chimney-large`, but `kitStack` has been **`chimney-medium`** since item 36 (`107ab32`), so the piece described here is not the piece on screen. Item 47 measured `chimney-medium` row by row and found a skirt at rows 306-334 and a continuous taper, so the drawn piece does have a foot. The surviving symptom - a convex flange unlit from below - was derived from `chimney-large` and should be re-checked against what is actually drawn before any remedy is bought. Found by the build session reading the code rather than the record.
 
 The zero-gap measurement holds — the tower touches the plaza, there is nothing geometric to fix, and the composite-drawable defect found on the way (the stack now sorts at its own ground point, so the planter no longer paints over it) was real and is worth keeping on its own.
 But `chimney-large` is **not** "a hollow shell tapering to an open rim with no base plate at all". Cut straight out of `kits-z2` page 5 and enlarged, it has a **flared octagonal skirt with a lip** — a wider foot than `chimney-medium`'s, which was offered as the control. And the rendered foot in `r186-plant-stack-depth.png` is that same skirt, lip and all: the sprite is drawn complete, nothing is clipped, nothing is sunk.
@@ -15,4 +15,4 @@ That is the same failure as bug 25 one step removed — there I replaced a comme
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

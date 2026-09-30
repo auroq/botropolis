@@ -1,4 +1,4 @@
-## 12. Inventory, 2026-09-29 (r294.29f7884)
+## 12. Inventory, 2026-09-29 (r294.0745998)
 
 > **The section numbers below — §8, §10, §11, §12 — refer to `ROADMAP.md` as it stood before the r310 split, when it was 2,689 lines and held every item inline.**
 > They are left as written because this inventory is dated and its whole subject is that structure and its counts.
@@ -9,8 +9,8 @@ Taken at Aria's request, a second time, three days after the r268 one.
 The table that replaced this section had gone stale: it still listed items 57, 59, 60 and 61 as open after all four had been closed, and it carried item 57 on two rows at once, struck on the first and open on the second.
 **An inventory section that is not retaken is worse than none**, because it reads as current by virtue of being called an inventory, and that is the same shape as every other bug on this list — a reading whose form implies a freshness it does not have.
 
-**Where the code is.** `HEAD` is `29f7884` (r294), tree clean, and `main` is level with `github/main` — checked with `git ls-remote` against the remote itself rather than against the local tracking ref, which only records the last fetch.
-`pacman -Q botropolis-git` says `r293.25e11cc-1`, one commit behind, and that commit touches only `ROADMAP.md`, so there is nothing to rebuild.
+**Where the code is.** `HEAD` is `0745998` (r294), tree clean, and `main` is level with `github/main` — checked with `git ls-remote` against the remote itself rather than against the local tracking ref, which only records the last fetch.
+`pacman -Q botropolis-git` says `r293.f920abc-1`, one commit behind, and that commit touches only `ROADMAP.md`, so there is nothing to rebuild.
 
 **Gate, run now:** `go build ./...` clean, `go vet ./...` clean, `go test ./pkg/...` green (22 packages with tests, of 23), `make lint` 0 issues.
 22,250 lines of Go with 19,701 lines of tests beside them, and 82 frames in `docs/screenshots/`.
@@ -94,7 +94,7 @@ So the corpus of my taxonomy was the wrong shape in the most ordinary way availa
 It was caught by the other session re-deriving a clean-looking claim in the section that says to re-derive clean-looking claims, and the axis it wants is extent versus state, cross-cutting counts and measurements into four cells — which is in DESIGN now.
 
 **A sixth and a seventh, for completeness, because the day's lesson is that the list is what gets shortened.**
-I summarised the thread to Aria as *every gap was found by one session checking the other's, none by self-review* — false in at least three places, verified from the `Claude-Session` commit trailer since both sessions commit under the same identity: my own item-tally correction (`6cf2aae`) I found alone, and the other session both introduced and caught its opening mislabel (`819c2ff`, `97a3acb`).
+I summarised the thread to Aria as *every gap was found by one session checking the other's, none by self-review* — false in at least three places, verified from the `Claude-Session` commit trailer since both sessions commit under the same identity: my own item-tally correction (`b4ee40b`) I found alone, and the other session both introduced and caught its opening mislabel (`6eb80ce`, `c0bd2cc`).
 A claim about the record, assembled from the examples in mind, flattering to the arrangement it described.
 The accurate statement is the one already in DESIGN and older than my summary of it: a second person helps because they are a second *route*, not because they are a second pair of eyes.
 

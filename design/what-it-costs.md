@@ -102,7 +102,7 @@ Every measurement in the table below carries its frame count for the same reason
 
 ### Why the sorted list is not cached
 
-Tried and reverted, 2026-09-22 (`2b4976c`, reverted in `3b7af45`).
+Tried and reverted, 2026-09-22 (`2eddc63`, reverted in `ad3fedf`).
 The static city is composed once and reused; the sorted list of buildings, landmarks, trees, lamps and movers is not, and that is deliberate.
 
 Caching it means a mover must redraw whatever still thing it passes in front of, or a car is painted over the building it is driving behind.

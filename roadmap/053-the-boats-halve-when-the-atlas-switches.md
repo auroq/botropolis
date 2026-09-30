@@ -10,4 +10,4 @@ Fixed by making the target a size in world units: `shrink = target * atlas.Zoom 
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

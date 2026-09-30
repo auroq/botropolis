@@ -12,4 +12,4 @@ Two of the four kit pieces have no board at all — "empty" in the kit's names m
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

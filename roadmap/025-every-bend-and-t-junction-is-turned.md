@@ -11,4 +11,4 @@ Every +90 of turn takes each open side one step along E → N → W → S. That 
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

@@ -13,4 +13,4 @@ A gate that is hard to test by hand is itself a finding: i3 would not hand focus
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

@@ -1,6 +1,6 @@
 # 64. The tick gate does not know about the courier
 
-**Done 2026-09-26 (`546854e`, r283).**
+**Done 2026-09-26 (`ed56fb8`, r283).**
 
 Found 2026-09-26 reading `Animating()` while measuring item 60, and the build session independently asked for it to be filed.
 
@@ -31,4 +31,4 @@ The exclusions paragraph now names three things and says why the list needs them
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

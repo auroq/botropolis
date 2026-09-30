@@ -1,6 +1,6 @@
 # 59. Two atlas orphans have appeared since option D, and the river has spent option D's saving back
 
-**Done 2026-09-26 (`9f9a13e`, r271).**
+**Done 2026-09-26 (`252caa0`, r271).**
 
 Measured 2026-09-26 at r268 by matching every sprite name in `kits-z2.json` against the literals in the tracked Go files.
 **8 of 79 pieces are undrawn**, where bug 24 left 7 deliberately kept.
@@ -63,4 +63,4 @@ The general form is in [../rules/a-green-test-is-not-a-guard.md](../rules/a-gree
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

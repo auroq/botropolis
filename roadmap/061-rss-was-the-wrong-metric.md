@@ -1,6 +1,6 @@
 # 61. The city holds 380–400 MB where it held 212–247, and one atlas page does not explain it
 
-**Answered 2026-09-26 (`546854e`, r283) — most of it is the GL driver, and RSS is the wrong metric.**
+**Answered 2026-09-26 (`ed56fb8`, r283) — most of it is the GL driver, and RSS is the wrong metric.**
 
 **Answered: `VmRSS` was the wrong instrument, not a leak.**
 
@@ -14,4 +14,4 @@ About **147 MB is the NVIDIA and Mesa libraries** — file-backed, clean, shared
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

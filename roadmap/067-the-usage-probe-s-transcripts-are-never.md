@@ -1,6 +1,6 @@
 # 67. The usage probe's transcripts are never pruned, and lingering sessions are what this project is for
 
-**Done 2026-09-26 (`2708cc4`, r290).**
+**Done 2026-09-26 (`2f2af17`, r290).**
 
 Measured 2026-09-26 at r286: `~/.claude/projects/-home-avesta--local-state-botropolis-usage-probe/` holds **7 transcripts**, one per refresh since 18:42, about 4 KB each.
 Nothing deletes them. `RefreshUtilization` creates the directory and runs `claude -p "/usage"` in it; the fence (item 54) is the whole of the design, and the fence is about where they land rather than whether they stay.
@@ -56,4 +56,4 @@ The ten-step validation checklist that used to sit here has its own file: [valid
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

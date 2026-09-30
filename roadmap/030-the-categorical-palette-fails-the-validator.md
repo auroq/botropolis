@@ -14,4 +14,4 @@ Fixed 2026-09-23. `ui.Categorical` is those three; `city.MaxCategories` is 3; `t
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

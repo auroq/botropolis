@@ -6,4 +6,4 @@ Eight tower names stack on the ridge and collide with the `botropolis` district 
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

@@ -13,7 +13,7 @@ Verified independently: no orphan pages remain on either atlas (`z1` names 0–1
   Exit: `status`, the bar and the strip agree with `claude agents --json` on every live session on this machine; CI green ten runs in a row;
   the daemon serves the event log and the away panel shows what happened while the window was closed.
   Done 2026-09-18 (r111): one commit per bug plus bug 11; `status --direct` matches `claude agents --json` on all eight live sessions;
-  ten `workflow_dispatch` runs green at `e73620c`; `botropolis events` prints the daemon's log and the away panel opened on a cold start from a stale `seen`.
+  ten `workflow_dispatch` runs green at `7cb4c7f`; `botropolis events` prints the daemon's log and the away panel opened on a cold start from a stale `seen`.
   Screenshot: `docs/screenshots/r111-correctness.png` (sidebar open at fit, the map clear of it).
   Awaiting Aria's validation checklist before phase 14.
 - **Phase 14 — Polish from the frames.** Bugs 7, 8, 9, 10, 14, 15, 16, 17, then the decided `Later` items in this order:
@@ -21,7 +21,7 @@ Verified independently: no orphan pages remain on either atlas (`z1` names 0–1
   park-belt tree variants with a seeded in-cell offset from the plan; the plant's band retinted off amber; barges on the river for arrivals and departures ([art-direction.md](art-direction.md)).
   Exit: the fit view has no overlapping text, night reads at fit, every `Later` item is struck, and one frame per item in `docs/screenshots/`.
   Done 2026-09-18 (r129): bugs 7–10 and 14–17 one commit each; the six `Later` items struck above with a frame each (r116 signage and fit, r117 night, containers, freight loop, park wood, plant band, river arrival);
-  the no-wire-means-no-hooks meaning landed last (`f73c88a`). Two calls for Aria to confirm or reverse: the freight loop rings the city instead of running from the plant to each district (no level crossings in the kits),
+  the no-wire-means-no-hooks meaning landed last (`3e661a4`). Two calls for Aria to confirm or reverse: the freight loop rings the city instead of running from the plant to each district (no level crossings in the kits),
   and the park belt keeps the suburban trees rather than the Nature Kit's teal ones. Package `botropolis-git-r129`; install and validate before phase 15.
 - **Phase 15 — Release.** Tag `v0.1.0` (the release workflow has never run) and a README hero shot taken with `h` — the chrome-free frame is the best view of the city.
   Hero taken r136 at `render_scale 2` from the fit view with `h`: `docs/screenshots/r136-hero.png`.
@@ -33,7 +33,7 @@ Verified independently: no orphan pages remain on either atlas (`z1` names 0–1
   the README leads with the city, the GIF and the four commands;
   `v0.1.0` is tagged and signed, the release workflow ran green in 1m48s and attached `botropolis-v0.1.0-linux-amd64.tar.gz`.
   Nothing published to the AUR.
-  Package `botropolis-git-r138.ec3d439` built, not installed.
+  Package `botropolis-git-r138.af0f775` built, not installed.
   AUR publishing: not yet, personal only (decided 2026-09-18); the package repo stays in `~/workspaces/aur`.
 - **Phase 18 — The renderer stops burning a core, the plant lands, the roads point the right way.** Bugs 22, 25, 23 and 24.
 - **Phase 17 — The plaza stacks right.** Bugs 20 and 21; it is the one thing in the frames that reads as broken rather than unfinished.
@@ -42,8 +42,8 @@ Verified independently: no orphan pages remain on either atlas (`z1` names 0–1
   Two findings on the way, both in [audit-r96.md](audit-r96.md): a third of the cut pieces are never drawn, and the plant's tower still hangs for a reason that is neither of bug 20's two causes — bug 23.
   Package `botropolis-git-r156.b1f2348` built, not installed.
 - **Phase 16 — Planting, the plaza and the workers** (Aria, 2026-09-18, from the r129 frames). Bugs 18 and 19 first, then:
-  Done 2026-09-21 (r144.f76c246): one commit an item, a frame each.
-  Package `botropolis-git-r145.07f3ce6` built, not installed.
+  Done 2026-09-21 (r144.ac4171c): one commit an item, a frame each.
+  Package `botropolis-git-r145.03bc42e` built, not installed.
   - ~~*The trees are too consistent.*~~ Done 2026-09-21 (r141). The Suburban kit has two trees, so variety cannot come from the kit as shipped.
 Take the Nature Kit's geometry (fifty species: oak, pine, thin, fat, small, bush, flower, `planter`) and **retint its materials in the render script** to the Suburban green family,
 scaled so no tree stands taller than a two-storey building — the one-palette rule is about colour, and the pipeline assigns colour.
@@ -77,4 +77,4 @@ Done 2026-09-21 (r143) but for the last: the fit frame is `r136-hero.png`, the p
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

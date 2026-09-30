@@ -1,6 +1,6 @@
 # 63. The atlas is 24% larger than the pipeline's own shrink step makes it, because the step stopped running
 
-**Done 2026-09-26 (`071793f`, r279).**
+**Done 2026-09-26 (`3499d0c`, r279).**
 
 Found 2026-09-26 checking the build session's claim that `tools/shrink-pngs` "exists and isn't in the pipeline".
 It *is* in the pipeline — `Makefile:81`, the second line of `make sprites`.
@@ -17,9 +17,9 @@ What happened is worse and more fixable: the pages in the tree were never shrunk
 The atlas is embedded uncompressed, so the client binary should fall by the same 6.6 MB — from 54.4 MB to about 47.8.
 
 **When it stopped is readable from the history, and it narrows the cause to one change.**
-`kits-z2-0.png` is **3,009,736 B** at `9125ea3`, `78d578f`, `0905175` and `d70788f` — which is *exactly* the byte count re-compressing it yields today, so the step was running and its output is reproducible.
-It is **3,968,971 B** at `f7a4bac` (r267) and still at `9f9a13e` (r271).
-So a re-cut between `d70788f` and `f7a4bac` — the gauge-boat work — wrote the atlas by running `render.py` directly instead of through `make sprites`, and every re-cut since has carried the unshrunk pages forward.
+`kits-z2-0.png` is **3,009,736 B** at `8c882d7`, `b66b3bc`, `2386152` and `6f256b7` — which is *exactly* the byte count re-compressing it yields today, so the step was running and its output is reproducible.
+It is **3,968,971 B** at `f519055` (r267) and still at `252caa0` (r271).
+So a re-cut between `6f256b7` and `f519055` — the gauge-boat work — wrote the atlas by running `render.py` directly instead of through `make sprites`, and every re-cut since has carried the unshrunk pages forward.
 This is also part of the 8 MB-per-re-cut pack growth item 58 priced: a quarter of what each re-cut adds to the pack is deflate that was never applied.
 
 **The check I ran earlier could not have caught it, and that is the lesson worth keeping.**
@@ -73,4 +73,4 @@ Two things found on the way, neither blocking:
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`

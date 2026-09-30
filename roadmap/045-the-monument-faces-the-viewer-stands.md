@@ -10,4 +10,4 @@ Frames `docs/screenshots/r222-monument-facing.png` and `r222-monument-corner-cho
 
 ---
 
-Full investigation as originally filed: `git show 0ba1767:ROADMAP.md`
+Full investigation as originally filed: `git show 99cecc7:ROADMAP.md`
