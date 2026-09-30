@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Assert this repository is safe to make public.
+#
+# Written after three misses of one shape. The history was rewritten to remove an
+# employer's repository structure; then refs/tags/v0.1.0 turned out to point at
+# the unscrubbed history, then docs/botropolis.gif turned out to show a project
+# name, MCP vendor names and a real daily spend, and then so did one of the
+# reference PNGs. Each time the scrub named a path and the exposure was at a
+# sibling path.
+#
+# So this does not look for what it remembers. It enumerates what exists -- every
+# ref the remote advertises, every image in the tree -- and requires each one to
+# be accounted for.
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+check-publishable — assert nothing unpublishable is in this repository
+
+Usage: tools/check-publishable [--help]
+
+Checks:
+  1. no employer token appears in any blob or any commit message, anywhere in history
+  2. every ref the remote advertises is an ancestor of main
+  3. every image in the tree is on the reviewed list below
+
+Exit 0 if all three hold, 1 otherwise, naming what failed.
+
+An image that is not on the list fails the check. That is the point: the way to
+pass is to look at it and add it, not to widen a pattern until it matches.
+USAGE
+}
+
+[ "${1:-}" = "--help" ] && { usage; exit 0; }
+
+cd "$(dirname "$0")/.." >/dev/null
+
+fail=0
+note() { printf '  %s\n' "$1"; fail=1; }
+
+# 1. Tokens, read from a file this repository does not track.
+#
+# The list IS the employer's repository names, so committing it would publish the
+# very thing this check exists to remove -- and the first version did exactly
+# that, failing against its own source. It lives in .publishable-tokens, which is
+# gitignored. A missing list is a failure rather than a pass: a check with an
+# empty pattern matches nothing and looks identical to a clean repository.
+if [ ! -s .publishable-tokens ]; then
+    note ".publishable-tokens is missing or empty."
+    note "  It holds one extended-regex alternation per line, and is deliberately"
+    note "  untracked because the patterns are the names being kept out."
+else
+    while read -r tokens; do
+        [ -n "${tokens}" ] || continue
+        case "${tokens}" in \#*) continue;; esac
+        if git grep -lIE "${tokens}" $(git rev-list --all) -- 2>/dev/null | head -1 | grep -q .; then
+            note "a pattern from .publishable-tokens matches history:"
+            git grep -lIE "${tokens}" $(git rev-list --all) -- 2>/dev/null | head -5 | sed 's/^/    /'
+        fi
+        if git log --all --no-show-signature --format='%s%n%b' | grep -qE "${tokens}"; then
+            note "a pattern from .publishable-tokens matches a commit message"
+        fi
+    done < .publishable-tokens
+fi
+
+# 2. Refs. `git ls-remote` is the only thing that says what the remote hands out;
+# a sweep of main cannot see a tag, which is exactly how the first miss happened.
+if git remote | grep -qx github; then
+    while read -r sha ref; do
+        [ -n "${sha}" ] || continue
+        case "${ref}" in *"^{}") continue;; esac
+        if ! git merge-base --is-ancestor "${sha}" main 2>/dev/null; then
+            note "${ref} (${sha:0:10}) is not in main's history"
+        fi
+    done < <(git ls-remote github 2>/dev/null)
+else
+    note "no 'github' remote, so the refs it advertises cannot be checked"
+fi
+
+# 3. Images. Every one is listed with what it is and when it was looked at.
+#    Anything in the tree and not on this list fails.
+reviewed=$(cat <<'LIST'
+docs/screenshots/hero.png
+docs/botropolis.gif
+docs/references/chimney-skirt.png
+docs/references/curb-geometry.png
+docs/references/probe-tugs-aground.png
+packaging/botropolis.svg
+LIST
+)
+while read -r img; do
+    [ -n "${img}" ] || continue
+    case "${img}" in pkg/assets/*) continue;; esac   # Kenney art and the atlases, CC0
+    if ! printf '%s\n' "${reviewed}" | grep -qxF "${img}"; then
+        note "${img} is not on the reviewed list — look at it, then add it"
+    fi
+done < <(git ls-files | grep -iE '\.(png|jpe?g|gif|webp|svg|mp4|webm)$')
+
+if [ "${fail}" -ne 0 ]; then
+    printf '\n%s\n' "Not publishable yet."
+    exit 1
+fi
+printf '  %s\n' "no employer tokens in history, every remote ref is in main, every image reviewed."

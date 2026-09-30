@@ -75,9 +75,15 @@ GitHub lists it by path rather than by name and fails it before any step runs.
 A single-line `run:` whose value contains `": "` is the way in, and `inputs.some-name` is another — a hyphen parses as subtraction in a GitHub expression.
 `make lint` runs `tools/check-workflows` so both fail locally.
 
-**The remote advertises more than `main`.**
-The history rewrite of 2026-09-30 scrubbed `main` and left `refs/tags/v0.1.0` pointing at unscrubbed history, which nobody noticed because the verification swept what was reachable from `main`.
-The check that catches it is to walk every ref `git ls-remote` returns and assert each is an ancestor of `main`.
+**Before making this repository public, run `make publishable`.**
+It asserts three things, and each exists because the scrub missed something of that shape.
+No employer token in any blob or commit message, anywhere in history.
+Every ref `git ls-remote` advertises is an ancestor of `main` — the first rewrite scrubbed `main` and left `refs/tags/v0.1.0` pointing at unscrubbed history, because the verification swept what was reachable from `main` and a tag is not.
+And every image in the tree is on a reviewed list — `docs/botropolis.gif` showed a project name, MCP vendor names and a real daily spend for nine days after the scrub, because the scrub filtered `docs/screenshots` and the GIF is not in it.
+
+**An image not on that list fails the check, and the way to pass is to look at it and add it.**
+Three misses had one shape: the scrub named a path and the exposure was at a sibling path.
+A check that enumerates what exists and demands each item be accounted for cannot miss that way; a check that enumerates what you remember always can.
 
 ## Working arrangement
 

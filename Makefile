@@ -67,6 +67,13 @@ packages-check ::
 	$(LOG) "Checking the three packages carry the same files"
 	@tools/check-packages
 
+# Deliberately not part of `lint`: it reaches the network to ask what the remote
+# advertises, and it is a gate for making the repository public rather than a
+# per-commit check.
+publishable ::
+	$(LOG) "Checking nothing unpublishable is in the repository"
+	@tools/check-publishable
+
 # nfpm builds all three package formats from packaging/nfpm.yaml. It is not in
 # Arch's repositories -- `yay -S nfpm-bin` -- and CI installs it on the runner.
 nfpm ::
