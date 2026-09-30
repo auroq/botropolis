@@ -20,18 +20,18 @@ The rest followed from working on the real machine: the Go tests took the paths 
 
 **1. `docs/usage-profile.md` — the dump, in three regions.**
 
-*Lines 53–73, "Per project":* twenty rows of `~/workspaces/github/mCedar/{mullet, ledger, cinders, terraform, claude-pl…}` and `~/workspaces/bitbucket/{press/main, ops/infrastructure, ops/chef}`, each with session count, active hours, output tokens, cache reads, **PR counts** and recency. This is an inventory of the employer's repositories with effort and throughput against each.
+*Lines 53–73, "Per project":* twenty rows naming the employer's GitHub organisation and seven of its repositories, plus three Bitbucket paths, each with session count, active hours, output tokens, cache reads, **PR counts** and recency. An inventory of their repositories with effort and throughput against each.
 
-*Line 115, "Skills":* `fallowInlet:hazelInlet` (668 uses), `amberPylon:graniteUpland` (426), `amberPylon:umberEstuary` — internal tooling names with usage counts.
+*Line 115, "Skills":* three plugin namespaces belonging to the employer, with usage counts in the hundreds — internal tooling names.
 
 *Lines 129–144, "Top 15 sessions by active time":* session titles, which are ticket identifiers — `'Ticket 604'`, `'Ticket 602'`, `'Issue 597'`, `'Issue 613'`, `'PROJ-1002'`, `'PROJ-1001 Medi…'`, `'Pull request 468…'` — each with hours, prompt counts and tokens. **`PROJ-1001` beside `bitbucket/tidalUpland/driftingNettle` maps an issue-tracker key to its repository.**
 
-**2. Go sources — 71 occurrences of `mullet`/`mCedar` across 29 files, and 292 of `cinders`.**
-These are not neutral fixtures: they hardcode real paths such as `/home/avesta/workspaces/github/mCedar/cinders`, and `pkg/city/city_test.go:444` uses PR `#1181` in `mCedar/mullet`.
-`pkg/commands/status.go:50` — production, not a test — gained a comment naming two mullet sessions **on 2026-09-29**, out of item 71's investigation, so the tree is still accumulating these.
+**2. Go sources — 71 occurrences of the organisation and two repository names across 29 files, and 292 of a third.**
+These were not neutral fixtures: they hardcoded real absolute paths including the employer's organisation and repository, and a real PR number against one of them.
+`pkg/commands/status.go:50` — production, not a test — gained a comment naming two of that repository's sessions **on 2026-09-29**, out of item 71's investigation, so the tree was still accumulating them.
 
 **3. `docs/screenshots/` — verified by looking, not assumed.**
-`r213-project-plates.png` shows district plates reading **`mullet`**, `avesta`, `bot-crossing`, `botropolis`, and the strip across the top reads **`~$192.74 24h`** — a real daily spend — beside `4 need you`, `5 prs`, `3 errors`.
+A frame checked by opening it showed district plates reading the employer's repository names, and the strip across the top showed a real daily spend figure beside the needs-you, PR and error counts.
 Roughly 45 of the 84 frames are full-window (1100x760, 2200x1520, 1920x1120) and so carry the strip; the rest are crops. Item 40 made the district plate permanent by design, so this is what the program is supposed to draw.
 
 **4. All 323 commits**, since it has been there since the first one. Nothing worse is hiding in deleted history — the deleted paths are Kenney assets and superseded code.
