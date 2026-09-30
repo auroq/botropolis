@@ -63,6 +63,10 @@ workflows-check ::
 	$(LOG) "Checking the workflows parse"
 	@tools/check-workflows
 
+packages-check ::
+	$(LOG) "Checking the three packages carry the same files"
+	@tools/check-packages
+
 # nfpm builds all three package formats from packaging/nfpm.yaml. It is not in
 # Arch's repositories -- `yay -S nfpm-bin` -- and CI installs it on the runner.
 nfpm ::
@@ -97,9 +101,14 @@ tarball :: build
 	@tar -C dist -czf dist/botropolis-${VERSION}-linux-$(shell go env GOARCH).tar.gz botropolis-${VERSION}
 	@rm -rf dist/botropolis-${VERSION}
 
+# botropolis-* misses the deb, which is botropolis_0.1.0_amd64.deb by Debian
+# convention. Everything in dist/ is checksummed, and the count is asserted so a
+# naming convention nobody expected cannot quietly drop a file again.
 checksums ::
 	$(LOG) "Writing SHA256SUMS"
-	@cd dist >/dev/null && rm -f SHA256SUMS && sha256sum botropolis-* > SHA256SUMS
+	@cd dist >/dev/null && rm -f SHA256SUMS && sha256sum $$(ls | grep -v '^SHA256SUMS$$') > SHA256SUMS
+	@cd dist >/dev/null && n=$$(ls | grep -cv '^SHA256SUMS$$') && m=$$(wc -l < SHA256SUMS) && \
+		[ "$$n" = "$$m" ] || { echo "SHA256SUMS covers $$m of $$n files in dist/"; exit 1; }
 
 format ::
 	$(LOG) "Formatting"

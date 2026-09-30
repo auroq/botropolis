@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Assert the .deb, .rpm and Arch package carry the same files.
+#
+# They are built from one nfpm config, so they should agree by construction --
+# but `packager:` filters and per-format conventions make it possible for them
+# not to, and nothing else would notice. The deb was already missing from
+# SHA256SUMS because its name uses an underscore where the glob expected a dash.
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+check-packages — assert the deb, rpm and Arch package carry the same files
+
+Usage: tools/check-packages [dist-dir]
+
+Needs dpkg-deb, rpm and tar. Skips any format whose tool is absent, and says
+which it skipped rather than passing silently.
+USAGE
+}
+
+[ "${1:-}" = "--help" ] && { usage; exit 0; }
+
+dist="${1:-dist}"
+[ -d "$dist" ] || { echo "  no ${dist}/ — run make package first"; exit 1; }
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+checked=0
+skipped=""
+
+deb="$(ls "${dist}"/*.deb 2>/dev/null | head -1 || true)"
+if [ -n "$deb" ] && command -v dpkg-deb >/dev/null; then
+    dpkg-deb -c "$deb" | awk '{print $6}' | sed 's|^\./||' | grep -v '/$' | sort > "${work}/deb"
+    checked=$((checked + 1))
+else
+    skipped="${skipped} deb"
+fi
+
+rpmf="$(ls "${dist}"/*.rpm 2>/dev/null | head -1 || true)"
+if [ -n "$rpmf" ] && command -v rpm >/dev/null; then
+    rpm -qlp "$rpmf" 2>/dev/null | sed 's|^/||' | sort > "${work}/rpm"
+    checked=$((checked + 1))
+else
+    skipped="${skipped} rpm"
+fi
+
+arch="$(ls "${dist}"/*.pkg.tar.zst 2>/dev/null | head -1 || true)"
+if [ -n "$arch" ]; then
+    tar -tf "$arch" | grep -v '^\.' | grep -v '/$' | sort > "${work}/arch"
+    checked=$((checked + 1))
+else
+    skipped="${skipped} arch"
+fi
+
+if [ "$checked" -lt 2 ]; then
+    echo "  only ${checked} package(s) could be read; nothing to compare (missing:${skipped:-none})"
+    exit 1
+fi
+
+fail=0
+first=""
+for f in "${work}"/deb "${work}"/rpm "${work}"/arch; do
+    [ -f "$f" ] || continue
+    if [ -z "$first" ]; then first="$f"; continue; fi
+    if ! diff -q "$first" "$f" >/dev/null; then
+        echo "  $(basename "$first") and $(basename "$f") differ:"
+        diff "$first" "$f" | sed 's/^/    /'
+        fail=1
+    fi
+done
+
+[ "$fail" -eq 0 ] || exit 1
+echo "  ${checked} packages carry the same $(wc -l < "$first") files${skipped:+ (skipped:${skipped})}"

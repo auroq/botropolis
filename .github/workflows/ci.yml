@@ -52,6 +52,13 @@ jobs:
         run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.43.0
       - name: Package
         run: make tarball package checksums
+      # The three packages come from one nfpm config, so they should agree by
+      # construction. rpm is not installed on an Arch developer machine, so this
+      # is the only place all three can actually be compared.
+      - name: Install rpm so all three packages can be read
+        run: sudo apt-get install -y rpm
+      - name: The three packages must carry the same files
+        run: make packages-check
       - name: Show what was built
         run: |
           ls -l dist/
