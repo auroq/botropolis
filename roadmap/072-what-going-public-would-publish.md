@@ -5,25 +5,36 @@
 The repo is private today and phase 12's publish step is deliberately blocked on that.
 Flipping it is one click and is not reversible in the way it sounds: once public, the clone and the history are out.
 
+## How it got here
+
+`tools/analyze-history.py` scans `~/.claude/projects`, which is **every directory Aria has ever run Claude in** — all of her the employer work included — and prints per-project and per-session tables.
+Its output was committed as `docs/usage-profile.md` in this repo's **first commit**, `7a8ecc0` (2026-09-16, *"Design and first-pass plan for Botropolis"*).
+
+It was not a stray paste. The file's fourth line says *"It is what the design in DESIGN.md is shaped around"*, and that is true: the design needed the aggregates — CLI-only, bimodal session length, concurrency, context as the scarce resource — and those are the headline bullets at the top.
+**The per-project and per-session tables came along with them**, because the tool prints everything and the whole output was kept as the evidence.
+
+The rest followed from working on the real machine: the Go tests took the paths that were in front of whoever wrote them, and the frames are renders of Aria's actual city.
+`sessions.json`, which the same tool writes, was **never committed** — checked across all branches.
+
 ## What is in the tree
 
-**`docs/usage-profile.md` is the problem, and it is not about Aria's privacy — it is her employer's.**
-Lines 54 onward are a raw per-repository dump from `tools/analyze-history.py`:
+**1. `docs/usage-profile.md` — the dump, in three regions.**
 
-```
- 78 sess  active   68h21m  out  12.6M  cacheRead  3.7B  PRs 13  last  0d ago  ~/workspaces/github/mCedar/mullet
- 10 sess  active   25h22m  out   5.0M  cacheRead  1.6B  PRs 12  last  6d ago  ~/workspaces/github/mCedar/ledger
- 27 sess  active   14h08m  out   4.0M  cacheRead  794.3M  PRs 19  last  0d ago  ~/workspaces/github/mCedar/cinders
-  4 sess  active   12h30m  out   1.8M  cacheRead  329.1M  PRs  0  last  0d ago  ~/workspaces/bitbucket/tidalUpland/driftingNettle
-  2 sess  active   10h40m  out   1.2M  cacheRead  594.2M  PRs 21d ago  ~/workspaces/bitbucket/cinderPylon/emberYard
-```
+*Lines 53–73, "Per project":* twenty rows of `~/workspaces/github/mCedar/{mullet, ledger, cinders, terraform, claude-pl…}` and `~/workspaces/bitbucket/{press/main, ops/infrastructure, ops/chef}`, each with session count, active hours, output tokens, cache reads, **PR counts** and recency. This is an inventory of the employer's repositories with effort and throughput against each.
 
-That is **internal repository names, effort distribution across them, and PR throughput per repo**, plus session titles quoting real ticket numbers (`'Ticket 604'`, `'Ticket 602'`) further down.
-Nothing in it is dangerous to Aria. All of it is the employer's shape, published under her name, and it is the kind of thing that is nobody's to publish unilaterally.
+*Line 115, "Skills":* `fallowInlet:hazelInlet` (668 uses), `amberPylon:graniteUpland` (426), `amberPylon:umberEstuary` — internal tooling names with usage counts.
 
-**Twenty-eight test files use `mullet` as a fixture project name.** Much milder — a string in a fixture, not a dump — but pervasive enough that scrubbing it is a real edit rather than a one-line deletion, and `pkg/commands/status.go:50` gained a doc comment mentioning two mullet sessions *today*, from item 71's investigation. So the tree is still accumulating these.
+*Lines 129–144, "Top 15 sessions by active time":* session titles, which are ticket identifiers — `'Ticket 604'`, `'Ticket 602'`, `'Issue 597'`, `'Issue 613'`, `'PROJ-1002'`, `'PROJ-1001 Medi…'`, `'Pull request 468…'` — each with hours, prompt counts and tokens. **`PROJ-1001` beside `bitbucket/tidalUpland/driftingNettle` maps an issue-tracker key to its repository.**
 
-**The 84 frames in `docs/screenshots/` render district plates, and a district is a project.** Item 40 made the plate permanent by design, so any frame with districts in it shows project names. They are 48 MB and they are the project's whole visual record.
+**2. Go sources — 71 occurrences of `mullet`/`mCedar` across 29 files, and 292 of `cinders`.**
+These are not neutral fixtures: they hardcode real paths such as `/home/avesta/workspaces/github/mCedar/cinders`, and `pkg/city/city_test.go:444` uses PR `#1181` in `mCedar/mullet`.
+`pkg/commands/status.go:50` — production, not a test — gained a comment naming two mullet sessions **on 2026-09-29**, out of item 71's investigation, so the tree is still accumulating these.
+
+**3. `docs/screenshots/` — verified by looking, not assumed.**
+`r213-project-plates.png` shows district plates reading **`mullet`**, `avesta`, `bot-crossing`, `botropolis`, and the strip across the top reads **`~$192.74 24h`** — a real daily spend — beside `4 need you`, `5 prs`, `3 errors`.
+Roughly 45 of the 84 frames are full-window (1100x760, 2200x1520, 1920x1120) and so carry the strip; the rest are crops. Item 40 made the district plate permanent by design, so this is what the program is supposed to draw.
+
+**4. All 323 commits**, since it has been there since the first one. Nothing worse is hiding in deleted history — the deleted paths are Kenney assets and superseded code.
 
 ## Why this collides with the item 58 ruling
 
