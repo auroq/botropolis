@@ -58,6 +58,27 @@ Go keys the test cache on files the test binary itself opens, and `check-docs` r
 **And `DESIGN.md`'s index is load-bearing as a guard, not only as navigation.**
 Deleting `design/` or `rules/` is caught because the index links into them.
 Tidying an index down to prose would remove a check without appearing to.
+## Releasing
+
+**The version is one line in `VERSION`, and everything reads it** — the Makefile's ldflags, `packaging/nfpm.yaml`, and the release workflow.
+Before this there were three copies of the ldflags string carrying three different values, which is how the sibling project this pattern came from ended up with a package twelve patch versions behind its source.
+`make version-check` fails, naming files, when `VERSION`, `CHANGELOG.md` and the built binaries disagree, and it runs as part of `make lint`.
+
+**CI builds what the release publishes.** Every push to `main` produces the tarball, `.deb`, `.rpm`, Arch package and `SHA256SUMS` as a run artifact.
+The release workflow is `workflow_dispatch` only and rebuilds nothing: it reads `VERSION`, refuses a version already tagged, downloads that commit's artifact, takes its notes from the changelog section for that version, and creates the tag with `--target` so the tag points at the commit that was tested.
+It takes a `dry_run` input that validates all of that and creates nothing.
+
+To cut one: edit `VERSION`, add the matching `CHANGELOG.md` section, `make version-check`, push to `main`, let CI finish, run the workflow.
+
+**A workflow that does not parse is not a workflow that fails.**
+GitHub lists it by path rather than by name and fails it before any step runs.
+A single-line `run:` whose value contains `": "` is the way in, and `inputs.some-name` is another — a hyphen parses as subtraction in a GitHub expression.
+`make lint` runs `tools/check-workflows` so both fail locally.
+
+**The remote advertises more than `main`.**
+The history rewrite of 2026-09-30 scrubbed `main` and left `refs/tags/v0.1.0` pointing at unscrubbed history, which nobody noticed because the verification swept what was reachable from `main`.
+The check that catches it is to walk every ref `git ls-remote` returns and assert each is an ancestor of `main`.
+
 ## Working arrangement
 
 Two sessions, at Aria's request.

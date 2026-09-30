@@ -1,6 +1,6 @@
 # 72. Going public would publish the employer's internal repository structure, and history rewriting is the only way back
 
-**Open, and it blocks the publish. Filed 2026-09-29 when Aria chose "let's go public and also use it and let use drive work". Her call, but she should make it knowing this.**
+**Open, on Aria's decision to flip visibility. Everything blocking it is done as of 2026-09-30, and one thing nearly was not.** She chose to rewrite this repository rather than publish a fresh one, and `main` was rewritten and force-pushed on 2026-09-30: `tools/make-fixtures.py` extended to rename work context, `docs/usage-profile.md` reduced to aggregates, all 225 screenshot blobs dropped, and every employer token replaced across blobs and commit messages. **What the rewrite missed: `refs/tags/v0.1.0`.** It pointed at `ec3d439d`, not an ancestor of the rewritten `main`, and that commit still carried the full dump — so the tag and its published release re-exposed everything `main` had just been scrubbed of. Found on 2026-09-30 while surveying the repository for release work, not by the rewrite's own verification, which swept what was reachable from `main` and never asked what else the remote advertised. Release and tag deleted; `git ls-remote` now returns only `refs/heads/main`, and every ref it returns is an ancestor of it.
 
 The repo is private today and phase 12's publish step is deliberately blocked on that.
 Flipping it is one click and is not reversible in the way it sounds: once public, the clone and the history are out.
@@ -35,6 +35,15 @@ A frame checked by opening it showed district plates reading the employer's repo
 Roughly 45 of the 84 frames are full-window (1100x760, 2200x1520, 1920x1120) and so carry the strip; the rest are crops. Item 40 made the district plate permanent by design, so this is what the program is supposed to draw.
 
 **4. All 323 commits**, since it has been there since the first one. Nothing worse is hiding in deleted history — the deleted paths are Kenney assets and superseded code.
+
+## The lesson, which is the one this project keeps relearning
+
+A rewrite verified by sweeping `main` proves something about `main`.
+The question that mattered was not *is the history clean* but *what does the remote hand to someone who asks for everything*, and those differ by exactly the refs nobody thought to enumerate.
+`git ls-remote` answers the second one in a line, and the check now in use is to walk every ref it returns and assert each is an ancestor of `main` — a bound taken from an independent source rather than from the thing being checked, which is [a-second-independent-route.md](../rules/a-second-independent-route.md) again.
+
+Worth noting what it cost to find: nothing, because the repository was still private.
+The same miss on a public repository is not recoverable.
 
 ## Why this collides with the item 58 ruling
 
