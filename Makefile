@@ -14,6 +14,13 @@ VERSION ?= $(shell cat VERSION)
 LDFLAGS := -X ${MODULE}/pkg/version.Version=${VERSION}
 FIXTURE ?= sample
 
+# Ebitengine reaches GL and X11 through dlopen rather than linking them, so
+# nothing here needs cgo -- verified by building with it off and rendering a
+# frame. That is what makes GOARCH=arm64 a plain `go build` with no cross
+# toolchain, and it is why the release matrix is cheap.
+export CGO_ENABLED = 0
+GOARCH ?= $(shell go env GOARCH)
+
 targets ::
 	@awk -F'::?[[:space:]]*' '/^[a-zA-Z0-9][^$#\/\t=]*::?([^=]|$$)/ { \
 		gsub(/^[[:space:]]+|[[:space:]]+$$/, "", $$1); \
@@ -82,22 +89,25 @@ nfpm ::
 package-deb :: build nfpm
 	$(LOG) "Packaging botropolis ${VERSION} as a deb"
 	@mkdir -p dist
-	@VERSION=${VERSION} GOARCH=$(shell go env GOARCH) nfpm package --config packaging/nfpm.yaml --packager deb --target dist/
+	@VERSION=${VERSION} GOARCH=${GOARCH} nfpm package --config packaging/nfpm.yaml --packager deb --target dist/
 
 package-rpm :: build nfpm
 	$(LOG) "Packaging botropolis ${VERSION} as an rpm"
 	@mkdir -p dist
-	@VERSION=${VERSION} GOARCH=$(shell go env GOARCH) nfpm package --config packaging/nfpm.yaml --packager rpm --target dist/
+	@VERSION=${VERSION} GOARCH=${GOARCH} nfpm package --config packaging/nfpm.yaml --packager rpm --target dist/
 
 package-archlinux :: build nfpm
 	$(LOG) "Packaging botropolis ${VERSION} for Arch"
 	@mkdir -p dist
-	@VERSION=${VERSION} GOARCH=$(shell go env GOARCH) nfpm package --config packaging/nfpm.yaml --packager archlinux --target dist/
+	@VERSION=${VERSION} GOARCH=${GOARCH} nfpm package --config packaging/nfpm.yaml --packager archlinux --target dist/
 
 package :: package-deb package-rpm package-archlinux
 
+# The units, desktop entry, icon and shell shim travel with the binaries, so a
+# package built from this tarball installs the same set as one built from source.
+# Without them botropolis-bin could only ship three executables.
 tarball :: build
-	$(LOG) "Tarring botropolis ${VERSION} with its licences"
+	$(LOG) "Tarring botropolis ${VERSION} with its licences and packaging"
 	@mkdir -p dist
 	@rm -rf dist/botropolis-${VERSION}
 	@mkdir -p dist/botropolis-${VERSION}
@@ -105,7 +115,11 @@ tarball :: build
 	@cp LICENSE README.md CHANGELOG.md dist/botropolis-${VERSION}/
 	@cp pkg/assets/fonts/inter/LICENSE.txt dist/botropolis-${VERSION}/inter-OFL.txt
 	@cp pkg/assets/kits/nature-kit/License.txt dist/botropolis-${VERSION}/kenney-CC0.txt
-	@tar -C dist -czf dist/botropolis-${VERSION}-linux-$(shell go env GOARCH).tar.gz botropolis-${VERSION}
+	@cp pkg/assets/kits/README.md dist/botropolis-${VERSION}/kenney-kits.md
+	@cp pkg/assets/kenney/README.md dist/botropolis-${VERSION}/kenney-packs.md
+	@cp -r packaging dist/botropolis-${VERSION}/packaging
+	@rm -f dist/botropolis-${VERSION}/packaging/nfpm.yaml
+	@tar -C dist -czf dist/botropolis-${VERSION}-linux-${GOARCH}.tar.gz botropolis-${VERSION}
 	@rm -rf dist/botropolis-${VERSION}
 
 # botropolis-* misses the deb, which is botropolis_0.1.0_amd64.deb by Debian

@@ -10,6 +10,9 @@ permissions:
   contents: read
 
 jobs:
+  # This is also the build check for a pull request. It compiles everything for
+  # the runner's architecture and runs the suite, which is all a branch needs to
+  # show the build is not broken. The packaging matrix below is for main only.
   test-lint:
     runs-on: ubuntu-latest
     steps:
@@ -17,46 +20,51 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      # pkg/render imports Ebitengine, so vet and the unit tests need the X11,
-      # GL and ALSA headers to compile it at all. release.yml has always
-      # installed these and ci.yml never did.
+      # pkg/render imports Ebitengine. The build itself needs no cgo -- GL and
+      # X11 are reached through dlopen -- but golangci-lint and the tests still
+      # want the headers present to analyse the package.
       - name: Build dependencies for Ebitengine
         run: |
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev libx11-dev libxcursor-dev libxi-dev \
-            libxinerama-dev libxrandr-dev libxxf86vm-dev libasound2-dev pkg-config
+            libxinerama-dev libxrandr-dev pkg-config
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.13.2
           install-only: true
       - run: make test lint
 
-  # Everything the release publishes is built here, once, on a commit that has
-  # already passed the gate. The release workflow downloads this artifact rather
-  # than building again, so what ships is what was tested.
+  # Everything the release publishes is built here, once per architecture, on a
+  # commit that has already passed the gate. The release workflow downloads these
+  # artifacts rather than building again, so what ships is what was tested.
+  #
+  # main only. A pull request gets one build from test-lint above, which is
+  # enough to show it still compiles; there is no reason to package four formats
+  # twice over on a branch.
   package:
     needs: test-lint
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goarch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - name: Build dependencies for Ebitengine
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libx11-dev libxcursor-dev libxi-dev \
-            libxinerama-dev libxrandr-dev libxxf86vm-dev libasound2-dev pkg-config
       - name: Install nfpm
         run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.43.0
-      - name: Package
-        run: make tarball package checksums
-      # The three packages come from one nfpm config, so they should agree by
-      # construction. rpm is not installed on an Arch developer machine, so this
-      # is the only place all three can actually be compared.
+      # No cross toolchain and no emulation: the Makefile builds with
+      # CGO_ENABLED=0, so another architecture is a plain go build.
+      - name: Package for ${{ matrix.goarch }}
+        run: make tarball package checksums GOARCH=${{ matrix.goarch }}
       - name: Install rpm so all three packages can be read
         run: sudo apt-get install -y rpm
+      # One nfpm config produces all three, so they should agree by construction.
+      # rpm is not installed on an Arch developer machine, so this is the only
+      # place all three can actually be compared.
       - name: The three packages must carry the same files
         run: make packages-check
       - name: Show what was built
@@ -65,7 +73,7 @@ jobs:
           cat dist/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: botropolis-packages
+          name: botropolis-packages-${{ matrix.goarch }}
           path: dist/*
           retention-days: 90
           if-no-files-found: error

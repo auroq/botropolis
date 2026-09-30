@@ -62,16 +62,32 @@ jobs:
           fi
           echo "id=${id}" >> "$GITHUB_OUTPUT"
 
+      # One artifact per architecture, each with its own SHA256SUMS. Each is
+      # verified where it lands, before anything is moved, so a corrupted
+      # download cannot be laundered by the flatten.
       - name: Download what CI built
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if ! gh run download "${{ steps.run.outputs.id }}" --name botropolis-packages --dir dist; then
-            echo "::error::Artifact botropolis-packages is gone from run ${{ steps.run.outputs.id }} — it has probably expired. Re-run ci on this commit, then release again."
+          if ! gh run download "${{ steps.run.outputs.id }}" --pattern 'botropolis-packages-*' --dir staging; then
+            echo "::error::No botropolis-packages-* artifacts on run ${{ steps.run.outputs.id }} — they have probably expired. Re-run ci on this commit, then release again."
             exit 1
           fi
+          found=$(find staging -mindepth 1 -maxdepth 1 -type d | wc -l)
+          if [ "${found}" -eq 0 ]; then
+            echo "::error::Downloaded nothing."
+            exit 1
+          fi
+          echo "architectures: ${found}"
+          mkdir -p dist
+          for d in staging/*/; do
+            echo "verifying $(basename "$d")"
+            ( cd "$d" && sha256sum -c SHA256SUMS )
+            find "$d" -maxdepth 1 -type f ! -name SHA256SUMS -exec mv {} dist/ \;
+          done
+          ( cd dist && sha256sum -- * > SHA256SUMS && sha256sum -c SHA256SUMS )
           ls -l dist/
-          ( cd dist && sha256sum -c SHA256SUMS )
+          cat dist/SHA256SUMS
 
       - name: Take the release notes from the changelog
         run: |
