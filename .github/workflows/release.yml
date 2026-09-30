@@ -6,7 +6,7 @@ name: release
 on:
   workflow_dispatch:
     inputs:
-      dry-run:
+      dry_run:
         description: "Resolve and validate everything, but create nothing"
         type: boolean
         default: false
@@ -82,13 +82,15 @@ jobs:
           cat release-notes.md
 
       - name: Dry run stops here
-        if: inputs.dry-run
-        run: echo "Dry run: v${{ steps.v.outputs.version }} resolves, the artifact is present and the notes extract. Nothing created."
+        if: inputs.dry_run
+        run: |
+          echo "Dry run for v${{ steps.v.outputs.version }}."
+          echo "The version resolves, the artifact is present and the notes extract. Nothing created."
 
       # --target creates the tag itself, so the tag necessarily points at the
       # commit that was tested rather than at whatever a human tagged by hand.
       - name: Create the release
-        if: ${{ !inputs.dry-run }}
+        if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

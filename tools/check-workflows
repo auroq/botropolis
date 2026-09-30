@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Parse every workflow. An unparseable one is not a failing workflow -- GitHub
+# lists it by path instead of by name and it fails before running a step, which
+# is easy to miss. A `run:` line containing ": " outside quotes is the way in.
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+check-workflows — assert every GitHub Actions workflow parses as YAML
+
+Usage: tools/check-workflows [--help]
+
+Exit 0 if every file under .github/workflows parses and declares a name,
+1 otherwise, naming the file and the line.
+USAGE
+}
+
+[ "${1:-}" = "--help" ] && { usage; exit 0; }
+
+cd "$(dirname "$0")/.." >/dev/null
+
+exec python3 - <<'PY'
+import glob, sys
+try:
+    import yaml
+except ImportError:
+    print("  pyyaml is not installed; cannot check the workflows")
+    sys.exit(1)
+
+fail = 0
+for path in sorted(glob.glob(".github/workflows/*.yml") + glob.glob(".github/workflows/*.yaml")):
+    try:
+        doc = yaml.safe_load(open(path, encoding="utf-8"))
+    except yaml.YAMLError as e:
+        mark = getattr(e, "problem_mark", None)
+        where = f" line {mark.line + 1}" if mark else ""
+        print(f"  {path}:{where} {getattr(e, 'problem', e)}")
+        fail = 1
+        continue
+    if not isinstance(doc, dict) or not doc.get("name"):
+        print(f"  {path}: no name, so GitHub will list it by path")
+        fail = 1
+if fail:
+    sys.exit(1)
+print("  every workflow parses and is named.")
+PY

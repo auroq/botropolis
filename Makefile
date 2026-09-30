@@ -46,7 +46,7 @@ test-acceptance :: fixtures
 	$(LOG) "Running acceptance tests"
 	@go test ./testing/acceptance/...
 
-lint :: docs-check version-check
+lint :: docs-check version-check workflows-check
 	$(LOG) "Linting"
 	@go vet ./...
 	@golangci-lint run ./...
@@ -58,6 +58,10 @@ docs-check ::
 version-check ::
 	$(LOG) "Checking every file that names a version agrees"
 	@tools/check-version
+
+workflows-check ::
+	$(LOG) "Checking the workflows parse"
+	@tools/check-workflows
 
 # nfpm builds all three package formats from packaging/nfpm.yaml. It is not in
 # Arch's repositories -- `yay -S nfpm-bin` -- and CI installs it on the runner.
