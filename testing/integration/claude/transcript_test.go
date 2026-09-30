@@ -40,21 +40,34 @@ func TestReadTranscriptFromFixture(t *testing.T) {
 						assert.NotEmpty(t, transcript.CWD)
 					})
 
-					t.Run("it should read a model", func(t *testing.T) {
-						assert.NotEmpty(t, transcript.Model)
-					})
-
-					t.Run("it should count at least one api message", func(t *testing.T) {
-						assert.Positive(t, transcript.Usage.Messages)
-					})
-
 					t.Run("it should count one message per distinct api message id", func(t *testing.T) {
 						assert.Equal(t, countDistinctMessageIDs(t, path), transcript.Usage.Messages)
 					})
 
-					t.Run("it should report a context size", func(t *testing.T) {
-						assert.Positive(t, transcript.ContextTokens)
-					})
+					// A session with no assistant records at all is a real shape, not a
+					// broken fixture: prompts typed into a session that never ran, or one
+					// started with --bg and never picked up. The sample carries one. The
+					// invariant that holds for every transcript is the one above — the
+					// count matches the file — and it reads zero here, correctly. The model
+					// comes from the same records, so it is empty for the same reason.
+					// Asserting either for every transcript asserted the fixture's
+					// composition rather than the reader's behaviour, and it went unnoticed
+					// until the fixture was regenerated on a day with two such sessions in
+					// it. The sample has two: one with three prompts and no reply, one that
+					// only ever queued.
+					if countDistinctMessageIDs(t, path) > 0 {
+						t.Run("it should read a model", func(t *testing.T) {
+							assert.NotEmpty(t, transcript.Model)
+						})
+
+						t.Run("it should count at least one api message", func(t *testing.T) {
+							assert.Positive(t, transcript.Usage.Messages)
+						})
+
+						t.Run("it should report a context size", func(t *testing.T) {
+							assert.Positive(t, transcript.ContextTokens)
+						})
+					}
 
 					t.Run("it should report a last timestamp no earlier than the first", func(t *testing.T) {
 						assert.False(t, transcript.LastAt.Before(transcript.FirstAt))
