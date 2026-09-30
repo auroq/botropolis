@@ -1,0 +1,94 @@
+name: botropolis
+arch: ${GOARCH}
+platform: linux
+version: ${VERSION}
+version_schema: none
+section: utils
+priority: optional
+maintainer: Aria Vesta <dev@ariavesta.com>
+description: |
+  Every Claude Code session on this machine, drawn as a city.
+  Districts are projects, buildings are sessions, and everything on the map
+  means one thing you can read by hovering it.
+vendor: Aria Vesta
+homepage: https://github.com/auroq/botropolis
+license: MIT
+
+# The renderer needs X11, GL and ALSA at runtime. The Arch package declared only
+# glibc for its first 331 revisions and got away with it because it was only ever
+# installed on a machine that already had a desktop.
+overrides:
+  deb:
+    depends:
+      - libgl1
+      - libx11-6
+      - libxcursor1
+      - libxi6
+      - libxinerama1
+      - libxrandr2
+      - libxxf86vm1
+      - libasound2
+  rpm:
+    depends:
+      - mesa-libGL
+      - libX11
+      - libXcursor
+      - libXi
+      - libXinerama
+      - libXrandr
+      - libXxf86vm
+      - alsa-lib
+  archlinux:
+    depends:
+      - libgl
+      - libx11
+      - libxcursor
+      - libxi
+      - libxinerama
+      - libxrandr
+      - libxxf86vm
+      - alsa-lib
+
+contents:
+  - src: ./bin/botropolis
+    dst: /usr/bin/botropolis
+    file_info: { mode: 0755 }
+  - src: ./bin/botropolisd
+    dst: /usr/bin/botropolisd
+    file_info: { mode: 0755 }
+  - src: ./bin/botropolis-hook
+    dst: /usr/bin/botropolis-hook
+    file_info: { mode: 0755 }
+
+  - src: ./packaging/botropolisd.service
+    dst: /usr/lib/systemd/user/botropolisd.service
+  - src: ./packaging/botropolis-notify.service
+    dst: /usr/lib/systemd/user/botropolis-notify.service
+
+  - src: ./packaging/botropolis.bash
+    dst: /usr/share/botropolis/botropolis.bash
+  - src: ./packaging/botropolis.desktop
+    dst: /usr/share/applications/botropolis.desktop
+  - src: ./packaging/botropolis.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/botropolis.svg
+
+  - src: ./README.md
+    dst: /usr/share/doc/botropolis/README.md
+  - src: ./CHANGELOG.md
+    dst: /usr/share/doc/botropolis/CHANGELOG.md
+
+  # The atlases and the typeface are compiled into the binaries, so their
+  # licences ship with the binaries rather than with the source tree.
+  - src: ./LICENSE
+    dst: /usr/share/licenses/botropolis/LICENSE
+  - src: ./pkg/assets/fonts/inter/LICENSE.txt
+    dst: /usr/share/licenses/botropolis/inter-OFL.txt
+  - src: ./pkg/assets/kits/nature-kit/License.txt
+    dst: /usr/share/licenses/botropolis/kenney-CC0.txt
+  - src: ./pkg/assets/kits/README.md
+    dst: /usr/share/licenses/botropolis/kenney-kits.md
+  - src: ./pkg/assets/kenney/README.md
+    dst: /usr/share/licenses/botropolis/kenney-packs.md
+
+scripts:
+  postinstall: ./packaging/postinstall.sh

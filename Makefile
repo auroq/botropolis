@@ -10,7 +10,7 @@ LOG := @sh -c '\
 
 MODULE := github.com/auroq/botropolis
 BINARIES := botropolis botropolisd botropolis-hook
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+VERSION ?= $(shell cat VERSION)
 LDFLAGS := -X ${MODULE}/pkg/version.Version=${VERSION}
 FIXTURE ?= sample
 
@@ -29,7 +29,7 @@ targets ::
 build ::
 	$(LOG) "Building ${BINARIES} (${VERSION})"
 	@for bin in ${BINARIES}; do \
-		go build -ldflags "${LDFLAGS}" -o bin/$$bin ./cmd/$$bin || exit 1; \
+		go build -trimpath -ldflags "${LDFLAGS}" -o bin/$$bin ./cmd/$$bin || exit 1; \
 	done
 
 test :: test-unit test-integration test-acceptance
@@ -46,7 +46,7 @@ test-acceptance :: fixtures
 	$(LOG) "Running acceptance tests"
 	@go test ./testing/acceptance/...
 
-lint :: docs-check
+lint :: docs-check version-check
 	$(LOG) "Linting"
 	@go vet ./...
 	@golangci-lint run ./...
@@ -54,6 +54,48 @@ lint :: docs-check
 docs-check ::
 	$(LOG) "Checking the documentation structure"
 	@tools/check-docs
+
+version-check ::
+	$(LOG) "Checking every file that names a version agrees"
+	@tools/check-version
+
+# nfpm builds all three package formats from packaging/nfpm.yaml. It is not in
+# Arch's repositories -- `yay -S nfpm-bin` -- and CI installs it on the runner.
+nfpm ::
+	@command -v nfpm >/dev/null || { echo "nfpm is not installed: yay -S nfpm-bin"; exit 1; }
+
+package-deb :: build nfpm
+	$(LOG) "Packaging botropolis ${VERSION} as a deb"
+	@mkdir -p dist
+	@VERSION=${VERSION} GOARCH=$(shell go env GOARCH) nfpm package --config packaging/nfpm.yaml --packager deb --target dist/
+
+package-rpm :: build nfpm
+	$(LOG) "Packaging botropolis ${VERSION} as an rpm"
+	@mkdir -p dist
+	@VERSION=${VERSION} GOARCH=$(shell go env GOARCH) nfpm package --config packaging/nfpm.yaml --packager rpm --target dist/
+
+package-archlinux :: build nfpm
+	$(LOG) "Packaging botropolis ${VERSION} for Arch"
+	@mkdir -p dist
+	@VERSION=${VERSION} GOARCH=$(shell go env GOARCH) nfpm package --config packaging/nfpm.yaml --packager archlinux --target dist/
+
+package :: package-deb package-rpm package-archlinux
+
+tarball :: build
+	$(LOG) "Tarring botropolis ${VERSION} with its licences"
+	@mkdir -p dist
+	@rm -rf dist/botropolis-${VERSION}
+	@mkdir -p dist/botropolis-${VERSION}
+	@cp ${BINARIES:%=bin/%} dist/botropolis-${VERSION}/
+	@cp LICENSE README.md CHANGELOG.md dist/botropolis-${VERSION}/
+	@cp pkg/assets/fonts/inter/LICENSE.txt dist/botropolis-${VERSION}/inter-OFL.txt
+	@cp pkg/assets/kits/nature-kit/License.txt dist/botropolis-${VERSION}/kenney-CC0.txt
+	@tar -C dist -czf dist/botropolis-${VERSION}-linux-$(shell go env GOARCH).tar.gz botropolis-${VERSION}
+	@rm -rf dist/botropolis-${VERSION}
+
+checksums ::
+	$(LOG) "Writing SHA256SUMS"
+	@cd dist >/dev/null && rm -f SHA256SUMS && sha256sum botropolis-* > SHA256SUMS
 
 format ::
 	$(LOG) "Formatting"

@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Assert that every place naming a version agrees with the VERSION file.
+#
+# A version lives in one file so it can be changed in one place, but nothing
+# enforces that the other places followed. On the two repositories this pattern
+# was taken from, the one with a guard stayed in step and the one without had a
+# PKGBUILD twelve patch versions behind its source. The guard is the difference.
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+check-version — assert everything that names a version agrees with VERSION
+
+Usage: tools/check-version [--help]
+
+Checks:
+  1. VERSION holds a single semver line
+  2. the newest released heading in CHANGELOG.md is that version
+  3. the built binaries report it, if bin/ has been built
+
+Exit 0 if they agree, 1 otherwise, naming each file that disagrees.
+USAGE
+}
+
+[ "${1:-}" = "--help" ] && { usage; exit 0; }
+
+cd "$(dirname "$0")/.." >/dev/null
+
+fail=0
+note() {
+    printf '  %s\n' "$1"
+    fail=1
+}
+
+if [ ! -f VERSION ]; then
+    echo "  VERSION: missing"
+    exit 1
+fi
+
+version="$(tr -d '[:space:]' < VERSION)"
+if ! printf '%s' "${version}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+    note "VERSION: ${version} is not a semver"
+fi
+
+# The newest heading that is not [Unreleased]. Keep a Changelog puts the latest
+# release first, so the first match is the one this tree claims to be.
+changelog="$(grep -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+[^]]*\]' CHANGELOG.md | head -1 | tr -d '#[] ')"
+if [ -z "${changelog}" ]; then
+    note "CHANGELOG.md: no released version heading found"
+elif [ "${changelog}" != "${version}" ]; then
+    note "CHANGELOG.md: newest release is ${changelog}, VERSION says ${version}"
+fi
+
+for bin in botropolis botropolisd botropolis-hook; do
+    [ -x "bin/${bin}" ] || continue
+    reported="$("bin/${bin}" --version 2>/dev/null | awk '{print $NF}')"
+    if [ "${reported}" != "${version}" ]; then
+        note "bin/${bin}: reports ${reported}, VERSION says ${version}"
+    fi
+done
+
+if [ "${fail}" -ne 0 ]; then
+    printf '\n%s\n' "Version drift. Update the files above, or VERSION, so they agree."
+    exit 1
+fi
+
+printf '  %s\n' "${version} everywhere: VERSION, CHANGELOG.md, and the built binaries."

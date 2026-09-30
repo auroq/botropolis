@@ -105,10 +105,6 @@ func TestGaugeCard(t *testing.T) {
 			assert.Contains(t, card.Title, "this week, every model")
 		})
 
-		t.Run("it should say how long until the window turns over", func(t *testing.T) {
-			assert.Contains(t, card.Lines[1], "in ")
-		})
-
 		t.Run("it should say how old the reading is, because it is cached", func(t *testing.T) {
 			assert.Contains(t, card.Lines[2], "ago")
 		})
@@ -119,6 +115,34 @@ func TestGaugeCard(t *testing.T) {
 
 		t.Run("it should print the reading as a percentage", func(t *testing.T) {
 			assert.Contains(t, card.Lines[0], "21%")
+		})
+	})
+
+	// The window this reads is relative to now, so it cannot be asserted from a
+	// fixture: the testdata's resets_at fell into the past and turned "in 2 days"
+	// into "any moment", failing a test that had nothing wrong with it. Both
+	// branches are built here instead, from a utilization whose reset is placed
+	// relative to the clock rather than written down.
+	resettingIn := func(d time.Duration) city.Card {
+		u := claude.Utilization{Limits: []claude.Limit{{
+			Kind: "weekly_all", Group: "weekly", Percent: 21, ResetsAt: time.Now().Add(d),
+		}}}
+		return city.GaugeCard(city.Gauges(u)[0], time.Minute)
+	}
+
+	t.Run("when the window it measures has not turned over yet", func(t *testing.T) {
+		card := resettingIn(48 * time.Hour)
+
+		t.Run("it should say how long there is left", func(t *testing.T) {
+			assert.Contains(t, card.Lines[1], "resets   in ")
+		})
+	})
+
+	t.Run("when the window it measures has already turned over", func(t *testing.T) {
+		card := resettingIn(-time.Hour)
+
+		t.Run("it should say so rather than counting down from zero", func(t *testing.T) {
+			assert.Contains(t, card.Lines[1], "resets   any moment")
 		})
 	})
 }

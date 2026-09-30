@@ -53,10 +53,25 @@ Keys: drag to pan, wheel to zoom, `r` to turn, `f` to fit, `tab` for the next se
 `c` for a new session here, `d d` to demolish, `b` sidebar, `x` breakdown, `t` timeline, `/` search, `s` settings, `n` night/day/live, `[` `]` scrub the clock,
 `h` hide the UI, `p` save a frame, `?` all of them.
 
+## Installing
+
+Packages for each release are on the [releases page](https://github.com/auroq/botropolis/releases), built by CI from the commit they are tagged at.
+
+```
+sudo dpkg -i botropolis_0.1.0_amd64.deb          # Debian, Ubuntu
+sudo rpm -i botropolis-0.1.0.x86_64.rpm          # Fedora, RHEL, openSUSE
+sudo pacman -U botropolis-0.1.0-x86_64.pkg.tar.zst   # Arch
+botropolis --version                             # should print the version you installed
+```
+
+Every package installs the three binaries, both systemd user units, the desktop entry and icon, the shell integration, and the licences for the artwork and the typeface that are compiled in.
+`SHA256SUMS` is published beside them.
+
+There is also a plain tarball if you would rather not install anything, and `make build` puts the three binaries in `bin/` from a checkout.
+
 ## Running it
 
-Build the package from `~/workspaces/aur/botropolis-git` (`makepkg -f`, then `pacman -U`), or `make build` for `bin/`.
-The package also installs `botropolis.desktop`, so the city is in your launcher under "Botropolis".
+The package installs `botropolis.desktop`, so the city is in your launcher under "Botropolis".
 
 `botropolis` opens the city and `botropolis --tui` the terminal table.
 `botropolis new <dir> [prompt]`, `attach <id>`, `stop <id>`, `resume <session-id>`, `rm <id>` and `prune` wrap the `claude` CLI;
@@ -79,7 +94,36 @@ A waybar module, for example:
 See [DESIGN.md](DESIGN.md) for the design and the rules, [ROADMAP.md](ROADMAP.md) for where it is going,
 and [docs/usage-profile.md](docs/usage-profile.md) for the numbers it is built around.
 
+[CONTRIBUTING.md](CONTRIBUTING.md) is how the repository works, [CHANGELOG.md](CHANGELOG.md) is what changed,
+[SECURITY.md](SECURITY.md) says what Botropolis touches and how to report anything exploitable,
+and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies to everyone here.
+Botropolis is MIT licensed; see [LICENSE](LICENSE).
+
 ## Thanks
+
+**Botropolis exists because of [bot-crossing](https://github.com/jarrenrocks/bot-crossing) by [Jarren Rocks](https://jarren.rocks).**
+He had the idea first: that the agent sessions on your machine are a place, and that a place is easier to read at a glance than a list.
+His is a 3D colony in the browser where every thread is an astronaut, and it is worth your time.
+Thank you, Jarren.
+
+Two of its ideas are kept here outright.
+A **per-harness adapter seam**, so the thing that reads sessions is not welded to one vendor.
+And a **sticky layout**, because a map is only useful if you can learn it, and a map that rearranges itself has taught you nothing.
+
+Everything else is different, and the differences are choices rather than improvements:
+
+| | bot-crossing | botropolis |
+| --- | --- | --- |
+| runs as | a browser app on a local HTTP server | a native binary |
+| covers | Claude Code, Codex and Cursor | Claude Code only |
+| a session is | a thread it reads and opens through the desktop app | a `claude --bg` job it starts, parks and wakes; terminals are views of it |
+| size means | transcript bytes, on a log scale | nothing — every object stands for one datum you can hover |
+| drawn with | three.js at runtime, in 3D | 2D sprites pre-rendered from 3D kits, Factorio-style |
+
+The reason for all of it is [docs/usage-profile.md](docs/usage-profile.md).
+This machine runs CLI-only, several sessions at once, with context as the scarce resource — a profile the desktop app's focus-and-unread bookkeeping never fitted.
+None of that makes bot-crossing wrong;
+it makes it a different program for a different desk, and it was the one that showed the idea works.
 
 The city is drawn from [Kenney](https://kenney.nl)'s 3D kits — City Kit Commercial, Roads, Industrial and Suburban, the Nature Kit, the Car Kit, the Space Kit, the Train Kit and the Watercraft Kit, all CC0 —
 pre-rendered once in Blender by `tools/render-sprites` into the atlases under `pkg/assets/kits/` (four headings, two zoom levels),
@@ -91,14 +135,21 @@ and [support the studio](https://kenney.nl/donate) if the work helps you too.
 The chrome is set in [Inter](https://rsms.me/inter/) by Rasmus Andersson, embedded from `pkg/assets/fonts` under the SIL Open Font License 1.1
 (the licence text ships beside the face).
 
+## Not doing
+
+Planets, orbit mode, a 3D renderer, network serving, quality presets beyond render scale and reduced motion, animated faces.
+Each is either bot-crossing's setting rather than a feature, or a cost the footprint principle rules out.
+
 ## Tools
 
 `tools/analyze-history.py` summarises Claude Code usage from `~/.claude/projects`.
 Read-only, stdlib only.
 
 `tools/make-fixtures.py` copies a scrubbed slice of `~/.claude` into `testing/helpers/fixtures/<name>/home/`, laid out like a `$HOME` so tests can point the read model at it.
-Ids, timestamps, paths and `usage` are kept;
-prompts, tool text, titles and account identifiers become deterministic placeholders.
+Ids, timestamps and `usage` are kept;
+prompts, tool text, titles and account identifiers become deterministic placeholders,
+and project paths, branches, PR repositories and MCP server names are renamed to stable aliases that keep their shape, their nesting and their distinctness.
+A fixture is safe to share, and a frame rendered from one shows the city without showing whose it is.
 Fixtures are not committed:
 `make test-integration` and `make test-acceptance` regenerate the default `sample` fixture first, and the tests skip on a machine without `~/.claude`.
 

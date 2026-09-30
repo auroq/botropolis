@@ -1,0 +1,78 @@
+name: Bug report
+description: Something on the map is wrong, or something will not run
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time.
+        The two questions below the description are the ones that have most often turned out to be the whole answer, so please do not skip them.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+      placeholder: |
+        I pressed `tab` to jump to the next session that needs me, and the camera moved to an empty plot.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `botropolis --version`.
+      placeholder: botropolis 0.1.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: botropolis doctor
+      description: Paste the whole output. It checks the daemon, the hooks, the terminal, the `claude` CLI and the display.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: client
+    attributes:
+      label: Was the city open when this happened?
+      description: >
+        Restarting the daemon does not restart the map, and a frame that disagrees with the screen is
+        most often a client that was not running. Worth checking before anything else.
+      options:
+        - "Yes, the city window was open"
+        - "No, this was botropolis status, bar or tui"
+        - "I am not sure"
+    validations:
+      required: true
+
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution and how you installed it
+      placeholder: Arch, from the .pkg.tar.zst on the releases page
+    validations:
+      required: true
+
+  - type: input
+    id: display
+    attributes:
+      label: Display server and compositor
+      description: X11 or Wayland, and which window manager or desktop.
+      placeholder: X11, i3
+    validations:
+      required: true
+
+  - type: textarea
+    id: frame
+    attributes:
+      label: A frame, if it is something you can see
+      description: >
+        `botropolis city --screenshot bug.png` writes one frame and exits, and you can drag the PNG in here.
+        Please check it for anything you would rather not publish — project names are drawn on the district plates.
+    validations:
+      required: false

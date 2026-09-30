@@ -1,0 +1,36 @@
+name: Idea
+description: Something the city could show, or show better
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Botropolis has one rule that rejects most ideas, including good ones:
+        **every object means one datum, and hovering it shows the number it stands for.**
+        Nothing is drawn for atmosphere. It is worth reading [DESIGN.md](../../DESIGN.md) before filing.
+
+  - type: textarea
+    id: want
+    attributes:
+      label: What you want to be able to see
+      description: The question you are trying to answer by looking at the map, rather than the object you imagine drawing.
+      placeholder: |
+        I want to see at a glance which sessions have been waiting on me longest, without opening the sidebar.
+    validations:
+      required: true
+
+  - type: input
+    id: datum
+    attributes:
+      label: What one datum would it stand for
+      description: If it is drawn, hovering it has to show a number. Which number?
+      placeholder: minutes since the session last handed a turn back
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do instead today
+    validations:
+      required: false

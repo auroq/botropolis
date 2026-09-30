@@ -1,33 +1,99 @@
 name: release
 
+# Manual, and it publishes what CI already built rather than building again.
+# The version comes from the VERSION file, so cutting a release is a commit that
+# edits one line plus one button.
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Resolve and validate everything, but create nothing"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
-      - name: Build dependencies for Ebitengine
-        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev libasound2-dev pkg-config
-      - name: Build
+          fetch-depth: 0
+
+      - name: Resolve the version
+        id: v
         run: |
-          mkdir -p dist
-          for bin in botropolis botropolisd botropolis-hook; do
-            go build -trimpath -ldflags "-X github.com/auroq/botropolis/pkg/version.Version=${GITHUB_REF_NAME}" -o "dist/${bin}" "./cmd/${bin}"
-          done
-          tar -C dist -czf "botropolis-${GITHUB_REF_NAME}-linux-amd64.tar.gz" botropolis botropolisd botropolis-hook
-      - name: Test
-        run: go test ./cmd/... ./pkg/...
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: botropolis-*.tar.gz
-          generate_release_notes: true
+          version="$(tr -d '[:space:]' < VERSION)"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Releasing v${version} from ${GITHUB_SHA}"
+
+      - name: Refuse to release a version that already exists
+        run: |
+          if git ls-remote --tags origin "refs/tags/v${{ steps.v.outputs.version }}" | grep -q .; then
+            echo "::error::v${{ steps.v.outputs.version }} is already tagged. Bump VERSION and CHANGELOG.md first."
+            exit 1
+          fi
+
+      - name: Every file naming a version must agree
+        run: tools/check-version
+
+      - name: Find the CI run that built this commit
+        id: run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          id="$(gh run list --workflow ci.yml --commit "${GITHUB_SHA}" \
+                  --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          if [ -z "${id}" ] || [ "${id}" = "null" ]; then
+            echo "::error::No successful ci run for ${GITHUB_SHA}. Push to main and let CI finish, then release again."
+            exit 1
+          fi
+          echo "id=${id}" >> "$GITHUB_OUTPUT"
+
+      - name: Download what CI built
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh run download "${{ steps.run.outputs.id }}" --name botropolis-packages --dir dist; then
+            echo "::error::Artifact botropolis-packages is gone from run ${{ steps.run.outputs.id }} — it has probably expired. Re-run ci on this commit, then release again."
+            exit 1
+          fi
+          ls -l dist/
+          ( cd dist && sha256sum -c SHA256SUMS )
+
+      - name: Take the release notes from the changelog
+        run: |
+          version="${{ steps.v.outputs.version }}"
+          awk -v v="${version}" '
+            $0 ~ "^## \\[" v "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for ${version}."
+            exit 1
+          fi
+          cat release-notes.md
+
+      - name: Dry run stops here
+        if: inputs.dry-run
+        run: echo "Dry run: v${{ steps.v.outputs.version }} resolves, the artifact is present and the notes extract. Nothing created."
+
+      # --target creates the tag itself, so the tag necessarily points at the
+      # commit that was tested rather than at whatever a human tagged by hand.
+      - name: Create the release
+        if: ${{ !inputs.dry-run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.v.outputs.version }}" \
+            --target "${GITHUB_SHA}" \
+            --title "v${{ steps.v.outputs.version }}" \
+            --notes-file release-notes.md \
+            dist/*

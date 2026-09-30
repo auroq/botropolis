@@ -42,6 +42,7 @@ type cliParams struct {
 	TUI      *cobra.Command   `name:"tui"`
 	Doctor   *cobra.Command   `name:"doctor"`
 	Events   *cobra.Command   `name:"events"`
+	Version  *cobra.Command   `name:"version"`
 }
 
 var Module = fx.Module("botropolis",
@@ -59,8 +60,9 @@ var Module = fx.Module("botropolis",
 		fx.Annotate(cli.NewTUICLI, fx.ResultTags(`name:"tui"`)),
 		fx.Annotate(cli.NewDoctorCLI, fx.ResultTags(`name:"doctor"`)),
 		fx.Annotate(cli.NewEventsCLI, fx.ResultTags(`name:"events"`)),
+		fx.Annotate(cli.NewVersionCLI, fx.ResultTags(`name:"version"`)),
 		func(p cliParams) *cobra.Command {
-			subs := append([]*cobra.Command{p.Status, p.Hooks, p.City, p.Bar, p.Notify, p.TUI, p.Doctor, p.Events}, p.Sessions...)
+			subs := append([]*cobra.Command{p.Status, p.Hooks, p.City, p.Bar, p.Notify, p.TUI, p.Doctor, p.Events, p.Version}, p.Sessions...)
 			return cli.NewRootCLI(p.Viper, subs...)
 		},
 	),

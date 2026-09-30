@@ -5,7 +5,8 @@ fail = []
 def note(check, msg):
     fail.append('%s: %s' % (check, msg))
 
-docs = ['DESIGN.md', 'ROADMAP.md', 'CLAUDE.md', 'README.md']
+docs = ['DESIGN.md', 'ROADMAP.md', 'CLAUDE.md', 'README.md',
+        'CONTRIBUTING.md', 'CHANGELOG.md', 'CODE_OF_CONDUCT.md', 'SECURITY.md']
 docs += sorted(glob.glob('design/*.md')) + sorted(glob.glob('rules/*.md'))
 docs += sorted(glob.glob('roadmap/*.md'))
 

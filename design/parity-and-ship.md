@@ -39,5 +39,9 @@ a Wayland session is noted as XWayland, which is how Ebitengine (GLFW/X11) runs 
 the acceptance test shoots that way and skips only when there is no `xvfb-run`.
 `--record dir --seconds n` writes ten frames a second and presses `--keys` two seconds apart; `make gif` turns twenty-four seconds of that into `docs/botropolis.gif` through ffmpeg.
 The README leads with the latest screenshot, the GIF, the four commands of a first run and the shell helper.
-A tag `v*` runs `.github/workflows/release.yml`, which builds the three binaries on Ubuntu, tests, and attaches a tarball to a GitHub release with generated notes;
-the local `botropolis-git` package stays local until Aria decides to publish it.
+Releasing is manual and publishes what CI already built.
+The version is one line in `VERSION`, read by the Makefile's ldflags, by `packaging/nfpm.yaml`, and by the release workflow;
+`make version-check` fails, naming files, if `VERSION`, `CHANGELOG.md` and the built binaries disagree.
+CI builds the three binaries on every push to `main` and packages them as a tarball, a `.deb`, an `.rpm` and an Arch package from one nfpm config, with `SHA256SUMS`, and uploads them as a run artifact.
+The release workflow is `workflow_dispatch` only: it reads `VERSION`, refuses a version already tagged, downloads that commit's artifact rather than rebuilding, takes its notes from the changelog section for that version, and creates the tag and the release together with `--target`, so the tag necessarily points at the commit that was tested.
+The `botropolis-git` VCS package it used to ship from is retired; nfpm's archlinux packager produces the Arch package now.
