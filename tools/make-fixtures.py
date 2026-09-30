@@ -95,6 +95,14 @@ NOUNS = (
     "quarry", "ridge", "sawmill", "thicket", "upland", "vault", "weir", "yard",
     "aqueduct", "bellows", "causeway", "dovecote", "foundry", "granary", "hedgerow", "ironworks",
 )
+# A rename has to preserve what the fixture demonstrates, not only its shape.
+# pkg/city asserts that two projects get different container hues, and projectHue
+# is FNV-1a over the full path modulo len(ContainerHues), which is three. The
+# generated alias for mullet landed on the same hue as cinders's, where the
+# original names had not, so the rename would have quietly turned a passing
+# assertion into a failing one. Pinned to the first alias from the same word
+# lists that restores the distinction.
+PINNED_ALIASES = {"mullet": "amberBasin"}
 _pseudonyms = {}
 
 
@@ -102,6 +110,8 @@ def pseudonym(word):
     """A stable, path-shaped alias for one component. Same input, same output, always."""
     if word in SAFE_COMPONENTS or not word:
         return word
+    if word in PINNED_ALIASES:
+        return PINNED_ALIASES[word]
     if word in _pseudonyms:
         return _pseudonyms[word]
     digest = hashlib.sha1(("botropolis-fixture/" + word).encode("utf-8")).hexdigest()
