@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-30
+
+### Added
+
+- **aarch64 packages.** Every release now carries `.deb`, `.rpm`, Arch and tarball artefacts for both `amd64` and `arm64`.
+  The Arch package had declared `aarch64` support since it was written and nothing had ever built it.
+
+### Changed
+
+- The release tarball now carries `packaging/` — both systemd user units, the desktop entry, the icon and the shell integration — so a package built from the tarball installs the same set as one built from source.
+- Binaries are built with `CGO_ENABLED=0`.
+  Ebitengine reaches GL and X11 through `dlopen`, so nothing needed cgo, and dropping it is what makes building for another architecture a plain cross-compile with no toolchain.
+
 ## [0.1.1] - 2026-09-30
 
 ### Fixed
@@ -47,6 +60,7 @@ Botropolis draws every Claude Code session on the machine as a city, and starts,
 
 - The usage probe runs inside a fenced directory the session loader skips, and prunes its own transcripts, so reading usage cannot make Botropolis see itself as a session.
 
-[Unreleased]: https://github.com/auroq/botropolis/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/auroq/botropolis/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/auroq/botropolis/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/auroq/botropolis/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/auroq/botropolis/releases/tag/v0.1.0
