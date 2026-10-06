@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-06
+
+### Added
+
+- **A summary on the building card.**
+  The card's new **summary** button, or `i`, opens the recap Claude Code writes into a transcript when a session is left waiting.
+  It is shown as written, under a line giving its age and how many turns the session has taken since.
+  A session with no recap falls back to its last prompt and offers **generate summary**.
+  That button runs your own `claude` CLI, so it uses your existing login and needs no API key.
+  It runs Haiku with no tools, no MCP servers and no user settings, writes no transcript, and is fenced out of the city like the usage probe, so generating a summary never adds a building.
+  `status --json` carries each session's `recap` and `lastPrompt`.
+
 ## [0.1.2] - 2026-09-30
 
 ### Added
@@ -60,7 +72,8 @@ Botropolis draws every Claude Code session on the machine as a city, and starts,
 
 - The usage probe runs inside a fenced directory the session loader skips, and prunes its own transcripts, so reading usage cannot make Botropolis see itself as a session.
 
-[Unreleased]: https://github.com/auroq/botropolis/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/auroq/botropolis/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/auroq/botropolis/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/auroq/botropolis/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/auroq/botropolis/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/auroq/botropolis/releases/tag/v0.1.0

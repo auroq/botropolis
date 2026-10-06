@@ -23,6 +23,7 @@ var bindings = []ui.Key{
 	{Key: "+ / -", Action: "zoom"},
 	{Key: "click", Action: "select"},
 	{Key: "enter", Action: "attach the selection"},
+	{Key: "i", Action: "the selection's summary"},
 	{Key: "tab", Action: "next needs-you"},
 	{Key: "c", Action: "new session here"},
 	{Key: "d d", Action: "demolish the selection"},
@@ -229,6 +230,11 @@ func (g *Game) handleKeys() error {
 	if just(ebiten.KeyEnter) {
 		g.act(g.scene.Activate())
 	}
+	if just(ebiten.KeyI) {
+		if _, note := g.scene.ToggleSummary(); note != "" {
+			g.SetStatus(note)
+		}
+	}
 	if just(ebiten.KeyBracketLeft) || just(ebiten.KeyBracketRight) {
 		by := time.Hour
 		if just(ebiten.KeyBracketLeft) {
@@ -285,6 +291,10 @@ func (g *Game) leave() error {
 
 // act hands an action to the actor and reports a failure in the footer.
 func (g *Game) act(action city.Action) {
+	if action.Kind == city.ActionGenerate {
+		g.generate(action.SessionID)
+		return
+	}
 	if action.Kind == city.ActionNone || g.actor == nil {
 		return
 	}

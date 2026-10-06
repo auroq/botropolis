@@ -1,6 +1,6 @@
 # 73. The card cannot say what a session has been doing
 
-**Open. Filed 2026-10-06 at Aria's request, r344 (`8e6fb88`). A feature, specified with Aria; the build session's to build.**
+**Done 2026-10-06, r347, released as 0.1.3. Filed the same day at Aria's request, r344 (`8e6fb88`).**
 
 Clicking a building raises a card with a title, numbers and a row of actions.
 Every one of those actions is a way *into* the session.
@@ -89,3 +89,55 @@ Where it is kept, and whether it survives a restart, is the build session's call
   That has cost a session before.
 - **Privacy.** The recap is the session's own words, and it can name employer projects — the example above does.
   It goes nowhere new on the user's own screen, but it **must not** appear in any frame committed to `docs/screenshots/` without going through `make publishable`'s reviewed list, which is the trap [item 72](072-what-going-public-would-publish.md) is about.
+
+## What building it found, 2026-10-06
+
+**Ruling 5's `--bare` was wrong, and the ruling's own reason is what rules it out.**
+The full `claude --help` text says that under `--bare` *"Anthropic auth is strictly ANTHROPIC_API_KEY or apiKeyHelper via --settings (OAuth and keychain are never read)"*.
+The help I quoted when the ruling was made was cut short before that sentence.
+So `--bare` needs the API key that using the CLI was chosen to avoid.
+The ruling's substance stands — the user's own CLI and login, no SDK — and the flags that deliver it are:
+
+| flag or fence | what it closes |
+| --- | --- |
+| `--no-session-persistence` | the transcript, so no parked session afterwards |
+| running in `SummaryDir()`, fenced in `state.Build` beside the usage probe | the live session record a print run writes to `~/.claude/sessions/<pid>.json` while it runs — the third path, which the table above left unverified, is real |
+| `--setting-sources ""` | the user's hooks and plugins firing for a run they did not start |
+| `--tools ""` | anything but an answer |
+| `--strict-mcp-config` | see below |
+
+Hooks were never a way onto the map: `Daemon.Apply` only overlays sessions the loader already has, so a hook event for an unknown id creates nothing.
+
+**The acceptance test was run, and it is what proved the fence.**
+A real summary was generated while two builds counted sessions from the same `~/.claude`: this change held at 31 before, during and after, and a build of `HEAD` without the summary fence read **32 for the whole run**.
+
+**Without `--strict-mcp-config` it failed outright.**
+Every connected MCP server's tool definitions ride along, and on Aria's machine that was ~320k tokens of prompt — over the window — for a one-paragraph answer.
+With it, ~6.5k.
+The first live run happened to succeed, presumably before the connectors had loaded, which is how a run that fails every time looked like it worked once.
+Claude Code reports that failure on **stdout**, not stderr, so the error now reads both.
+
+**An unpersisted run still leaves an empty project folder** with an empty `memory/` in it.
+`Summarise` removes both afterwards with `os.Remove`, which refuses a non-empty directory, so it cannot take anything that is not empty.
+The usage probe's folder carries the same empty `memory/`; left alone, since it also holds the one transcript item 67 keeps on purpose.
+
+**The snapshot note above was wrong in a useful direction.**
+`harness.Multi.Load` copies `Session` values whole; the trap is for new `Snapshot` fields.
+`Recap` and `LastPrompt` are on `Session` and reach the client without a merge change.
+
+**As built:**
+
+- `claude.Recap` (text, time, prompts since) and `LastPrompt` are read from the transcript, and carried on `state.Session`; `status --json` shows them.
+- The card's **summary** button, or `i`, toggles a wrapped paragraph — `ui.ParaWidth`, 60 grid units — under an age line.
+  A new selection always starts closed.
+- A generated summary is held in the map process only, and is gone on restart.
+  It is labelled as generated, with its age and the model.
+- `Generate` runs off the frame, one per session at a time, and hands its result back to `Update`.
+- Codex sessions get no summary button: they have neither a recap nor a transcript the excerpt reader understands.
+- The excerpt sent is the main line's typed prompts and replies from the transcript's last 2 MB, newest 24 KB of them, on stdin rather than the command line.
+
+**Frames:** rendered headlessly from a copy of the scrubbed fixture with a hand-written recap injected, its session records pointed at a live PID so `tab` had something to select.
+Not committed: the tree keeps one frame on `make publishable`'s reviewed list, and these were sent to Aria directly.
+
+**Not done:** the TUI has its own card and was not given a summary.
+

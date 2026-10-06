@@ -23,6 +23,11 @@ const (
 	ActionHide     ActionKind = "hide project"
 	ActionStar     ActionKind = "star"
 	ActionUnstar   ActionKind = "unstar"
+	// The summary toggles a paragraph open on the card; generate asks
+	// Claude Code for one, and is the only one of the three that spends.
+	ActionSummary     ActionKind = "summary"
+	ActionSummaryHide ActionKind = "hide summary"
+	ActionGenerate    ActionKind = "generate summary"
 )
 
 const DemolishArmFor = 3 * time.Second
@@ -75,11 +80,16 @@ type Scene struct {
 	city      *City
 	hover     Hit
 	selected  *Building
-	width     float64
-	height    float64
-	touched   bool
-	armed     string
-	armedAt   time.Time
+	// summaryFor is the session whose card has its summary open, so a
+	// new selection always starts closed; generated is what Generate
+	// brought back, by session.
+	summaryFor string
+	generated  map[string]Generated
+	width      float64
+	height     float64
+	touched    bool
+	armed      string
+	armedAt    time.Time
 	// zoomTarget is where the wheel is taking the zoom; Animate eases the
 	// camera there about zoomAnchor, or Instant snaps it.
 	zoomTarget float64
@@ -674,6 +684,7 @@ func (s *Scene) Actions() []ActionKind {
 	} else {
 		kinds = append(kinds, ActionAttach, ActionStop)
 	}
+	kinds = append(kinds, s.summaryActions()...)
 	kinds = append(kinds, ActionNew, ActionReveal, ActionCopyPath, ActionHide)
 	if s.layout.IsStarred(root) {
 		kinds = append(kinds, ActionUnstar)
@@ -709,6 +720,14 @@ func (s *Scene) Act(kind ActionKind) (Action, string) {
 		s.selected = nil
 		s.SetSnapshot(s.snapshot)
 		return Action{}, "hid " + name + " (unhide it from the sidebar)"
+	case ActionSummary:
+		s.summaryFor = b.Session.ID
+		return Action{}, ""
+	case ActionSummaryHide:
+		s.summaryFor = ""
+		return Action{}, ""
+	case ActionGenerate:
+		return Action{Kind: ActionGenerate, SessionID: b.Session.ID}, "summarising " + b.Card(s.city.Time).Title
 	case ActionStar:
 		s.layout.SetStarred(root, true)
 		return Action{}, "starred " + name
@@ -846,6 +865,11 @@ func (s *Scene) SelectedCard() (Card, *Building, bool) {
 		return Card{}, nil, false
 	}
 	card := s.selected.Card(s.city.Time)
+	if s.summaryOpen() {
+		lines, para := s.summary(s.selected.Session)
+		card.Lines = append(card.Lines, lines...)
+		card.Para = para
+	}
 	for _, kind := range s.Actions() {
 		card.Actions = append(card.Actions, string(kind))
 	}

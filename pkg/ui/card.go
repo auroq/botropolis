@@ -1,8 +1,10 @@
 package ui
 
 import (
-	"github.com/auroq/botropolis/pkg/city"
 	"math"
+	"strings"
+
+	"github.com/auroq/botropolis/pkg/city"
 )
 
 // Card is a hover or selection card laid out on a panel: a title at the
@@ -11,6 +13,7 @@ type Card struct {
 	Rect    city.Rect
 	Title   Text
 	Lines   []Text
+	Para    []Text
 	Spark   Sparkline
 	Buttons []Button
 }
@@ -40,6 +43,21 @@ func LayoutCard(th Theme, card city.Card, bounds city.Rect, measure Measure) Car
 	c.Title = Text{Text: title, At: city.Point{X: pad, Y: pad}, Size: Title}
 	for i, line := range lines {
 		c.Lines = append(c.Lines, Text{Text: line, At: city.Point{X: pad, Y: pad + titleH + lineH*float64(i)}, Size: Body})
+	}
+	if card.Para != "" {
+		rows := maxLines - len(lines) - 1
+		para := wrapPara(card.Para, min(maxWidth, ParaWidth(th)), rows, measure)
+		top := pad + titleH + lineH*float64(len(lines)+1)
+		for i, line := range para {
+			if w, _ := measure(line, Body); w > width {
+				width = w
+			}
+			c.Para = append(c.Para, Text{Text: line, At: city.Point{X: pad, Y: top + lineH*float64(i)}, Size: Body})
+		}
+		if len(para) > 0 {
+			c.Rect.Max.X = width + 2*pad
+			c.Rect.Max.Y = top + lineH*float64(len(para)) + pad
+		}
 	}
 	if len(card.Series) > 0 {
 		box := city.RectAt(pad, c.Rect.Max.Y-pad+th.Grid(), c.Rect.Width()-2*pad, sparkGrids*th.Grid())
@@ -108,6 +126,9 @@ func (c Card) MoveTo(at city.Point) Card {
 	for _, line := range c.Lines {
 		moved.Lines = append(moved.Lines, line.moved(by))
 	}
+	for _, line := range c.Para {
+		moved.Para = append(moved.Para, line.moved(by))
+	}
 	for _, b := range c.Buttons {
 		moved.Buttons = append(moved.Buttons, Button{Rect: city.Rect{Min: b.Rect.Min.Add(by), Max: b.Rect.Max.Add(by)}, Label: b.Label.moved(by)})
 	}
@@ -118,4 +139,43 @@ func (c Card) MoveTo(at city.Point) Card {
 		}
 	}
 	return moved
+}
+
+// ParaWidth is the measure a card's paragraph wraps to: wide enough to
+// read as prose, narrow enough that a line is one glance.
+func ParaWidth(th Theme) float64 { return 60 * th.Grid() }
+
+// wrapPara breaks text into lines no wider than width at word
+// boundaries, keeping its own line breaks. A word wider than the
+// measure is clipped; past rows lines the last kept one ends in an
+// ellipsis.
+func wrapPara(text string, width float64, rows int, measure Measure) []string {
+	if rows < 1 {
+		return nil
+	}
+	var lines []string
+	for _, para := range strings.Split(text, "\n") {
+		line := ""
+		for _, word := range strings.Fields(para) {
+			next := word
+			if line != "" {
+				next = line + " " + word
+			}
+			if w, _ := measure(next, Body); w <= width || line == "" {
+				line = clipTo(next, width, Body, measure)
+				continue
+			}
+			lines = append(lines, line)
+			line = clipTo(word, width, Body, measure)
+		}
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+	if len(lines) > rows {
+		lines = lines[:rows]
+		ellipsis, _ := measure("…", Body)
+		lines[rows-1] = clipTo(lines[rows-1], width-ellipsis, Body, measure) + "…"
+	}
+	return lines
 }

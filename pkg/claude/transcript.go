@@ -101,9 +101,22 @@ type Transcript struct {
 	LastCompactionAt time.Time
 	FirstAt          time.Time
 	LastAt           time.Time
-	IsBridgeStub     bool
-	Partial          bool
-	Malformed        int
+	// Recap is the newest away summary Claude Code wrote into the
+	// transcript, and LastPrompt the newest last-prompt record.
+	Recap        Recap
+	LastPrompt   string
+	IsBridgeStub bool
+	Partial      bool
+	Malformed    int
+}
+
+// Recap is the summary Claude Code shows at the foot of a session left
+// waiting: when it was written, and how many prompts the session has
+// taken since, so its age can be stated rather than implied.
+type Recap struct {
+	Text         string    `json:"text"`
+	At           time.Time `json:"at"`
+	PromptsSince int       `json:"promptsSince"`
 }
 
 type usageJSON struct {
@@ -168,6 +181,8 @@ type transcriptLineJSON struct {
 	AITitle      string                    `json:"aiTitle"`
 	CustomTitle  string                    `json:"customTitle"`
 	Summary      string                    `json:"summary"`
+	LastPrompt   string                    `json:"lastPrompt"`
+	Content      json.RawMessage           `json:"content"`
 	Timestamp    string                    `json:"timestamp"`
 	Subtype      string                    `json:"subtype"`
 	IsSidechain  bool                      `json:"isSidechain"`
@@ -216,6 +231,8 @@ type transcriptScan struct {
 	seenMessages  map[string]bool
 	tail          tailScan
 	sidechainMain bool
+	// recapPrompts is the prompt count when the newest recap was written.
+	recapPrompts int
 }
 
 func ReadTranscript(path string) (Transcript, error) {
@@ -291,6 +308,13 @@ func (s *transcriptScan) apply(rec transcriptLineJSON) {
 			t.Compactions++
 			t.LastCompactionAt = ts
 		}
+		if rec.Subtype == "away_summary" {
+			s.applyRecap(rec, ts)
+		}
+	case "last-prompt":
+		if rec.LastPrompt != "" {
+			t.LastPrompt = rec.LastPrompt
+		}
 	case "pr-link":
 		s.applyPR(rec)
 	}
@@ -307,6 +331,15 @@ func (s *transcriptScan) apply(rec transcriptLineJSON) {
 	default:
 		s.applyTitle(rec)
 	}
+}
+
+func (s *transcriptScan) applyRecap(rec transcriptLineJSON, ts time.Time) {
+	var text string
+	if err := json.Unmarshal(rec.Content, &text); err != nil || text == "" {
+		return
+	}
+	s.transcript.Recap = Recap{Text: text, At: ts}
+	s.recapPrompts = s.tail.tail.Prompts
 }
 
 func parseTimestamp(raw string) (time.Time, bool) {

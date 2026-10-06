@@ -1,6 +1,7 @@
 package render
 
 import (
+	"context"
 	"fmt"
 	"github.com/auroq/botropolis/pkg/claude"
 	"image"
@@ -126,6 +127,12 @@ type Game struct {
 	// and written under mu.
 	usageAskedAt  time.Time
 	usageInFlight bool
+	// summarise generates a session's summary; generating is the runs
+	// still out and generatedDone what has come back for the frame loop
+	// to hand over. Item 73. Both are read and written under mu.
+	summarise     func(ctx context.Context, id string) (string, error)
+	generating    map[string]bool
+	generatedDone []generatedResult
 	clicked       ebiten.Key
 	hidden        bool
 	// live is whether anyone was watching the window last tick, so the
@@ -233,6 +240,9 @@ func (g *Game) Update() error {
 	fresh, batches := g.pendingEvents, g.pendingBatches
 	g.pendingEvents, g.pendingBatches = nil, 0
 	g.mu.Unlock()
+	for _, done := range g.takeGenerated() {
+		g.scene.SetGenerated(done.id, done.generated)
+	}
 	if batches > 0 {
 		g.scene.AddEvents(fresh)
 		g.eventsArrived = true

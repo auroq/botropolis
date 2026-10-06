@@ -72,6 +72,8 @@ type Session struct {
 	MCPCalls           map[string]int `json:"mcpCalls,omitempty"`
 	Skills             map[string]int `json:"skills,omitempty"`
 	PRs                []claude.PR    `json:"prs,omitempty"`
+	Recap              claude.Recap   `json:"recap"`
+	LastPrompt         string         `json:"lastPrompt,omitempty"`
 	// Hourly is the session's usage by unix hour over its last week,
 	// for sparklines and the plant's breakdown.
 	Hourly           map[int64]claude.Usage `json:"hourly,omitempty"`
@@ -163,8 +165,8 @@ type Probes struct {
 	Attached func(sock string) bool
 }
 
-// isUsageProbe reports whether a working directory is the one the usage
-// probe runs in, and so not a session at all.
+// isOwnRun reports whether a working directory is one botropolis runs
+// `claude -p` in itself, and so not a session at all.
 //
 // Bug 54, and the reason it sits here. `claude -p "/usage"` is a real
 // Claude Code session while it runs: it holds a PID and writes a
@@ -179,8 +181,15 @@ type Probes struct {
 // whichever path, so the fence is here and nowhere else. A guard that
 // has to be repeated in each consumer is a guard that will be missed
 // again, because it already was.
-func isUsageProbe(cwd string) bool {
-	return cwd != "" && claude.ProjectFolder(cwd) == claude.UsageProbeProject()
+//
+// The summariser is the second of botropolis's own runs, and it is
+// fenced the same way for the same reason.
+func isOwnRun(cwd string) bool {
+	return cwd != "" && isOwnProject(claude.ProjectFolder(cwd))
+}
+
+func isOwnProject(project string) bool {
+	return project == claude.UsageProbeProject() || project == claude.ProjectFolder(claude.SummaryDir())
 }
 
 func Build(src Sources, probes Probes, now time.Time) []Session {
@@ -190,7 +199,7 @@ func Build(src Sources, probes Probes, now time.Time) []Session {
 	}
 	sessions := make([]Session, 0, len(src.Records))
 	for _, r := range src.Records {
-		if isUsageProbe(r.CWD) {
+		if isOwnRun(r.CWD) {
 			continue
 		}
 		transcript, hasTranscript := byID[r.SessionID]
@@ -202,7 +211,7 @@ func Build(src Sources, probes Probes, now time.Time) []Session {
 		sessions = append(sessions, buildSession(r, transcript, hasTranscript, src.Subagents[r.SessionID], isAlive, isAttached))
 	}
 	for _, t := range src.Parked {
-		if isUsageProbe(t.CWD) || t.Project == claude.UsageProbeProject() {
+		if isOwnRun(t.CWD) || isOwnProject(t.Project) {
 			continue
 		}
 		sessions = append(sessions, parkedSession(t))
@@ -354,6 +363,8 @@ func attribute(s *Session, t claude.Transcript) {
 	s.MCPCalls = t.MCPCalls
 	s.Skills = t.SkillCalls
 	s.PRs = t.PRs
+	s.Recap = t.Recap
+	s.LastPrompt = t.LastPrompt
 	s.APIErrors = t.APIErrors
 	s.LastErrorAt = t.LastErrorAt
 	s.Compactions = t.Compactions

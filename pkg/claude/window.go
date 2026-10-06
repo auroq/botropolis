@@ -86,5 +86,8 @@ func scanLines(scan *transcriptScan, r io.Reader) {
 func (s *transcriptScan) finish() Transcript {
 	s.transcript.IsBridgeStub = s.records > 0 && s.bridgeRecords == s.records
 	s.transcript.Tail = s.tail.finish()
+	if s.transcript.Recap.Text != "" {
+		s.transcript.Recap.PromptsSince = s.transcript.Tail.Prompts - s.recapPrompts
+	}
 	return s.transcript
 }

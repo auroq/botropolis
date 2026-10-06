@@ -102,6 +102,9 @@ func (g *Game) card(screen *ebiten.Image, c ui.Card) {
 	for _, line := range c.Lines {
 		g.run(screen, line, th.Palette.Dim)
 	}
+	for _, line := range c.Para {
+		g.run(screen, line, th.Palette.Text)
+	}
 	g.sparkline(screen, c.Spark)
 	for _, b := range c.Buttons {
 		g.roundRect(screen, b.Rect, th.Radius()/2, th.Palette.Hairline)

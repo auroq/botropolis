@@ -380,6 +380,8 @@ func TestAggregates(t *testing.T) {
 		tr := transcript(id, claude.TurnAwaitingUser)
 		tr.MCPCalls, tr.SkillCalls, tr.PRs, tr.APIErrors = mcp, skills, prs, errs
 		tr.LastAt = now.Add(-time.Hour)
+		tr.Recap = claude.Recap{Text: "recap of " + id, At: now.Add(-2 * time.Hour), PromptsSince: 3}
+		tr.LastPrompt = "last of " + id
 		return tr
 	}
 	a := withCalls(sidA, map[string]int{"atlassian": 3, "langfuse": 1}, map[string]int{"amberPylon:umberEstuary": 2}, []claude.PR{{Number: 7, URL: "u7"}}, 2)
@@ -434,6 +436,14 @@ func TestAggregates(t *testing.T) {
 
 		t.Run("it should expose its API errors", func(t *testing.T) {
 			assert.Equal(t, 2, got.APIErrors)
+		})
+
+		t.Run("it should expose its recap", func(t *testing.T) {
+			assert.Equal(t, claude.Recap{Text: "recap of " + sidA, At: now.Add(-2 * time.Hour), PromptsSince: 3}, got.Recap)
+		})
+
+		t.Run("it should expose its last prompt", func(t *testing.T) {
+			assert.Equal(t, "last of "+sidA, got.LastPrompt)
 		})
 	})
 
@@ -916,37 +926,40 @@ func TestShortTitles(t *testing.T) {
 //
 // One fact, "the probe is not a session", now has one reader: Build,
 // which every session passes through whichever path it came by.
-func TestUsageProbeIsNeverASession(t *testing.T) {
+func TestBotropolisOwnRunsAreNeverSessions(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
-	probe := claude.UsageProbeDir()
+	for _, run := range []struct{ name, dir string }{
+		{"the usage probe", claude.UsageProbeDir()},
+		{"the summariser", claude.SummaryDir()},
+	} {
+		t.Run("when "+run.name+" is running right now", func(t *testing.T) {
+			sessions := state.Build(state.Sources{Records: []claude.SessionRecord{
+				{PID: 41, SessionID: "own-live", CWD: run.dir, StartedAt: now},
+				{PID: 42, SessionID: "real", CWD: "/home/avesta/workspaces/github/auroq/botropolis", StartedAt: now},
+			}}, alive, now)
 
-	t.Run("when the probe is running right now", func(t *testing.T) {
-		sessions := state.Build(state.Sources{Records: []claude.SessionRecord{
-			{PID: 41, SessionID: "probe-live", CWD: probe, StartedAt: now},
-			{PID: 42, SessionID: "real", CWD: "/home/avesta/workspaces/github/auroq/botropolis", StartedAt: now},
-		}}, alive, now)
+			t.Run("it should not be one of the city's sessions", func(t *testing.T) {
+				var ids []string
+				for _, s := range sessions {
+					ids = append(ids, s.ID)
+				}
+				assert.NotContains(t, ids, "own-live")
+			})
 
-		t.Run("it should not be one of the city's sessions", func(t *testing.T) {
-			var ids []string
-			for _, s := range sessions {
-				ids = append(ids, s.ID)
-			}
-			assert.NotContains(t, ids, "probe-live")
+			t.Run("it should leave the real session alone", func(t *testing.T) {
+				require.Len(t, sessions, 1)
+				assert.Equal(t, "real", sessions[0].ID)
+			})
 		})
 
-		t.Run("it should leave the real session alone", func(t *testing.T) {
-			require.Len(t, sessions, 1)
-			assert.Equal(t, "real", sessions[0].ID)
-		})
-	})
+		t.Run("when "+run.name+" has left a transcript behind", func(t *testing.T) {
+			sessions := state.Build(state.Sources{Parked: []claude.Transcript{
+				{SessionID: "own-parked", Project: claude.ProjectFolder(run.dir), CWD: run.dir, LastAt: now},
+			}}, alive, now)
 
-	t.Run("when the probe has left a transcript behind", func(t *testing.T) {
-		sessions := state.Build(state.Sources{Parked: []claude.Transcript{
-			{SessionID: "probe-parked", Project: claude.UsageProbeProject(), CWD: probe, LastAt: now},
-		}}, alive, now)
-
-		t.Run("it should not be a parked session either", func(t *testing.T) {
-			assert.Empty(t, sessions)
+			t.Run("it should not be a parked session either", func(t *testing.T) {
+				assert.Empty(t, sessions)
+			})
 		})
-	})
+	}
 }

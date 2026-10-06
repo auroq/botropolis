@@ -200,6 +200,8 @@ type Card struct {
 	Title   string
 	Lines   []string
 	Actions []string
+	// Para, when set, is prose wrapped under the lines.
+	Para string
 	// Series, when set, is drawn as a sparkline under the lines.
 	Series []float64
 }

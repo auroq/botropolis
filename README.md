@@ -49,7 +49,14 @@ The strip along the top is the city's tallies and the sidebar (`b`) is the same 
 The timeline (`t`) is the daemon's event log, so it survives the window closing:
 when the city opens or comes back into focus, "while you were away" lists what needed you or went wrong since it was last seen.
 
-Keys: drag to pan, wheel to zoom, `r` to turn, `f` to fit, `tab` for the next session that needs you, `enter` to attach it,
+A building's card has a **summary** button (`i` from the keyboard).
+It shows the recap Claude Code writes at the foot of a session left waiting, with how old it is and how many turns the session has taken since.
+A session with no recap shows its last prompt instead,
+and a **generate summary** button that asks your own `claude` CLI for one.
+That is the only thing on the map that spends tokens, and only when you press it:
+it runs Haiku with no tools, no MCP servers and no hooks, writes no transcript, and never appears in the city as a session.
+
+Keys: drag to pan, wheel to zoom, `r` to turn, `f` to fit, `tab` for the next session that needs you, `enter` to attach it, `i` its summary,
 `c` for a new session here, `d d` to demolish, `b` sidebar, `x` breakdown, `t` timeline, `/` search, `s` settings, `n` night/day/live, `[` `]` scrub the clock,
 `h` hide the UI, `p` save a frame, `?` all of them.
 

@@ -225,6 +225,13 @@ func UsageProbeDir() string {
 	return filepath.Join(dir, "botropolis", "usage-probe")
 }
 
+// SummaryDir is the working directory summaries are generated in. It
+// sits beside the usage probe's for the same reason: a `claude -p` run
+// holds a PID while it runs, and the loader fences out what runs here.
+func SummaryDir() string {
+	return filepath.Join(filepath.Dir(UsageProbeDir()), "summary")
+}
+
 // UsageProbeProject is the project folder Claude Code files the probe's
 // transcripts under.
 func UsageProbeProject() string { return ProjectFolder(UsageProbeDir()) }
