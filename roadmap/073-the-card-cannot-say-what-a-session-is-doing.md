@@ -58,6 +58,23 @@ A generated summary has **three** ways to become a session, and each needs closi
 Generate a summary while the daemon is running, and assert that the snapshot's session count is the same before, during and after the run.
 That catches all three paths and any fourth one nobody has thought of yet.
 
+## Ruling 5: the generator is the user's own CLI, 2026-10-06
+
+**`claude -p --no-session-persistence --bare`, and nothing else.**
+Aria chose this over the two SDKs after weighing both.
+
+- **The Claude Agent SDK is ruled out.** It exists only in Python and TypeScript, and it runs the Claude Code binary as a subprocess.
+  It shows up on the machine exactly as the CLI does, and it would bring a second runtime into a Go app.
+- **`anthropic-sdk-go` is ruled out.** It would be invisible to the city, but it needs an API key.
+  Reusing the Claude Code login from inside botropolis is not an option: the Agent SDK overview says *"Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products"*.
+  The repo is headed for public release and the AUR, so reading `~/.claude/.credentials.json` would be exactly that.
+- **The CLI uses the user's existing login without botropolis ever touching it.** The user's own installed Claude Code makes the call, which is what the usage probe already does.
+
+**`--bare`'s scope is disputed.**
+The docs at `code.claude.com/docs/en/cli-reference.md` describe it as skipping hook *auto-discovery*.
+The installed `claude --help` says it skips hooks "defined in settings and by installed plugins", which is stronger.
+The session-count test above settles that, so neither source has to be trusted.
+
 A generated summary is not an `away_summary` and must not be written into the session's transcript — that file belongs to Claude Code.
 Where it is kept, and whether it survives a restart, is the build session's call; it should carry its own timestamp and be labelled as generated, so the age line in ruling 2 still holds.
 
