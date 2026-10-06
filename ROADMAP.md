@@ -30,6 +30,7 @@ Phases 7–12 were specified in [`phases-7-12.md`](roadmap/phases-7-12.md) and a
 | [69](roadmap/069-the-10-percent-cpu-bar-is-missed.md) | the 10% CPU bar: still the bar, or the wrong number for a busy city? | Aria |
 | [70](roadmap/070-atlas-start-up-peak.md) | the start-up peak holds two copies of every atlas page; fix is page-at-a-time | nobody, a known fix |
 | [72](roadmap/072-what-going-public-would-publish.md) | the rewrite is done and the tag that survived it is gone; only the visibility flip is left | **Aria** |
+| [73](roadmap/073-the-card-cannot-say-what-a-session-is-doing.md) | a Summary button on the building card: the session's own recap, or a generated one that must not become a building | build session, specified with Aria |
 | [66](roadmap/066-115-mb-private-dirty-curiosity.md) | ~115 MB of private dirty unaccounted for, filed as a curiosity | nobody, until it costs something |
 | [phase 20 item 3](roadmap/phase-20-explain-itself.md) | the plant's *reading* — the geometry was fixed at r186 and has not been looked at since | Aria, from a frame |
 
