@@ -39,6 +39,12 @@ build ::
 		go build -trimpath -ldflags "${LDFLAGS}" -o bin/$$bin ./cmd/$$bin || exit 1; \
 	done
 
+# The demo stager is a development tool for filming the city, so it is built
+# beside the binaries rather than among them: nothing packages it.
+demo-tool ::
+	$(LOG) "Building botropolis-demo"
+	@go build -trimpath -ldflags "${LDFLAGS}" -o bin/botropolis-demo ./cmd/botropolis-demo
+
 test :: test-unit test-integration test-acceptance
 
 test-unit ::
