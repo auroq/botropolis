@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -26,7 +31,7 @@ func run(args []string, out, errOut io.Writer) int {
 		SilenceErrors: true,
 	}
 	root.SetVersionTemplate("{{.Name}} {{.Version}}\n")
-	root.AddCommand(stageCommand(), unstageCommand(), filmCommand())
+	root.AddCommand(stageCommand(), unstageCommand(), filmCommand(), recordCommand(), mcpCommand())
 	root.SetOut(out)
 	root.SetErr(errOut)
 	root.SetArgs(args)
@@ -131,4 +136,147 @@ func filmCommand() *cobra.Command {
 	cmd.Flags().StringVar(&botropolis, "botropolis", "", "the botropolis binary (default: beside this one)")
 	cmd.Flags().StringVar(&ffmpeg, "ffmpeg", "ffmpeg", "the ffmpeg binary")
 	return cmd
+}
+
+func mcpCommand() *cobra.Command {
+	var data string
+	cmd := &cobra.Command{
+		Use:       "mcp tracker|weather",
+		Short:     "Serve a fictional MCP server on stdio for recorded sessions to call",
+		Args:      cobra.ExactArgs(1),
+		ValidArgs: []string{"tracker", "weather"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			server := demo.Weather()
+			switch args[0] {
+			case "tracker":
+				server = demo.Tracker(data)
+			case "weather":
+			default:
+				return fmt.Errorf("no server %q: want tracker or weather", args[0])
+			}
+			return demo.ServeMCP(server, cmd.InOrStdin(), cmd.OutOrStdout())
+		},
+	}
+	cmd.Flags().StringVar(&data, "data", "", "directory of <project>.json issue files, for tracker")
+	return cmd
+}
+
+func recordCommand() *cobra.Command {
+	var scripts, projects, tracker, skills, corpus, home, src, only string
+	var dryRun bool
+	cmd := &cobra.Command{
+		Use:   "record",
+		Short: "Record the scripted sessions with the real claude CLI (run inside the recorder container)",
+		Long: "Copies the toy projects into --src as git repositories, installs the\n" +
+			"skills and MCP servers, then runs `claude -p` for every scripted prompt\n" +
+			"the corpus does not hold yet, and exports each finished session's\n" +
+			"transcript and subagents -- and nothing else -- into --corpus.\n" +
+			"--dry-run prints what would be recorded and the most it could cost.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			paths, err := filepath.Glob(filepath.Join(scripts, "*.yaml"))
+			if err != nil {
+				return err
+			}
+			sort.Strings(paths)
+			var all []demo.Script
+			for _, p := range paths {
+				s, err := demo.LoadScript(p)
+				if err != nil {
+					return err
+				}
+				all = append(all, filterScript(s, only))
+			}
+			out := cmd.OutOrStdout()
+			if dryRun {
+				return printPlan(out, all, corpus)
+			}
+			self, err := os.Executable()
+			if err != nil {
+				return err
+			}
+			config, err := demo.Workspace{Projects: projects, Tracker: tracker, Skills: skills, Home: home, Src: src, Self: self}.Prepare()
+			if err != nil {
+				return err
+			}
+			r := demo.Recorder{Home: home, Src: src, Corpus: corpus, MCPConfig: config, Claude: runClaude, Log: cmd.ErrOrStderr()}
+			var spent []demo.Prompted
+			var failed error
+			for _, s := range all {
+				log, err := r.Record(cmd.Context(), s)
+				spent = append(spent, log...)
+				if err != nil {
+					failed = err
+					break
+				}
+			}
+			var total float64
+			for _, p := range spent {
+				total += p.CostUSD
+			}
+			fmt.Fprintf(out, "recorded %d prompts for $%.2f\n", len(spent), total)
+			data, err := json.MarshalIndent(spent, "", "  ")
+			if err == nil {
+				_ = os.WriteFile(filepath.Join(corpus, "recording-"+time.Now().UTC().Format("20060102T150405Z")+".json"), append(data, '\n'), 0o644)
+			}
+			return failed
+		},
+	}
+	cmd.Flags().StringVar(&scripts, "scripts", "/demo/scripts", "directory of <project>.yaml session scripts")
+	cmd.Flags().StringVar(&projects, "projects", "/demo/projects", "directory of toy projects")
+	cmd.Flags().StringVar(&tracker, "tracker", "/demo/tracker", "directory of the tracker's <project>.json issues")
+	cmd.Flags().StringVar(&skills, "skills", "/demo/skills", "directory of skills to install")
+	cmd.Flags().StringVar(&corpus, "corpus", "/corpus", "directory to export transcripts into")
+	cmd.Flags().StringVar(&home, "home", "/home/demo", "the home claude writes into")
+	cmd.Flags().StringVar(&src, "src", demo.Root, "where the toy projects are worked on")
+	cmd.Flags().StringVar(&only, "only", "", "record only <project> or <project>/<label>")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print the plan and its ceiling, record nothing")
+	return cmd
+}
+
+func filterScript(s demo.Script, only string) demo.Script {
+	if only == "" {
+		return s
+	}
+	project, label, _ := strings.Cut(only, "/")
+	if project != s.Project {
+		return demo.Script{Project: s.Project}
+	}
+	if label == "" {
+		return s
+	}
+	kept := demo.Script{Project: s.Project}
+	for _, session := range s.Sessions {
+		if session.Label == label {
+			kept.Sessions = append(kept.Sessions, session)
+		}
+	}
+	return kept
+}
+
+func printPlan(out io.Writer, scripts []demo.Script, corpus string) error {
+	var ceiling float64
+	var prompts int
+	for _, s := range scripts {
+		for _, session := range s.Sessions {
+			state := "to record"
+			if _, err := os.Stat(filepath.Join(corpus, s.Project, demo.SessionID(s.Project, session.Label)+".jsonl")); err == nil {
+				state = "recorded"
+			} else {
+				ceiling += session.BudgetUSD * float64(len(session.Prompts))
+				prompts += len(session.Prompts)
+			}
+			fmt.Fprintf(out, "%-12s %-24s %-7s %-10s %d prompt(s) x $%.2f  %s\n",
+				s.Project, session.Label, session.Model, session.Visual, len(session.Prompts), session.BudgetUSD, state)
+		}
+	}
+	fmt.Fprintf(out, "\n%d prompts to record; at most $%.2f if every one hits its cap\n", prompts, ceiling)
+	return nil
+}
+
+func runClaude(ctx context.Context, dir string, args []string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "claude", args...)
+	cmd.Dir = dir
+	cmd.Stderr = os.Stderr
+	return cmd.Output()
 }

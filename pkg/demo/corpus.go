@@ -30,10 +30,10 @@ func (r Recorded) Subagents() string {
 	return filepath.Join(filepath.Dir(r.Path), r.ID, "subagents")
 }
 
-// Find resolves a ref, "<project>/<session id or a prefix of it>", to
-// exactly one recorded session. A prefix that matches two is refused
-// rather than guessed at, since a scenario that silently swaps sessions
-// films something other than what it says.
+// Find resolves a ref, "<project>/<script label>" or "<project>/<session
+// id or a prefix of it>", to exactly one recorded session. A prefix
+// that matches two is refused rather than guessed at, since a scenario
+// that silently swaps sessions films something other than what it says.
 func (c Corpus) Find(ref string) (Recorded, error) {
 	project, prefix, ok := strings.Cut(ref, "/")
 	if !ok || project == "" || prefix == "" {
@@ -43,7 +43,13 @@ func (c Corpus) Find(ref string) (Recorded, error) {
 	if err != nil {
 		return Recorded{}, fmt.Errorf("ref %q: %w", ref, err)
 	}
+	labelled := SessionID(project, prefix) + ".jsonl"
 	var found []Recorded
+	for _, e := range entries {
+		if e.Name() == labelled {
+			return Recorded{Project: project, ID: strings.TrimSuffix(labelled, ".jsonl"), Path: filepath.Join(c.Dir, project, labelled)}, nil
+		}
+	}
 	for _, e := range entries {
 		id, isTranscript := strings.CutSuffix(e.Name(), ".jsonl")
 		if e.IsDir() || !isTranscript || !strings.HasPrefix(id, prefix) {
