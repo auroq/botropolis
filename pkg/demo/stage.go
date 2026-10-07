@@ -48,11 +48,20 @@ func place(corpus Corpus, scenario string, i int, p Placement, dir string, now t
 		if err != nil {
 			return err
 		}
-		started, cwd, err := stageTranscript(rec, dir, end)
+		o := overlay{Placement: p, id: rec.ID, project: rec.Project}
+		if p.Project != "" {
+			o.project = p.Project
+			o.id = plotID(scenario, i)
+			o.replace = [][2]string{
+				{filepath.Join(Root, rec.Project), filepath.Join(Root, p.Project)},
+				{rec.ID, o.id},
+			}
+		}
+		started, cwd, err := stageTranscript(rec, dir, end, o)
 		if err != nil {
 			return err
 		}
-		record["sessionId"], record["cwd"], record["startedAt"] = rec.ID, cwd, started.UnixMilli()
+		record["sessionId"], record["cwd"], record["startedAt"] = o.id, cwd, started.UnixMilli()
 	case p.Project != "":
 		record["sessionId"], record["cwd"], record["startedAt"] = plotID(scenario, i), filepath.Join(Root, p.Project), end.UnixMilli()
 	default:
@@ -91,29 +100,24 @@ func recordFor(s state.State) (claude.Kind, claude.Status, bool, error) {
 }
 
 // stageTranscript copies a recorded session and its subagents into the
-// home, all moved by the one delta that puts the session's newest line
-// at end. It returns the moved start and the session's working dir.
-func stageTranscript(rec Recorded, dir string, end time.Time) (time.Time, string, error) {
+// home, overlaid as the placement asks, all moved by the one delta that
+// puts the session's newest line at end. It returns the moved start and
+// the session's working dir.
+func stageTranscript(rec Recorded, dir string, end time.Time, o overlay) (time.Time, string, error) {
 	main, err := readJSONL(rec.Path)
 	if err != nil {
 		return time.Time{}, "", err
 	}
-	subPaths, _ := filepath.Glob(filepath.Join(rec.Subagents(), "*"))
-	subs := map[string][][]byte{}
-	for _, p := range subPaths {
-		if filepath.Ext(p) != ".jsonl" {
-			continue
-		}
-		lines, err := readJSONL(p)
-		if err != nil {
-			return time.Time{}, "", err
-		}
-		subs[p] = lines
-	}
+	main = o.rewrite(main)
 	latest, ok := Latest(main)
 	if !ok {
 		return time.Time{}, "", fmt.Errorf("%s: no line carries a timestamp", rec.Path)
 	}
+	extra, err := o.lines(latest)
+	if err != nil {
+		return time.Time{}, "", err
+	}
+	main = append(main, extra...)
 	delta := end.Sub(latest)
 	cwd := firstCWD(main)
 	if cwd == "" {
@@ -124,26 +128,89 @@ func stageTranscript(rec Recorded, dir string, end time.Time) (time.Time, string
 	if err != nil {
 		return time.Time{}, "", err
 	}
-	if err := writeJSONL(filepath.Join(folder, rec.ID+".jsonl"), moved); err != nil {
+	if err := writeJSONL(filepath.Join(folder, o.id+".jsonl"), moved); err != nil {
 		return time.Time{}, "", err
 	}
+	subPaths, _ := filepath.Glob(filepath.Join(rec.Subagents(), "*"))
 	for _, p := range subPaths {
-		target := filepath.Join(folder, rec.ID, "subagents", filepath.Base(p))
-		if lines, ok := subs[p]; ok {
-			moved, err := Shift(lines, delta)
-			if err != nil {
-				return time.Time{}, "", err
-			}
-			if err := writeJSONL(target, moved); err != nil {
-				return time.Time{}, "", err
-			}
-			continue
+		target := filepath.Join(folder, o.id, "subagents", filepath.Base(p))
+		lines, err := readJSONL(p)
+		if err != nil {
+			return time.Time{}, "", err
 		}
-		if err := copyFile(p, target); err != nil {
+		lines = o.rewrite(lines)
+		if filepath.Ext(p) == ".jsonl" {
+			if lines, err = Shift(lines, delta); err != nil {
+				return time.Time{}, "", err
+			}
+		}
+		if err := writeJSONL(target, lines); err != nil {
 			return time.Time{}, "", err
 		}
 	}
 	return earliest(main).Add(delta), cwd, nil
+}
+
+// overlay is what a placement adds to a recording: a new identity for a
+// clone, and the synthetic lines for its title, PRs, errors and team.
+type overlay struct {
+	Placement
+	id, project string
+	replace     [][2]string
+}
+
+func (o overlay) rewrite(lines [][]byte) [][]byte {
+	if len(o.replace) == 0 {
+		return lines
+	}
+	out := make([][]byte, len(lines))
+	for i, line := range lines {
+		for _, r := range o.replace {
+			line = bytes.ReplaceAll(line, []byte(r[0]), []byte(r[1]))
+		}
+		out[i] = line
+	}
+	return out
+}
+
+// lines are the synthetic records, each stamped at the recording's last
+// moment so the session still ends where the scenario puts it.
+func (o overlay) lines(at time.Time) ([][]byte, error) {
+	stamp := at.UTC().Format("2006-01-02T15:04:05.000Z07:00")
+	var out []map[string]any
+	if o.Title != "" {
+		out = append(out, map[string]any{"type": "custom-title", "customTitle": o.Title})
+	}
+	project := o.project
+	for i, state := range o.PRs {
+		action := map[string]string{"open": "created", "merged": "merged", "closed": "closed"}[state]
+		if action == "" {
+			return nil, fmt.Errorf("PR state %q: want open, merged or closed", state)
+		}
+		number := 40 + 7*i + len(o.id)%7
+		url := fmt.Sprintf("https://github.com/botropolis-demo/%s/pull/%d", project, number)
+		out = append(out, map[string]any{
+			"type": "pr-link", "timestamp": stamp, "prNumber": number, "prUrl": url,
+			"prRepository": "botropolis-demo/" + project,
+			"pr":           map[string]any{"number": number, "url": url, "action": action},
+		})
+	}
+	for range o.Errors {
+		out = append(out, map[string]any{"type": "system", "subtype": "api_error", "timestamp": stamp, "level": "error"})
+	}
+	if o.Team != "" {
+		out = append(out, map[string]any{"type": "system", "subtype": "informational", "timestamp": stamp, "teamName": o.Team, "agentName": o.Agent})
+	}
+	lines := make([][]byte, 0, len(out))
+	for _, m := range out {
+		m["sessionId"] = o.id
+		data, err := json.Marshal(m)
+		if err != nil {
+			return nil, err
+		}
+		lines = append(lines, data)
+	}
+	return lines, nil
 }
 
 func earliest(lines [][]byte) time.Time {

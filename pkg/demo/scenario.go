@@ -24,13 +24,24 @@ type Scenario struct {
 }
 
 // Placement puts one session in the city. Ref names a recorded session;
-// an empty plot has no recording and names its Project instead.
+// an empty plot has no recording and names its Project instead. With
+// both, the recording is cloned into that project as a session of its
+// own, which is how a big city is filled from a small corpus.
 type Placement struct {
 	Ref     string      `yaml:"ref"`
 	Project string      `yaml:"project"`
 	State   state.State `yaml:"state"`
 	// Ago is how long before now the session's last line sits.
 	Ago Duration `yaml:"ago"`
+
+	// The rest is overlaid on the recording, for what a recording run
+	// cannot cheaply produce: a title, pull requests in each state
+	// (open, merged, closed), API errors, and a place in a team.
+	Title  string   `yaml:"title"`
+	PRs    []string `yaml:"prs"`
+	Errors int      `yaml:"errors"`
+	Team   string   `yaml:"team"`
+	Agent  string   `yaml:"agent"`
 }
 
 // Validate refuses a scenario that would film nothing, or that names
