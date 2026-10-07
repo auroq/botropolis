@@ -87,6 +87,8 @@ The package installs `botropolis.desktop`, so the city is in your launcher under
 
 `botropolis city --screenshot city.png` renders one frame and exits;
 `--headless` runs it on a virtual display so no window opens, `--keys n,n,x` presses keys first, and `--record dir --seconds 24` writes frames for a GIF (`make gif`).
+`--window 1920x1080` sizes the window and `--fps 30` records smoother frames.
+Media for the website is filmed from recorded demo sessions rather than anyone's real ones: see [demo/](demo/README.md).
 
 Settings come from flags, then `BOTROPOLIS_HOME`, `BOTROPOLIS_SOCKET`, `BOTROPOLIS_TERMINAL`, `BOTROPOLIS_PARKED_DAYS`, `BOTROPOLIS_CODEX_HOME`,
 then `~/.config/botropolis/config.{toml,yaml,json}` (`home`, `socket`, `terminal`, `hook_command`, `parked_days`, `codex_home`, `projection`, `render_scale`, `reduced_motion`, `daily_budget_usd`).

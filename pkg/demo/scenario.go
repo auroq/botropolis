@@ -13,10 +13,14 @@ import (
 // Scenario is one city to film: which recorded sessions stand where,
 // in what state, and what the account around them looks like.
 type Scenario struct {
-	Name        string      `yaml:"name"`
-	Description string      `yaml:"description"`
-	MCP         []string    `yaml:"mcp"`
-	Sessions    []Placement `yaml:"sessions"`
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+	// Clock is the time of day the city is lit for, HH:MM; 14:00 when
+	// unset, so a frame does not depend on when it was filmed.
+	Clock    string      `yaml:"clock"`
+	MCP      []string    `yaml:"mcp"`
+	Sessions []Placement `yaml:"sessions"`
+	Shots    []Shot      `yaml:"shots"`
 }
 
 // Placement puts one session in the city. Ref names a recorded session;
@@ -27,6 +31,25 @@ type Placement struct {
 	State   state.State `yaml:"state"`
 	// Ago is how long before now the session's last line sits.
 	Ago Duration `yaml:"ago"`
+}
+
+// Validate refuses a scenario that would film nothing, or that names
+// two shots alike and so writes one over the other.
+func (s Scenario) Validate() error {
+	if len(s.Sessions) == 0 {
+		return fmt.Errorf("scenario %q places no sessions", s.Name)
+	}
+	seen := map[string]bool{}
+	for i, shot := range s.Shots {
+		if shot.Name == "" {
+			return fmt.Errorf("scenario %q: shot %d has no name", s.Name, i)
+		}
+		if seen[shot.Name] {
+			return fmt.Errorf("scenario %q: two shots named %q", s.Name, shot.Name)
+		}
+		seen[shot.Name] = true
+	}
+	return nil
 }
 
 // Duration reads "90s" or "3h" from YAML.
@@ -53,6 +76,9 @@ func LoadScenario(path string) (Scenario, error) {
 	dec.KnownFields(true)
 	var s Scenario
 	if err := dec.Decode(&s); err != nil {
+		return Scenario{}, fmt.Errorf("%s: %w", path, err)
+	}
+	if err := s.Validate(); err != nil {
 		return Scenario{}, fmt.Errorf("%s: %w", path, err)
 	}
 	return s, nil

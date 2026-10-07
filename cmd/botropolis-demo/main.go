@@ -26,7 +26,7 @@ func run(args []string, out, errOut io.Writer) int {
 		SilenceErrors: true,
 	}
 	root.SetVersionTemplate("{{.Name}} {{.Version}}\n")
-	root.AddCommand(stageCommand(), unstageCommand())
+	root.AddCommand(stageCommand(), unstageCommand(), filmCommand())
 	root.SetOut(out)
 	root.SetErr(errOut)
 	root.SetArgs(args)
@@ -94,5 +94,41 @@ func unstageCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&home, "home", "", "the staged home")
 	_ = cmd.MarkFlagRequired("home")
+	return cmd
+}
+
+func filmCommand() *cobra.Command {
+	var corpus, out, botropolis, ffmpeg string
+	cmd := &cobra.Command{
+		Use:   "film SCENARIO...",
+		Short: "Make every shot of each scenario and write a manifest",
+		Long: "Stages each scenario afresh for every shot, runs the city headless\n" +
+			"against it with HOME and the XDG directories in a scratch directory,\n" +
+			"encodes clips with ffmpeg, and writes OUT/manifest.json.",
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, paths []string) error {
+			if botropolis == "" {
+				self, err := os.Executable()
+				if err != nil {
+					return err
+				}
+				botropolis = filepath.Join(filepath.Dir(self), "botropolis")
+			}
+			f := demo.Filmer{
+				Corpus: demo.Corpus{Dir: corpus}, Botropolis: botropolis, FFmpeg: ffmpeg,
+				Out: out, Version: version.Version, Log: cmd.ErrOrStderr(), Now: time.Now,
+			}
+			manifest, err := f.Film(paths)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "filmed %d files into %s\n", len(manifest.Media), out)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&corpus, "corpus", "demo/corpus", "directory of recorded transcripts")
+	cmd.Flags().StringVar(&out, "out", "dist/demo", "directory to write media and manifest.json into")
+	cmd.Flags().StringVar(&botropolis, "botropolis", "", "the botropolis binary (default: beside this one)")
+	cmd.Flags().StringVar(&ffmpeg, "ffmpeg", "ffmpeg", "the ffmpeg binary")
 	return cmd
 }

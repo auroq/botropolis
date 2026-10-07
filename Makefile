@@ -45,6 +45,31 @@ demo-tool ::
 	$(LOG) "Building botropolis-demo"
 	@go build -trimpath -ldflags "${LDFLAGS}" -o bin/botropolis-demo ./cmd/botropolis-demo
 
+# Demo media is filmed inside a container with no network, a read-only root,
+# and only the binaries, the corpus and the scenarios mounted, so the real
+# home cannot be reached by anything the city does -- including the reads
+# that fall back to the real home directory. See demo/README.md.
+DEMO_IMAGE ?= botropolis-demo
+DEMO_CORPUS ?= demo/corpus
+DEMO_SCENARIOS ?= demo/scenarios
+DEMO_OUT ?= dist/demo
+
+demo-image ::
+	$(LOG) "Building the demo images"
+	@docker build -q -f demo/Dockerfile --target renderer -t ${DEMO_IMAGE}-renderer demo >/dev/null
+
+demo-media :: build demo-tool demo-image
+	$(LOG) "Filming ${DEMO_SCENARIOS} from ${DEMO_CORPUS} into ${DEMO_OUT}"
+	@rm -rf ${DEMO_OUT} && mkdir -p ${DEMO_OUT}
+	@docker run --rm --network none --read-only --tmpfs /tmp:exec \
+		--user $$(id -u):$$(id -g) -e HOME=/tmp \
+		-v $(CURDIR)/bin:/opt/botropolis:ro \
+		-v $(abspath ${DEMO_CORPUS}):/corpus:ro \
+		-v $(abspath ${DEMO_SCENARIOS}):/scenarios:ro \
+		-v $(abspath ${DEMO_OUT}):/out \
+		${DEMO_IMAGE}-renderer \
+		/opt/botropolis/botropolis-demo film --corpus /corpus --out /out --botropolis /opt/botropolis/botropolis /scenarios
+
 test :: test-unit test-integration test-acceptance
 
 test-unit ::
