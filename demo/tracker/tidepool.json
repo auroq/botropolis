@@ -1,0 +1,38 @@
+[
+  {
+    "id": "TIDE-14",
+    "title": "table prints the wrong hours for Brackwater Point",
+    "body": "`tidepool table brackwater 2026-01-15` starts at 13:00 and runs through to 12:00 the next day. Kelp Hollow is off the other way, starting at 16:00 the day before. It looks like the day starts at midnight UTC instead of midnight at the station.",
+    "labels": [
+      "bug"
+    ],
+    "state": "open"
+  },
+  {
+    "id": "TIDE-15",
+    "title": "Unknown constituent names are silently ignored",
+    "body": "I added an `m4` row for saltmarsh-quay to constituents.csv and the predictions did not change at all, and there was no error. Turns out the name has to be uppercase `M4`. A constituent we have no speed for should be an error that names the file and line, like the other CSV errors do.",
+    "labels": [
+      "bug"
+    ],
+    "state": "open"
+  },
+  {
+    "id": "TIDE-16",
+    "title": "Show heights in feet",
+    "body": "The harbour office still publishes in feet. Could `next` and `table` take a `--units ft` flag (metres stays the default)? The heading of `table` should say which unit it is using.",
+    "labels": [
+      "feature"
+    ],
+    "state": "open"
+  },
+  {
+    "id": "TIDE-17",
+    "title": "Document the CSV format and how to add a station",
+    "body": "The README says the data lives in two CSVs but not what the columns mean. In particular it is not clear what the phase is relative to, or which constituent names are accepted. A short section on adding a new station would have saved me an afternoon.",
+    "labels": [
+      "docs"
+    ],
+    "state": "open"
+  }
+]

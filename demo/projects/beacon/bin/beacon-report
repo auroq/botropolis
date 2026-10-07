@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/../lib/common.sh"
+
+usage() {
+    cat <<USAGE
+Usage: beacon-report [--file FILE] [--date YYYY-MM-DD]
+
+Print the daily report for the lighthouse network: a count of beacons by
+state, every beacon that needs a visit, and the fleet's average battery.
+
+Options:
+  --file FILE   status file (default: \$BEACON_STATUS_FILE or data/status.txt)
+  --date DATE   date printed in the header (default: today, UTC)
+  -h, --help    show this help
+USAGE
+}
+
+file="${BEACON_STATUS_FILE}"
+day=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --file) file="${2:?--file needs a value}"; shift 2 ;;
+        --date) day="${2:?--date needs a value}"; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage >&2; exit 64 ;;
+    esac
+done
+
+require_status "${file}"
+now="$(now_epoch)"
+[[ -n "${day}" ]] || day="$(date -u -d "@${now}" +%F)"
+
+ok=0 warn=0 fail=0 total=0 battery_sum=0
+visits=()
+
+while IFS='|' read -r id name lamp last_seen battery; do
+    total=$(( total + 1 ))
+    battery_sum=$(( battery_sum + battery ))
+    seen="$(iso_to_epoch "${last_seen}")"
+    age=$(( (now - seen) / 60 ))
+    if [[ "${lamp}" != "ok" ]]; then
+        fail=$(( fail + 1 ))
+        visits+=("${id} ${name}: lamp ${lamp}")
+    elif (( age > 30 )); then
+        warn=$(( warn + 1 ))
+        visits+=("${id} ${name}: silent for ${age} minutes")
+    else
+        ok=$(( ok + 1 ))
+    fi
+done < <(read_status "${file}")
+
+(( total > 0 )) || die "no beacons in ${file}"
+
+printf 'Lighthouse network — daily report for %s\n' "${day}"
+printf '%s\n' "================================================"
+printf 'beacons: %d   ok: %d   warn: %d   fail: %d\n' "${total}" "${ok}" "${warn}" "${fail}"
+printf 'average battery: %d%%\n' $(( battery_sum / total ))
+echo
+if (( ${#visits[@]} == 0 )); then
+    echo "No visits needed."
+else
+    echo "Needs a visit:"
+    printf '  - %s\n' "${visits[@]}"
+fi

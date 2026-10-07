@@ -1,0 +1,54 @@
+name: metropolis
+description: A heavy user's city at dusk, a dozen districts, a team at work and a full storage yard.
+clock: "18:30"
+mcp: [tracker, weather]
+sessions:
+  - {ref: tidepool/units-from-tracker, state: working, ago: 20s, prs: [open]}
+  - {ref: tidepool/review-loader-and-docs, state: working, ago: 1m}
+  - {ref: tidepool/fix-table-timezone, state: parked, ago: 9h, prs: [merged]}
+  - {ref: tidepool/what-is-phase, state: parked, ago: 2d}
+  - {ref: lanternfish/list-race, state: working, ago: 40s, errors: 2}
+  - {ref: lanternfish/crash-safe-snapshots, state: needs-you, ago: 8m}
+  - {ref: lanternfish/status-filter, state: parked, ago: 4h, prs: [merged, closed]}
+  - {ref: kiln/json-report, state: working, ago: 15s}
+  - {ref: kiln/hold-time-sampling, state: parked, ago: 30h}
+  - {ref: kiln/line-numbers-like-tidepool, state: unattended, ago: 2m}
+  - {ref: quillmark/block-handlers, state: working, ago: 1m, prs: [open]}
+  - {ref: quillmark/drafts-and-changelog, state: parked, ago: 6h, prs: [merged]}
+  - {ref: orchard/parallel-review, state: working, ago: 10s}
+  - {ref: orchard/triploid-design, state: needs-you, ago: 12m}
+  - {ref: orchard/layout-reentrancy, state: parked, ago: 3d, prs: [merged]}
+  - {ref: beacon/conditions-line, state: working, ago: 3m}
+  - {ref: beacon/shared-classifier, state: parked, ago: 20h}
+  - {ref: tidepool/units-from-tracker, project: driftwood, state: working, ago: 2m, title: Driftwood ingest, team: harbor, agent: lead}
+  - {ref: kiln/json-report, project: driftwood, state: working, ago: 1m, title: Driftwood schema, team: harbor, agent: schema}
+  - {ref: lanternfish/list-race, project: saltmarsh, state: working, ago: 3m, title: Saltmarsh API, team: harbor, agent: api}
+  - {ref: quillmark/block-handlers, project: ferrylight, state: needs-you, ago: 5m, title: Ferrylight docs}
+  - {ref: orchard/layout-reentrancy, project: copperleaf, state: working, ago: 30s, title: Copperleaf planner}
+  - {ref: beacon/shared-classifier, project: millrace, state: unattended, ago: 4m, title: Millrace nightly}
+  - {ref: kiln/hold-time-sampling, project: thistledown, state: parked, ago: 2d, title: Thistledown import}
+  - {ref: lanternfish/status-filter, project: thistledown, state: working, ago: 2m, title: Thistledown search, prs: [open]}
+  - {ref: tidepool/fix-table-timezone, project: copperleaf, state: parked, ago: 4d, title: Copperleaf timezones}
+  - {project: saltmarsh, state: empty}
+  - {project: ferrylight, state: empty}
+shots:
+  - name: overview
+    title: A busy metropolis at dusk
+    description: Twelve districts, a team camp, trains for every model, and a full storage yard.
+  - name: hero
+    title: The metropolis, without the chrome
+    description: Dusk over a dozen districts, interface hidden.
+    keys: [h]
+  - name: plain
+    title: The metropolis, plain
+    description: The same city with the scenery dropped, for reading at a glance.
+    detail: plain
+  - name: sidebar
+    title: Every session in a list
+    description: The sidebar lists every session by district and state.
+    keys: [b]
+  - name: flyover
+    title: Flying over the metropolis
+    description: Zooming and turning across a large city.
+    keys: [equal, equal, r, r, minus, r, f]
+    record: {seconds: 16, fps: 30}

@@ -1,0 +1,28 @@
+project: kiln
+sessions:
+  - label: line-numbers-like-tidepool
+    model: sonnet
+    budget_usd: 0.60
+    visual: roads
+    prompts:
+      - "KILN-24: our reader errors don't say which line is bad. The tidepool project already does this nicely for its CSVs — read /home/demo/src/tidepool/internal/tide/stations.go and see how it reports file:line, then do the equivalent in kiln/reader.py and kiln/__main__.py. Update the reader tests."
+  - label: empty-log-from-tracker
+    model: sonnet
+    budget_usd: 0.50
+    visual: mcp
+    prompts:
+      - "Use the tracker MCP server to get issue KILN-21. Reproduce it, fix it so an empty log gives a one-line error and a non-zero exit, add tests, run python -m pytest -q, then comment on KILN-21 with what you changed and close it."
+  - label: hold-time-sampling
+    model: sonnet
+    budget_usd: 0.70
+    visual: multi-turn
+    prompts:
+      - "kiln report samples/glaze-0921.csv says the hold was 6 minutes but the kiln held for 20. What's going on?"
+      - "Right. Fix hold_time so it uses the actual timestamps instead of assuming one-minute samples, and add a test using five-minute readings."
+      - "Does the same assumption show up anywhere else in kiln/? If so fix it the same way."
+  - label: json-report
+    model: sonnet
+    budget_usd: 1.00
+    visual: context
+    prompts:
+      - "Implement KILN-23: kiln report --json should print the whole summary as JSON (peak, hold in seconds, segments with phase and rate, anomalies, ISO 8601 timestamps). Read the whole package and its tests first; I'd like report.py restructured so the text and JSON outputs share one summary model rather than duplicating the formatting logic. Add tests for the JSON output and keep the text output unchanged."

@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/../lib/common.sh"
+
+usage() {
+    cat <<USAGE
+Usage: beacon-rotate [--dir DIR] [--keep N] [--dry-run]
+
+Rotate every lamp log (*.log) in DIR: name.log becomes name.log.1,
+name.log.1 becomes name.log.2, and so on. Logs beyond --keep are deleted
+and a fresh, empty name.log is left in place.
+
+Options:
+  --dir DIR    log directory (default: \$BEACON_LOG_DIR or data/logs)
+  --keep N     rotated copies to keep (default: 7)
+  --dry-run    print what would happen, change nothing
+  -h, --help   show this help
+USAGE
+}
+
+dir="${BEACON_LOG_DIR}"
+keep=7
+dry_run=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dir) dir="${2:?--dir needs a value}"; shift 2 ;;
+        --keep) keep="${2:?--keep needs a value}"; shift 2 ;;
+        --dry-run) dry_run=true; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage >&2; exit 64 ;;
+    esac
+done
+
+[[ "${keep}" =~ ^[1-9][0-9]*$ ]] || die "--keep must be a positive whole number"
+[[ -d "${dir}" ]] || die "no such directory: ${dir}"
+
+run() {
+    if [[ "${dry_run}" == true ]]; then
+        echo "would: $*"
+    else
+        "$@"
+    fi
+}
+
+shopt -s nullglob
+logs=("${dir}"/*.log)
+if (( ${#logs[@]} == 0 )); then
+    echo "nothing to rotate in ${dir}"
+    exit 0
+fi
+
+for log in "${logs[@]}"; do
+    [[ -e "${log}.${keep}" ]] && run rm -f "${log}.${keep}"
+    for (( i = keep - 1; i >= 1; i-- )); do
+        [[ -e "${log}.${i}" ]] && run mv "${log}.${i}" "${log}.$(( i + 1 ))"
+    done
+    run mv "${log}" "${log}.1"
+    run touch "${log}"
+    echo "rotated $(basename "${log}")"
+done

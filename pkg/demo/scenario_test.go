@@ -2,8 +2,11 @@ package demo
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v3"
 )
 
 func TestScenarioValidate(t *testing.T) {
@@ -23,6 +26,23 @@ func TestScenarioValidate(t *testing.T) {
 		t.Run("when a scenario "+name, func(t *testing.T) {
 			t.Run("it should refuse it, rather than film an empty city or overwrite a file", func(t *testing.T) {
 				assert.Error(t, s.Validate())
+			})
+		})
+	}
+}
+
+func TestDurationYAML(t *testing.T) {
+	for raw, want := range map[string]time.Duration{
+		"90s": 90 * time.Second, "3h": 3 * time.Hour, "2d": 48 * time.Hour, "1d6h": 30 * time.Hour,
+	} {
+		t.Run("when a scenario says "+raw, func(t *testing.T) {
+			var d struct {
+				Ago Duration `yaml:"ago"`
+			}
+			require.NoError(t, yaml.Unmarshal([]byte("ago: "+raw), &d))
+
+			t.Run("it should read it as that long", func(t *testing.T) {
+				assert.Equal(t, want, time.Duration(d.Ago))
 			})
 		})
 	}

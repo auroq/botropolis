@@ -1,0 +1,4 @@
+/lanternfish
+*.test
+coverage.out
+/data/snapshot.json

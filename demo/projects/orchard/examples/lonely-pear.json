@@ -1,0 +1,8 @@
+{
+  "plot": { "width": 60, "length": 12, "rowGap": 6, "margin": 1 },
+  "pollinationRange": 10,
+  "varieties": [
+    { "name": "Conference", "spacing": 5, "group": "C", "selfFertile": true },
+    { "name": "Doyenné du Comice", "spacing": 5, "group": "E", "count": 2 }
+  ]
+}

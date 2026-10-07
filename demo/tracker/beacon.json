@@ -1,0 +1,30 @@
+[
+  {
+    "id": "BCN-207",
+    "title": "beacon-status flags a full battery and misses a nearly flat one",
+    "body": "This morning Skellan Rock showed WARN for battery 100% while Dunvarrow Light at 9% showed OK. Looks like the battery check compares the numbers as text. Low-battery beacons are the ones we actually need to drive out to.",
+    "labels": ["bug"],
+    "state": "open"
+  },
+  {
+    "id": "BCN-209",
+    "title": "Compress rotated lamp logs",
+    "body": "The keepers' laptop is filling up with lamp.log.1 to lamp.log.7 for every station. beacon-rotate should take a --compress flag that gzips everything from .2 onward, keeping .1 plain so it's easy to read the night before. Rotation needs to cope with both .N and .N.gz names.",
+    "labels": ["feature"],
+    "state": "open"
+  },
+  {
+    "id": "BCN-211",
+    "title": "beacon-report and beacon-status disagree",
+    "body": "beacon-report has its own copy of the OK/WARN/FAIL rules, with the 30-minute stale window hard-coded and no battery check at all, so the report says 'ok' for a beacon that beacon-status warns about. The classification should live in one place in lib/common.sh and both scripts should use it.",
+    "labels": ["chore"],
+    "state": "open"
+  },
+  {
+    "id": "BCN-214",
+    "title": "Status file format isn't written down anywhere",
+    "body": "A new keeper asked what the columns in data/status.txt are and the only answer is the comment on its first line. The README should describe the pipe-separated format, the timestamp format and units, and that blank lines and # comments are ignored.",
+    "labels": ["docs"],
+    "state": "open"
+  }
+]

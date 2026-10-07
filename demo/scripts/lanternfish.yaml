@@ -1,0 +1,26 @@
+project: lanternfish
+sessions:
+  - label: crash-safe-snapshots
+    model: opus
+    budget_usd: 1.50
+    visual: needs-you
+    prompts:
+      - "Read LANT-31 and LANT-34 below and the snapshot code in this repo. LANT-31: after a power cut data/snapshot.json was zero bytes and the server refused to start. LANT-34: Save writes straight over the file. Propose two different designs for making snapshots crash-safe, with the trade-offs of each, then ask me which one to implement. Do not implement either yet."
+  - label: list-race
+    model: sonnet
+    budget_usd: 0.90
+    visual: context
+    prompts:
+      - "go test -race reports a data race when GET /lanterns runs while lanterns are being checked out (LANT-32). Read through store.go, handlers.go, snapshot.go, main.go and the tests, then refactor the store so it never hands out pointers to its internal state. Add a concurrent test that fails under -race before the fix, and make sure go test -race ./... is clean afterwards."
+  - label: status-filter
+    model: sonnet
+    budget_usd: 0.50
+    visual: skill
+    prompts:
+      - "Add a status filter to GET /lanterns, e.g. ?status=checked-out, plus ?borrower=. An unknown status should be a 400. Add handler tests. When it passes, use the changelog skill to update CHANGELOG.md."
+  - label: how-to-run
+    model: haiku
+    budget_usd: 0.15
+    visual: quick
+    prompts:
+      - "What port does lanternfish listen on, and how do I start it with the seed lanterns?"

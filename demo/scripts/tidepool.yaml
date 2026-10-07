@@ -1,0 +1,28 @@
+project: tidepool
+sessions:
+  - label: fix-table-timezone
+    model: sonnet
+    budget_usd: 0.60
+    visual: multi-turn
+    prompts:
+      - "`go run . table brackwater 2026-01-15` starts at 13:00 instead of 00:00. Can you work out why? Don't change anything yet."
+      - "Makes sense. Fix it so the table covers midnight to midnight in the station's own timezone, and add a test that would have caught it."
+      - "What happens on a day when the clocks change, like 2026-04-05 at Brackwater? Make sure the table handles a 23- or 25-hour day sensibly and test that too."
+  - label: what-is-phase
+    model: haiku
+    budget_usd: 0.15
+    visual: quick
+    prompts:
+      - "In internal/tide/predict.go, what is a constituent's Phase measured relative to? A short answer is fine."
+  - label: units-from-tracker
+    model: sonnet
+    budget_usd: 0.80
+    visual: mcp
+    prompts:
+      - "Use the tracker MCP server to list the open tidepool issues, then pick up TIDE-16 (heights in feet). Implement it with tests, run go test ./..., then add a comment on TIDE-16 summarising the change and close it."
+  - label: review-loader-and-docs
+    model: sonnet
+    budget_usd: 0.70
+    visual: subagents
+    prompts:
+      - "Use the Agent tool to run two subagents in parallel: one should investigate TIDE-15 (unknown constituent names silently ignored) in internal/tide/stations.go and propose a fix, the other should read the loader and data/ and draft the README section TIDE-17 asks for. When both are back, apply the fix with a test and add the README section."

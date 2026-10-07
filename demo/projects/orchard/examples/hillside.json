@@ -1,0 +1,10 @@
+{
+  "plot": { "width": 40, "length": 30, "rowGap": 5, "margin": 2 },
+  "pollinationRange": 15,
+  "varieties": [
+    { "name": "Ashmead's Kernel", "spacing": 4, "group": "D" },
+    { "name": "Egremont Russet", "spacing": 4, "group": "C" },
+    { "name": "Bramley", "spacing": 6, "group": "D", "count": 6 },
+    { "name": "Discovery", "spacing": 4, "group": "C" }
+  ]
+}

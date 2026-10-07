@@ -1,0 +1,56 @@
+name: workshop
+description: A working afternoon across four projects, with the tracker and the weather wired in.
+clock: "14:00"
+mcp: [tracker, weather]
+sessions:
+  - ref: tidepool/units-from-tracker
+    state: working
+    ago: 30s
+    prs: [open]
+  - ref: tidepool/review-loader-and-docs
+    state: needs-you
+    ago: 6m
+  - ref: lanternfish/list-race
+    state: working
+    ago: 2m
+    errors: 1
+  - ref: lanternfish/status-filter
+    state: parked
+    ago: 5h
+    prs: [merged]
+  - ref: kiln/line-numbers-like-tidepool
+    state: working
+    ago: 1m
+  - ref: kiln/empty-log-from-tracker
+    state: parked
+    ago: 26h
+    prs: [merged]
+  - ref: quillmark/fix-code-spans
+    state: unattended
+    ago: 3m
+  - ref: quillmark/compare-kiln-packaging
+    state: parked
+    ago: 2d
+  - project: quillmark
+    state: empty
+shots:
+  - name: overview
+    title: A working afternoon
+    description: Four projects; sessions working, waiting, running unattended and parked.
+  - name: needs-you
+    title: The session that needs you
+    description: Tab jumps to the next session waiting on an answer and opens its card.
+    keys: [tab]
+  - name: power
+    title: Where the tokens go
+    description: The power plant's breakdown of the last day's tokens and spend.
+    keys: [x]
+  - name: flat
+    title: The workshop from above
+    description: The same city in the top-down projection.
+    projection: top
+  - name: tour
+    title: A tour of the workshop
+    description: Zoom in, step to the session that needs you, open the sidebar, and fit again.
+    keys: [equal, equal, tab, b, b, r, f]
+    record: {seconds: 16, fps: 30}

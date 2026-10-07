@@ -1,0 +1,2 @@
+BX01|Carrick Point|ok|2026-10-07T05:50:00Z|87
+BX02|Skellan Rock|ok|2026-10-07T05:45:00Z|45

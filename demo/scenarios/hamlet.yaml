@@ -1,0 +1,27 @@
+name: hamlet
+description: One person, two projects, late in the evening.
+clock: "22:30"
+mcp: [weather]
+sessions:
+  - ref: tidepool/fix-table-timezone
+    state: working
+    ago: 1m
+  - ref: tidepool/what-is-phase
+    state: parked
+    ago: 3h
+  - ref: beacon/conditions-line
+    state: needs-you
+    ago: 4m
+shots:
+  - name: overview
+    title: A quiet hamlet
+    description: Two projects late at night, one session working and one waiting on an answer.
+  - name: hero
+    title: The hamlet, without the chrome
+    description: The same night with the interface hidden.
+    keys: [h]
+  - name: drift
+    title: Turning the hamlet
+    description: The camera turns around a two-project city at night.
+    keys: [equal, r, r, r]
+    record: {seconds: 10, fps: 30}

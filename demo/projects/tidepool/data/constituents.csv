@@ -1,0 +1,17 @@
+station,constituent,amplitude_m,phase_deg
+brackwater,M2,1.42,112.0
+brackwater,S2,0.21,168.5
+brackwater,N2,0.30,88.0
+brackwater,K1,0.07,220.0
+brackwater,O1,0.05,195.0
+kelp-hollow,M2,0.92,140.0
+kelp-hollow,S2,0.23,166.0
+kelp-hollow,K1,0.86,262.0
+kelp-hollow,O1,0.48,244.0
+kelp-hollow,P1,0.26,258.0
+saltmarsh-quay,M2,1.18,64.0
+saltmarsh-quay,S2,0.41,94.0
+saltmarsh-quay,N2,0.25,46.0
+saltmarsh-quay,K2,0.11,92.0
+saltmarsh-quay,K1,0.07,58.0
+saltmarsh-quay,O1,0.06,312.0

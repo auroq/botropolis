@@ -1,0 +1,30 @@
+[
+  {
+    "id": "ORCH-112",
+    "title": "layoutRows gives fewer trees the second time it's called",
+    "body": "I call layoutRows twice with the same varieties array to compare two plot sizes, and the second layout is missing every variety that has a count. Calling it with {width: 10, length: 10} and one variety with count 4 returns 4 trees, then 0. It looks like the placed counter is stored on the variety objects I passed in.",
+    "labels": ["bug"],
+    "state": "open"
+  },
+  {
+    "id": "ORCH-115",
+    "title": "Model triploid varieties",
+    "body": "Bramley and a few others are triploid: they need a partner like anything else, but their pollen is no good, so they can't be anyone's partner. Right now the hillside example counts Bramley as a donor for the Ashmead's Kernel rows. A `triploid: true` field that stops a variety acting as a donor would make the check honest.",
+    "labels": ["feature"],
+    "state": "open"
+  },
+  {
+    "id": "ORCH-117",
+    "title": "Pollination check is quadratic",
+    "body": "checkPollination compares every tree against every other tree, which is fine for the examples but takes several seconds on a 4,000-tree plan. Bucketing trees into a grid of cells the size of the pollination range would mean each tree only looks at its own and neighbouring cells.",
+    "labels": ["chore"],
+    "state": "open"
+  },
+  {
+    "id": "ORCH-119",
+    "title": "Document every spec field and its default",
+    "body": "The README example shows rowGap and margin but never says what they default to, and selfFertile and pollinationRange aren't mentioned at all. A table of every field in the spec, its unit and its default would save reading src/.",
+    "labels": ["docs"],
+    "state": "open"
+  }
+]

@@ -18,3 +18,4 @@ tools/__pycache__/
 # The employer names this repository is kept clear of. Untracked on purpose:
 # the list is the thing being kept out.
 .publishable-tokens
+/demo/corpus/recording-*.json

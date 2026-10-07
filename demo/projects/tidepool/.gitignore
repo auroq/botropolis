@@ -1,0 +1,3 @@
+/tidepool
+*.test
+coverage.out

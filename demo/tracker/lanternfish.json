@@ -1,0 +1,38 @@
+[
+  {
+    "id": "LANT-31",
+    "title": "Server will not start after the snapshot file is left empty",
+    "body": "The desk laptop lost power mid-evening and afterwards data/snapshot.json was zero bytes. lanternfish then refused to start with `unexpected end of JSON input` and we had to delete the file and re-add every lantern by hand. An empty or truncated snapshot should not take the whole desk down.",
+    "labels": [
+      "bug"
+    ],
+    "state": "open"
+  },
+  {
+    "id": "LANT-32",
+    "title": "Data race between listing and checking out",
+    "body": "Running a quick load test with `go test -race` and a few goroutines hitting GET /lanterns while others check lanterns out and back in reports a DATA RACE in the JSON encoder. I think the list handler is encoding lanterns the store is still mutating.",
+    "labels": [
+      "bug"
+    ],
+    "state": "open"
+  },
+  {
+    "id": "LANT-33",
+    "title": "Filter the list by status",
+    "body": "At close we want to see only what is still out: `GET /lanterns?status=checked-out`. Filtering by borrower would also help when a stall says they have already returned everything. Unknown status values should be a 400, not an empty list.",
+    "labels": [
+      "feature"
+    ],
+    "state": "open"
+  },
+  {
+    "id": "LANT-34",
+    "title": "Write snapshots atomically",
+    "body": "Save writes straight over data/snapshot.json, so a crash part-way through leaves a half-written file (see LANT-31). Writing to a temp file in the same directory and renaming it over the old one would make every snapshot either the old one or the new one.",
+    "labels": [
+      "chore"
+    ],
+    "state": "open"
+  }
+]

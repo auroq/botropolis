@@ -1,0 +1,30 @@
+[
+  {
+    "id": "QUILL-31",
+    "title": "Asterisks and underscores inside code spans turn into <em>",
+    "body": "Writing `a * b * c` in a post renders as <code>a <em> b </em> c</code>, so the stars vanish from the code. The same thing happens to underscores in link URLs: [notes](https://example.org/my_page_name) produces an href with <em> tags in it. Code spans and link targets should be left alone by the emphasis rules.",
+    "labels": ["bug"],
+    "state": "open"
+  },
+  {
+    "id": "QUILL-34",
+    "title": "Support draft: true in front matter",
+    "body": "I keep half-written posts in content/ and every build publishes them. A post with `draft: true` in its front matter should be skipped by `quillmark build` and left out of the index. A `--drafts` flag to include them for local previews would be nice too.",
+    "labels": ["feature"],
+    "state": "open"
+  },
+  {
+    "id": "QUILL-36",
+    "title": "Split markdown.to_html into per-block handlers",
+    "body": "to_html is one loop juggling five pieces of state (paragraph, list tag, list items, fence flag, fence language) through closures. Adding nested lists or blockquotes means touching every branch. It would be easier to extend as a small set of block handlers that each claim a line and say when they are done.",
+    "labels": ["chore"],
+    "state": "open"
+  },
+  {
+    "id": "QUILL-38",
+    "title": "README doesn't say which template variables exist",
+    "body": "I wrote a custom post.html with ${description} in it and the build died with a bare KeyError. The README should list the variables each template gets (site_title, title, date, author, content, posts) and say that an unknown one is an error.",
+    "labels": ["docs"],
+    "state": "open"
+  }
+]

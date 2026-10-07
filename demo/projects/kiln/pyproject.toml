@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kiln"
+version = "0.4.0"
+description = "Ramp rates, peaks, holds and anomalies from pottery-kiln firing logs"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+kiln = "kiln.__main__:main"
+
+[tool.setuptools]
+packages = ["kiln"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

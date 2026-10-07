@@ -1,0 +1,50 @@
+name: workday
+description: A morning compressed into forty seconds, sessions arriving, waiting, merging and leaving.
+clock: "09:30"
+mcp: [tracker, weather]
+sessions:
+  - ref: tidepool/fix-table-timezone
+    state: working
+    ago: 30s
+    prs: [open]
+    changes:
+      - {at: 14s, prs: [merged]}
+      - {at: 24s, state: needs-you}
+  - ref: lanternfish/list-race
+    state: needs-you
+    ago: 2m
+    changes:
+      - {at: 6s, state: working}
+      - {at: 20s, errors: 1}
+  - ref: kiln/hold-time-sampling
+    state: working
+    ago: 1m
+    leave: 30s
+  - ref: quillmark/drafts-and-changelog
+    state: working
+    arrive: 4s
+    prs: [open]
+    changes:
+      - {at: 28s, prs: [merged]}
+  - ref: orchard/parallel-review
+    state: working
+    arrive: 10s
+  - ref: beacon/battery-threshold
+    state: working
+    arrive: 16s
+    leave: 34s
+  - ref: tidepool/what-is-phase
+    state: parked
+    ago: 20h
+  - ref: kiln/empty-log-from-tracker
+    state: parked
+    ago: 2d
+shots:
+  - name: morning
+    title: A morning in forty seconds
+    description: Sessions arrive by boat, wait on answers, merge pull requests and leave for the storage yard.
+    record: {seconds: 40, fps: 30}
+    timeline: true
+  - name: start
+    title: The start of the morning
+    description: Three sessions at work before the others arrive.

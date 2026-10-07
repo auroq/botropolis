@@ -1,0 +1,38 @@
+[
+  {
+    "id": "KILN-21",
+    "title": "Empty log crashes with a traceback",
+    "body": "Our controller writes the header line as soon as a program starts, so an aborted firing leaves a log with no readings. `kiln report` on that file dies with `IndexError: list index out of range` instead of saying the log is empty. It should print a one-line error and exit non-zero.",
+    "labels": [
+      "bug"
+    ],
+    "state": "open"
+  },
+  {
+    "id": "KILN-22",
+    "title": "Hold time is wrong for the glaze firing",
+    "body": "glaze-0921 held at cone 6 for twenty minutes, and the controller agrees, but `kiln report samples/glaze-0921.csv` says `Hold 0h06m`. The bisque log comes out right. The difference is that the new controller logs every five minutes instead of every minute.",
+    "labels": [
+      "bug"
+    ],
+    "state": "open"
+  },
+  {
+    "id": "KILN-23",
+    "title": "JSON output for the report",
+    "body": "I would like to chart firings in a spreadsheet, so `kiln report --json` printing the summary (peak, hold, segments with rates, anomalies) as JSON would be ideal. Timestamps should be ISO 8601 and durations in seconds.",
+    "labels": [
+      "feature"
+    ],
+    "state": "open"
+  },
+  {
+    "id": "KILN-24",
+    "title": "Log errors should say which line is bad",
+    "body": "`kiln: bisque.csv: bad temperature 'ERR'` does not say where, and the logs are hundreds of lines long. Every reader error should include the line number, as `file:line: message`.",
+    "labels": [
+      "chore"
+    ],
+    "state": "open"
+  }
+]

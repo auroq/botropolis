@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "$0")/../lib/common.sh"
+
+usage() {
+    cat <<USAGE
+Usage: beacon-status [--file FILE] [--stale-minutes N] [--quiet]
+
+Check every beacon in the status file and print one line each:
+
+  OK     lamp lit, heard from recently, battery healthy
+  WARN   stale (no report for N minutes) or battery below 20%
+  FAIL   lamp reported anything other than "ok"
+
+Options:
+  --file FILE         status file (default: \$BEACON_STATUS_FILE or data/status.txt)
+  --stale-minutes N   minutes of silence before a beacon is stale (default: 30)
+  --quiet             print only beacons that are not OK
+  -h, --help          show this help
+
+Exit status: 0 all OK, 1 any WARN, 2 any FAIL, 64 usage error.
+USAGE
+}
+
+file="${BEACON_STATUS_FILE}"
+stale_minutes=30
+quiet=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --file) file="${2:?--file needs a value}"; shift 2 ;;
+        --stale-minutes) stale_minutes="${2:?--stale-minutes needs a value}"; shift 2 ;;
+        --quiet) quiet=true; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage >&2; exit 64 ;;
+    esac
+done
+
+[[ "${stale_minutes}" =~ ^[0-9]+$ ]] || die "--stale-minutes must be a whole number"
+
+require_status "${file}"
+now="$(now_epoch)"
+worst=0
+
+while IFS='|' read -r id name lamp last_seen battery; do
+    state=OK
+    notes=()
+    if [[ "${lamp}" != "ok" ]]; then
+        state=FAIL
+        notes+=("lamp ${lamp}")
+    fi
+    seen="$(iso_to_epoch "${last_seen}")"
+    age=$(( (now - seen) / 60 ))
+    if (( age > stale_minutes )); then
+        [[ "${state}" == FAIL ]] || state=WARN
+        notes+=("silent ${age}m")
+    fi
+    if [[ "${battery}" < 20 ]]; then
+        [[ "${state}" == FAIL ]] || state=WARN
+        notes+=("battery ${battery}%")
+    fi
+
+    case "${state}" in
+        WARN) (( worst < 1 )) && worst=1 ;;
+        FAIL) worst=2 ;;
+    esac
+
+    if [[ "${quiet}" == true && "${state}" == OK ]]; then
+        continue
+    fi
+    printf '%-4s  %-6s %-18s %s\n' "${state}" "${id}" "${name}" "${notes[*]:-}"
+done < <(read_status "${file}")
+
+exit "${worst}"

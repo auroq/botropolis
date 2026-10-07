@@ -1,0 +1,15 @@
+{
+  "name": "orchard",
+  "version": "0.3.0",
+  "description": "Plan an orchard: lay out rows of trees and check every tree has a pollinator in range.",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": { "orchard": "bin/orchard.js" },
+  "exports": "./src/index.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test",
+    "plan": "node bin/orchard.js examples/hillside.json"
+  },
+  "license": "MIT"
+}

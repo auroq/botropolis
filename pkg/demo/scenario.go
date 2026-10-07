@@ -3,6 +3,8 @@ package demo
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"go.yaml.in/yaml/v3"
@@ -80,15 +82,27 @@ func (s Scenario) Validate() error {
 	return nil
 }
 
-// Duration reads "90s" or "3h" from YAML.
+// Duration reads "90s", "3h" or "2d" from YAML: a scenario's parked
+// sessions are days old, and Go's durations stop at hours.
 type Duration time.Duration
 
 func (d *Duration) UnmarshalYAML(node *yaml.Node) error {
-	parsed, err := time.ParseDuration(node.Value)
-	if err != nil {
-		return fmt.Errorf("line %d: %w", node.Line, err)
+	raw, days := node.Value, 0
+	if i := strings.IndexByte(raw, 'd'); i > 0 {
+		n, err := strconv.Atoi(raw[:i])
+		if err != nil {
+			return fmt.Errorf("line %d: duration %q", node.Line, node.Value)
+		}
+		raw, days = raw[i+1:], n
 	}
-	*d = Duration(parsed)
+	var parsed time.Duration
+	if raw != "" {
+		var err error
+		if parsed, err = time.ParseDuration(raw); err != nil {
+			return fmt.Errorf("line %d: %w", node.Line, err)
+		}
+	}
+	*d = Duration(time.Duration(days)*24*time.Hour + parsed)
 	return nil
 }
 

@@ -1,0 +1,10 @@
+[
+  {"id": "amber-01", "name": "Amber Carp", "colour": "amber", "status": "available"},
+  {"id": "amber-02", "name": "Amber Carp", "colour": "amber", "status": "available"},
+  {"id": "jade-01", "name": "Jade Moth", "colour": "green", "status": "available"},
+  {"id": "moon-01", "name": "Paper Moon", "colour": "white", "status": "available"},
+  {"id": "moon-02", "name": "Paper Moon", "colour": "white", "status": "available"},
+  {"id": "plum-01", "name": "Plum Lotus", "colour": "violet", "status": "available"},
+  {"id": "red-01", "name": "Red Rabbit", "colour": "red", "status": "available"},
+  {"id": "red-02", "name": "Red Rabbit", "colour": "red", "status": "available"}
+]
