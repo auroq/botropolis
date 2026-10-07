@@ -289,7 +289,7 @@ func (g *Game) usageGauges() ([]city.Gauge, time.Duration) {
 // so it costs nothing and needs no schedule — the boats follow whatever
 // Claude Code last fetched.
 func (g *Game) readUsage() {
-	u, ok := claude.ReadUtilization("")
+	u, ok := claude.ReadUtilization(g.home)
 	if !ok {
 		return
 	}

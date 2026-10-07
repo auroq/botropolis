@@ -241,6 +241,7 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 			feed.Events = fresh
 			feed.Run(ctx, offer)
 		},
+		Home:          c.config.Home,
 		Projection:    projection,
 		Screenshot:    cli.Screenshot(cmd),
 		Keys:          cli.Keys(cmd),

@@ -68,6 +68,9 @@ type Actor interface {
 
 type Game struct {
 	scene *city.Scene
+	// home is the directory holding .claude, the one the city is drawn
+	// from; see Options.Home.
+	home string
 	// lit is the contextual highlight for the frame being drawn.
 	lit city.Highlight
 	// hover parks the pointer for a scripted frame; see Options.Hover.

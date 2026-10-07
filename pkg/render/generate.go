@@ -3,7 +3,6 @@ package render
 import (
 	"context"
 	"errors"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -40,7 +39,8 @@ func (g *Game) generate(id string) bool {
 	g.scene.SetGenerated(id, city.Generated{Pending: true})
 	summarise := g.summarise
 	if summarise == nil {
-		summarise = summariseSession
+		home := g.home
+		summarise = func(ctx context.Context, id string) (string, error) { return summariseSession(ctx, home, id) }
 	}
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), generateTimeout)
@@ -70,12 +70,8 @@ func (g *Game) takeGenerated() []generatedResult {
 
 // summariseSession finds a session's transcript and asks Claude Code to
 // summarise the end of it.
-func summariseSession(ctx context.Context, id string) (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	path, ok := claude.FindTranscript(filepath.Join(home, ".claude", "projects"), id)
+func summariseSession(ctx context.Context, home, id string) (string, error) {
+	path, ok := transcriptFor(home, id)
 	if !ok {
 		return "", errors.New("no transcript to summarise")
 	}
@@ -87,4 +83,11 @@ func summariseSession(ctx context.Context, id string) (string, error) {
 		return "", errors.New("nothing in the transcript to summarise")
 	}
 	return claude.Summarise(ctx, "", excerpt)
+}
+
+// transcriptFor is a session's transcript under the home the city is
+// drawn from, not the real one: a demo session sharing an id with a
+// real session must not summarise the real one.
+func transcriptFor(home, id string) (string, bool) {
+	return claude.FindTranscript(filepath.Join(home, ".claude", "projects"), id)
 }

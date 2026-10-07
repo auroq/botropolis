@@ -25,7 +25,10 @@ type Options struct {
 	Actor      Actor
 	// Feed delivers snapshots and, before each, the events logged since
 	// the last delivery.
-	Feed       func(ctx context.Context, offer func(state.Snapshot), events func([]events.Event))
+	Feed func(ctx context.Context, offer func(state.Snapshot), events func([]events.Event))
+	// Home is the directory holding .claude that the feed reads; the
+	// usage boats and Summary read from it too.
+	Home       string
 	Width      int
 	Height     int
 	Projection city.Projection
@@ -95,6 +98,7 @@ func Run(ctx context.Context, opts Options) error {
 	}
 	game := NewGame(scene, opts.Actor, theme, faces, save, sprites)
 	game.kits = kitSprites
+	game.home = opts.Home
 	game.screenshot = opts.Screenshot
 	game.script = opts.Keys
 	game.hover, game.hoverSet = opts.Hover, opts.HoverSet
