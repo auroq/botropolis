@@ -34,6 +34,23 @@ Nothing the city does can reach the real home, including the reads that would ot
 
 `DEMO_CORPUS`, `DEMO_SCENARIOS` and `DEMO_OUT` point it somewhere else.
 
+## Recording
+
+Recording runs the real `claude` CLI against the toy projects, so it spends tokens on your account.
+Make a long-lived token once with `claude setup-token`, then give it to the recorder in whichever way suits:
+
+```sh
+CLAUDE_CODE_OAUTH_TOKEN=... make demo-record
+echo 'CLAUDE_CODE_OAUTH_TOKEN=...' > .env && chmod 600 .env && make demo-record
+secret-run --env CLAUDE_CODE_OAUTH_TOKEN=<ref> -- make demo-record
+```
+
+`.env` is gitignored, and a token in the environment wins over one in `.env`.
+The token reaches the container by name, never on a command line, and only the `demo-record` recipe sees it.
+
+`make demo-plan` prints every session still to record and the most it could cost if every prompt hit its cap.
+Sessions already in the corpus are skipped, so a run that stops can be started again.
+
 ## A scenario
 
 ```yaml

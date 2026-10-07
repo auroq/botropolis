@@ -19,3 +19,4 @@ tools/__pycache__/
 # the list is the thing being kept out.
 .publishable-tokens
 /demo/corpus/recording-*.json
+/.env

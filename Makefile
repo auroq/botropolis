@@ -6,6 +6,9 @@ LOG := @sh -c '\
        echo -e "\n> $$1\n"; \
        printf ${NC}' VALUE
 
+# Captured before .env is read, so a token in the environment (from secret-run,
+# say) wins over one in the file. See demo-record.
+DEMO_TOKEN_FROM_ENV := $(CLAUDE_CODE_OAUTH_TOKEN)
 -include .env
 
 MODULE := github.com/auroq/botropolis
@@ -60,10 +63,14 @@ demo-image ::
 	@docker build -q -f demo/Dockerfile --target recorder -t ${DEMO_IMAGE}-recorder demo >/dev/null
 
 # Recording spends real tokens on the account in CLAUDE_CODE_OAUTH_TOKEN, so
-# it is never a dependency of anything. Run it through secret-run, which puts
-# the token in this environment without it reaching a command line:
+# it is never a dependency of anything. The token comes from the environment,
+# or from CLAUDE_CODE_OAUTH_TOKEN=... in .env (gitignored), and the environment
+# wins. Either way it reaches the container by name, never on a command line:
 #
-#   secret-run --env CLAUDE_CODE_OAUTH_TOKEN=op:<vault>/<item>/<field> -- make demo-record
+#   CLAUDE_CODE_OAUTH_TOKEN=... make demo-record        (or put it in .env)
+#   secret-run --env CLAUDE_CODE_OAUTH_TOKEN=<ref> -- make demo-record
+#
+# It is exported to this one recipe only, not to every target .env reaches.
 #
 # Sessions the corpus already holds are skipped, so a run can be resumed.
 # `make demo-plan` prints what would be recorded and the most it could cost.
@@ -72,9 +79,10 @@ DEMO_ONLY ?=
 demo-plan :: demo-tool
 	@bin/botropolis-demo record --dry-run --scripts demo/scripts --corpus ${DEMO_CORPUS} $(if ${DEMO_ONLY},--only ${DEMO_ONLY})
 
+demo-record :: export CLAUDE_CODE_OAUTH_TOKEN := $(or ${DEMO_TOKEN_FROM_ENV},${CLAUDE_CODE_OAUTH_TOKEN})
 demo-record :: demo-tool demo-image
 	$(LOG) "Recording demo sessions into ${DEMO_CORPUS}"
-	@test -n "$${CLAUDE_CODE_OAUTH_TOKEN}" || { echo "CLAUDE_CODE_OAUTH_TOKEN is not set: run this through secret-run" >&2; exit 1; }
+	@test -n "$${CLAUDE_CODE_OAUTH_TOKEN}" || { echo "CLAUDE_CODE_OAUTH_TOKEN is not set: export it, put it in .env, or use secret-run" >&2; exit 1; }
 	@mkdir -p ${DEMO_CORPUS}
 	@docker run --rm -e CLAUDE_CODE_OAUTH_TOKEN \
 		--user 1000:1000 \
