@@ -103,6 +103,8 @@ type Game struct {
 	record       string
 	recordFrames int
 	recorded     int
+	// recordEvery is how many ticks pass between written frames.
+	recordEvery int
 	// snap is a frame the p key asked for, saved on the next draw.
 	snap string
 	help bool
@@ -371,8 +373,9 @@ func (g *Game) shifted() bool {
 
 func (g *Game) capture(screen *ebiten.Image) {
 	if g.record != "" && g.shotFrames > 0 && !g.shotDone {
-		if g.recorded%3 == 0 {
-			if err := writePNG(filepath.Join(g.record, fmt.Sprintf("frame-%05d.png", g.recorded/3)), frame(screen)); err != nil {
+		every := max(g.recordEvery, 1)
+		if g.recorded%every == 0 {
+			if err := writePNG(filepath.Join(g.record, fmt.Sprintf("frame-%05d.png", g.recorded/every)), frame(screen)); err != nil {
 				g.shotErr, g.shotDone = err, true
 				return
 			}

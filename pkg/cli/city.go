@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -41,11 +42,49 @@ func AddKeysFlag(flags *pflag.FlagSet) {
 const (
 	RecordFlag  = "record"
 	SecondsFlag = "seconds"
+	FPSFlag     = "fps"
 )
+
+// recordTicks is the city's tick rate while recording; a frame rate
+// has to divide it, or frames would land unevenly.
+const recordTicks = 30
 
 func AddRecordFlags(flags *pflag.FlagSet) {
 	flags.String(RecordFlag, "", "write frames into this directory for --seconds, then exit")
 	flags.Float64(SecondsFlag, 20, "how long to record with --record")
+	flags.Int(FPSFlag, 10, "frames a second to write with --record: 1, 2, 3, 5, 6, 10, 15 or 30")
+}
+
+// FPS is the frame rate given with --fps.
+func FPS(cmd *cobra.Command) (int, error) {
+	fps, _ := cmd.Flags().GetInt(FPSFlag)
+	if fps <= 0 || recordTicks%fps != 0 {
+		return 0, fmt.Errorf("--fps %d: must divide %d", fps, recordTicks)
+	}
+	return fps, nil
+}
+
+// WindowFlag names the flag that sizes the window, and the virtual
+// display under --headless with it, for frames bigger than the default.
+const WindowFlag = "window"
+
+func AddWindowFlag(flags *pflag.FlagSet) {
+	flags.String(WindowFlag, "", "window size as WIDTHxHEIGHT, e.g. 1920x1080")
+}
+
+// Window is the size given with --window, or 0, 0 when not asked for.
+func Window(cmd *cobra.Command) (width, height int, err error) {
+	raw, _ := cmd.Flags().GetString(WindowFlag)
+	if raw == "" {
+		return 0, 0, nil
+	}
+	w, h, ok := strings.Cut(raw, "x")
+	width, errW := strconv.Atoi(w)
+	height, errH := strconv.Atoi(h)
+	if !ok || errW != nil || errH != nil || width <= 0 || height <= 0 {
+		return 0, 0, fmt.Errorf("--window %q: want WIDTHxHEIGHT", raw)
+	}
+	return width, height, nil
 }
 
 // Record is the directory given with --record and how long to record.
@@ -137,5 +176,6 @@ func NewCityCLI(load Loader, services CityServices) *cobra.Command {
 	AddHeadlessFlag(cmd.Flags())
 	AddHoverFlag(cmd.Flags())
 	AddSignageFlag(cmd.Flags())
+	AddWindowFlag(cmd.Flags())
 	return cmd
 }

@@ -51,3 +51,81 @@ func TestHoverFlag(t *testing.T) {
 		})
 	})
 }
+
+func TestWindowFlag(t *testing.T) {
+	parse := func(t *testing.T, args ...string) *cobra.Command {
+		t.Helper()
+		cmd := &cobra.Command{Use: "city", RunE: func(*cobra.Command, []string) error { return nil }}
+		cli.AddWindowFlag(cmd.Flags())
+		cmd.SetArgs(args)
+		require.NoError(t, cmd.Execute())
+		return cmd
+	}
+
+	t.Run("when a size is given", func(t *testing.T) {
+		w, h, err := cli.Window(parse(t, "--window", "1920x1080"))
+		require.NoError(t, err)
+
+		t.Run("it should read the width and height", func(t *testing.T) {
+			assert.Equal(t, [2]int{1920, 1080}, [2]int{w, h})
+		})
+	})
+
+	t.Run("when the flag is left off", func(t *testing.T) {
+		w, h, err := cli.Window(parse(t))
+		require.NoError(t, err)
+
+		t.Run("it should leave the size to the window's default", func(t *testing.T) {
+			assert.Equal(t, [2]int{0, 0}, [2]int{w, h})
+		})
+	})
+
+	for _, raw := range []string{"1920", "wide", "0x1080", "1920x-1"} {
+		t.Run("when the size is "+raw, func(t *testing.T) {
+			_, _, err := cli.Window(parse(t, "--window", raw))
+
+			t.Run("it should refuse it rather than open some other size", func(t *testing.T) {
+				assert.Error(t, err)
+			})
+		})
+	}
+}
+
+func TestFPSFlag(t *testing.T) {
+	parse := func(t *testing.T, args ...string) *cobra.Command {
+		t.Helper()
+		cmd := &cobra.Command{Use: "city", RunE: func(*cobra.Command, []string) error { return nil }}
+		cli.AddRecordFlags(cmd.Flags())
+		cmd.SetArgs(args)
+		require.NoError(t, cmd.Execute())
+		return cmd
+	}
+
+	t.Run("when the flag is left off", func(t *testing.T) {
+		fps, err := cli.FPS(parse(t))
+		require.NoError(t, err)
+
+		t.Run("it should record at ten frames a second, as it always has", func(t *testing.T) {
+			assert.Equal(t, 10, fps)
+		})
+	})
+
+	t.Run("when thirty is asked for", func(t *testing.T) {
+		fps, err := cli.FPS(parse(t, "--fps", "30"))
+		require.NoError(t, err)
+
+		t.Run("it should take it", func(t *testing.T) {
+			assert.Equal(t, 30, fps)
+		})
+	})
+
+	for _, raw := range []string{"7", "0", "60"} {
+		t.Run("when "+raw+" is asked for", func(t *testing.T) {
+			_, err := cli.FPS(parse(t, "--fps", raw))
+
+			t.Run("it should refuse, since it does not divide the 30 ticks a second", func(t *testing.T) {
+				assert.Error(t, err)
+			})
+		})
+	}
+}

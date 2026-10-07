@@ -174,6 +174,15 @@ type cityRunner struct {
 	config   *config.Config
 }
 
+// xvfbScreen is the virtual display for a window of the given size, or
+// of the default size when none was asked for.
+func xvfbScreen(width, height int) string {
+	if width <= 0 || height <= 0 {
+		width, height = render.DefaultWidth, render.DefaultHeight
+	}
+	return fmt.Sprintf("-screen 0 %dx%dx24", width, height)
+}
+
 // headlessEnv marks the re-executed child so it does not re-exec again.
 const headlessEnv = "BOTROPOLIS_HEADLESS_CHILD"
 
@@ -185,7 +194,11 @@ func runHeadless(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("--headless needs xvfb-run (package xorg-server-xvfb on Arch, xvfb on Debian): %w", err)
 	}
-	args := append([]string{"-a", "-s", "-screen 0 1100x760x24", os.Args[0]}, os.Args[1:]...)
+	width, height, err := cli.Window(cmd)
+	if err != nil {
+		return err
+	}
+	args := append([]string{"-a", "-s", xvfbScreen(width, height), os.Args[0]}, os.Args[1:]...)
 	child := exec.CommandContext(cmd.Context(), xvfb, args...)
 	child.Stdout, child.Stderr, child.Stdin = cmd.OutOrStdout(), cmd.ErrOrStderr(), os.Stdin
 	var env []string
@@ -227,6 +240,14 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		return fmt.Errorf("unknown detail %q: use full or plain", c.config.Detail)
 	}
 	recordDir, recordSeconds := cli.Record(cmd)
+	fps, err := cli.FPS(cmd)
+	if err != nil {
+		return err
+	}
+	width, height, err := cli.Window(cmd)
+	if err != nil {
+		return err
+	}
 	signage, ok := city.ParseSignage(cli.Signage(cmd))
 	if !ok {
 		return fmt.Errorf("unknown signage %q: use plates, gantry, board, plaque or hover", cli.Signage(cmd))
@@ -249,6 +270,9 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		HoverSet:      hoverSet,
 		Record:        recordDir,
 		RecordSeconds: recordSeconds,
+		RecordFPS:     fps,
+		Width:         width,
+		Height:        height,
 		Scale:         c.config.RenderScale,
 		ReducedMotion: c.config.ReducedMotion,
 		DailyBudget:   c.config.DailyBudget,

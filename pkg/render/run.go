@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	defaultWidth  = 1100
-	defaultHeight = 760
+	DefaultWidth  = 1100
+	DefaultHeight = 760
 	x11Class      = "Botropolis"
 	x11Instance   = "botropolis"
 )
@@ -47,6 +47,9 @@ type Options struct {
 	// exits.
 	Record        string
 	RecordSeconds float64
+	// RecordFPS is how many of the 30 ticks a second are written; it
+	// divides 30. 0 is the original ten.
+	RecordFPS int
 	// Scale is the chrome and pixel scale; 0 follows the display.
 	Scale float64
 	// ReducedMotion stops every animation and keeps the colours.
@@ -70,7 +73,7 @@ func Run(ctx context.Context, opts Options) error {
 	scene.SetBudget(opts.DailyBudget)
 	width, height := opts.Width, opts.Height
 	if width <= 0 || height <= 0 {
-		width, height = defaultWidth, defaultHeight
+		width, height = DefaultWidth, DefaultHeight
 	}
 	scale := opts.Scale
 	if scale <= 0 {
@@ -104,6 +107,10 @@ func Run(ctx context.Context, opts Options) error {
 	game.hover, game.hoverSet = opts.Hover, opts.HoverSet
 	game.record = opts.Record
 	game.recordFrames = int(opts.RecordSeconds * 30)
+	game.recordEvery = 3
+	if opts.RecordFPS > 0 {
+		game.recordEvery = 30 / opts.RecordFPS
+	}
 	game.reduced = opts.ReducedMotion
 	scene.SetDetail(opts.Detail)
 	game.signage = opts.Signage
