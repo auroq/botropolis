@@ -45,6 +45,7 @@ func run(args []string, out, errOut io.Writer) int {
 func stageCommand() *cobra.Command {
 	var corpus, scenarioPath, home string
 	var hold time.Duration
+	var play bool
 	cmd := &cobra.Command{
 		Use:   "stage",
 		Short: "Write a home for a scenario and start stand-ins for its live sessions",
@@ -70,18 +71,27 @@ func stageCommand() *cobra.Command {
 			if err := os.MkdirAll(home, 0o700); err != nil {
 				return err
 			}
-			if err := demo.Stage(demo.Corpus{Dir: corpus}, scenario, home, time.Now(), demo.Sleepers(home, hold)); err != nil {
+			start := time.Now()
+			director, err := demo.NewDirector(demo.Corpus{Dir: corpus}, scenario, home, start, demo.Sleepers(home, hold))
+			if err != nil {
 				_ = demo.Unstage(home)
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "staged %s: %d sessions in %s\n", scenario.Name, len(scenario.Sessions), home)
-			return nil
+			if !play {
+				return nil
+			}
+			for _, e := range director.Events() {
+				fmt.Fprintf(cmd.OutOrStdout(), "  at %s: session %d\n", e.At, e.Index)
+			}
+			return director.Play(cmd.Context(), start)
 		},
 	}
 	cmd.Flags().StringVar(&corpus, "corpus", "demo/corpus", "directory of recorded transcripts")
 	cmd.Flags().StringVar(&scenarioPath, "scenario", "", "scenario file")
 	cmd.Flags().StringVar(&home, "home", "", "directory to stage the home into")
 	cmd.Flags().DurationVar(&hold, "hold", time.Hour, "how long a stand-in lives if never unstaged")
+	cmd.Flags().BoolVar(&play, "play", false, "then play the scenario's timeline against the home, in real time")
 	_ = cmd.MarkFlagRequired("scenario")
 	_ = cmd.MarkFlagRequired("home")
 	return cmd

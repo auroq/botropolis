@@ -24,29 +24,30 @@ const demoVersion = "2.1.273"
 // Stage writes a home for the scenario into dir: each placed session's
 // transcript and subagents moved so it ends Ago before now, a session
 // record for every one that is not parked, and the account's MCP config.
+// A session that arrives partway through a clip is left out.
 func Stage(corpus Corpus, scenario Scenario, dir string, now time.Time, spawn Spawner) error {
-	if err := writeMCP(dir, scenario.MCP); err != nil {
-		return err
-	}
-	for i, p := range scenario.Sessions {
-		if err := place(corpus, scenario.Name, i, p, dir, now, spawn); err != nil {
-			return fmt.Errorf("session %d: %w", i, err)
-		}
-	}
-	return nil
+	_, err := NewDirector(corpus, scenario, dir, now, spawn)
+	return err
 }
 
-func place(corpus Corpus, scenario string, i int, p Placement, dir string, now time.Time, spawn Spawner) error {
+// placed is what the director needs to change a staged session later.
+type placed struct {
+	id, project, transcript string
+	pid                     int
+}
+
+func place(corpus Corpus, scenario string, i int, p Placement, dir string, now time.Time, spawn Spawner) (placed, error) {
 	end := now.Add(-time.Duration(p.Ago))
 	record := map[string]any{
 		"version":    demoVersion,
 		"entrypoint": "cli",
 	}
+	var at placed
 	switch {
 	case p.Ref != "":
 		rec, err := corpus.Find(p.Ref)
 		if err != nil {
-			return err
+			return at, err
 		}
 		o := overlay{Placement: p, id: rec.ID, project: rec.Project}
 		if p.Project != "" {
@@ -57,29 +58,36 @@ func place(corpus Corpus, scenario string, i int, p Placement, dir string, now t
 				{rec.ID, o.id},
 			}
 		}
-		started, cwd, err := stageTranscript(rec, dir, end, o)
+		started, cwd, path, err := stageTranscript(rec, dir, end, o)
 		if err != nil {
-			return err
+			return at, err
 		}
+		at = placed{id: o.id, project: o.project, transcript: path}
 		record["sessionId"], record["cwd"], record["startedAt"] = o.id, cwd, started.UnixMilli()
 	case p.Project != "":
-		record["sessionId"], record["cwd"], record["startedAt"] = plotID(scenario, i), filepath.Join(Root, p.Project), end.UnixMilli()
+		at = placed{id: plotID(scenario, i), project: p.Project}
+		record["sessionId"], record["cwd"], record["startedAt"] = at.id, filepath.Join(Root, p.Project), end.UnixMilli()
 	default:
-		return fmt.Errorf("neither a ref nor a project")
+		return at, fmt.Errorf("neither a ref nor a project")
 	}
 	kind, status, live, err := recordFor(p.State)
 	if err != nil {
-		return err
+		return at, err
 	}
 	if !live {
-		return nil
+		return at, nil
 	}
 	pid, err := spawn()
 	if err != nil {
-		return err
+		return at, err
 	}
+	at.pid = pid
 	record["pid"], record["kind"], record["status"] = pid, kind, status
-	return writeJSON(filepath.Join(dir, ".claude", "sessions", strconv.Itoa(pid)+".json"), record)
+	return at, writeJSON(recordPath(dir, pid), record)
+}
+
+func recordPath(dir string, pid int) string {
+	return filepath.Join(dir, ".claude", "sessions", strconv.Itoa(pid)+".json")
 }
 
 // recordFor is the record the loader derives a state from. Waiting is
@@ -103,52 +111,53 @@ func recordFor(s state.State) (claude.Kind, claude.Status, bool, error) {
 // home, overlaid as the placement asks, all moved by the one delta that
 // puts the session's newest line at end. It returns the moved start and
 // the session's working dir.
-func stageTranscript(rec Recorded, dir string, end time.Time, o overlay) (time.Time, string, error) {
+func stageTranscript(rec Recorded, dir string, end time.Time, o overlay) (time.Time, string, string, error) {
 	main, err := readJSONL(rec.Path)
 	if err != nil {
-		return time.Time{}, "", err
+		return time.Time{}, "", "", err
 	}
 	main = o.rewrite(main)
 	latest, ok := Latest(main)
 	if !ok {
-		return time.Time{}, "", fmt.Errorf("%s: no line carries a timestamp", rec.Path)
+		return time.Time{}, "", "", fmt.Errorf("%s: no line carries a timestamp", rec.Path)
 	}
 	extra, err := o.lines(latest)
 	if err != nil {
-		return time.Time{}, "", err
+		return time.Time{}, "", "", err
 	}
 	main = append(main, extra...)
 	delta := end.Sub(latest)
 	cwd := firstCWD(main)
 	if cwd == "" {
-		return time.Time{}, "", fmt.Errorf("%s: no line names a working directory", rec.Path)
+		return time.Time{}, "", "", fmt.Errorf("%s: no line names a working directory", rec.Path)
 	}
 	folder := filepath.Join(dir, ".claude", "projects", claude.ProjectFolder(cwd))
 	moved, err := Shift(main, delta)
 	if err != nil {
-		return time.Time{}, "", err
+		return time.Time{}, "", "", err
 	}
-	if err := writeJSONL(filepath.Join(folder, o.id+".jsonl"), moved); err != nil {
-		return time.Time{}, "", err
+	path := filepath.Join(folder, o.id+".jsonl")
+	if err := writeJSONL(path, moved); err != nil {
+		return time.Time{}, "", "", err
 	}
 	subPaths, _ := filepath.Glob(filepath.Join(rec.Subagents(), "*"))
 	for _, p := range subPaths {
 		target := filepath.Join(folder, o.id, "subagents", filepath.Base(p))
 		lines, err := readJSONL(p)
 		if err != nil {
-			return time.Time{}, "", err
+			return time.Time{}, "", "", err
 		}
 		lines = o.rewrite(lines)
 		if filepath.Ext(p) == ".jsonl" {
 			if lines, err = Shift(lines, delta); err != nil {
-				return time.Time{}, "", err
+				return time.Time{}, "", "", err
 			}
 		}
 		if err := writeJSONL(target, lines); err != nil {
-			return time.Time{}, "", err
+			return time.Time{}, "", "", err
 		}
 	}
-	return earliest(main).Add(delta), cwd, nil
+	return earliest(main).Add(delta), cwd, path, nil
 }
 
 // overlay is what a placement adds to a recording: a new identity for a
@@ -187,8 +196,7 @@ func (o overlay) lines(at time.Time) ([][]byte, error) {
 		if action == "" {
 			return nil, fmt.Errorf("PR state %q: want open, merged or closed", state)
 		}
-		number := 40 + 7*i + len(o.id)%7
-		url := fmt.Sprintf("https://github.com/botropolis-demo/%s/pull/%d", project, number)
+		number, url := prRef(o.id, project, i)
 		out = append(out, map[string]any{
 			"type": "pr-link", "timestamp": stamp, "prNumber": number, "prUrl": url,
 			"prRepository": "botropolis-demo/" + project,
@@ -211,6 +219,13 @@ func (o overlay) lines(at time.Time) ([][]byte, error) {
 		lines = append(lines, data)
 	}
 	return lines, nil
+}
+
+// prRef is the number and URL of a session's PR at position i, the same
+// every time, so a later change can move the PR the scenario opened.
+func prRef(id, project string, i int) (int, string) {
+	number := 40 + 7*i + len(id)%7
+	return number, fmt.Sprintf("https://github.com/botropolis-demo/%s/pull/%d", project, number)
 }
 
 func earliest(lines [][]byte) time.Time {

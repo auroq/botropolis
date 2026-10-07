@@ -42,6 +42,23 @@ type Placement struct {
 	Errors int      `yaml:"errors"`
 	Team   string   `yaml:"team"`
 	Agent  string   `yaml:"agent"`
+
+	// A clip that plays the timeline sees the session arrive Arrive
+	// into it, leave at Leave, and change as Changes say. A still, and
+	// a clip that does not, shows the city as it stands at the start.
+	Arrive  Duration `yaml:"arrive"`
+	Leave   Duration `yaml:"leave"`
+	Changes []Change `yaml:"changes"`
+}
+
+// Change is something that happens to a session partway through a clip:
+// its state flips, its PRs move on (each entry is the new state of the
+// PR at that position), or it hits errors.
+type Change struct {
+	At     Duration    `yaml:"at"`
+	State  state.State `yaml:"state"`
+	PRs    []string    `yaml:"prs"`
+	Errors int         `yaml:"errors"`
 }
 
 // Validate refuses a scenario that would film nothing, or that names

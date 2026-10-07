@@ -1,6 +1,7 @@
 package demo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -33,6 +34,9 @@ type Shot struct {
 	Scale   float64    `yaml:"scale"`
 	Record  *Recording `yaml:"record"`
 	Formats []string   `yaml:"formats"`
+	// Timeline plays the scenario's arrivals, departures and changes
+	// while a clip records.
+	Timeline bool `yaml:"timeline"`
 }
 
 // Recording is how long a clip runs and at what frame rate.
@@ -239,7 +243,8 @@ func (f Filmer) shoot(scenario Scenario, shot Shot) ([]Media, error) {
 	if err := os.MkdirAll(home, 0o700); err != nil {
 		return nil, err
 	}
-	if err := Stage(f.Corpus, scenario, home, f.Now(), Sleepers(home, time.Hour)); err != nil {
+	director, err := NewDirector(f.Corpus, scenario, home, f.Now(), Sleepers(home, time.Hour))
+	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = Unstage(home) }()
@@ -267,7 +272,7 @@ func (f Filmer) shoot(scenario Scenario, shot Shot) ([]Media, error) {
 	if err := os.MkdirAll(frames, 0o700); err != nil {
 		return nil, err
 	}
-	if err := f.city(work, tz, cityArgs(shot, home, "", frames)); err != nil {
+	if err := f.record(work, tz, cityArgs(shot, home, "", frames), frames, fpsOf(shot.Record), director, shot.Timeline); err != nil {
 		return nil, err
 	}
 	poster := filepath.Join(dir, shot.Name+".png")
@@ -309,6 +314,40 @@ func (f Filmer) shoot(scenario Scenario, shot Shot) ([]Media, error) {
 // anything else it reaches for by home directory land there, never in
 // the real ones.
 func (f Filmer) city(work, tz string, args []string) error {
+	return run(f.cityCommand(work, tz, args), f.Log)
+}
+
+// record runs a clip, playing the timeline against the staged home
+// while the city records when asked to. The timeline follows the
+// frames, not the wall clock: an event at 6s happens once the frame six
+// seconds into the clip has been written. The recorder writes a frame
+// every few ticks, and on software GL a tick takes longer than it
+// should, so wall-clock timing ran the whole timeline before the city
+// had recorded a second of it. Found on film, twice.
+func (f Filmer) record(work, tz string, args []string, frames string, fps int, director *Director, timeline bool) error {
+	cmd := f.cityCommand(work, tz, args)
+	cmd.Stdout, cmd.Stderr = f.Log, f.Log
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	played := make(chan error, 1)
+	go func() {
+		if !timeline {
+			played <- nil
+			return
+		}
+		played <- director.PlayFrames(ctx, frames, fps)
+	}()
+	err := cmd.Wait()
+	cancel()
+	if playErr := <-played; err == nil {
+		err = playErr
+	}
+	return err
+}
+
+func (f Filmer) cityCommand(work, tz string, args []string) *exec.Cmd {
 	cmd := exec.Command(f.Botropolis, args...)
 	env := []string{
 		"HOME=" + filepath.Join(work, "home"),
@@ -326,7 +365,7 @@ func (f Filmer) city(work, tz string, args []string) error {
 		}
 	}
 	cmd.Env = env
-	return run(cmd, f.Log)
+	return cmd
 }
 
 func firstOf(values ...string) string {

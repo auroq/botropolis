@@ -59,3 +59,53 @@ shots:
 
 A shot also takes `window`, `hover`, `projection`, `detail`, `signage`, `scale` and its own `clock`.
 Unknown keys are refused, and so is a scenario that places no sessions.
+
+## What a recording cannot cheaply produce
+
+A placement can add to its recording, each as a synthetic line stamped at the recording's last moment:
+
+```yaml
+  - ref: tidepool/fix-leap-day
+    state: working
+    title: Leap-day fix          # the sign over the building
+    prs: [open, merged]          # roof flags, in these states
+    errors: 2                    # smoke
+    team: harbor                 # a camp
+    agent: lead
+  - ref: tidepool/fix-leap-day   # with a project too: a clone,
+    project: driftwood           # a session of its own in another district
+    state: needs-you
+```
+
+## Timelines
+
+A clip with `timeline: true` plays the scenario's arrivals, departures and changes while it records:
+
+```yaml
+  - ref: kiln/ramp-rates
+    state: working
+    arrive: 3s                   # a tug brings it in
+  - ref: lanternfish/snapshots
+    state: working
+    leave: 9s                    # its process ends; it parks
+  - ref: tidepool/fix-leap-day
+    state: working
+    prs: [open]
+    changes:
+      - at: 6s
+        prs: [merged]            # the same PR, merged: a celebration
+      - at: 10s
+        state: needs-you
+```
+
+The timeline keeps to video time, not wall time: an event at 6s happens once the frame six seconds into the clip is written.
+The city re-reads the home every two seconds, so allow that much before a change shows.
+A still, and a clip without `timeline: true`, shows the city as it stands at the start, without the sessions still to arrive.
+
+`botropolis-demo stage --play` plays a timeline against a live home in real time, to watch in a window:
+
+```sh
+bin/botropolis-demo stage --scenario demo/scenarios/workday.yaml --home /tmp/city --play &
+XDG_STATE_HOME=/tmp/city-state botropolis city --home /tmp/city --socket /nonexistent/b.sock
+bin/botropolis-demo unstage --home /tmp/city
+```
