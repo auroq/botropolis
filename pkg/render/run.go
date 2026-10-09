@@ -3,6 +3,7 @@ package render
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -106,6 +107,9 @@ func Run(ctx context.Context, opts Options) error {
 	game.script = opts.Keys
 	game.hover, game.hoverSet = opts.Hover, opts.HoverSet
 	game.record = opts.Record
+	if opts.Record != "" {
+		scene.SetClock(game.now, time.Local)
+	}
 	game.recordFrames = int(opts.RecordSeconds * 30)
 	game.recordEvery = 3
 	if opts.RecordFPS > 0 {

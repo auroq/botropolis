@@ -571,7 +571,19 @@ func (g *Game) clock() float64 {
 	if g.reduced {
 		return pulsePeriod / 4
 	}
-	return time.Since(g.started).Seconds()
+	return g.now().Sub(g.started).Seconds()
+}
+
+// now is the time the city animates to. While recording it is counted
+// in ticks, so a clip plays at the speed the city would have run
+// however slowly the frames were drawn: on software GL a tick takes
+// three or four times as long as it should, and wall-clock animation
+// ran that much too fast on film.
+func (g *Game) now() time.Time {
+	if g.record != "" {
+		return g.started.Add(time.Duration(g.ticks) * time.Second / liveTPS)
+	}
+	return timeNow()
 }
 
 func (g *Game) labelsVisible() bool { return !g.hidden && g.scene.LabelsVisible() }
@@ -845,7 +857,7 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, labels bool) {
 	if c.Plant.Rect.Area() > 0 {
 		if g.sprites != nil {
 			glow := &ebiten.ColorScale{}
-			f := 0.85 + 0.15*float32(math.Sin(time.Since(g.started).Seconds()*2))
+			f := 0.85 + 0.15*float32(math.Sin(g.clock()*2))
 			glow.SetR(f)
 			glow.SetG(f)
 			glow.SetB(f)
@@ -856,7 +868,7 @@ func (g *Game) landmarks(screen *ebiten.Image, cam *city.Camera, labels bool) {
 		} else {
 			g.rect(screen, cam, c.Plant.Rect, colorPlant)
 			core := c.Plant.Rect.Inset(16)
-			g.rect(screen, cam, core, pulse(colorPlantCore, time.Since(g.started).Seconds()*0.5))
+			g.rect(screen, cam, core, pulse(colorPlantCore, g.clock()*0.5))
 		}
 		if labels {
 			g.label(screen, cam.WorldToScreen(c.Plant.Rect.Min).Add(city.Point{X: g.theme.Px(4), Y: -g.lineHeight()}), "power plant", colorDim)
