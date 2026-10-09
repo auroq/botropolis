@@ -230,7 +230,7 @@ func recordCommand() *cobra.Command {
 			progress := demo.NewProgress(os.Stderr, prompts)
 			stop := progress.Ticking()
 			defer stop()
-			var log io.Writer = cmd.ErrOrStderr()
+			log := cmd.ErrOrStderr()
 			if progress.TTY {
 				log = io.Discard
 			}
