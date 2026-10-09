@@ -17,9 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # Pinned, not read from go.mod. go.mod says 1.27, which floats, and
+      # golangci-lint v2.13.2 cannot read go1.27.2's export data ("export data
+      # version 5 is greater than maximum supported version 4"). Move this and
+      # the golangci-lint version together.
       - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: "1.27.1"
       # pkg/render imports Ebitengine. The build itself needs no cgo -- GL and
       # X11 are reached through dlopen -- but golangci-lint and the tests still
       # want the headers present to analyse the package.
