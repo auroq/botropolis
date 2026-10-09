@@ -36,6 +36,15 @@ func Stage(corpus Corpus, scenario Scenario, dir string, now time.Time, spawn Sp
 type placed struct {
 	id, project, transcript string
 	pid                     int
+	// pending is a replayed session's lines still to be revealed.
+	pending []pendingLine
+}
+
+// stagedTranscript is what staging a recording wrote.
+type stagedTranscript struct {
+	started   time.Time
+	cwd, path string
+	pending   []pendingLine
 }
 
 func place(corpus Corpus, scenario string, i int, p Placement, dir string, now time.Time, spawn Spawner) (placed, error) {
@@ -60,12 +69,12 @@ func place(corpus Corpus, scenario string, i int, p Placement, dir string, now t
 				{rec.ID, o.id},
 			}
 		}
-		started, cwd, path, err := stageTranscript(rec, dir, end, o)
+		st, err := stageTranscript(rec, dir, end, o)
 		if err != nil {
 			return at, err
 		}
-		at = placed{id: o.id, project: o.project, transcript: path}
-		record["sessionId"], record["cwd"], record["startedAt"] = o.id, cwd, started.UnixMilli()
+		at = placed{id: o.id, project: o.project, transcript: st.path, pending: st.pending}
+		record["sessionId"], record["cwd"], record["startedAt"] = o.id, st.cwd, st.started.UnixMilli()
 	case p.Project != "":
 		at = placed{id: plotID(scenario, i), project: p.Project}
 		if p.Title != "" {
@@ -116,56 +125,69 @@ func recordFor(s state.State) (claude.Kind, claude.Status, bool, error) {
 // home, overlaid as the placement asks, all moved by the one delta that
 // puts the session's newest line at end. It returns the moved start and
 // the session's working dir.
-func stageTranscript(rec Recorded, dir string, end time.Time, o overlay) (time.Time, string, string, error) {
+func stageTranscript(rec Recorded, dir string, end time.Time, o overlay) (stagedTranscript, error) {
 	main, err := readJSONL(rec.Path)
 	if err != nil {
-		return time.Time{}, "", "", err
+		return stagedTranscript{}, err
 	}
 	main = o.rewrite(main)
-	if main, err = o.fill(main); err != nil {
-		return time.Time{}, "", "", err
+	if o.Replay != nil && o.Replay.Context != "" {
+		main, err = scaleContext(main, o.Replay.Context)
+	} else {
+		main, err = o.fill(main)
+	}
+	if err != nil {
+		return stagedTranscript{}, err
 	}
 	latest, ok := Latest(main)
 	if !ok {
-		return time.Time{}, "", "", fmt.Errorf("%s: no line carries a timestamp", rec.Path)
+		return stagedTranscript{}, fmt.Errorf("%s: no line carries a timestamp", rec.Path)
 	}
 	extra, err := o.lines(latest)
 	if err != nil {
-		return time.Time{}, "", "", err
+		return stagedTranscript{}, err
 	}
 	main = append(main, extra...)
 	delta := end.Sub(latest)
 	cwd := firstCWD(main)
 	if cwd == "" {
-		return time.Time{}, "", "", fmt.Errorf("%s: no line names a working directory", rec.Path)
+		return stagedTranscript{}, fmt.Errorf("%s: no line names a working directory", rec.Path)
 	}
 	folder := filepath.Join(dir, ".claude", "projects", claude.ProjectFolder(cwd))
 	moved, err := Shift(main, delta)
 	if err != nil {
-		return time.Time{}, "", "", err
+		return stagedTranscript{}, err
 	}
 	path := filepath.Join(folder, o.id+".jsonl")
+	var pending []pendingLine
+	if o.Replay != nil {
+		head, rest := splitReplay(moved)
+		if head, err = Shift(head, end.Sub(earliest(moved))); err != nil {
+			return stagedTranscript{}, err
+		}
+		moved, pending = head, rest
+	}
 	if err := writeJSONL(path, moved); err != nil {
-		return time.Time{}, "", "", err
+		return stagedTranscript{}, err
 	}
 	subPaths, _ := filepath.Glob(filepath.Join(rec.Subagents(), "*"))
 	for _, p := range subPaths {
 		target := filepath.Join(folder, o.id, "subagents", filepath.Base(p))
 		lines, err := readJSONL(p)
 		if err != nil {
-			return time.Time{}, "", "", err
+			return stagedTranscript{}, err
 		}
 		lines = o.rewrite(lines)
 		if filepath.Ext(p) == ".jsonl" {
 			if lines, err = Shift(lines, delta); err != nil {
-				return time.Time{}, "", "", err
+				return stagedTranscript{}, err
 			}
 		}
 		if err := writeJSONL(target, lines); err != nil {
-			return time.Time{}, "", "", err
+			return stagedTranscript{}, err
 		}
 	}
-	return earliest(main).Add(delta), cwd, path, nil
+	return stagedTranscript{started: earliest(main).Add(delta), cwd: cwd, path: path, pending: pending}, nil
 }
 
 // overlay is what a placement adds to a recording: a new identity for a

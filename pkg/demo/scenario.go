@@ -56,9 +56,20 @@ type Placement struct {
 	// A clip that plays the timeline sees the session arrive Arrive
 	// into it, leave at Leave, and change as Changes say. A still, and
 	// a clip that does not, shows the city as it stands at the start.
-	Arrive  Duration `yaml:"arrive"`
+	Arrive Duration `yaml:"arrive"`
+	// Replay reveals the recording over part of the clip instead of
+	// staging it whole, so the building is seen to grow.
+	Replay  *Replay  `yaml:"replay"`
 	Leave   Duration `yaml:"leave"`
 	Changes []Change `yaml:"changes"`
+}
+
+// Replay is how a recording is played into a clip: its lines revealed
+// at their own relative pacing, compressed into Over from the moment the
+// session arrives, with its usage scaled so it ends at Context.
+type Replay struct {
+	Over    Duration `yaml:"over"`
+	Context string   `yaml:"context"`
 }
 
 // Change is something that happens to a session partway through a clip:

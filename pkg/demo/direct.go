@@ -1,6 +1,7 @@
 package demo
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,13 @@ type Event struct {
 	kind   string
 	change Change
 	usage  Usage
+	upto   float64
+}
+
+// key names an event uniquely, so a caller stepping through the
+// timeline can tell what it has already applied.
+func (e Event) key() string {
+	return fmt.Sprintf("%s/%d/%d", e.kind, e.Index, e.At)
 }
 
 // Director stages a scenario and then plays its timeline against the
@@ -31,11 +39,12 @@ type Director struct {
 	spawn    Spawner
 	kill     func(pid int)
 	placed   map[int]placed
+	applied  map[string]bool
 }
 
 // NewDirector stages every session that is there from the start.
 func NewDirector(corpus Corpus, scenario Scenario, dir string, now time.Time, spawn Spawner) (*Director, error) {
-	d := &Director{corpus: corpus, scenario: scenario, dir: dir, spawn: spawn, placed: map[int]placed{},
+	d := &Director{corpus: corpus, scenario: scenario, dir: dir, spawn: spawn, placed: map[int]placed{}, applied: map[string]bool{},
 		kill: func(pid int) { _ = syscall.Kill(pid, syscall.SIGTERM) }}
 	if err := writeMCP(dir, scenario.MCP); err != nil {
 		return nil, err
@@ -64,6 +73,13 @@ func (d *Director) Events() []Event {
 	for i, p := range d.scenario.Sessions {
 		if p.Arrive > 0 {
 			out = append(out, Event{At: time.Duration(p.Arrive), Index: i, kind: "arrive"})
+		}
+		if r := p.Replay; r != nil && r.Over > 0 {
+			steps := int((time.Duration(r.Over) + replayStep - 1) / replayStep)
+			for k := 1; k <= steps; k++ {
+				at := time.Duration(p.Arrive) + time.Duration(r.Over)*time.Duration(k)/time.Duration(steps)
+				out = append(out, Event{At: at, Index: i, kind: "reveal", upto: float64(k) / float64(steps)})
+			}
 		}
 		for _, c := range p.Changes {
 			out = append(out, Event{At: time.Duration(c.At), Index: i, kind: "change", change: c})
@@ -119,6 +135,10 @@ func (d *Director) PlayFrames(ctx context.Context, frames string, fps int) error
 
 // Apply makes one event happen now.
 func (d *Director) Apply(e Event, now time.Time) error {
+	d.applied[e.key()] = true
+	if e.kind == "reveal" {
+		return d.reveal(e.Index, e.upto, now)
+	}
 	if e.kind == "usage" {
 		return writeUsage(d.dir, e.usage, now)
 	}
@@ -184,6 +204,41 @@ func (d *Director) change(i int, c Change, now time.Time) error {
 		}
 	}
 	return nil
+}
+
+// reveal appends the replayed lines now due, stamped as happening now,
+// so the session's last activity is the moment it is seen to act.
+func (d *Director) reveal(i int, upto float64, now time.Time) error {
+	at, ok := d.placed[i]
+	if !ok {
+		return fmt.Errorf("session %d replays before it arrives", i)
+	}
+	n := 0
+	for n < len(at.pending) && at.pending[n].at <= upto+1e-9 {
+		n++
+	}
+	if n == 0 {
+		return nil
+	}
+	batch := make([][]byte, n)
+	for k, p := range at.pending[:n] {
+		batch[k] = p.line
+	}
+	at.pending = at.pending[n:]
+	d.placed[i] = at
+	if latest, ok := Latest(batch); ok {
+		var err error
+		if batch, err = Shift(batch, now.Sub(latest)); err != nil {
+			return err
+		}
+	}
+	f, err := os.OpenFile(at.transcript, os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	_, err = f.Write(append(bytes.Join(batch, []byte("\n")), '\n'))
+	return err
 }
 
 func (d *Director) restate(pid int, c Change) error {
