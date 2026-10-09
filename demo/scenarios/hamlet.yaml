@@ -2,6 +2,7 @@ name: hamlet
 description: One person, two projects, late in the evening.
 clock: "22:30"
 mcp: [weather]
+usage: {session: 22, weekly: 31}
 sessions:
   - ref: tidepool/fix-table-timezone
     state: working
@@ -23,7 +24,13 @@ shots:
     description: The same night with the interface hidden.
     keys: [h]
   - name: drift
-    title: Turning the hamlet
-    description: The camera turns around a two-project city at night.
-    keys: [equal, r, r, r]
-    record: {seconds: 10, fps: 30}
+    title: Looking in on the hamlet
+    description: Zoom in on the session that is working, turn the camera, then find the one waiting on an answer.
+    record: {seconds: 14, fps: 30}
+    script:
+      - {at: 0.5, point_at: "Tide table in station time", over: 1.5}
+      - {at: 2.0, wheel: 3, over: 2.5}
+      - {at: 5.0, key: R}
+      - {at: 7.0, key: Tab}
+      - {at: 10.5, key: Escape}
+      - {at: 11.0, wheel: -3, over: 2.5}

@@ -2,6 +2,7 @@ name: workshop
 description: A working afternoon across four projects, with the tracker and the weather wired in.
 clock: "14:00"
 mcp: [tracker, weather]
+usage: {session: 46, weekly: 58, models: {Opus: 21}}
 sessions:
   - ref: tidepool/units-from-tracker
     state: working
@@ -42,7 +43,7 @@ sessions:
 shots:
   - name: overview
     title: A working afternoon
-    description: Four projects; sessions working, waiting, running unattended and parked.
+    description: Four projects; sessions working, waiting, running unattended and parked, with the plan's usage on the river.
   - name: needs-you
     title: The session that needs you
     description: Tab jumps to the next session waiting on an answer and opens its card.
@@ -57,6 +58,18 @@ shots:
     projection: top
   - name: tour
     title: A tour of the workshop
-    description: Zoom in, step to the session that needs you, open the sidebar, and fit again.
-    keys: [equal, equal, tab, b, b, r, f]
-    record: {seconds: 16, fps: 30}
+    description: Point at the busiest building and open its card, read its summary, open the power plant, then the sidebar.
+    record: {seconds: 26, fps: 30}
+    script:
+      - {at: 0.5, point_at: "Race between list and checkout", over: 1.5}
+      - {at: 2.2, wheel: 3, over: 2}
+      - {at: 4.6, click: true}
+      - {at: 7.0, key: I}
+      - {at: 10.0, key: Escape}
+      - {at: 10.5, wheel: -3, over: 1.5}
+      - {at: 12.5, point_at: plant, over: 1.2}
+      - {at: 14.0, click: true}
+      - {at: 18.0, key: Escape}
+      - {at: 18.5, key: B}
+      - {at: 22.5, key: B}
+      - {at: 23.0, hold: ArrowLeft, for: 1.5}

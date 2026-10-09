@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/auroq/botropolis/pkg/claude"
 	"github.com/auroq/botropolis/pkg/demo"
+	"github.com/auroq/botropolis/pkg/render"
 	"github.com/auroq/botropolis/pkg/state"
 )
 
@@ -38,7 +40,8 @@ func TestDemoScenarios(t *testing.T) {
 		t.Run("when the "+scenario.Name+" scenario is staged from the corpus", func(t *testing.T) {
 			home := t.TempDir()
 			now := time.Now()
-			require.NoError(t, demo.Stage(demo.Corpus{Dir: filepath.Join(root, "demo", "corpus")}, scenario, home, now, demo.Sleepers(home, time.Minute)))
+			corpus := demo.Corpus{Dir: filepath.Join(root, "demo", "corpus")}
+			require.NoError(t, demo.Stage(corpus, scenario, home, now, demo.Sleepers(home, time.Minute)))
 			t.Cleanup(func() { _ = demo.Unstage(home) })
 			snapshot, err := state.Load(home, probes, now)
 			require.NoError(t, err)
@@ -50,6 +53,50 @@ func TestDemoScenarios(t *testing.T) {
 			t.Run("it should load with the states the scenario places", func(t *testing.T) {
 				assert.Equal(t, want, got)
 			})
+
+			targets := map[string]bool{"plant": true}
+			for _, s := range snapshot.Sessions {
+				targets[s.Title] = true
+				targets["district:"+filepath.Base(s.CWD)] = true
+			}
+			for _, p := range scenario.Sessions {
+				if p.Title != "" {
+					targets[p.Title] = true
+				}
+				if p.Ref != "" && p.Arrive > 0 {
+					rec, err := corpus.Find(p.Ref)
+					require.NoError(t, err)
+					tr, err := claude.ReadTranscript(rec.Path)
+					require.NoError(t, err)
+					targets[tr.Title] = true
+					targets["district:"+rec.Project] = true
+				}
+				if p.Project != "" {
+					targets["district:"+p.Project] = true
+				}
+			}
+			for _, shot := range scenario.Shots {
+				keys := append([]string(nil), shot.Keys...)
+				for _, cue := range shot.Script {
+					keys = append(keys, cue.Key, cue.Hold)
+				}
+				for _, key := range keys {
+					if key == "" {
+						continue
+					}
+					t.Run("it should know the key "+shot.Name+" presses, "+key, func(t *testing.T) {
+						assert.True(t, render.KnownKey(key))
+					})
+				}
+				for _, cue := range shot.Script {
+					if cue.PointAt == "" {
+						continue
+					}
+					t.Run("it should find what "+shot.Name+" points at, "+cue.PointAt, func(t *testing.T) {
+						assert.True(t, targets[cue.PointAt])
+					})
+				}
+			}
 		})
 	}
 }

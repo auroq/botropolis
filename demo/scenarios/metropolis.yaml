@@ -2,6 +2,7 @@ name: metropolis
 description: A heavy user's city in the early evening, a dozen districts, a team at work and a full storage yard.
 clock: "18:30"
 mcp: [tracker, weather]
+usage: {session: 71, weekly: 83, models: {Opus: 64}}
 sessions:
   - {ref: tidepool/units-from-tracker, state: working, ago: 20s, prs: [open], context: 38%}
   - {ref: tidepool/review-loader-and-docs, state: working, ago: 1m, context: 66%}
@@ -49,6 +50,15 @@ shots:
     keys: [b]
   - name: flyover
     title: Flying over the metropolis
-    description: Zooming and turning across a large city.
-    keys: [equal, equal, r, r, minus, r, f]
-    record: {seconds: 16, fps: 30}
+    description: Zoom into the team camp, pan across the districts, and pull back out over the storage yard.
+    record: {seconds: 22, fps: 30}
+    script:
+      - {at: 0.5, point_at: "district:driftwood", over: 1.5}
+      - {at: 2.0, wheel: 3, over: 2.5}
+      - {at: 5.0, point_at: "Driftwood schema", over: 1}
+      - {at: 6.2, click: true}
+      - {at: 9.0, key: Escape}
+      - {at: 9.5, hold: ArrowUp, for: 2}
+      - {at: 12.0, hold: ArrowLeft, for: 2.5}
+      - {at: 15.0, key: R}
+      - {at: 17.0, wheel: -3, over: 3}

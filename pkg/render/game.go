@@ -1081,3 +1081,10 @@ func pulse(c color.NRGBA, seconds float64) color.NRGBA {
 	scale := func(v uint8) uint8 { return uint8(math.Round(float64(v) * t)) }
 	return color.NRGBA{scale(c.R), scale(c.G), scale(c.B), c.A}
 }
+
+// KnownKey reports whether --keys or a script can press a key by this
+// name, so a scenario's typo fails a test rather than a forty-minute run.
+func KnownKey(name string) bool {
+	_, _, ok := scriptedKey(name)
+	return ok
+}

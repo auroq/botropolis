@@ -1,0 +1,67 @@
+name: timelapse
+description: A day on two projects in under a minute. Sessions start, their buildings rise as they work, and finished ones leave for the storage yard.
+clock: "11:00"
+mcp: [tracker]
+usage: {session: 4, weekly: 22}
+usage_changes:
+  - {at: 10s, session: 18, weekly: 25}
+  - {at: 20s, session: 37, weekly: 28}
+  - {at: 30s, session: 55, weekly: 31}
+  - {at: 40s, session: 71, weekly: 34}
+  - {at: 48s, session: 83, weekly: 36}
+sessions:
+  - ref: tidepool/what-is-phase
+    state: parked
+    ago: 22h
+  - ref: kiln/empty-log-from-tracker
+    state: parked
+    ago: 1d6h
+  - ref: tidepool/fix-table-timezone
+    state: working
+    title: Tide table in station time
+    arrive: 2s
+    replay: {over: 18s, context: 74%}
+    prs: [open]
+    changes:
+      - {at: 24s, prs: [merged]}
+    leave: 27s
+  - ref: kiln/hold-time-sampling
+    state: working
+    arrive: 5s
+    replay: {over: 20s, context: 58%}
+    changes:
+      - {at: 26s, state: needs-you}
+      - {at: 33s, state: working}
+    leave: 44s
+  - ref: tidepool/units-from-tracker
+    state: working
+    arrive: 15s
+    replay: {over: 22s, context: 91%}
+    prs: [open]
+    changes:
+      - {at: 46s, prs: [merged]}
+    leave: 50s
+  - ref: kiln/json-report
+    state: working
+    arrive: 30s
+    replay: {over: 20s, context: 66%}
+  - ref: tidepool/review-loader-and-docs
+    state: working
+    arrive: 38s
+    replay: {over: 14s, context: 47%}
+shots:
+  - name: day
+    title: A day on two projects
+    description: Sessions arrive by boat, their buildings rise as they work, pull requests merge, and finished sessions leave for the storage yard.
+    record: {seconds: 54, fps: 30}
+    timeline: true
+    script:
+      - {at: 0.5, point_at: "district:tidepool", over: 2}
+      - {at: 2.0, wheel: 1.5, over: 3}
+      - {at: 26.0, point_at: "Hold time ignores the sample rate", over: 1.5}
+      - {at: 27.8, click: true}
+      - {at: 31.5, key: Escape}
+      - {at: 32.0, point_at: "district:kiln", over: 2}
+  - name: start
+    title: Before the day begins
+    description: Two projects with yesterday's sessions parked in the storage yard.

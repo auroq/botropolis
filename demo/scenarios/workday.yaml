@@ -2,6 +2,11 @@ name: workday
 description: A morning compressed into forty seconds, sessions arriving, waiting, merging and leaving.
 clock: "09:30"
 mcp: [tracker, weather]
+usage: {session: 8, weekly: 34}
+usage_changes:
+  - {at: 12s, session: 24, weekly: 36}
+  - {at: 24s, session: 41, weekly: 39}
+  - {at: 36s, session: 57, weekly: 41}
 sessions:
   - ref: tidepool/fix-table-timezone
     state: working
@@ -25,19 +30,19 @@ sessions:
     leave: 30s
   - ref: quillmark/drafts-and-changelog
     state: working
-    context: 27%
     arrive: 4s
+    replay: {over: 20s, context: 64%}
     prs: [open]
     changes:
       - {at: 28s, prs: [merged]}
   - ref: orchard/parallel-review
     state: working
-    context: 75%
     arrive: 10s
+    replay: {over: 22s, context: 81%}
   - ref: beacon/battery-threshold
     state: working
-    context: 52%
     arrive: 16s
+    replay: {over: 14s, context: 47%}
     leave: 34s
   - ref: tidepool/what-is-phase
     state: parked

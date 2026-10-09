@@ -100,6 +100,45 @@ A placement can add to its recording, each as a synthetic line stamped at the re
     state: needs-you
 ```
 
+## Usage on the river
+
+`usage:` floats the plan-usage boats, and `usage_changes:` moves them during a clip:
+
+```yaml
+usage: {session: 12, weekly: 40, models: {Opus: 20}}
+usage_changes:
+  - {at: 10s, session: 35, weekly: 43}
+```
+
+## Growing a building
+
+`replay:` stages only a session's opening prompt and reveals the rest of its recording over the span, at its own pacing,
+with its usage scaled so the building rises to the context asked for:
+
+```yaml
+  - ref: tidepool/fix-table-timezone
+    state: working
+    arrive: 2s                       # a tug brings it in
+    replay: {over: 18s, context: 74%}
+    leave: 27s                       # then it parks
+```
+
+## Choreography
+
+A clip's `script:` drives a pointer that is drawn into the frames, in seconds of video:
+
+```yaml
+    script:
+      - {at: 0.5, point_at: "Race between list and checkout", over: 1.5}   # a session by title
+      - {at: 2.0, wheel: 3, over: 2}                                       # zoom toward the pointer
+      - {at: 4.5, click: true}                                             # raises its card
+      - {at: 7.0, key: I}                                                  # any key, by name
+      - {at: 9.0, hold: ArrowLeft, for: 1.5}                               # a smooth pan
+      - {at: 12.0, point_at: plant, over: 1}                               # or "district:<name>"
+```
+
+The scenario test resolves every `point_at` and every key name against the staged city, so a typo fails `make test` rather than a film run.
+
 ## Timelines
 
 A clip with `timeline: true` plays the scenario's arrivals, departures and changes while it records:

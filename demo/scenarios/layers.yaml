@@ -1,0 +1,47 @@
+name: layers
+description: One city seen through each of its views, by day and by night.
+clock: "15:00"
+mcp: [tracker, weather]
+usage: {session: 52, weekly: 67, models: {Opus: 33}}
+sessions:
+  - {ref: tidepool/units-from-tracker, state: working, ago: 20s, context: 38%, prs: [open]}
+  - {ref: tidepool/review-loader-and-docs, state: needs-you, ago: 7m, context: 72%}
+  - {ref: lanternfish/list-race, state: working, ago: 40s, context: 91%, errors: 2}
+  - {ref: lanternfish/status-filter, state: parked, ago: 5h, prs: [merged]}
+  - {ref: kiln/line-numbers-like-tidepool, state: working, ago: 1m, context: 48%}
+  - {ref: kiln/json-report, state: unattended, ago: 3m, context: 62%}
+  - {ref: quillmark/fix-code-spans, state: working, ago: 2m, context: 24%}
+  - {ref: quillmark/compare-kiln-packaging, state: parked, ago: 2d}
+  - {ref: beacon/conditions-line, state: working, ago: 30s, context: 55%}
+  - {ref: orchard/triploid-design, state: needs-you, ago: 12m, context: 31%}
+  - {ref: orchard/parallel-review, state: working, ago: 15s, context: 79%}
+shots:
+  - name: views
+    title: Nine ways to read the city
+    description: The view key, then each view in turn -- attention, spend, context pressure, staleness, servers, traffic, models, fan-out and health -- then night and day.
+    record: {seconds: 32, fps: 30}
+    script:
+      - {at: 0.5, key: V}
+      - {at: 3.0, key: Digit2}
+      - {at: 5.5, key: Digit3}
+      - {at: 8.0, key: Digit4}
+      - {at: 10.5, key: Digit5}
+      - {at: 13.0, key: Digit6}
+      - {at: 15.5, key: Digit7}
+      - {at: 18.0, key: Digit8}
+      - {at: 20.5, key: Digit9}
+      - {at: 23.0, key: Digit1}
+      - {at: 25.0, key: N}
+      - {at: 28.5, key: N}
+  - name: pressure
+    title: Context pressure
+    description: The city coloured by how full each session's context is.
+    keys: [Digit3]
+  - name: spend
+    title: Spend
+    description: The city coloured by what each session has cost.
+    keys: [Digit2]
+  - name: night
+    title: The same city at night
+    description: Lit windows mark the sessions that are awake.
+    clock: "23:00"
