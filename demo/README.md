@@ -34,6 +34,12 @@ Nothing the city does can reach the real home, including the reads that would ot
 
 `DEMO_CORPUS`, `DEMO_SCENARIOS` and `DEMO_OUT` point it somewhere else.
 
+On a terminal it draws one progress line, redrawn in place, with the shot it is on, the frame it has reached, the time so far and an ETA;
+piped to a file it writes that line every ten seconds instead.
+The city's and ffmpeg's own output goes to `dist/demo/film.log`.
+A clip is slow to film: software GL renders 1080p at a few frames a second, so a sixteen-second clip takes six or seven minutes.
+`make demo-record` reports the same way, counting prompts.
+
 ## Recording
 
 Recording runs the real `claude` CLI against the toy projects, so it spends tokens on your account.

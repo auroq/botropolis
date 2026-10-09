@@ -84,7 +84,7 @@ demo-record :: demo-tool demo-image
 	$(LOG) "Recording demo sessions into ${DEMO_CORPUS}"
 	@test -n "$${CLAUDE_CODE_OAUTH_TOKEN}" || { echo "CLAUDE_CODE_OAUTH_TOKEN is not set: export it, put it in .env, or use secret-run" >&2; exit 1; }
 	@mkdir -p ${DEMO_CORPUS}
-	@docker run --rm -e CLAUDE_CODE_OAUTH_TOKEN \
+	@docker run --rm $$([ -t 2 ] && echo -t) -e CLAUDE_CODE_OAUTH_TOKEN \
 		--user 1000:1000 \
 		-v $(CURDIR)/bin:/opt/botropolis:ro \
 		-v $(CURDIR)/demo:/demo:ro \
@@ -95,7 +95,7 @@ demo-record :: demo-tool demo-image
 demo-media :: build demo-tool demo-image
 	$(LOG) "Filming ${DEMO_SCENARIOS} from ${DEMO_CORPUS} into ${DEMO_OUT}"
 	@rm -rf ${DEMO_OUT} && mkdir -p ${DEMO_OUT}
-	@docker run --rm --network none --read-only --tmpfs /tmp:exec \
+	@docker run --rm $$([ -t 2 ] && echo -t) --network none --read-only --tmpfs /tmp:exec \
 		--user $$(id -u):$$(id -g) -e HOME=/tmp \
 		-v $(CURDIR)/bin:/opt/botropolis:ro \
 		-v $(abspath ${DEMO_CORPUS}):/corpus:ro \

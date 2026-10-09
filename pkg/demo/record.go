@@ -135,6 +135,8 @@ type Recorder struct {
 	MCPConfig string
 	Claude    Claude
 	Log       io.Writer
+	// Progress is told of each prompt as it starts and ends.
+	Progress *Progress
 }
 
 // Prompted is what one prompt cost, for the recording log.
@@ -158,6 +160,9 @@ func (r Recorder) Record(ctx context.Context, script Script) ([]Prompted, error)
 		}
 		for i, prompt := range session.Prompts {
 			r.logf("record %s/%s prompt %d/%d (%s, cap $%.2f)\n", script.Project, session.Label, i+1, len(session.Prompts), session.Model, session.BudgetUSD)
+			if r.Progress != nil {
+				r.Progress.Step(fmt.Sprintf("%s/%s", script.Project, session.Label), fmt.Sprintf("prompt %d/%d, %s", i+1, len(session.Prompts), session.Model))
+			}
 			out, err := r.Claude(ctx, filepath.Join(r.Src, script.Project), claudeArgs(session, id, i, prompt, r.MCPConfig))
 			entry := Prompted{Project: script.Project, Label: session.Label, Prompt: i}
 			var result struct {
@@ -176,6 +181,9 @@ func (r Recorder) Record(ctx context.Context, script Script) ([]Prompted, error)
 				return log, fmt.Errorf("%s/%s prompt %d: %w", script.Project, session.Label, i+1, err)
 			}
 			log = append(log, entry)
+			if r.Progress != nil {
+				r.Progress.Advance(1)
+			}
 		}
 		if err := r.export(script.Project, id); err != nil {
 			return log, err

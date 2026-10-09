@@ -178,7 +178,9 @@ type Filmer struct {
 	Out        string
 	Version    string
 	Log        io.Writer
-	Now        func() time.Time
+	// Progress is told how far the run has got; nil reports nothing.
+	Progress *Progress
+	Now      func() time.Time
 }
 
 // Film makes every shot of every scenario and writes the manifest.
@@ -188,6 +190,8 @@ func (f Filmer) Film(paths []string) (Manifest, error) {
 	if err != nil {
 		return manifest, err
 	}
+	var scenarios []Scenario
+	total := 0
 	for _, path := range paths {
 		scenario, err := LoadScenario(path)
 		if err != nil {
@@ -197,7 +201,24 @@ func (f Filmer) Film(paths []string) (Manifest, error) {
 			scenario.Name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 		}
 		for _, shot := range scenario.Shots {
-			media, err := f.shoot(scenario, shot)
+			total += shotUnits(shot)
+		}
+		scenarios = append(scenarios, scenario)
+	}
+	progress := f.Progress
+	if progress == nil {
+		progress = &Progress{now: time.Now}
+	}
+	progress.Total = total
+	shots, n := 0, 0
+	for _, s := range scenarios {
+		shots += len(s.Shots)
+	}
+	for _, scenario := range scenarios {
+		for _, shot := range scenario.Shots {
+			n++
+			progress.Step(fmt.Sprintf("%d/%d %s/%s", n, shots, scenario.Name, shot.Name), "staging")
+			media, err := f.shoot(scenario, shot, progress)
 			if err != nil {
 				return manifest, fmt.Errorf("%s/%s: %w", scenario.Name, shot.Name, err)
 			}
@@ -208,7 +229,21 @@ func (f Filmer) Film(paths []string) (Manifest, error) {
 	if err != nil {
 		return manifest, err
 	}
+	progress.Finish(fmt.Sprintf("filmed %d files from %d shots", len(manifest.Media), shots))
 	return manifest, writeBytes(filepath.Join(f.Out, "manifest.json"), append(data, '\n'))
+}
+
+// stillUnits is what a still costs against a clip's frames, measured:
+// a still takes about as long as six recorded frames, staging included.
+const stillUnits = 6
+
+// shotUnits is a shot's share of the run's progress: its frames, or a
+// still's worth of them.
+func shotUnits(shot Shot) int {
+	if shot.Record == nil {
+		return stillUnits
+	}
+	return int(shot.Record.Seconds * float64(fpsOf(shot.Record)))
 }
 
 // scenarioFiles expands each directory to the scenario files in it, in
@@ -233,7 +268,7 @@ func scenarioFiles(paths []string) ([]string, error) {
 	return out, nil
 }
 
-func (f Filmer) shoot(scenario Scenario, shot Shot) ([]Media, error) {
+func (f Filmer) shoot(scenario Scenario, shot Shot, progress *Progress) ([]Media, error) {
 	work, err := os.MkdirTemp("", "botropolis-film-")
 	if err != nil {
 		return nil, err
@@ -259,6 +294,7 @@ func (f Filmer) shoot(scenario Scenario, shot Shot) ([]Media, error) {
 	}
 	media := Media{Scenario: scenario.Name, Shot: shot.Name, Title: shot.Title, Description: shot.Description}
 	fmt.Fprintf(f.Log, "filming %s/%s\n", scenario.Name, shot.Name)
+	progress.Detail("filming")
 	if shot.Record == nil {
 		still := filepath.Join(dir, shot.Name+".png")
 		if err := f.city(work, tz, cityArgs(shot, home, still, "")); err != nil {
@@ -266,13 +302,17 @@ func (f Filmer) shoot(scenario Scenario, shot Shot) ([]Media, error) {
 		}
 		media.File, media.Kind, media.Format = rel(f.Out, still), "image", "png"
 		media.Width, media.Height, err = size(still)
+		progress.Advance(stillUnits)
 		return []Media{media}, err
 	}
 	frames := filepath.Join(work, "frames")
 	if err := os.MkdirAll(frames, 0o700); err != nil {
 		return nil, err
 	}
-	if err := f.record(work, tz, cityArgs(shot, home, "", frames), frames, fpsOf(shot.Record), director, shot.Timeline); err != nil {
+	stop := watchFrames(frames, shotUnits(shot), progress)
+	err = f.record(work, tz, cityArgs(shot, home, "", frames), frames, fpsOf(shot.Record), director, shot.Timeline)
+	stop()
+	if err != nil {
 		return nil, err
 	}
 	poster := filepath.Join(dir, shot.Name+".png")
@@ -294,6 +334,7 @@ func (f Filmer) shoot(scenario Scenario, shot Shot) ([]Media, error) {
 		if err != nil {
 			return nil, err
 		}
+		progress.Detail("encoding " + format)
 		if err := run(exec.Command(f.FFmpeg, args...), f.Log); err != nil {
 			return nil, fmt.Errorf("ffmpeg %s: %w", format, err)
 		}
@@ -380,6 +421,39 @@ func firstOf(values ...string) string {
 func run(cmd *exec.Cmd, log io.Writer) error {
 	cmd.Stdout, cmd.Stderr = log, log
 	return cmd.Run()
+}
+
+// watchFrames counts a clip's frames as the city writes them, for the
+// progress bar, until the returned stop is called; then it settles the
+// count at the clip's full share, so a short clip does not leave the
+// total behind.
+func watchFrames(frames string, expected int, progress *Progress) (stop func()) {
+	done := make(chan struct{})
+	finished := make(chan struct{})
+	seen := 0
+	go func() {
+		defer close(finished)
+		for {
+			select {
+			case <-done:
+				return
+			case <-time.After(500 * time.Millisecond):
+			}
+			all, _ := filepath.Glob(filepath.Join(frames, "frame-*.png"))
+			if n := min(len(all), expected); n > seen {
+				progress.Detail(fmt.Sprintf("frame %d/%d", n, expected))
+				progress.Advance(n - seen)
+				seen = n
+			}
+		}
+	}()
+	return func() {
+		close(done)
+		<-finished
+		if seen < expected {
+			progress.Advance(expected - seen)
+		}
+	}
 }
 
 // posterFrom keeps the frame a third of the way in as the clip's

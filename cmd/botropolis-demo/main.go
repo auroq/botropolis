@@ -129,15 +129,25 @@ func filmCommand() *cobra.Command {
 				}
 				botropolis = filepath.Join(filepath.Dir(self), "botropolis")
 			}
-			f := demo.Filmer{
-				Corpus: demo.Corpus{Dir: corpus}, Botropolis: botropolis, FFmpeg: ffmpeg,
-				Out: out, Version: version.Version, Log: cmd.ErrOrStderr(), Now: time.Now,
+			if err := os.MkdirAll(out, 0o755); err != nil {
+				return err
 			}
-			manifest, err := f.Film(paths)
+			logPath := filepath.Join(out, "film.log")
+			log, err := os.Create(logPath)
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "filmed %d files into %s\n", len(manifest.Media), out)
+			defer func() { _ = log.Close() }()
+			progress := demo.NewProgress(os.Stderr, 0)
+			stop := progress.Ticking()
+			defer stop()
+			f := demo.Filmer{
+				Corpus: demo.Corpus{Dir: corpus}, Botropolis: botropolis, FFmpeg: ffmpeg,
+				Out: out, Version: version.Version, Log: log, Now: time.Now, Progress: progress,
+			}
+			if _, err := f.Film(paths); err != nil {
+				return fmt.Errorf("%w (the city's own output is in %s)", err, logPath)
+			}
 			return nil
 		},
 	}
@@ -209,7 +219,22 @@ func recordCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r := demo.Recorder{Home: home, Src: src, Corpus: corpus, MCPConfig: config, Claude: runClaude, Log: cmd.ErrOrStderr()}
+			prompts := 0
+			for _, s := range all {
+				for _, session := range s.Sessions {
+					if _, err := os.Stat(filepath.Join(corpus, s.Project, demo.SessionID(s.Project, session.Label)+".jsonl")); err != nil {
+						prompts += len(session.Prompts)
+					}
+				}
+			}
+			progress := demo.NewProgress(os.Stderr, prompts)
+			stop := progress.Ticking()
+			defer stop()
+			var log io.Writer = cmd.ErrOrStderr()
+			if progress.TTY {
+				log = io.Discard
+			}
+			r := demo.Recorder{Home: home, Src: src, Corpus: corpus, MCPConfig: config, Claude: runClaude, Log: log, Progress: progress}
 			var spent []demo.Prompted
 			var failed error
 			for _, s := range all {
@@ -224,7 +249,7 @@ func recordCommand() *cobra.Command {
 			for _, p := range spent {
 				total += p.CostUSD
 			}
-			fmt.Fprintf(out, "recorded %d prompts for $%.2f\n", len(spent), total)
+			progress.Finish(fmt.Sprintf("recorded %d prompts for $%.2f", len(spent), total))
 			data, err := json.MarshalIndent(spent, "", "  ")
 			if err == nil {
 				_ = os.WriteFile(filepath.Join(corpus, "recording-"+time.Now().UTC().Format("20060102T150405Z")+".json"), append(data, '\n'), 0o644)
