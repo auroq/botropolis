@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-09
+
+### Added
+
+- `--window WIDTHxHEIGHT` sizes the city's window, and under `--headless` the virtual display with it.
+  `--fps` picks how many frames a second `--record` writes, and refuses a rate that does not divide 30.
+  Both default to what they were, 1100x760 and ten.
+
+### Fixed
+
+- A plain `claude` from the shell integration no longer fails in a directory nobody has trusted yet.
+  `claude --bg` cannot show the trust prompt,
+  and the advice it printed — run `claude` there once — went straight back through the same wrapper.
+  `botropolis new` now exits 3 for that refusal, and the wrapper runs that one session in the foreground so the prompt can appear.
+  Later sessions in the directory go to the background as before.
+- The usage boats and **generate summary** read from `--home` rather than the real home.
+  A city pointed at other data showed the real account's limits,
+  and a session sharing an id with a real one would summarise the real one.
+
 ## [0.1.3] - 2026-10-06
 
 ### Added
@@ -72,7 +91,8 @@ Botropolis draws every Claude Code session on the machine as a city, and starts,
 
 - The usage probe runs inside a fenced directory the session loader skips, and prunes its own transcripts, so reading usage cannot make Botropolis see itself as a session.
 
-[Unreleased]: https://github.com/auroq/botropolis/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/auroq/botropolis/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/auroq/botropolis/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/auroq/botropolis/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/auroq/botropolis/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/auroq/botropolis/compare/v0.1.0...v0.1.1
