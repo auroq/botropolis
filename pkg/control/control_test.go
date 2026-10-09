@@ -119,6 +119,44 @@ func TestControl(t *testing.T) {
 		})
 	})
 
+	t.Run("when claude refuses a directory nobody has trusted", func(t *testing.T) {
+		untrusted := errors.New("exit status 1: Workspace not trusted. Run `claude` in " + dir + " once and accept the trust prompt, then retry.")
+
+		for _, start := range []struct {
+			name string
+			call func(*control.Control) error
+		}{
+			{"and a new session is started", func(c *control.Control) error {
+				_, err := c.New(context.Background(), dir, "")
+				return err
+			}},
+			{"and a parked session is resumed", func(c *control.Control) error {
+				_, err := c.Resume(context.Background(), dir, sessionID)
+				return err
+			}},
+		} {
+			t.Run(start.name, func(t *testing.T) {
+				err := start.call(newControl(&fakeRunner{failure: untrusted}))
+
+				t.Run("it should report the directory as untrusted", func(t *testing.T) {
+					assert.ErrorIs(t, err, control.ErrUntrusted)
+				})
+
+				t.Run("it should keep claude's own explanation", func(t *testing.T) {
+					assert.ErrorContains(t, err, "accept the trust prompt")
+				})
+			})
+		}
+	})
+
+	t.Run("when claude fails for any other reason", func(t *testing.T) {
+		_, err := newControl(&fakeRunner{failure: errors.New("exit status 1: no such directory")}).New(context.Background(), dir, "")
+
+		t.Run("it should not report the directory as untrusted", func(t *testing.T) {
+			assert.NotErrorIs(t, err, control.ErrUntrusted)
+		})
+	})
+
 	t.Run("when a session is attached", func(t *testing.T) {
 		runner := &fakeRunner{}
 		err := newControl(runner).Attach(jobID)

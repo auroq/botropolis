@@ -2,8 +2,10 @@ package app_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -53,6 +55,35 @@ func TestRun(t *testing.T) {
 			assert.Equal(t, 1, app.Run(context.Background(), []string{"dance"}))
 		})
 	})
+}
+
+func TestRunExitCodes(t *testing.T) {
+	for _, refusal := range []struct {
+		name   string
+		claude string
+		code   int
+	}{
+		{"when claude refuses a directory nobody has trusted", "Workspace not trusted. Run `claude` in this directory once and accept the trust prompt, then retry.", 3},
+		{"when claude fails for any other reason", "no such directory", 1},
+	} {
+		t.Run(refusal.name, func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			fakeClaudeFailing(t, refusal.claude)
+
+			t.Run(fmt.Sprintf("it should exit %d from new", refusal.code), func(t *testing.T) {
+				assert.Equal(t, refusal.code, app.Run(context.Background(), []string{"new", t.TempDir()}))
+			})
+		})
+	}
+}
+
+func fakeClaudeFailing(t *testing.T, message string) {
+	t.Helper()
+	bin := t.TempDir()
+	script := "#!/bin/sh\nprintf '%s\\n' \"$BOTROPOLIS_FAKE_CLAUDE\" >&2\nexit 1\n"
+	require.NoError(t, os.WriteFile(filepath.Join(bin, "claude"), []byte(script), 0o755))
+	t.Setenv("BOTROPOLIS_FAKE_CLAUDE", message)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
 func captureStdout(t *testing.T) func() string {

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -82,9 +83,18 @@ func Run(ctx context.Context, args []string) int {
 	root.SetArgs(args)
 	if err := root.ExecuteContext(ctx); err != nil {
 		_, _ = os.Stderr.WriteString("botropolis: " + err.Error() + "\n")
-		return 1
+		return exitCode(err)
 	}
 	return 0
+}
+
+const ExitUntrusted = 3
+
+func exitCode(err error) int {
+	if errors.Is(err, control.ErrUntrusted) {
+		return ExitUntrusted
+	}
+	return 1
 }
 
 func newLoader(v *viper.Viper) cli.Loader {

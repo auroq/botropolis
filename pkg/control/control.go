@@ -14,9 +14,12 @@ import (
 
 const claudeBinary = "claude"
 
+var ErrUntrusted = errors.New("workspace not trusted")
+
 var (
 	jobIDPattern        = regexp.MustCompile(`^[0-9a-f]{8}$`)
 	backgroundedPattern = regexp.MustCompile(`backgrounded\s*\x{B7}?\s*([0-9a-f]{8})`)
+	untrustedPattern    = regexp.MustCompile(`(?i)workspace not trusted`)
 	ansiPattern         = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
 )
 
@@ -64,6 +67,9 @@ func (c *Control) Resume(ctx context.Context, dir, sessionID string) (string, er
 
 func (c *Control) background(ctx context.Context, dir string, args []string) (string, error) {
 	out, err := c.runner.Run(ctx, dir, claudeBinary, args...)
+	if err != nil && untrustedPattern.MatchString(err.Error()) {
+		return "", untrustedError{err}
+	}
 	if err != nil {
 		return "", err
 	}
@@ -72,6 +78,11 @@ func (c *Control) background(ctx context.Context, dir string, args []string) (st
 	}
 	return c.newestJob(ctx, dir)
 }
+
+type untrustedError struct{ err error }
+
+func (e untrustedError) Error() string   { return e.err.Error() }
+func (e untrustedError) Unwrap() []error { return []error{ErrUntrusted, e.err} }
 
 type Agent struct {
 	ID        string `json:"id"`

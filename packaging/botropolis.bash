@@ -5,12 +5,23 @@
 # parks the session instead of killing it.  Anything that starts with a flag
 # or is a subcommand (`claude attach`, `claude --resume`, `claude agents`, ...)
 # goes straight to the real CLI.
+#
+# `claude --bg` cannot show the trust prompt, so in a directory nobody has
+# trusted yet `botropolis new` exits 3 and the first session runs in the
+# foreground instead.  Once the prompt is accepted, later ones go to the
+# background as usual.
 
 claude() {
     if [ -t 0 ] && [ -t 1 ] && { [ $# -eq 0 ] || [ "${1#-}" = "$1" ] && ! _botropolis_is_subcommand "$1"; }; then
-        local id
-        id=$(botropolis new "$PWD" "$@") || return $?
-        command claude attach "$id"
+        local id rc
+        id=$(botropolis new "$PWD" "$@")
+        rc=$?
+        case $rc in
+            0) command claude attach "$id" ;;
+            3) echo "botropolis: starting this one in the foreground so claude can ask whether to trust $PWD" >&2
+               command claude "$@" ;;
+            *) return $rc ;;
+        esac
     else
         command claude "$@"
     fi
