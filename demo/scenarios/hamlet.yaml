@@ -5,12 +5,14 @@ mcp: [weather]
 sessions:
   - ref: tidepool/fix-table-timezone
     state: working
+    context: 58%
     ago: 1m
   - ref: tidepool/what-is-phase
     state: parked
     ago: 3h
   - ref: beacon/conditions-line
     state: needs-you
+    context: 83%
     ago: 4m
 shots:
   - name: overview

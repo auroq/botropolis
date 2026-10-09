@@ -1,24 +1,28 @@
 project: quillmark
 sessions:
   - label: fix-code-spans
+    title: Emphasis leaks into code spans
     model: sonnet
     budget_usd: 0.60
     visual: mcp
     prompts:
       - "Use the tracker MCP server to list the open quillmark issues and pick up QUILL-31 (emphasis leaking into code spans and link URLs). Write a failing test in tests/test_markdown.py first, then fix quillmark/markdown.py so code spans and link targets are left alone. Run pytest, then add a comment on QUILL-31 saying what changed and close it."
   - label: block-handlers
+    title: Split the block parser
     model: sonnet
     budget_usd: 0.90
     visual: context
     prompts:
       - "QUILL-36: to_html in quillmark/markdown.py is one long loop with five bits of state. Read the whole package and the tests, then refactor the block parser into small per-block handlers (heading, fence, list, paragraph) without changing any output. Once that's green, use the new structure to support nested lists indented by two spaces, with tests. Keep pytest passing at every step."
   - label: compare-kiln-packaging
+    title: Borrow kiln's packaging
     model: sonnet
     budget_usd: 0.40
     visual: roads
     prompts:
       - "kiln at /home/demo/src/kiln is our other Python project. Compare its pyproject.toml, test layout and CLI entry point with quillmark's and tell me what's worth borrowing. Don't change kiln; if something is clearly better, apply it here."
   - label: drafts-and-changelog
+    title: Draft posts
     model: sonnet
     budget_usd: 0.60
     visual: skill

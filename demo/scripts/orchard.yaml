@@ -1,18 +1,21 @@
 project: orchard
 sessions:
   - label: triploid-design
+    title: Modelling triploid varieties
     model: opus
     budget_usd: 1.50
     visual: needs-you
     prompts:
       - "I want to model triploid apple varieties like Bramley: they need a pollinator like anything else, but their pollen is no good, so they can't be anyone's partner, and growers usually plant two diploids near each one. Read src/ and the tests, then propose two approaches for adding this to the spec and the pollination check, with the trade-offs of each. Ask me which one to take — don't implement anything yet."
   - label: parallel-review
+    title: Review layout and pollination
     model: sonnet
     budget_usd: 0.80
     visual: subagents
     prompts:
       - "Use the Agent tool to run two subagents in parallel: one reviewing src/layout.js for correctness bugs, the other looking at src/pollination.js for why the check is slow on a 4,000-tree plan (ORCH-117). When both are back, give me one combined list ranked by how much each finding matters."
   - label: layout-reentrancy
+    title: layoutRows loses trees on reuse
     model: sonnet
     budget_usd: 0.60
     visual: multi-turn
@@ -21,6 +24,7 @@ sessions:
       - "Good. While you're in there: `orchard --range abc examples/hillside.json` reports every tree as having no partner 'within NaN m'. Make the CLI reject a range that isn't a positive number, exit 2, and add a test."
       - "Run the whole suite and write me a short commit message covering both changes."
   - label: run-one-file
+    title: Run one test file
     model: haiku
     budget_usd: 0.15
     visual: quick

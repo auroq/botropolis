@@ -5,13 +5,16 @@ mcp: [tracker, weather]
 sessions:
   - ref: tidepool/units-from-tracker
     state: working
+    context: 34%
     ago: 30s
     prs: [open]
   - ref: tidepool/review-loader-and-docs
     state: needs-you
+    context: 72%
     ago: 6m
   - ref: lanternfish/list-race
     state: working
+    context: 91%
     ago: 2m
     errors: 1
   - ref: lanternfish/status-filter
@@ -20,6 +23,7 @@ sessions:
     prs: [merged]
   - ref: kiln/line-numbers-like-tidepool
     state: working
+    context: 48%
     ago: 1m
   - ref: kiln/empty-log-from-tracker
     state: parked
@@ -27,6 +31,7 @@ sessions:
     prs: [merged]
   - ref: quillmark/fix-code-spans
     state: unattended
+    context: 24%
     ago: 3m
   - ref: quillmark/compare-kiln-packaging
     state: parked

@@ -31,7 +31,7 @@ func run(args []string, out, errOut io.Writer) int {
 		SilenceErrors: true,
 	}
 	root.SetVersionTemplate("{{.Name}} {{.Version}}\n")
-	root.AddCommand(stageCommand(), unstageCommand(), filmCommand(), recordCommand(), mcpCommand())
+	root.AddCommand(stageCommand(), unstageCommand(), filmCommand(), recordCommand(), mcpCommand(), scrubCommand(), retitleCommand())
 	root.SetOut(out)
 	root.SetErr(errOut)
 	root.SetArgs(args)
@@ -289,4 +289,57 @@ func runClaude(ctx context.Context, dir string, args []string) ([]byte, error) {
 	cmd.Dir = dir
 	cmd.Stderr = os.Stderr
 	return cmd.Output()
+}
+
+func scrubCommand() *cobra.Command {
+	corpus := "demo/corpus"
+	cmd := &cobra.Command{
+		Use:   "scrub",
+		Short: "Re-apply the export's scrub to every transcript already in the corpus",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			n := 0
+			err := filepath.WalkDir(corpus, func(p string, d os.DirEntry, err error) error {
+				if err != nil || d.IsDir() || filepath.Ext(p) != ".jsonl" {
+					return err
+				}
+				n++
+				return demo.Scrub(p)
+			})
+			if err == nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "scrubbed %d transcripts in %s\n", n, corpus)
+			}
+			return err
+		},
+	}
+	cmd.Flags().StringVar(&corpus, "corpus", corpus, "directory of recorded transcripts")
+	return cmd
+}
+
+func retitleCommand() *cobra.Command {
+	corpus, scripts := "demo/corpus", "demo/scripts"
+	cmd := &cobra.Command{
+		Use:   "retitle",
+		Short: "Give recorded sessions the titles their scripts name, as /rename would",
+		Args:  cobra.NoArgs,
+		RunE: func(*cobra.Command, []string) error {
+			paths, err := filepath.Glob(filepath.Join(scripts, "*.yaml"))
+			if err != nil {
+				return err
+			}
+			for _, p := range paths {
+				s, err := demo.LoadScript(p)
+				if err != nil {
+					return err
+				}
+				if err := demo.Retitle(corpus, s); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&corpus, "corpus", corpus, "directory of recorded transcripts")
+	cmd.Flags().StringVar(&scripts, "scripts", scripts, "directory of session scripts")
+	return cmd
 }

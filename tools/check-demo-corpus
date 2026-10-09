@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""Assert the demo directory holds nothing that came from a real machine.
+
+Usage: tools/check-demo-corpus [--root DIR] [--unreviewed] [--help]
+
+The demo is filmed for a public website, so everything under demo/ is
+published in effect.
+
+  1. Every file in demo/corpus/ is on demo/corpus/REVIEWED with its
+     sha256. A file not on the list fails, and so does a listed file
+     whose content changed. The way to pass is to look at the file and
+     add it: --unreviewed prints the lines to add, and nothing more.
+  2. No file anywhere under demo/ names a token from .publishable-tokens,
+     a home directory other than /home/demo, a macOS home, or an email
+     address outside the reserved example domains.
+  3. Every working directory a transcript records is under /home/demo/src.
+  4. The corpus is not empty: every check above passes on nothing.
+
+A missing .publishable-tokens is said out loud rather than skipped: a
+guard that quietly loses an input reads exactly like a healthy one.
+"""
+
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+
+ALLOWED_EMAIL_DOMAINS = ("example.invalid", "example.com", "example.org", "example.net", "anthropic.com")
+# The lookbehind keeps a JSON escape out of the local part: "\n@pytest.fixture"
+# is a decorator on a new line, not an address at pytest.fixture.
+EMAIL = re.compile(rb"(?<![\\A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,})")
+FOREIGN_HOME = re.compile(rb"/home/(?!demo\b)[a-z_][a-z0-9_-]*|/Users/[A-Za-z]")
+DEMO_SRC = "/home/demo/src/"
+
+
+def sha256(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def walk(top):
+    for dirpath, _, files in os.walk(top):
+        for name in sorted(files):
+            yield os.path.join(dirpath, name)
+
+
+def reviewed(path):
+    listed = {}
+    if not os.path.exists(path):
+        return listed
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                digest, rel = line.split(None, 1)
+                listed[rel] = digest
+    return listed
+
+
+def ignored(root):
+    """Files git would never publish, such as the recorder's cost logs."""
+    out = subprocess.run(["git", "ls-files", "--others", "--ignored", "--exclude-standard", "--", root],
+                         capture_output=True, text=True)
+    return {os.path.normpath(p) for p in out.stdout.splitlines()}
+
+
+def tokens(repo):
+    path = os.path.join(repo, ".publishable-tokens")
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        return [t.strip().lower().encode() for t in f if t.strip() and not t.startswith("#")]
+
+
+def cwds(data):
+    for line in data.splitlines():
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(record, dict) and isinstance(record.get("cwd"), str):
+            yield record["cwd"]
+
+
+def main(argv):
+    if "--help" in argv or "-h" in argv:
+        print(__doc__.strip())
+        return 0
+    root = "demo"
+    if "--root" in argv:
+        root = argv[argv.index("--root") + 1]
+    repo = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip() or "."
+    corpus = os.path.join(root, "corpus")
+    review_file = os.path.join(corpus, "REVIEWED")
+    listed = reviewed(review_file)
+    problems, unreviewed = [], []
+    skip = ignored(root)
+
+    corpus_files = [p for p in walk(corpus) if p != review_file and os.path.normpath(p) not in skip] if os.path.isdir(corpus) else []
+    if not corpus_files:
+        problems.append(f"{corpus}: empty -- every other check passes on nothing")
+    for path in corpus_files:
+        rel = os.path.relpath(path, corpus)
+        digest = sha256(path)
+        if rel not in listed:
+            unreviewed.append(f"{digest}  {rel}")
+            problems.append(f"{path}: not on {review_file}")
+        elif listed[rel] != digest:
+            unreviewed.append(f"{digest}  {rel}")
+            problems.append(f"{path}: changed since it was reviewed")
+    for rel in sorted(set(listed) - {os.path.relpath(p, corpus) for p in corpus_files}):
+        problems.append(f"{review_file}: lists {rel}, which is not there")
+
+    banned = tokens(repo)
+    files = 0
+    for path in walk(root):
+        if os.path.normpath(path) in skip:
+            continue
+        files += 1
+        with open(path, "rb") as f:
+            data = f.read()
+        lower = data.lower()
+        for token in banned or []:
+            if token in lower:
+                problems.append(f"{path}: names a token from .publishable-tokens")
+        for m in FOREIGN_HOME.finditer(data):
+            problems.append(f"{path}: names a real home, {m.group(0).decode(errors='replace')}")
+        for m in EMAIL.finditer(data):
+            domain = m.group(1).decode(errors="replace").lower()
+            if not domain.endswith(ALLOWED_EMAIL_DOMAINS):
+                problems.append(f"{path}: names an email address at {domain}")
+        if path.endswith(".jsonl"):
+            for cwd in set(cwds(data)):
+                if not (cwd + "/").startswith(DEMO_SRC):
+                    problems.append(f"{path}: records a working directory outside {DEMO_SRC}: {cwd}")
+
+    if "--unreviewed" in argv:
+        print("\n".join(unreviewed))
+        return 0
+    if banned is None:
+        problems.append(".publishable-tokens: missing, so the token check could not run")
+    if problems:
+        for p in problems:
+            print(p, file=sys.stderr)
+        print(f"  {len(problems)} problem(s) in {root}", file=sys.stderr)
+        return 1
+    print(f"  {len(corpus_files)} corpus files reviewed, {files} files under {root} clean of {len(banned)} tokens, real homes and real addresses.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

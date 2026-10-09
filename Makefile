@@ -118,10 +118,16 @@ test-acceptance :: fixtures
 	$(LOG) "Running acceptance tests"
 	@go test ./testing/acceptance/...
 
-lint :: docs-check version-check workflows-check
+lint :: docs-check version-check workflows-check demo-check
 	$(LOG) "Linting"
 	@go vet ./...
 	@golangci-lint run ./...
+
+# Everything under demo/ is published in effect, so it is checked for anything
+# from a real machine, and every corpus file must be on a reviewed list.
+demo-check ::
+	$(LOG) "Checking the demo corpus came from no real machine"
+	@tools/check-demo-corpus
 
 docs-check ::
 	$(LOG) "Checking the documentation structure"

@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/auroq/botropolis/pkg/claude"
 )
 
 func TestSessionID(t *testing.T) {
@@ -130,7 +132,8 @@ func TestScrub(t *testing.T) {
 	lines := [][]byte{
 		[]byte(`{"type":"user","message":{"content":"hi"}}`),
 		[]byte(`{"type":"attachment","attachment":{"type":"prompt_snapshot","systemPrompt":["You are..."]}}`),
-		[]byte(`{"type":"attachment","attachment":{"type":"environment","snapshot":{"workingDirectory":"/home/demo/src/t","osVersion":"Linux 7.2.8-arch1-1"}}}`),
+		[]byte(`{"type":"attachment","attachment":{"type":"environment","snapshot":{"workingDirectory":"/home/demo/src/t","osVersion":"Linux 7.2.8-arch1-1"}},` +
+			`"rendered":[{"content":"<system-reminder>\n - Platform: linux\n - OS Version: Linux 7.2.8-arch1-1\n</system-reminder>"}]}`),
 	}
 	out := scrub(lines)
 
@@ -145,6 +148,39 @@ func TestScrub(t *testing.T) {
 
 		t.Run("it should keep everything else as it was", func(t *testing.T) {
 			assert.Equal(t, string(lines[0]), string(out[0]))
+		})
+
+		t.Run("it should keep the rest of the rendered environment", func(t *testing.T) {
+			assert.Contains(t, string(out[1]), `Platform: linux`)
+		})
+
+		t.Run("and it is scrubbed again", func(t *testing.T) {
+			t.Run("it should change nothing more", func(t *testing.T) {
+				assert.Equal(t, out, scrub(out))
+			})
+		})
+	})
+}
+
+func TestRetitle(t *testing.T) {
+	corpus := t.TempDir()
+	id := SessionID("tidepool", "fix")
+	path := filepath.Join(corpus, "tidepool", id+".jsonl")
+	writeFile(t, path, `{"type":"user","sessionId":"`+id+`","cwd":"/home/demo/src/tidepool","timestamp":"2026-09-01T10:00:00.000Z"}`+"\n")
+	script := Script{Project: "tidepool", Sessions: []ScriptedSession{{Label: "fix", Title: "Fix the leap day"}, {Label: "unrecorded", Title: "Never ran"}}}
+
+	t.Run("when a recorded session's script gives it a title", func(t *testing.T) {
+		require.NoError(t, Retitle(corpus, script))
+		require.NoError(t, Retitle(corpus, script))
+		tr, err := claude.ReadTranscript(path)
+		require.NoError(t, err)
+
+		t.Run("it should carry the title, as /rename would have written it", func(t *testing.T) {
+			assert.Equal(t, "Fix the leap day", tr.Title)
+		})
+
+		t.Run("it should write it once however often it is run", func(t *testing.T) {
+			assert.Len(t, readLines(t, path), 2)
 		})
 	})
 }

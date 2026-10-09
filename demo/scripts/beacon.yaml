@@ -1,18 +1,21 @@
 project: beacon
 sessions:
   - label: conditions-line
+    title: Sea conditions in the daily report
     model: sonnet
     budget_usd: 0.70
     visual: weather
     prompts:
       - "Use the weather MCP server's forecast tool for Carrick Point and Porthwenna Head. Then add a `--conditions FILE` option to bin/beacon-report that prints a 'Conditions:' line per listed station (wind, visibility, sea state) under the header, save what forecast returned as data/conditions.txt in a simple pipe-separated format, and add a test with a fixture to test/run.sh."
   - label: battery-threshold
+    title: Battery check compares as text
     model: sonnet
     budget_usd: 0.50
     visual: mcp
     prompts:
       - "Use the tracker MCP server to read BCN-207. Reproduce it against data/status.txt, add tests to test/run.sh for a 100% battery and a single-digit one, fix bin/beacon-status, then comment on BCN-207 with the cause and close it."
   - label: shared-classifier
+    title: One classifier for status and report
     model: sonnet
     budget_usd: 0.80
     visual: multi-turn
@@ -20,6 +23,7 @@ sessions:
       - "BCN-211: beacon-report has its own copy of the OK/WARN/FAIL rules and they've drifted from beacon-status — no battery check and a hard-coded 30-minute window. Move the classification into lib/common.sh and make both scripts use it. bash test/run.sh must stay green."
       - "Now give beacon-report a --stale-minutes option that matches beacon-status, and update the README so both are documented."
   - label: exit-64
+    title: Why exit 64
     model: haiku
     budget_usd: 0.15
     visual: quick

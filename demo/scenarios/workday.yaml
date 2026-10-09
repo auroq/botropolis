@@ -5,6 +5,7 @@ mcp: [tracker, weather]
 sessions:
   - ref: tidepool/fix-table-timezone
     state: working
+    context: 62%
     ago: 30s
     prs: [open]
     changes:
@@ -12,25 +13,30 @@ sessions:
       - {at: 24s, state: needs-you}
   - ref: lanternfish/list-race
     state: needs-you
+    context: 88%
     ago: 2m
     changes:
       - {at: 6s, state: working}
       - {at: 20s, errors: 1}
   - ref: kiln/hold-time-sampling
     state: working
+    context: 41%
     ago: 1m
     leave: 30s
   - ref: quillmark/drafts-and-changelog
     state: working
+    context: 27%
     arrive: 4s
     prs: [open]
     changes:
       - {at: 28s, prs: [merged]}
   - ref: orchard/parallel-review
     state: working
+    context: 75%
     arrive: 10s
   - ref: beacon/battery-threshold
     state: working
+    context: 52%
     arrive: 16s
     leave: 34s
   - ref: tidepool/what-is-phase

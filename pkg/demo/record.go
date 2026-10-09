@@ -1,6 +1,7 @@
 package demo
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 
 	"go.yaml.in/yaml/v3"
@@ -24,7 +26,11 @@ type Script struct {
 }
 
 type ScriptedSession struct {
-	Label     string   `yaml:"label"`
+	Label string `yaml:"label"`
+	// Title is the session's name on the map. A `claude -p` session
+	// never gets the title an interactive one is given, so the corpus
+	// carries this one as the custom-title record /rename writes.
+	Title     string   `yaml:"title"`
 	Model     string   `yaml:"model"`
 	BudgetUSD float64  `yaml:"budget_usd"`
 	Visual    string   `yaml:"visual"`
@@ -61,6 +67,40 @@ func LoadScript(path string) (Script, error) {
 		seen[session.Label] = true
 	}
 	return s, nil
+}
+
+// Retitle gives every recorded session of the script that has a title
+// in the script a custom-title record, once.
+func Retitle(corpus string, script Script) error {
+	for _, session := range script.Sessions {
+		if session.Title == "" {
+			continue
+		}
+		id := SessionID(script.Project, session.Label)
+		path := filepath.Join(corpus, script.Project, id+".jsonl")
+		lines, err := readJSONL(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		title, err := json.Marshal(map[string]any{"type": "custom-title", "customTitle": session.Title, "sessionId": id})
+		if err != nil {
+			return err
+		}
+		titled := false
+		for _, line := range lines {
+			titled = titled || bytes.Equal(line, title)
+		}
+		if titled {
+			continue
+		}
+		if err := writeJSONL(path, append(lines, title)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Ceiling is the most the script can spend: every prompt at its cap.
@@ -141,7 +181,7 @@ func (r Recorder) Record(ctx context.Context, script Script) ([]Prompted, error)
 			return log, err
 		}
 	}
-	return log, nil
+	return log, Retitle(r.Corpus, script)
 }
 
 func claudeArgs(s ScriptedSession, id string, i int, prompt, mcpConfig string) []string {
@@ -182,6 +222,42 @@ func exportFile(src, dst string) error {
 	return writeJSONL(dst, scrub(lines))
 }
 
+// osVersion is the line Claude Code renders the kernel into, beside the
+// structured field.
+var osVersion = regexp.MustCompile(`(?m)^(\s*-?\s*)OS Version: [^\n]*\n?`)
+
+// redact takes the rendered OS version out of every string in v.
+func redact(v any) {
+	switch node := v.(type) {
+	case map[string]any:
+		for k, child := range node {
+			if s, ok := child.(string); ok {
+				node[k] = osVersion.ReplaceAllString(s, "")
+				continue
+			}
+			redact(child)
+		}
+	case []any:
+		for i, child := range node {
+			if s, ok := child.(string); ok {
+				node[i] = osVersion.ReplaceAllString(s, "")
+				continue
+			}
+			redact(child)
+		}
+	}
+}
+
+// Scrub applies the export's scrub to a transcript already on disk, so a
+// corpus recorded before a scrub rule existed can be brought up to it.
+func Scrub(path string) error {
+	lines, err := readJSONL(path)
+	if err != nil {
+		return err
+	}
+	return writeJSONL(path, scrub(lines))
+}
+
 // scrub takes out of a transcript what the city never reads and the
 // corpus should not carry. A prompt snapshot is Claude Code's whole
 // system prompt and tool list, three quarters of a short session's
@@ -209,6 +285,7 @@ func scrub(lines [][]byte) [][]byte {
 					delete(snap, "osVersion")
 				}
 			}
+			redact(v)
 			if data, err := json.Marshal(v); err == nil {
 				line = data
 			}

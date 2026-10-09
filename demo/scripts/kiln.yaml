@@ -1,18 +1,21 @@
 project: kiln
 sessions:
   - label: line-numbers-like-tidepool
+    title: Line numbers in reader errors
     model: sonnet
     budget_usd: 0.60
     visual: roads
     prompts:
       - "KILN-24: our reader errors don't say which line is bad. The tidepool project already does this nicely for its CSVs — read /home/demo/src/tidepool/internal/tide/stations.go and see how it reports file:line, then do the equivalent in kiln/reader.py and kiln/__main__.py. Update the reader tests."
   - label: empty-log-from-tracker
+    title: Empty log crashes the report
     model: sonnet
     budget_usd: 0.50
     visual: mcp
     prompts:
       - "Use the tracker MCP server to get issue KILN-21. Reproduce it, fix it so an empty log gives a one-line error and a non-zero exit, add tests, run python -m pytest -q, then comment on KILN-21 with what you changed and close it."
   - label: hold-time-sampling
+    title: Hold time ignores the sample rate
     model: sonnet
     budget_usd: 0.70
     visual: multi-turn
@@ -21,6 +24,7 @@ sessions:
       - "Right. Fix hold_time so it uses the actual timestamps instead of assuming one-minute samples, and add a test using five-minute readings."
       - "Does the same assumption show up anywhere else in kiln/? If so fix it the same way."
   - label: json-report
+    title: JSON output for the report
     model: sonnet
     budget_usd: 1.00
     visual: context

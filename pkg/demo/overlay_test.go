@@ -2,6 +2,8 @@ package demo
 
 import (
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -98,4 +100,48 @@ func TestOverlay(t *testing.T) {
 			assert.Error(t, got.err)
 		})
 	})
+}
+
+func TestContextOverlay(t *testing.T) {
+	now := time.Date(2026, 10, 7, 15, 0, 0, 0, time.UTC)
+	corpus := t.TempDir()
+	usage := func(read int) string {
+		return `{"type":"assistant","sessionId":"` + recordedID + `","cwd":"` + cwd + `","timestamp":"2026-09-01T10:10:00.000Z",` +
+			`"message":{"id":"m2","model":"claude-sonnet-4-5","role":"assistant","content":[{"type":"text","text":"done"}],` +
+			`"usage":{"input_tokens":10,"output_tokens":50,"cache_read_input_tokens":` + strconv.Itoa(read) + `,"cache_creation_input_tokens":90}}}`
+	}
+	writeFile(t, filepath.Join(corpus, "tidepool", recordedID+".jsonl"),
+		line("user", "2026-09-01T10:00:00.000Z")+"\n"+usage(20000)+"\n"+line("user", "2026-09-01T10:10:30.000Z")+"\n"+
+			strings.Replace(usage(5000), `"type":"assistant",`, `"type":"assistant","isSidechain":true,`, 1)+"\n")
+	read := func(t *testing.T, home string) claude.Transcript {
+		t.Helper()
+		tr, err := claude.ReadTranscript(filepath.Join(home, ".claude", "projects", claude.ProjectFolder(cwd), recordedID+".jsonl"))
+		require.NoError(t, err)
+		return tr
+	}
+
+	t.Run("when a session is placed at 72% context", func(t *testing.T) {
+		got := stage(t, Corpus{Dir: corpus}, Scenario{Sessions: []Placement{{Ref: "tidepool/6f1d", State: state.Working, Context: "72%"}}}, now)
+		require.NoError(t, got.err)
+		tr := read(t, got.home)
+
+		t.Run("it should hold 72% of a 200k window", func(t *testing.T) {
+			assert.EqualValues(t, 144000, tr.ContextTokens)
+		})
+
+		t.Run("it should leave whose turn it is alone", func(t *testing.T) {
+			untouched := stage(t, Corpus{Dir: corpus}, Scenario{Sessions: []Placement{{Ref: "tidepool/6f1d", State: state.Working}}}, now)
+			assert.Equal(t, read(t, untouched.home).Tail.Turn, tr.Tail.Turn)
+		})
+	})
+
+	for _, raw := range []string{"0%", "100%", "lots", "72"} {
+		t.Run("when the context is "+raw, func(t *testing.T) {
+			got := stage(t, Corpus{Dir: corpus}, Scenario{Sessions: []Placement{{Ref: "tidepool/6f1d", State: state.Working, Context: raw}}}, now)
+
+			t.Run("it should refuse", func(t *testing.T) {
+				assert.Error(t, got.err)
+			})
+		})
+	}
 }

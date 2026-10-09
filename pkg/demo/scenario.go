@@ -44,6 +44,10 @@ type Placement struct {
 	Errors int      `yaml:"errors"`
 	Team   string   `yaml:"team"`
 	Agent  string   `yaml:"agent"`
+	// Context is how full the session's context window is, "72%":
+	// the building's height. Recorded sessions are short and efficient
+	// and all stop under 15%, which would draw every building alike.
+	Context string `yaml:"context"`
 
 	// A clip that plays the timeline sees the session arrive Arrive
 	// into it, leave at Leave, and change as Changes say. A still, and

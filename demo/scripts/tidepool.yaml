@@ -1,6 +1,7 @@
 project: tidepool
 sessions:
   - label: fix-table-timezone
+    title: Tide table in station time
     model: sonnet
     budget_usd: 0.60
     visual: multi-turn
@@ -9,18 +10,21 @@ sessions:
       - "Makes sense. Fix it so the table covers midnight to midnight in the station's own timezone, and add a test that would have caught it."
       - "What happens on a day when the clocks change, like 2026-04-05 at Brackwater? Make sure the table handles a 23- or 25-hour day sensibly and test that too."
   - label: what-is-phase
+    title: What phase is measured from
     model: haiku
     budget_usd: 0.15
     visual: quick
     prompts:
       - "In internal/tide/predict.go, what is a constituent's Phase measured relative to? A short answer is fine."
   - label: units-from-tracker
+    title: Heights in feet
     model: sonnet
     budget_usd: 0.80
     visual: mcp
     prompts:
       - "Use the tracker MCP server to list the open tidepool issues, then pick up TIDE-16 (heights in feet). Implement it with tests, run go test ./..., then add a comment on TIDE-16 summarising the change and close it."
   - label: review-loader-and-docs
+    title: Constituent names and docs
     model: sonnet
     budget_usd: 0.70
     visual: subagents

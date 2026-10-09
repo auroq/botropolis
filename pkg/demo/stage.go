@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/auroq/botropolis/pkg/claude"
@@ -117,6 +119,9 @@ func stageTranscript(rec Recorded, dir string, end time.Time, o overlay) (time.T
 		return time.Time{}, "", "", err
 	}
 	main = o.rewrite(main)
+	if main, err = o.fill(main); err != nil {
+		return time.Time{}, "", "", err
+	}
 	latest, ok := Latest(main)
 	if !ok {
 		return time.Time{}, "", "", fmt.Errorf("%s: no line carries a timestamp", rec.Path)
@@ -180,6 +185,53 @@ func (o overlay) rewrite(lines [][]byte) [][]byte {
 		out[i] = line
 	}
 	return out
+}
+
+// contextWindow is the window a recorded session's context is measured
+// against: every model the recorder uses has a 200k window.
+const contextWindow = 200_000
+
+// fill sets the session's context by rescaling the cache reads on its
+// last main-line usage, which is where the city reads context from. It
+// adds no line, so whose turn it is does not change.
+func (o overlay) fill(lines [][]byte) ([][]byte, error) {
+	if o.Context == "" {
+		return lines, nil
+	}
+	pct, err := strconv.Atoi(strings.TrimSuffix(o.Context, "%"))
+	if err != nil || !strings.HasSuffix(o.Context, "%") || pct <= 0 || pct >= 100 {
+		return nil, fmt.Errorf("context %q: want a percentage between 1%% and 99%%", o.Context)
+	}
+	target := int64(pct) * contextWindow / 100
+	for i := len(lines) - 1; i >= 0; i-- {
+		v, err := decode(lines[i])
+		if err != nil {
+			continue
+		}
+		rec, _ := v.(map[string]any)
+		if rec["type"] != "assistant" || rec["isSidechain"] == true {
+			continue
+		}
+		msg, _ := rec["message"].(map[string]any)
+		usage, _ := msg["usage"].(map[string]any)
+		if usage == nil {
+			continue
+		}
+		num := func(k string) int64 {
+			n, _ := usage[k].(json.Number).Int64()
+			return n
+		}
+		rest := num("input_tokens") + num("cache_creation_input_tokens")
+		usage["cache_read_input_tokens"] = max(target-rest, 0)
+		data, err := json.Marshal(rec)
+		if err != nil {
+			return nil, err
+		}
+		out := append([][]byte(nil), lines...)
+		out[i] = data
+		return out, nil
+	}
+	return nil, errors.New("no main-line usage to set the context on")
 }
 
 // lines are the synthetic records, each stamped at the recording's last
