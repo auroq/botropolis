@@ -9,6 +9,7 @@ import (
 
 	"github.com/auroq/botropolis/pkg/city"
 	"github.com/auroq/botropolis/pkg/events"
+	"github.com/auroq/botropolis/pkg/script"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/pkg/ui"
 )
@@ -48,6 +49,8 @@ type Options struct {
 	// exits.
 	Record        string
 	RecordSeconds float64
+	// Script is a clip's choreography, played while recording.
+	Script []script.Cue
 	// RecordFPS is how many of the 30 ticks a second are written; it
 	// divides 30. 0 is the original ten.
 	RecordFPS int
@@ -107,6 +110,9 @@ func Run(ctx context.Context, opts Options) error {
 	game.script = opts.Keys
 	game.hover, game.hoverSet = opts.Hover, opts.HoverSet
 	game.record = opts.Record
+	if len(opts.Script) > 0 {
+		game.player = newPlayer(opts.Script, city.Point{X: float64(width) * theme.Scale * 0.5, Y: float64(height) * theme.Scale * 0.5})
+	}
 	if opts.Record != "" {
 		scene.SetClock(game.now, time.Local)
 	}

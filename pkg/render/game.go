@@ -73,6 +73,12 @@ type Game struct {
 	home string
 	// usageRead is the modification time of the usage cache last read.
 	usageRead time.Time
+	// player plays a clip's script; play is this frame's share of it.
+	player *player
+	play   playFrame
+	// clickedAt is when the scripted pointer last clicked, for the ripple
+	// drawn under it.
+	clickedAt float64
 	// lit is the contextual highlight for the frame being drawn.
 	lit city.Highlight
 	// hover parks the pointer for a scripted frame; see Options.Hover.
@@ -267,6 +273,16 @@ func (g *Game) Update() error {
 	}
 	g.scripted, g.scriptedRune, g.scriptedShift = -1, 0, false
 	g.clicked = -1
+	g.play = playFrame{}
+	if g.player != nil && g.record != "" && g.shotFrames > 0 {
+		g.play = g.player.step(float64(g.recorded)/liveTPS, g.resolveTarget)
+		if key, shift, ok := scriptedKey(g.play.key); ok && g.play.key != "" {
+			g.scripted, g.scriptedShift = key, shift
+		}
+		if g.play.press {
+			g.clickedAt = float64(g.recorded) / liveTPS
+		}
+	}
 	if g.record != "" && g.shotFrames > 0 {
 		// A key every two seconds, then run the clock out.
 		if len(g.script) > 0 && g.recorded%60 == 30 {
@@ -306,11 +322,17 @@ func (g *Game) Update() error {
 	if g.hoverSet {
 		cursor = g.hover
 	}
+	if g.play.shown {
+		cursor = g.play.pointer
+	}
 	g.scene.PointerMove(cursor)
 	g.hoverSprites(cursor)
 
 	if _, wheel := ebiten.Wheel(); wheel != 0 {
 		g.scene.Wheel(cursor, wheel)
+	}
+	if g.play.wheel != 0 {
+		g.scene.Wheel(cursor, g.play.wheel)
 	}
 	// The split between press and release is load-bearing, and it is
 	// luck rather than design, so it is written down before someone
@@ -319,16 +341,16 @@ func (g *Game) Update() error {
 	// button on the card it just raised — and that card carries stop two
 	// along from attach. Move either to the other event and a click
 	// becomes able to stop a session.
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) || g.play.press {
 		if !g.clickHelp(cursor) && !g.clickSettings(cursor) && !g.clickSearch(cursor) && !g.clickFooter(cursor) && !g.clickViewKey(cursor) && !g.clickTimeline(cursor) && !g.clickBreakdown(cursor) && !g.clickCard(cursor) && !g.clickSidebar(cursor) && !g.stripClick(cursor) {
 			g.dragging, g.dragFrom = true, cursor
 		}
 	}
-	if g.dragging && ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+	if g.dragging && (ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) || g.play.shown) {
 		g.scene.Pan(cursor.Sub(g.dragFrom))
 		g.dragFrom = cursor
 	}
-	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && g.dragging {
+	if (inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) || g.play.release) && g.dragging {
 		wasDrag := math.Hypot(cursor.X-g.dragFrom.X, cursor.Y-g.dragFrom.Y) > 3
 		g.dragging = false
 		if !wasDrag {
@@ -343,6 +365,30 @@ func (g *Game) Update() error {
 
 // capture writes the frame just drawn to the screenshot path. It waits for
 // the second frame after the first snapshot so the fit has settled.
+// resolveTarget is where a scripted pointer aims: a session's building
+// by title or id, a district by "district:<name>", or the power plant.
+func (g *Game) resolveTarget(target string) (city.Point, bool) {
+	c := g.scene.City()
+	cam := g.scene.Camera()
+	if target == "plant" && c.Plant.Rect.Area() > 0 {
+		return cam.WorldToScreen(c.Plant.Rect.Center()), true
+	}
+	if name, ok := strings.CutPrefix(target, "district:"); ok {
+		for _, d := range c.Districts {
+			if filepath.Base(d.Root) == name {
+				return cam.WorldToScreen(d.Rect.Center()), true
+			}
+		}
+		return city.Point{}, false
+	}
+	for _, b := range c.Buildings() {
+		if b.Session.Title == target || (len(target) >= 8 && strings.HasPrefix(b.Session.ID, target)) {
+			return cam.WorldToScreen(b.Rect.Center()), true
+		}
+	}
+	return city.Point{}, false
+}
+
 // just reports a key pressed this frame, by hand or by the script.
 func (g *Game) just(key ebiten.Key) bool {
 	return g.scripted == key || g.clicked == key || inpututil.IsKeyJustPressed(key)
@@ -442,6 +488,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	g.painted = g.ticks
 	defer g.capture(screen)
+	defer g.drawPointer(screen)
 	c := g.scene.City()
 	cam := g.scene.Camera()
 	hover := g.scene.Hover()

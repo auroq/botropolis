@@ -9,6 +9,7 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
+	"github.com/auroq/botropolis/pkg/script"
 	"github.com/auroq/botropolis/pkg/state"
 )
 
@@ -80,6 +81,12 @@ func (s Scenario) Validate() error {
 	for i, shot := range s.Shots {
 		if shot.Name == "" {
 			return fmt.Errorf("scenario %q: shot %d has no name", s.Name, i)
+		}
+		if err := script.Validate(shot.Script); err != nil {
+			return fmt.Errorf("scenario %q: shot %q: %w", s.Name, shot.Name, err)
+		}
+		if len(shot.Script) > 0 && shot.Record == nil {
+			return fmt.Errorf("scenario %q: shot %q: a script plays only while recording", s.Name, shot.Name)
 		}
 		if seen[shot.Name] {
 			return fmt.Errorf("scenario %q: two shots named %q", s.Name, shot.Name)

@@ -28,6 +28,7 @@ func NewRootCLI(v *viper.Viper, subcommands ...*cobra.Command) *cobra.Command {
 	AddRecordFlags(root.Flags())
 	AddHeadlessFlag(root.Flags())
 	AddWindowFlag(root.Flags())
+	AddScriptFlag(root.Flags())
 	byName := map[string]*cobra.Command{}
 	for _, sub := range subcommands {
 		byName[sub.Name()] = sub

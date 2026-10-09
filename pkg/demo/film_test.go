@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/auroq/botropolis/pkg/script"
 )
 
 func TestCityArgs(t *testing.T) {
@@ -38,6 +40,14 @@ func TestCityArgs(t *testing.T) {
 		t.Run("it should record frames for that long at that rate", func(t *testing.T) {
 			assert.Equal(t, append(base, "--window", "1920x1080", "--record", "/f", "--seconds", "12", "--fps", "30"),
 				cityArgs(shot, "/h", "", "/f"))
+		})
+	})
+
+	t.Run("when a clip has a script", func(t *testing.T) {
+		shot := Shot{Name: "c", Record: &Recording{Seconds: 4}, Script: []script.Cue{{At: 1, Click: true}}}
+
+		t.Run("it should hand the city the script written beside the frames", func(t *testing.T) {
+			assert.Equal(t, []string{"--script", "/work/script.json"}, cityArgs(shot, "/h", "", "/work/frames")[8:10])
 		})
 	})
 

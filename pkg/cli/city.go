@@ -64,6 +64,20 @@ func FPS(cmd *cobra.Command) (int, error) {
 	return fps, nil
 }
 
+// ScriptFlag names the flag that plays a clip's choreography while
+// recording: the pointer gliding, clicking, zooming and panning.
+const ScriptFlag = "script"
+
+func AddScriptFlag(flags *pflag.FlagSet) {
+	flags.String(ScriptFlag, "", "with --record, play this choreography (see pkg/script)")
+}
+
+// Script is the path given with --script, or "".
+func Script(cmd *cobra.Command) string {
+	path, _ := cmd.Flags().GetString(ScriptFlag)
+	return path
+}
+
 // WindowFlag names the flag that sizes the window, and the virtual
 // display under --headless with it, for frames bigger than the default.
 const WindowFlag = "window"
@@ -177,5 +191,6 @@ func NewCityCLI(load Loader, services CityServices) *cobra.Command {
 	AddHoverFlag(cmd.Flags())
 	AddSignageFlag(cmd.Flags())
 	AddWindowFlag(cmd.Flags())
+	AddScriptFlag(cmd.Flags())
 	return cmd
 }

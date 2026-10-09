@@ -26,6 +26,7 @@ import (
 	"github.com/auroq/botropolis/pkg/control"
 	"github.com/auroq/botropolis/pkg/events"
 	"github.com/auroq/botropolis/pkg/render"
+	"github.com/auroq/botropolis/pkg/script"
 	"github.com/auroq/botropolis/pkg/state"
 	"github.com/auroq/botropolis/pkg/tui"
 	"github.com/auroq/botropolis/pkg/ui"
@@ -258,6 +259,12 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
+	var cues []script.Cue
+	if path := cli.Script(cmd); path != "" {
+		if cues, err = script.Load(path); err != nil {
+			return err
+		}
+	}
 	signage, ok := city.ParseSignage(cli.Signage(cmd))
 	if !ok {
 		return fmt.Errorf("unknown signage %q: use plates, gantry, board, plaque or hover", cli.Signage(cmd))
@@ -281,6 +288,7 @@ func (c *cityRunner) Run(cmd *cobra.Command) error {
 		Record:        recordDir,
 		RecordSeconds: recordSeconds,
 		RecordFPS:     fps,
+		Script:        cues,
 		Width:         width,
 		Height:        height,
 		Scale:         c.config.RenderScale,

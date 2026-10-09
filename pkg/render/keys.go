@@ -267,7 +267,8 @@ func (g *Game) handleKeys() error {
 		g.SetStatus(note)
 		g.act(action)
 	}
-	pan := panFor(ebiten.IsKeyPressed, keyPanStep).
+	held, holding := keyByName(g.play.hold)
+	pan := panFor(func(k ebiten.Key) bool { return ebiten.IsKeyPressed(k) || (holding && g.play.hold != "" && k == held) }, keyPanStep).
 		Add(panFor(func(k ebiten.Key) bool { return g.scripted == k }, keyPanStep*scriptPanBeat))
 	if pan != (city.Point{}) {
 		g.scene.Pan(pan.Scale(g.theme.Scale))

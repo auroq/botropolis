@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/auroq/botropolis/pkg/script"
 )
 
 // Shot is one piece of media made from a scenario: a still, or a clip
@@ -37,6 +39,9 @@ type Shot struct {
 	// Timeline plays the scenario's arrivals, departures and changes
 	// while a clip records.
 	Timeline bool `yaml:"timeline"`
+	// Script is the clip's choreography: the pointer gliding to things
+	// and clicking them, the wheel zooming, arrows panning.
+	Script []script.Cue `yaml:"script"`
 }
 
 // Recording is how long a clip runs and at what frame rate.
@@ -89,6 +94,9 @@ func cityArgs(shot Shot, home, still, frames string, opts ...cityOption) []strin
 		args = append(args, "--render_scale", strconv.FormatFloat(shot.Scale, 'g', -1, 64))
 	}
 	if shot.Record != nil {
+		if len(shot.Script) > 0 {
+			args = append(args, "--script", filepath.Join(filepath.Dir(frames), "script.json"))
+		}
 		return append(args, "--record", frames,
 			"--seconds", strconv.FormatFloat(shot.Record.Seconds, 'g', -1, 64),
 			"--fps", strconv.Itoa(fpsOf(shot.Record)))
@@ -308,6 +316,11 @@ func (f Filmer) shoot(scenario Scenario, shot Shot, progress *Progress) ([]Media
 	frames := filepath.Join(work, "frames")
 	if err := os.MkdirAll(frames, 0o700); err != nil {
 		return nil, err
+	}
+	if len(shot.Script) > 0 {
+		if err := script.Save(filepath.Join(work, "script.json"), shot.Script); err != nil {
+			return nil, err
+		}
 	}
 	stop := watchFrames(frames, shotUnits(shot), progress)
 	err = f.record(work, tz, cityArgs(shot, home, "", frames), frames, fpsOf(shot.Record), director, shot.Timeline)
