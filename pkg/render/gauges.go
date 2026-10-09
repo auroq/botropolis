@@ -2,6 +2,7 @@ package render
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
+	"os"
 
 	"context"
 	"math"
@@ -296,6 +297,19 @@ func (g *Game) readUsage() {
 	g.mu.Lock()
 	g.usage = u
 	g.mu.Unlock()
+}
+
+// followUsage re-reads the cache when the file has changed since it was
+// last read, so the boats follow Claude Code's own refreshes without the
+// city being restarted. It runs as each snapshot lands: a stat, and a
+// read only when there is something new.
+func (g *Game) followUsage() {
+	info, err := os.Stat(claude.UtilizationPath(g.home))
+	if err != nil || info.ModTime().Equal(g.usageRead) {
+		return
+	}
+	g.usageRead = info.ModTime()
+	g.readUsage()
 }
 
 // refreshUsage makes Claude Code refetch the figures and then re-reads

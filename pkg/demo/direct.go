@@ -17,6 +17,7 @@ type Event struct {
 	Index  int
 	kind   string
 	change Change
+	usage  Usage
 }
 
 // Director stages a scenario and then plays its timeline against the
@@ -38,6 +39,11 @@ func NewDirector(corpus Corpus, scenario Scenario, dir string, now time.Time, sp
 		kill: func(pid int) { _ = syscall.Kill(pid, syscall.SIGTERM) }}
 	if err := writeMCP(dir, scenario.MCP); err != nil {
 		return nil, err
+	}
+	if scenario.Usage != nil {
+		if err := writeUsage(dir, *scenario.Usage, now); err != nil {
+			return nil, err
+		}
 	}
 	for i, p := range scenario.Sessions {
 		if p.Arrive > 0 {
@@ -65,6 +71,9 @@ func (d *Director) Events() []Event {
 		if p.Leave > 0 {
 			out = append(out, Event{At: time.Duration(p.Leave), Index: i, kind: "leave"})
 		}
+	}
+	for _, u := range d.scenario.UsageChanges {
+		out = append(out, Event{At: time.Duration(u.At), Index: -1, kind: "usage", usage: u.Usage})
 	}
 	sort.SliceStable(out, func(a, b int) bool { return out[a].At < out[b].At })
 	return out
@@ -110,6 +119,9 @@ func (d *Director) PlayFrames(ctx context.Context, frames string, fps int) error
 
 // Apply makes one event happen now.
 func (d *Director) Apply(e Event, now time.Time) error {
+	if e.kind == "usage" {
+		return writeUsage(d.dir, e.usage, now)
+	}
 	p := d.scenario.Sessions[e.Index]
 	switch e.kind {
 	case "arrive":

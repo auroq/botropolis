@@ -71,6 +71,8 @@ type Game struct {
 	// home is the directory holding .claude, the one the city is drawn
 	// from; see Options.Home.
 	home string
+	// usageRead is the modification time of the usage cache last read.
+	usageRead time.Time
 	// lit is the contextual highlight for the frame being drawn.
 	lit city.Highlight
 	// hover parks the pointer for a scripted frame; see Options.Hover.
@@ -254,6 +256,7 @@ func (g *Game) Update() error {
 	}
 	if pending != nil {
 		g.scene.SetSnapshot(*pending)
+		g.followUsage()
 		if title := windowTitle + " — " + g.scene.City().Summary().Headline(); title != g.shownTitle {
 			g.shownTitle = title
 			ebiten.SetWindowTitle(title)

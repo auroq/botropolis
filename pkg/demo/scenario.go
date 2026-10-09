@@ -23,6 +23,9 @@ type Scenario struct {
 	MCP      []string    `yaml:"mcp"`
 	Sessions []Placement `yaml:"sessions"`
 	Shots    []Shot      `yaml:"shots"`
+	// Usage floats the boats; UsageChanges moves them during a clip.
+	Usage        *Usage        `yaml:"usage"`
+	UsageChanges []UsageChange `yaml:"usage_changes"`
 }
 
 // Placement puts one session in the city. Ref names a recorded session;
