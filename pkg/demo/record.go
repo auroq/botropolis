@@ -159,16 +159,63 @@ func claudeArgs(s ScriptedSession, id string, i int, prompt, mcpConfig string) [
 // also holds the account's details; nothing from it but these leaves.
 func (r Recorder) export(project, id string) error {
 	folder := filepath.Join(r.Home, ".claude", "projects", claude.ProjectFolder(filepath.Join(r.Src, project)))
-	if err := copyFile(filepath.Join(folder, id+".jsonl"), filepath.Join(r.Corpus, project, id+".jsonl")); err != nil {
+	if err := exportFile(filepath.Join(folder, id+".jsonl"), filepath.Join(r.Corpus, project, id+".jsonl")); err != nil {
 		return err
 	}
 	subs, _ := filepath.Glob(filepath.Join(folder, id, "subagents", "*"))
 	for _, p := range subs {
-		if err := copyFile(p, filepath.Join(r.Corpus, project, id, "subagents", filepath.Base(p))); err != nil {
+		if err := exportFile(p, filepath.Join(r.Corpus, project, id, "subagents", filepath.Base(p))); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func exportFile(src, dst string) error {
+	if filepath.Ext(src) != ".jsonl" {
+		return copyFile(src, dst)
+	}
+	lines, err := readJSONL(src)
+	if err != nil {
+		return err
+	}
+	return writeJSONL(dst, scrub(lines))
+}
+
+// scrub takes out of a transcript what the city never reads and the
+// corpus should not carry. A prompt snapshot is Claude Code's whole
+// system prompt and tool list, three quarters of a short session's
+// bytes, and not ours to publish. The environment's osVersion is the
+// host's kernel, which a container shares with it.
+func scrub(lines [][]byte) [][]byte {
+	out := make([][]byte, 0, len(lines))
+	for _, line := range lines {
+		var probe struct {
+			Attachment struct {
+				Type string `json:"type"`
+			} `json:"attachment"`
+		}
+		_ = json.Unmarshal(line, &probe)
+		switch probe.Attachment.Type {
+		case "prompt_snapshot":
+			continue
+		case "environment":
+			v, err := decode(line)
+			if err != nil {
+				break
+			}
+			if a, ok := v.(map[string]any)["attachment"].(map[string]any); ok {
+				if snap, ok := a["snapshot"].(map[string]any); ok {
+					delete(snap, "osVersion")
+				}
+			}
+			if data, err := json.Marshal(v); err == nil {
+				line = data
+			}
+		}
+		out = append(out, line)
+	}
+	return out
 }
 
 func (r Recorder) logf(format string, args ...any) {

@@ -125,3 +125,26 @@ func TestRecord(t *testing.T) {
 		})
 	})
 }
+
+func TestScrub(t *testing.T) {
+	lines := [][]byte{
+		[]byte(`{"type":"user","message":{"content":"hi"}}`),
+		[]byte(`{"type":"attachment","attachment":{"type":"prompt_snapshot","systemPrompt":["You are..."]}}`),
+		[]byte(`{"type":"attachment","attachment":{"type":"environment","snapshot":{"workingDirectory":"/home/demo/src/t","osVersion":"Linux 7.2.8-arch1-1"}}}`),
+	}
+	out := scrub(lines)
+
+	t.Run("when a transcript is exported", func(t *testing.T) {
+		t.Run("it should drop the prompt snapshots, which hold Claude Code's own system prompt", func(t *testing.T) {
+			assert.Len(t, out, 2)
+		})
+
+		t.Run("it should blank the host's kernel, which the container shares", func(t *testing.T) {
+			assert.NotContains(t, string(out[1]), "arch1")
+		})
+
+		t.Run("it should keep everything else as it was", func(t *testing.T) {
+			assert.Equal(t, string(lines[0]), string(out[0]))
+		})
+	})
+}
