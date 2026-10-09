@@ -162,6 +162,15 @@ func TestStage(t *testing.T) {
 		})
 	})
 
+	t.Run("when an empty plot is given a title", func(t *testing.T) {
+		got := stage(t, corpus, Scenario{Sessions: []Placement{{Project: "lanternfish", State: state.Empty, Title: "Night market map"}}}, now)
+		require.NoError(t, got.err)
+
+		t.Run("it should name the record, the only title a plot with no transcript has", func(t *testing.T) {
+			assert.Equal(t, "Night market map", records(t, got.home)[0]["name"])
+		})
+	})
+
 	t.Run("when the scenario names MCP servers", func(t *testing.T) {
 		got := stage(t, corpus, Scenario{MCP: []string{"tracker", "weather"}}, now)
 		require.NoError(t, got.err)

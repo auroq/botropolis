@@ -1,5 +1,5 @@
 name: metropolis
-description: A heavy user's city at dusk, a dozen districts, a team at work and a full storage yard.
+description: A heavy user's city in the early evening, a dozen districts, a team at work and a full storage yard.
 clock: "18:30"
 mcp: [tracker, weather]
 sessions:
@@ -29,15 +29,15 @@ sessions:
   - {ref: kiln/hold-time-sampling, project: thistledown, state: parked, ago: 2d, title: Thistledown import}
   - {ref: lanternfish/status-filter, project: thistledown, state: working, ago: 2m, title: Thistledown search, prs: [open], context: 35%}
   - {ref: tidepool/fix-table-timezone, project: copperleaf, state: parked, ago: 4d, title: Copperleaf timezones}
-  - {project: saltmarsh, state: empty}
-  - {project: ferrylight, state: empty}
+  - {project: saltmarsh, state: empty, title: Saltmarsh tide gauges}
+  - {project: ferrylight, state: empty, title: Ferrylight timetable}
 shots:
   - name: overview
-    title: A busy metropolis at dusk
-    description: Twelve districts, a team camp, trains for every model, and a full storage yard.
+    title: A busy metropolis
+    description: Twelve districts in the early evening, a team camp, trains for every model, and a full storage yard.
   - name: hero
     title: The metropolis, without the chrome
-    description: Dusk over a dozen districts, interface hidden.
+    description: A dozen districts, interface hidden.
     keys: [h]
   - name: plain
     title: The metropolis, plain

@@ -38,6 +38,7 @@ sessions:
     ago: 2d
   - project: quillmark
     state: empty
+    title: Theme gallery
 shots:
   - name: overview
     title: A working afternoon

@@ -68,6 +68,9 @@ func place(corpus Corpus, scenario string, i int, p Placement, dir string, now t
 		record["sessionId"], record["cwd"], record["startedAt"] = o.id, cwd, started.UnixMilli()
 	case p.Project != "":
 		at = placed{id: plotID(scenario, i), project: p.Project}
+		if p.Title != "" {
+			record["name"] = p.Title
+		}
 		record["sessionId"], record["cwd"], record["startedAt"] = at.id, filepath.Join(Root, p.Project), end.UnixMilli()
 	default:
 		return at, fmt.Errorf("neither a ref nor a project")
