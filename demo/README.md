@@ -40,6 +40,12 @@ The city's and ffmpeg's own output goes to `dist/demo/film.log`.
 A clip is slow to film: software GL renders 1080p at a few frames a second, so a sixteen-second clip takes six or seven minutes.
 `make demo-record` reports the same way, counting prompts.
 
+A run only films the shots that changed.
+Each shot is keyed on itself, its scenario, the corpus and both binaries; a shot with the same key as last time, whose files are all still there, is reused from `dist/demo/.film-cache`.
+Editing one clip refilms that clip.
+Changing the code refilms everything, since the city may draw differently.
+`DEMO_FRESH=1 make demo-media` films everything regardless.
+
 ## Recording
 
 Recording runs the real `claude` CLI against the toy projects, so it spends tokens on your account.
