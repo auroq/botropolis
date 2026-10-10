@@ -148,3 +148,12 @@ func prune(out string, manifest Manifest) error {
 	}
 	return errors.Join(errs...)
 }
+
+// writePublic writes a file meant for others to read -- the manifest the
+// site is built from -- where writeBytes keeps a staged home private.
+func writePublic(path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
+}

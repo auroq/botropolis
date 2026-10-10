@@ -265,7 +265,7 @@ func (f Filmer) Film(paths []string) (Manifest, error) {
 		return manifest, err
 	}
 	progress.Finish(fmt.Sprintf("filmed %d of %d shots, %d unchanged; %d files", shots-reused, shots, reused, len(manifest.Media)))
-	return manifest, writeBytes(filepath.Join(f.Out, "manifest.json"), append(data, '\n'))
+	return manifest, writePublic(filepath.Join(f.Out, "manifest.json"), append(data, '\n'))
 }
 
 // stillUnits is what a still costs against a clip's frames, measured:

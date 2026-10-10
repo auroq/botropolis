@@ -110,3 +110,16 @@ func TestPrune(t *testing.T) {
 		})
 	})
 }
+
+func TestWritePublic(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "out", "manifest.json")
+	require.NoError(t, writePublic(path, []byte("{}")))
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+
+	t.Run("when the manifest is written", func(t *testing.T) {
+		t.Run("it should be readable by whatever serves or builds the site", func(t *testing.T) {
+			assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
+		})
+	})
+}
