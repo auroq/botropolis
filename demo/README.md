@@ -46,6 +46,20 @@ Editing one clip refilms that clip.
 Changing the code refilms everything, since the city may draw differently.
 `DEMO_FRESH=1 make demo-media` films everything regardless.
 
+The key names the code by a hash of its source, not of the built binaries, so a cache filmed on one machine holds on another building the same commit.
+To carry it over, copy `dist/demo` including `.film-cache/`:
+
+```sh
+rsync -avh --progress --exclude film.log \
+  <this-host>:<checkout>/dist/demo/ <other-checkout>/dist/demo/
+```
+
+Then `make demo-media` there films only what that commit changed.
+Test files are not in the hash, so editing a test refilms nothing.
+
+`make demo-adopt` files every cached shot under the current key without filming, for when the key's recipe changes and the pictures cannot have.
+It refuses, naming the shot, if anything has nothing cached, rather than start filming.
+
 ## Recording
 
 Recording runs the real `claude` CLI against the toy projects, so it spends tokens on your account.

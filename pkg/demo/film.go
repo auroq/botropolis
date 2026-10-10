@@ -192,6 +192,12 @@ type Filmer struct {
 	// on the city's; Fresh films every shot whether or not it changed.
 	Self  string
 	Fresh bool
+	// Source names the code by a hash of its source, so a cache filmed on
+	// one machine is good on another; empty keys on the binaries instead.
+	Source string
+	// Adopt files every cached shot under its current key without
+	// filming it; see adopt.
+	Adopt bool
 	Now   func() time.Time
 }
 
@@ -226,7 +232,7 @@ func (f Filmer) Film(paths []string) (Manifest, error) {
 	if f.Self != "" {
 		binaries = append(binaries, f.Self)
 	}
-	inputs, err := inputsKey(f.Corpus.Dir, binaries...)
+	inputs, err := inputsKey(f.Corpus.Dir, f.Source, binaries...)
 	if err != nil {
 		return manifest, err
 	}
@@ -239,7 +245,13 @@ func (f Filmer) Film(paths []string) (Manifest, error) {
 			n++
 			name := fmt.Sprintf("%d/%d %s/%s", n, shots, scenario.Name, shot.Name)
 			key := shotKey(scenario, shot, inputs)
-			if media, ok := recall(f.Out, scenario.Name, shot.Name, key); ok && !f.Fresh {
+			media, ok := recall(f.Out, scenario.Name, shot.Name, key)
+			if !ok && f.Adopt {
+				if media, ok = adopt(f.Out, scenario.Name, shot.Name, key); !ok {
+					return manifest, fmt.Errorf("%s/%s: nothing cached to adopt; film it without --adopt", scenario.Name, shot.Name)
+				}
+			}
+			if ok && !f.Fresh {
 				progress.Step(name, "unchanged")
 				progress.Skip(shotUnits(shot))
 				manifest.Media = append(manifest.Media, media...)

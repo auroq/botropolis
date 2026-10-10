@@ -94,17 +94,32 @@ demo-record :: demo-tool demo-image
 		${DEMO_IMAGE}-recorder \
 		/opt/botropolis/botropolis-demo record $(if ${DEMO_ONLY},--only ${DEMO_ONLY})
 
-demo-media :: build demo-tool demo-image
-	$(LOG) "Filming ${DEMO_SCENARIOS} from ${DEMO_CORPUS} into ${DEMO_OUT}"
-	@mkdir -p ${DEMO_OUT}
-	@docker run --rm $$([ -t 2 ] && echo -t) --network none --read-only --tmpfs /tmp:exec \
+# The shots are keyed on a hash of the source rather than of the binaries, so
+# a cache filmed here is good on another machine building the same commit.
+# Tests are left out: changing one cannot change a frame.
+DEMO_SOURCE = $(shell { find cmd pkg -type f ! -name '*_test.go' -print0 | LC_ALL=C sort -z | xargs -0 sha256sum; sha256sum go.mod go.sum VERSION; } | sha256sum | cut -c1-64)
+
+DEMO_FILM = docker run --rm $$([ -t 2 ] && echo -t) --network none --read-only --tmpfs /tmp:exec \
 		--user $$(id -u):$$(id -g) -e HOME=/tmp \
 		-v $(CURDIR)/bin:/opt/botropolis:ro \
 		-v $(abspath ${DEMO_CORPUS}):/corpus:ro \
 		-v $(abspath ${DEMO_SCENARIOS}):/scenarios:ro \
 		-v $(abspath ${DEMO_OUT}):/out \
 		${DEMO_IMAGE}-renderer \
-		/opt/botropolis/botropolis-demo film --corpus /corpus --out /out --botropolis /opt/botropolis/botropolis $(if ${DEMO_FRESH},--fresh) /scenarios
+		/opt/botropolis/botropolis-demo film --corpus /corpus --out /out --botropolis /opt/botropolis/botropolis \
+		--source ${DEMO_SOURCE} $(if ${DEMO_FRESH},--fresh) /scenarios
+
+demo-media :: build demo-tool demo-image
+	$(LOG) "Filming ${DEMO_SCENARIOS} from ${DEMO_CORPUS} into ${DEMO_OUT}"
+	@mkdir -p ${DEMO_OUT}
+	@${DEMO_FILM}
+
+# Files every cached shot under the current key without filming anything:
+# for after the key's own recipe changes, when the pictures cannot have. A
+# shot with nothing cached stops it, rather than starting an hour of filming.
+demo-adopt :: build demo-tool demo-image
+	$(LOG) "Adopting the shots cached in ${DEMO_OUT} under the current keys"
+	@${DEMO_FILM} --adopt
 
 test :: test-unit test-integration test-acceptance
 

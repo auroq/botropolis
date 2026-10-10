@@ -33,9 +33,16 @@ func shotKey(scenario Scenario, shot Shot, inputs string) string {
 }
 
 // inputsKey hashes what every shot of a run is made from: each file in
-// the corpus, by path and content, and the binaries that stage and draw.
-func inputsKey(corpus string, binaries ...string) (string, error) {
+// the corpus, by path and content, and the code that stages and draws --
+// named by a hash of its source when one is given, which another
+// machine's build of the same commit agrees with, and by the binaries'
+// own bytes when not, which it does not.
+func inputsKey(corpus, source string, binaries ...string) (string, error) {
 	h := sha256.New()
+	if source != "" {
+		_, _ = io.WriteString(h, "source\x00"+source+"\x00")
+		binaries = nil
+	}
 	var paths []string
 	err := filepath.WalkDir(corpus, func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() {
@@ -74,13 +81,38 @@ func cachePath(out, scenario, shot string) string {
 // recall is a shot's media from an earlier run, if it was made from the
 // same key and every file it made is still there.
 func recall(out, scenario, shot, key string) ([]Media, bool) {
-	data, err := os.ReadFile(cachePath(out, scenario, shot))
-	if err != nil {
+	c, ok := cachedShot(out, scenario, shot)
+	if !ok || c.Key != key {
 		return nil, false
 	}
-	var c cached
-	if json.Unmarshal(data, &c) != nil || c.Key != key || len(c.Media) == 0 {
+	return c.Media, true
+}
+
+// adopt takes a shot's media from an earlier run whatever key it was
+// made under, and files it under this one: for when the key changed but
+// the picture cannot have, such as the key's own recipe changing. It is
+// a claim only a person can make, so only --adopt makes it.
+func adopt(out, scenario, shot, key string) ([]Media, bool) {
+	c, ok := cachedShot(out, scenario, shot)
+	if !ok {
 		return nil, false
+	}
+	if remember(out, scenario, shot, key, c.Media) != nil {
+		return nil, false
+	}
+	return c.Media, true
+}
+
+// cachedShot is what the cache holds for a shot, if all its files are
+// still there.
+func cachedShot(out, scenario, shot string) (cached, bool) {
+	data, err := os.ReadFile(cachePath(out, scenario, shot))
+	if err != nil {
+		return cached{}, false
+	}
+	var c cached
+	if json.Unmarshal(data, &c) != nil || len(c.Media) == 0 {
+		return cached{}, false
 	}
 	for _, m := range c.Media {
 		for _, f := range []string{m.File, m.Poster} {
@@ -88,11 +120,11 @@ func recall(out, scenario, shot, key string) ([]Media, bool) {
 				continue
 			}
 			if _, err := os.Stat(filepath.Join(out, f)); err != nil {
-				return nil, false
+				return cached{}, false
 			}
 		}
 	}
-	return c.Media, true
+	return c, true
 }
 
 // remember records what a shot made, and from what.

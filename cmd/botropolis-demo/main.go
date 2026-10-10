@@ -114,7 +114,8 @@ func unstageCommand() *cobra.Command {
 
 func filmCommand() *cobra.Command {
 	var corpus, out, botropolis, ffmpeg string
-	var fresh bool
+	var fresh, adopt bool
+	var source string
 	cmd := &cobra.Command{
 		Use:   "film SCENARIO...",
 		Short: "Make every shot of each scenario and write a manifest",
@@ -151,7 +152,7 @@ func filmCommand() *cobra.Command {
 			f := demo.Filmer{
 				Corpus: demo.Corpus{Dir: corpus}, Botropolis: botropolis, FFmpeg: ffmpeg,
 				Out: out, Version: version.Version, Log: log, Now: time.Now, Progress: progress,
-				Self: self, Fresh: fresh,
+				Self: self, Fresh: fresh, Source: source, Adopt: adopt,
 			}
 			if _, err := f.Film(paths); err != nil {
 				return fmt.Errorf("%w (the city's own output is in %s)", err, logPath)
@@ -164,6 +165,8 @@ func filmCommand() *cobra.Command {
 	cmd.Flags().StringVar(&botropolis, "botropolis", "", "the botropolis binary (default: beside this one)")
 	cmd.Flags().StringVar(&ffmpeg, "ffmpeg", "ffmpeg", "the ffmpeg binary")
 	cmd.Flags().BoolVar(&fresh, "fresh", false, "film every shot, even those unchanged since the last run")
+	cmd.Flags().StringVar(&source, "source", "", "a hash of the source the binaries were built from, so the cache holds across machines")
+	cmd.Flags().BoolVar(&adopt, "adopt", false, "file every cached shot under its current key without filming it, when the key changed and the picture cannot have")
 	return cmd
 }
 

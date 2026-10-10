@@ -123,3 +123,65 @@ func TestWritePublic(t *testing.T) {
 		})
 	})
 }
+
+func TestInputsKey(t *testing.T) {
+	dir := t.TempDir()
+	corpus := filepath.Join(dir, "corpus")
+	writeFile(t, filepath.Join(corpus, "tidepool", "a.jsonl"), "{}\n")
+	one, two := filepath.Join(dir, "one"), filepath.Join(dir, "two")
+	writeFile(t, one, "a binary built here")
+	writeFile(t, two, "the same source built elsewhere")
+	key := func(t *testing.T, code string, binary string) string {
+		t.Helper()
+		k, err := inputsKey(corpus, code, binary)
+		require.NoError(t, err)
+		return k
+	}
+
+	t.Run("when the source is named", func(t *testing.T) {
+		t.Run("it should key on it rather than on the binary, so another machine's build agrees", func(t *testing.T) {
+			assert.Equal(t, key(t, "source-1", one), key(t, "source-1", two))
+		})
+
+		t.Run("and the source changes", func(t *testing.T) {
+			t.Run("it should give a new key", func(t *testing.T) {
+				assert.NotEqual(t, key(t, "source-1", one), key(t, "source-2", one))
+			})
+		})
+	})
+
+	t.Run("when no source is named", func(t *testing.T) {
+		t.Run("it should fall back to the binary", func(t *testing.T) {
+			assert.NotEqual(t, key(t, "", one), key(t, "", two))
+		})
+	})
+}
+
+func TestAdopt(t *testing.T) {
+	out := t.TempDir()
+	media := []Media{{File: "s/a.png"}}
+	writeFile(t, filepath.Join(out, "s/a.png"), "x")
+	require.NoError(t, remember(out, "s", "a", "old-key", media))
+
+	t.Run("when a shot filmed under an old key is adopted", func(t *testing.T) {
+		got, ok := adopt(out, "s", "a", "new-key")
+		require.True(t, ok)
+		_, now := recall(out, "s", "a", "new-key")
+
+		t.Run("it should keep the media it already has", func(t *testing.T) {
+			assert.Equal(t, media, got)
+		})
+
+		t.Run("it should answer to the new key from then on", func(t *testing.T) {
+			assert.True(t, now)
+		})
+	})
+
+	t.Run("when a shot was never filmed", func(t *testing.T) {
+		_, ok := adopt(out, "s", "never", "new-key")
+
+		t.Run("it should have nothing to adopt", func(t *testing.T) {
+			assert.False(t, ok)
+		})
+	})
+}
