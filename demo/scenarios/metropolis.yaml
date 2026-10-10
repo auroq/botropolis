@@ -50,7 +50,7 @@ shots:
     keys: [b]
   - name: flyover
     title: Flying over the metropolis
-    description: Zoom into the team camp, pan across the districts, and pull back out over the storage yard.
+    description: Zoom into the team camp and open a card, glide across the districts, turn, and pull back out.
     record: {seconds: 22, fps: 30}
     script:
       - {at: 0.5, point_at: "district:driftwood", over: 1.5}
@@ -58,7 +58,7 @@ shots:
       - {at: 5.0, point_at: "Driftwood schema", over: 1}
       - {at: 6.2, click: true}
       - {at: 9.0, key: Escape}
-      - {at: 9.5, hold: ArrowUp, for: 2}
-      - {at: 12.0, hold: ArrowLeft, for: 2.5}
+      - {at: 9.5, pan_to: "district:saltmarsh", over: 2}
+      - {at: 12.0, pan_to: "district:lanternfish", over: 2.5}
       - {at: 15.0, key: R}
-      - {at: 17.0, wheel: -3, over: 3}
+      - {at: 17.5, key: F}

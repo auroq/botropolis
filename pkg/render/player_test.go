@@ -83,13 +83,53 @@ func TestPlayer(t *testing.T) {
 
 	t.Run("when the wheel is turned three notches over a second", func(t *testing.T) {
 		got := frames([]script.Cue{{At: 0, Wheel: 3, Over: 1}}, 2)
+		var turns []float64
+		for _, f := range got {
+			if f.wheel != 0 {
+				turns = append(turns, f.wheel)
+			}
+		}
+
+		t.Run("it should turn it a whole notch at a time, since the scene rounds a turn to notches", func(t *testing.T) {
+			assert.Equal(t, []float64{1, 1, 1}, turns)
+		})
+	})
+
+	t.Run("when the wheel is turned back three notches", func(t *testing.T) {
+		got := frames([]script.Cue{{At: 0, Wheel: -3, Over: 1}}, 2)
 		var total float64
 		for _, f := range got {
 			total += f.wheel
 		}
 
-		t.Run("it should turn it three notches in all", func(t *testing.T) {
-			assert.InDelta(t, 3, total, 0.001)
+		t.Run("it should turn it back three", func(t *testing.T) {
+			assert.Equal(t, -3.0, total)
+		})
+	})
+
+	t.Run("when the camera pans to a session over a second", func(t *testing.T) {
+		centre := city.Point{X: 960, Y: 540}
+		target := city.Point{X: 400, Y: 900}
+		var panned city.Point
+		p := newPlayer([]script.Cue{{At: 0.5, PanTo: "Heights in feet", Over: 1}}, centre)
+		p.centre = centre
+		var halfway city.Point
+		for tick := 0; tick <= 60; tick++ {
+			f := p.step(float64(tick)/30, func(string) (city.Point, bool) { return target.Add(panned), true })
+			panned = panned.Add(f.pan)
+			if tick == 30 {
+				halfway = target.Add(panned)
+			}
+		}
+
+		t.Run("it should be on its way halfway through", func(t *testing.T) {
+			assert.True(t, halfway.X > target.X && halfway.X < centre.X, "halfway at %v", halfway)
+		})
+
+		t.Run("it should end with the session in the middle of the window", func(t *testing.T) {
+			got := target.Add(panned)
+			assert.InDelta(t, centre.X, got.X, 0.5)
+			assert.InDelta(t, centre.Y, got.Y, 0.5)
 		})
 	})
 

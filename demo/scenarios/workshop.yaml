@@ -66,10 +66,11 @@ shots:
       - {at: 4.6, click: true}
       - {at: 7.0, key: I}
       - {at: 10.0, key: Escape}
-      - {at: 10.5, wheel: -3, over: 1.5}
+      - {at: 10.5, key: F}
       - {at: 12.5, point_at: plant, over: 1.2}
       - {at: 14.0, click: true}
       - {at: 18.0, key: Escape}
       - {at: 18.5, key: B}
       - {at: 22.5, key: B}
-      - {at: 23.0, hold: ArrowLeft, for: 1.5}
+      - {at: 23.0, pan_to: "district:quillmark", over: 1.2}
+      - {at: 24.5, key: F}

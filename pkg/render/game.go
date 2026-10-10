@@ -342,6 +342,9 @@ func (g *Game) Update() error {
 	if g.play.wheel != 0 {
 		g.scene.Wheel(cursor, g.play.wheel)
 	}
+	if g.play.pan != (city.Point{}) {
+		g.scene.Pan(g.play.pan)
+	}
 	// The split between press and release is load-bearing, and it is
 	// luck rather than design, so it is written down before someone
 	// spends it. Card buttons are hit on press and the selection is made
@@ -373,7 +376,8 @@ func (g *Game) Update() error {
 
 // capture writes the frame just drawn to the screenshot path. It waits for
 // the second frame after the first snapshot so the fit has settled.
-// resolveTarget is where a scripted pointer aims: a session's building
+// resolveTarget is where a scripted pointer aims, or a scripted pan
+// brings to the middle: a session's building
 // by title or id, a district by "district:<name>", or the power plant.
 func (g *Game) resolveTarget(target string) (city.Point, bool) {
 	c := g.scene.City()

@@ -89,12 +89,14 @@ func TestDemoScenarios(t *testing.T) {
 					})
 				}
 				for _, cue := range shot.Script {
-					if cue.PointAt == "" {
-						continue
+					for _, target := range []string{cue.PointAt, cue.PanTo} {
+						if target == "" {
+							continue
+						}
+						t.Run("it should find what "+shot.Name+" aims at, "+target, func(t *testing.T) {
+							assert.True(t, targets[target])
+						})
 					}
-					t.Run("it should find what "+shot.Name+" points at, "+cue.PointAt, func(t *testing.T) {
-						assert.True(t, targets[cue.PointAt])
-					})
 				}
 			}
 		})

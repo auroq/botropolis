@@ -139,11 +139,14 @@ A clip's `script:` drives a pointer that is drawn into the frames, in seconds of
       - {at: 2.0, wheel: 3, over: 2}                                       # zoom toward the pointer
       - {at: 4.5, click: true}                                             # raises its card
       - {at: 7.0, key: I}                                                  # any key, by name
-      - {at: 9.0, hold: ArrowLeft, for: 1.5}                               # a smooth pan
+      - {at: 9.0, pan_to: "district:kiln", over: 2}                       # glide the camera there
+      - {at: 11.5, hold: ArrowLeft, for: 0.5}                              # or nudge it with an arrow
       - {at: 12.0, point_at: plant, over: 1}                               # or "district:<name>"
 ```
 
-The scenario test resolves every `point_at` and every key name against the staged city, so a typo fails `make test` rather than a film run.
+`pan_to` is the way to move about: it ends with its target in the middle of the window, where an arrow held at high zoom can carry the camera off the city.
+`wheel` turns whole notches, spread over the span; the camera eases between them.
+The scenario test resolves every `point_at`, every `pan_to` and every key name against the staged city, so a typo fails `make test` rather than a film run.
 
 ## Timelines
 

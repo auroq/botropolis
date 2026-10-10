@@ -17,6 +17,9 @@ const clickHold = 0.1
 // window position by whoever calls step, every frame, so a pointer sent
 // to a building stays on it while the camera moves.
 type player struct {
+	// centre is the middle of the window, where a pan brings its target.
+	centre  city.Point
+	pans    []panTo
 	cues    []script.Cue
 	next    int
 	pointer city.Point
@@ -34,13 +37,23 @@ type glide struct {
 	start, over float64
 }
 
+type panTo struct {
+	target      string
+	from, until float64
+}
+
 type hold struct {
 	key   string
 	until float64
 }
 
+// wheel spreads whole notches over a span. The scene rounds each turn
+// to whole notches, so a fraction of one a frame would round to nothing
+// and the zoom would never move; a notch at a time, eased by the camera,
+// reads as one smooth zoom.
 type wheel struct {
-	perSecond, from, until float64
+	notches, from, until float64
+	turned               int
 }
 
 // playFrame is one frame's worth of scripted input.
@@ -50,10 +63,12 @@ type playFrame struct {
 	press, release bool
 	key, hold      string
 	wheel          float64
+	// pan moves the camera this far on screen this frame.
+	pan city.Point
 }
 
 func newPlayer(cues []script.Cue, start city.Point) *player {
-	return &player{cues: script.Sorted(cues), pointer: start, release: -1}
+	return &player{cues: script.Sorted(cues), pointer: start, centre: start, release: -1}
 }
 
 func (p *player) step(t float64, resolve func(string) (city.Point, bool)) playFrame {
@@ -69,6 +84,8 @@ func (p *player) step(t float64, resolve func(string) (city.Point, bool)) playFr
 		case len(c.Point) == 2 || c.PointAt != "":
 			p.glide = &glide{from: p.pointer, to: c.Point, target: c.PointAt, start: c.At, over: c.Over}
 			p.shown = true
+		case c.PanTo != "":
+			p.pans = append(p.pans, panTo{target: c.PanTo, from: c.At, until: c.At + math.Max(c.Over, 1.0/liveTPS)})
 		case c.Click:
 			f.press = true
 			p.release = c.At + clickHold
@@ -78,7 +95,7 @@ func (p *player) step(t float64, resolve func(string) (city.Point, bool)) playFr
 				f.wheel += c.Wheel
 				continue
 			}
-			p.wheels = append(p.wheels, wheel{perSecond: c.Wheel / c.Over, from: c.At, until: c.At + c.Over})
+			p.wheels = append(p.wheels, wheel{notches: c.Wheel, from: c.At, until: c.At + c.Over})
 		}
 	}
 	if p.release >= 0 && t+1e-9 >= p.release {
@@ -90,10 +107,33 @@ func (p *player) step(t float64, resolve func(string) (city.Point, bool)) playFr
 			f.hold = h.key
 		}
 	}
-	for _, w := range p.wheels {
-		if t >= w.from-1e-9 && t < w.until-1e-9 {
-			f.wheel += w.perSecond / liveTPS
+	for i := range p.wheels {
+		w := &p.wheels[i]
+		if t < w.from-1e-9 {
+			continue
 		}
+		progress := math.Min(1, (t-w.from)/(w.until-w.from))
+		due := int(math.Floor(math.Abs(w.notches)*progress + 1e-9))
+		for ; w.turned < due; w.turned++ {
+			f.wheel += math.Copysign(1, w.notches)
+		}
+	}
+	for _, pan := range p.pans {
+		if t < pan.from-1e-9 || t >= pan.until-1e-9 {
+			continue
+		}
+		at, ok := resolve(pan.target)
+		if !ok {
+			continue
+		}
+		over := pan.until - pan.from
+		now, next := (t-pan.from)/over, math.Min(1, (t+1.0/liveTPS-pan.from)/over)
+		ease := func(x float64) float64 { return x * x * (3 - 2*x) }
+		share := 1.0
+		if left := 1 - ease(now); left > 1e-9 {
+			share = (ease(next) - ease(now)) / left
+		}
+		f.pan = f.pan.Add(p.centre.Sub(at).Scale(share))
 	}
 	if g := p.glide; g != nil {
 		to, ok := g.destination(resolve)

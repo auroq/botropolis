@@ -33,4 +33,4 @@ shots:
       - {at: 5.0, key: R}
       - {at: 7.0, key: Tab}
       - {at: 10.5, key: Escape}
-      - {at: 11.0, wheel: -3, over: 2.5}
+      - {at: 11.0, key: F}
