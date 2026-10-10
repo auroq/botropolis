@@ -114,12 +114,15 @@ func unstageCommand() *cobra.Command {
 
 func filmCommand() *cobra.Command {
 	var corpus, out, botropolis, ffmpeg string
+	var fresh bool
 	cmd := &cobra.Command{
 		Use:   "film SCENARIO...",
 		Short: "Make every shot of each scenario and write a manifest",
 		Long: "Stages each scenario afresh for every shot, runs the city headless\n" +
 			"against it with HOME and the XDG directories in a scratch directory,\n" +
-			"encodes clips with ffmpeg, and writes OUT/manifest.json.",
+			"encodes clips with ffmpeg, and writes OUT/manifest.json. A shot made\n" +
+			"from the same scenario, corpus and binaries as last time is reused;\n" +
+			"--fresh films everything.",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, paths []string) error {
 			if botropolis == "" {
@@ -141,9 +144,14 @@ func filmCommand() *cobra.Command {
 			progress := demo.NewProgress(os.Stderr, 0)
 			stop := progress.Ticking()
 			defer stop()
+			self, err := os.Executable()
+			if err != nil {
+				return err
+			}
 			f := demo.Filmer{
 				Corpus: demo.Corpus{Dir: corpus}, Botropolis: botropolis, FFmpeg: ffmpeg,
 				Out: out, Version: version.Version, Log: log, Now: time.Now, Progress: progress,
+				Self: self, Fresh: fresh,
 			}
 			if _, err := f.Film(paths); err != nil {
 				return fmt.Errorf("%w (the city's own output is in %s)", err, logPath)
@@ -155,6 +163,7 @@ func filmCommand() *cobra.Command {
 	cmd.Flags().StringVar(&out, "out", "dist/demo", "directory to write media and manifest.json into")
 	cmd.Flags().StringVar(&botropolis, "botropolis", "", "the botropolis binary (default: beside this one)")
 	cmd.Flags().StringVar(&ffmpeg, "ffmpeg", "ffmpeg", "the ffmpeg binary")
+	cmd.Flags().BoolVar(&fresh, "fresh", false, "film every shot, even those unchanged since the last run")
 	return cmd
 }
 

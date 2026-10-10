@@ -56,6 +56,8 @@ DEMO_IMAGE ?= botropolis-demo
 DEMO_CORPUS ?= demo/corpus
 DEMO_SCENARIOS ?= demo/scenarios
 DEMO_OUT ?= dist/demo
+# Shots unchanged since the last run are reused; DEMO_FRESH=1 films them all.
+DEMO_FRESH ?=
 
 demo-image ::
 	$(LOG) "Building the demo images"
@@ -94,7 +96,7 @@ demo-record :: demo-tool demo-image
 
 demo-media :: build demo-tool demo-image
 	$(LOG) "Filming ${DEMO_SCENARIOS} from ${DEMO_CORPUS} into ${DEMO_OUT}"
-	@rm -rf ${DEMO_OUT} && mkdir -p ${DEMO_OUT}
+	@mkdir -p ${DEMO_OUT}
 	@docker run --rm $$([ -t 2 ] && echo -t) --network none --read-only --tmpfs /tmp:exec \
 		--user $$(id -u):$$(id -g) -e HOME=/tmp \
 		-v $(CURDIR)/bin:/opt/botropolis:ro \
@@ -102,7 +104,7 @@ demo-media :: build demo-tool demo-image
 		-v $(abspath ${DEMO_SCENARIOS}):/scenarios:ro \
 		-v $(abspath ${DEMO_OUT}):/out \
 		${DEMO_IMAGE}-renderer \
-		/opt/botropolis/botropolis-demo film --corpus /corpus --out /out --botropolis /opt/botropolis/botropolis /scenarios
+		/opt/botropolis/botropolis-demo film --corpus /corpus --out /out --botropolis /opt/botropolis/botropolis $(if ${DEMO_FRESH},--fresh) /scenarios
 
 test :: test-unit test-integration test-acceptance
 

@@ -56,6 +56,15 @@ func (p *Progress) Detail(detail string) {
 	p.print(false)
 }
 
+// Skip takes n units off the work: they turned out not to need doing,
+// and counting them as done would make the rest look faster than it is.
+func (p *Progress) Skip(n int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.Total -= n
+	p.print(false)
+}
+
 // Advance counts n more units done.
 func (p *Progress) Advance(n int) {
 	p.mu.Lock()

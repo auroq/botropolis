@@ -188,7 +188,11 @@ type Filmer struct {
 	Log        io.Writer
 	// Progress is told how far the run has got; nil reports nothing.
 	Progress *Progress
-	Now      func() time.Time
+	// Self is this binary, whose staging every shot depends on as much as
+	// on the city's; Fresh films every shot whether or not it changed.
+	Self  string
+	Fresh bool
+	Now   func() time.Time
 }
 
 // Film makes every shot of every scenario and writes the manifest.
@@ -218,26 +222,49 @@ func (f Filmer) Film(paths []string) (Manifest, error) {
 		progress = &Progress{now: time.Now}
 	}
 	progress.Total = total
-	shots, n := 0, 0
+	binaries := []string{f.Botropolis}
+	if f.Self != "" {
+		binaries = append(binaries, f.Self)
+	}
+	inputs, err := inputsKey(f.Corpus.Dir, binaries...)
+	if err != nil {
+		return manifest, err
+	}
+	shots, n, reused := 0, 0, 0
 	for _, s := range scenarios {
 		shots += len(s.Shots)
 	}
 	for _, scenario := range scenarios {
 		for _, shot := range scenario.Shots {
 			n++
-			progress.Step(fmt.Sprintf("%d/%d %s/%s", n, shots, scenario.Name, shot.Name), "staging")
+			name := fmt.Sprintf("%d/%d %s/%s", n, shots, scenario.Name, shot.Name)
+			key := shotKey(scenario, shot, inputs)
+			if media, ok := recall(f.Out, scenario.Name, shot.Name, key); ok && !f.Fresh {
+				progress.Step(name, "unchanged")
+				progress.Skip(shotUnits(shot))
+				manifest.Media = append(manifest.Media, media...)
+				reused++
+				continue
+			}
+			progress.Step(name, "staging")
 			media, err := f.shoot(scenario, shot, progress)
 			if err != nil {
 				return manifest, fmt.Errorf("%s/%s: %w", scenario.Name, shot.Name, err)
 			}
+			if err := remember(f.Out, scenario.Name, shot.Name, key, media); err != nil {
+				return manifest, err
+			}
 			manifest.Media = append(manifest.Media, media...)
 		}
+	}
+	if err := prune(f.Out, manifest); err != nil {
+		return manifest, err
 	}
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return manifest, err
 	}
-	progress.Finish(fmt.Sprintf("filmed %d files from %d shots", len(manifest.Media), shots))
+	progress.Finish(fmt.Sprintf("filmed %d of %d shots, %d unchanged; %d files", shots-reused, shots, reused, len(manifest.Media)))
 	return manifest, writeBytes(filepath.Join(f.Out, "manifest.json"), append(data, '\n'))
 }
 
